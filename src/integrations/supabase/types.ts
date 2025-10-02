@@ -14,7 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      decks: {
+        Row: {
+          created_at: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      slide_items: {
+        Row: {
+          content_url: string
+          created_at: string
+          deck_slug: string
+          id: string
+          is_compressed: boolean | null
+          position: number
+          type: string
+        }
+        Insert: {
+          content_url: string
+          created_at?: string
+          deck_slug: string
+          id?: string
+          is_compressed?: boolean | null
+          position: number
+          type?: string
+        }
+        Update: {
+          content_url?: string
+          created_at?: string
+          deck_slug?: string
+          id?: string
+          is_compressed?: boolean | null
+          position?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slide_items_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
