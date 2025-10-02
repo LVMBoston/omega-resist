@@ -148,7 +148,7 @@ export default function DeckBuilder() {
       }
 
       toast.success(`Deck created with ${imageFiles.length} slides!`);
-      navigate(`/deck/${values.slug}`);
+      navigate("/");
     } catch (error) {
       console.error("Upload failed:", error);
       toast.error("Failed to create deck. Please try again.");

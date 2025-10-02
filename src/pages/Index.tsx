@@ -1,61 +1,238 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FolderOpen, Play } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Download, Plus, Star, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import jsPDF from "jspdf";
+
+interface DeckWithSlides {
+  slug: string;
+  created_at: string;
+  slide_count: number;
+}
 
 const Index = () => {
+  const [decks, setDecks] = useState<DeckWithSlides[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchDecks();
+  }, []);
+
+  const fetchDecks = async () => {
+    try {
+      // Fetch all decks
+      const { data: decksData, error: decksError } = await supabase
+        .from("decks")
+        .select("slug, created_at")
+        .order("created_at", { ascending: false });
+
+      if (decksError) throw decksError;
+
+      // Fetch slide counts for each deck
+      const decksWithCounts = await Promise.all(
+        (decksData || []).map(async (deck) => {
+          const { count } = await supabase
+            .from("slide_items")
+            .select("*", { count: "exact", head: true })
+            .eq("deck_slug", deck.slug);
+
+          return {
+            slug: deck.slug,
+            created_at: deck.created_at,
+            slide_count: count || 0,
+          };
+        })
+      );
+
+      setDecks(decksWithCounts);
+    } catch (error) {
+      console.error("Error fetching decks:", error);
+      toast.error("Failed to load decks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (slug: string) => {
+    if (!confirm(`Delete deck "${slug}"? This will also delete all associated slides.`)) {
+      return;
+    }
+
+    try {
+      // Delete slide items first
+      const { error: slidesError } = await supabase
+        .from("slide_items")
+        .delete()
+        .eq("deck_slug", slug);
+
+      if (slidesError) throw slidesError;
+
+      // Delete deck
+      const { error: deckError } = await supabase
+        .from("decks")
+        .delete()
+        .eq("slug", slug);
+
+      if (deckError) throw deckError;
+
+      toast.success("Deck deleted successfully");
+      fetchDecks();
+    } catch (error) {
+      console.error("Error deleting deck:", error);
+      toast.error("Failed to delete deck");
+    }
+  };
+
+  const handleExportPDF = async (slug: string) => {
+    try {
+      toast.info("Generating PDF...");
+
+      // Fetch slides for this deck
+      const { data: slides, error } = await supabase
+        .from("slide_items")
+        .select("content_url, position")
+        .eq("deck_slug", slug)
+        .order("position");
+
+      if (error) throw error;
+
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      for (let i = 0; i < (slides || []).length; i++) {
+        if (i > 0) pdf.addPage();
+
+        try {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.src = slides[i].content_url;
+          
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+          });
+
+          const imgWidth = img.width;
+          const imgHeight = img.height;
+          const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+          const width = imgWidth * ratio;
+          const height = imgHeight * ratio;
+          const x = (pageWidth - width) / 2;
+          const y = (pageHeight - height) / 2;
+
+          pdf.addImage(img, "JPEG", x, y, width, height);
+        } catch (err) {
+          console.error(`Failed to add slide ${i + 1}:`, err);
+        }
+      }
+
+      pdf.save(`${slug}.pdf`);
+      toast.success("PDF exported successfully");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF");
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }) + " " + date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }) + " EDT";
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <h1 className="text-3xl font-bold">Deck System</h1>
-          <p className="text-muted-foreground mt-1">Content preparation for tracking</p>
+        <div className="container mx-auto px-6 py-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Decks</h1>
+          </div>
+          <Button onClick={() => navigate("/build")}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Deck
+          </Button>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-12">
-        <div className="max-w-4xl mx-auto grid gap-6 md:grid-cols-2">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
-                Build Deck
-              </CardTitle>
-              <CardDescription>
-                Upload a ZIP file of PNG or JPG images to create a new slide deck
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/build">
-                <Button className="w-full">
-                  Create New Deck
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Play className="h-5 w-5" />
-                View Deck
-              </CardTitle>
-              <CardDescription>
-                Enter a deck slug to view it in carousel mode
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  After building a deck, access it at:
-                </p>
-                <code className="block p-3 bg-muted rounded-lg text-sm">
-                  /deck/your-deck-slug
-                </code>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <main className="container mx-auto px-6 py-8">
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading decks...</p>
+          </div>
+        ) : decks.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">No decks found. Create your first deck to get started.</p>
+            <Button onClick={() => navigate("/build")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Deck
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Deck Name</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-center"># Image Slides</TableHead>
+                <TableHead className="text-center"># Interactive Pages</TableHead>
+                <TableHead className="text-center">Export</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {decks.map((deck) => (
+                <TableRow key={deck.slug}>
+                  <TableCell>
+                    <Link
+                      to={`/deck/${deck.slug}`}
+                      className="flex items-center gap-2 hover:underline font-medium"
+                    >
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      {deck.slug}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(deck.created_at)}
+                  </TableCell>
+                  <TableCell className="text-center">{deck.slide_count}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">0</TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleExportPDF(deck.slug)}
+                      title="Export to PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(deck.slug)}
+                      title="Delete deck"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </main>
     </div>
   );
