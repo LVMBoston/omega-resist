@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ViralSlide } from "@/components/ViralSlide";
 
 interface SlideItem {
   id: string;
   position: number;
   content_url: string;
   is_compressed: boolean;
+  type: string;
 }
 
 export default function DeckViewer() {
@@ -143,12 +145,16 @@ export default function DeckViewer() {
                   <Card>
                     <CardContent className="p-0">
                       <div className="relative aspect-video bg-muted">
-                        <img
-                          src={slide.content_url}
-                          alt={`Slide ${index + 1}`}
-                          className="w-full h-full object-contain"
-                          loading="lazy"
-                        />
+                        {slide.type === "spread-word" ? (
+                          <ViralSlide slideId={slide.id} deckSlug={slug || ""} />
+                        ) : (
+                          <img
+                            src={slide.content_url}
+                            alt={`Slide ${index + 1}`}
+                            className="w-full h-full object-contain"
+                            loading="lazy"
+                          />
+                        )}
                         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
                           {index + 1} / {slides.length}
                         </div>

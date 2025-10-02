@@ -70,6 +70,44 @@ export type Database = {
           },
         ]
       }
+      viral_slide_configs: {
+        Row: {
+          created_at: string
+          deck_slug: string | null
+          hotspots: Json | null
+          id: string
+          image_url: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deck_slug?: string | null
+          hotspots?: Json | null
+          id?: string
+          image_url: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deck_slug?: string | null
+          hotspots?: Json | null
+          id?: string
+          image_url?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viral_slide_configs_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
