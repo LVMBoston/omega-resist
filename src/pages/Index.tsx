@@ -159,10 +159,15 @@ const Index = () => {
           <div>
             <h1 className="text-3xl font-bold">Decks</h1>
           </div>
-          <Button onClick={() => navigate("/build")}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Deck
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate("/manage")} variant="outline">
+              Manage Decks
+            </Button>
+            <Button onClick={() => navigate("/build")}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Deck
+            </Button>
+          </div>
         </div>
       </header>
 
