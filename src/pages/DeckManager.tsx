@@ -108,15 +108,48 @@ export default function DeckManager() {
     if (!selectedDeck) return;
     const publicImageUrl = await uploadViralImage();
     if (!publicImageUrl) return;
+
+    // First, create the slide and get its ID
+    const {
+      data: slides,
+      error: slidesError
+    } = await supabase.from("slide_items").select("position").eq("deck_slug", selectedDeck).order("position", {
+      ascending: false
+    }).limit(1);
+    const nextPosition = slides && slides.length > 0 ? slides[0].position + 1 : 1;
+    
+    const {
+      data: newSlide,
+      error: slideError
+    } = await supabase.from("slide_items").insert({
+      deck_slug: selectedDeck,
+      type: "spread-word",
+      content_url: publicImageUrl,
+      position: nextPosition,
+      is_compressed: false
+    }).select().single();
+
+    if (slideError || !newSlide) {
+      toast({
+        title: "Error",
+        description: "Failed to add slide to deck",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Now create the viral config linked to the slide
     const viralSlug = `viral-${selectedDeck}-${Date.now()}`;
     const {
       error: configError
     } = await supabase.from("viral_slide_configs").insert({
       slug: viralSlug,
       deck_slug: selectedDeck,
+      slide_id: newSlide.id,
       image_url: publicImageUrl,
       hotspots: finalHotspots
     });
+
     if (configError) {
       toast({
         title: "Error",
@@ -125,30 +158,7 @@ export default function DeckManager() {
       });
       return;
     }
-    const {
-      data: slides,
-      error: slidesError
-    } = await supabase.from("slide_items").select("position").eq("deck_slug", selectedDeck).order("position", {
-      ascending: false
-    }).limit(1);
-    const nextPosition = slides && slides.length > 0 ? slides[0].position + 1 : 1;
-    const {
-      error: slideError
-    } = await supabase.from("slide_items").insert({
-      deck_slug: selectedDeck,
-      type: "spread-word",
-      content_url: publicImageUrl,
-      position: nextPosition,
-      is_compressed: false
-    });
-    if (slideError) {
-      toast({
-        title: "Error",
-        description: "Failed to add slide to deck",
-        variant: "destructive"
-      });
-      return;
-    }
+
     toast({
       title: "Success",
       description: "Spread the Word slide added to deck"

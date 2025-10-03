@@ -77,6 +77,7 @@ export type Database = {
           hotspots: Json | null
           id: string
           image_url: string
+          slide_id: string
           slug: string
           updated_at: string
         }
@@ -86,6 +87,7 @@ export type Database = {
           hotspots?: Json | null
           id?: string
           image_url: string
+          slide_id: string
           slug: string
           updated_at?: string
         }
@@ -95,6 +97,7 @@ export type Database = {
           hotspots?: Json | null
           id?: string
           image_url?: string
+          slide_id?: string
           slug?: string
           updated_at?: string
         }
@@ -105,6 +108,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "decks"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "viral_slide_configs_slide_id_fkey"
+            columns: ["slide_id"]
+            isOneToOne: false
+            referencedRelation: "slide_items"
+            referencedColumns: ["id"]
           },
         ]
       }
