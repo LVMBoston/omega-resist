@@ -78,7 +78,10 @@ export const InteractiveSlideOverlay = ({
     const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
     const link = document.createElement('a');
     link.href = smsUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     toast({
       title: "Opening SMS",
       description: "Share this deck via text message",
@@ -91,7 +94,10 @@ export const InteractiveSlideOverlay = ({
     const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     const link = document.createElement('a');
     link.href = mailUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     toast({
       title: "Opening Email",
       description: "Share this deck via email",
