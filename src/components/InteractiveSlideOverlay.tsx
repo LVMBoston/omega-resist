@@ -74,7 +74,7 @@ export const InteractiveSlideOverlay = ({
   }, [imageUrl]);
 
   const handleSMS = () => {
-    const message = `Check out this deck: ${window.location.origin}/deck/${deckSlug}`;
+    const message = `Check out this deck: ${window.location.href}`;
     const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
     window.location.href = smsUrl;
     toast({
@@ -85,7 +85,7 @@ export const InteractiveSlideOverlay = ({
 
   const handleEmail = () => {
     const subject = "Check out this presentation";
-    const body = `I thought you might be interested in this: ${window.location.origin}/deck/${deckSlug}`;
+    const body = `I thought you might be interested in this: ${window.location.href}`;
     const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailUrl;
     toast({
