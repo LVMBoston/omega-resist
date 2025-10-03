@@ -32,7 +32,7 @@ export const ViralSlide = ({ slideId, deckSlug }: ViralSlideProps) => {
       const { data, error } = await supabase
         .from("viral_slide_configs")
         .select("*")
-        .eq("slug", slideId)
+        .eq("deck_slug", deckSlug)
         .maybeSingle();
 
       if (error) {
@@ -47,7 +47,7 @@ export const ViralSlide = ({ slideId, deckSlug }: ViralSlideProps) => {
     };
 
     fetchConfig();
-  }, [slideId]);
+  }, [deckSlug]);
 
   if (loading) {
     return (
