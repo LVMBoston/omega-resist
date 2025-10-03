@@ -76,7 +76,9 @@ export const InteractiveSlideOverlay = ({
   const handleSMS = () => {
     const message = `Check out this deck: ${window.location.href}`;
     const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
-    window.location.href = smsUrl;
+    const link = document.createElement('a');
+    link.href = smsUrl;
+    link.click();
     toast({
       title: "Opening SMS",
       description: "Share this deck via text message",
@@ -87,7 +89,9 @@ export const InteractiveSlideOverlay = ({
     const subject = "Check out this presentation";
     const body = `I thought you might be interested in this: ${window.location.href}`;
     const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailUrl;
+    const link = document.createElement('a');
+    link.href = mailUrl;
+    link.click();
     toast({
       title: "Opening Email",
       description: "Share this deck via email",
