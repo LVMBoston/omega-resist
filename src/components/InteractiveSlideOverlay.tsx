@@ -103,21 +103,20 @@ export const InteractiveSlideOverlay = ({
   return (
     <div className="absolute inset-0 pointer-events-none">
       {hotspots.map((hotspot) => (
-        <Button
+        <button
           key={hotspot.id}
           onClick={getHotspotAction(hotspot.type)}
-          className="absolute pointer-events-auto"
+          className="absolute pointer-events-auto bg-transparent border-2 border-yellow-400 hover:bg-yellow-400/10 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium"
           style={{
             left: `${hotspot.x}%`,
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
           }}
-          variant="secondary"
         >
           {getHotspotIcon(hotspot.type)}
           <span className="ml-2">{hotspot.label}</span>
-        </Button>
+        </button>
       ))}
     </div>
   );
