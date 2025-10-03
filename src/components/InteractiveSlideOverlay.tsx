@@ -1,6 +1,6 @@
 import { MessageSquare, Mail, Share2 } from "lucide-react";
-import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef, useState } from "react";
 
 interface Hotspot {
   id: string;
@@ -24,6 +24,50 @@ export const InteractiveSlideOverlay = ({
   imageUrl,
 }: InteractiveSlideOverlayProps) => {
   const { toast } = useToast();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [imageScale, setImageScale] = useState({ offsetX: 0, offsetY: 0, scaleX: 1, scaleY: 1 });
+
+  useEffect(() => {
+    const updateImageScale = () => {
+      if (!containerRef.current) return;
+
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+      
+      // Create a temporary image to get natural dimensions
+      const img = new Image();
+      img.onload = () => {
+        const containerAspect = containerRect.width / containerRect.height;
+        const imageAspect = img.naturalWidth / img.naturalHeight;
+        
+        let renderedWidth, renderedHeight, offsetX = 0, offsetY = 0;
+        
+        if (containerAspect > imageAspect) {
+          // Container is wider - image will have horizontal letterboxing
+          renderedHeight = containerRect.height;
+          renderedWidth = renderedHeight * imageAspect;
+          offsetX = (containerRect.width - renderedWidth) / 2;
+        } else {
+          // Container is taller - image will have vertical letterboxing
+          renderedWidth = containerRect.width;
+          renderedHeight = renderedWidth / imageAspect;
+          offsetY = (containerRect.height - renderedHeight) / 2;
+        }
+        
+        setImageScale({
+          offsetX,
+          offsetY,
+          scaleX: renderedWidth / containerRect.width,
+          scaleY: renderedHeight / containerRect.height,
+        });
+      };
+      img.src = imageUrl;
+    };
+
+    updateImageScale();
+    window.addEventListener('resize', updateImageScale);
+    return () => window.removeEventListener('resize', updateImageScale);
+  }, [imageUrl]);
 
   const handleSMS = () => {
     const message = `Check out this deck: ${window.location.origin}/deck/${deckSlug}`;
@@ -101,23 +145,31 @@ export const InteractiveSlideOverlay = ({
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none">
-      {hotspots.map((hotspot) => (
-        <button
-          key={hotspot.id}
-          onClick={getHotspotAction(hotspot.type)}
-          className="absolute pointer-events-auto bg-transparent border-2 border-yellow-400 hover:bg-yellow-400/10 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium"
-          style={{
-            left: `${hotspot.x}%`,
-            top: `${hotspot.y}%`,
-            width: `${hotspot.width}%`,
-            height: `${hotspot.height}%`,
-          }}
-        >
-          {getHotspotIcon(hotspot.type)}
-          <span className="ml-2">{hotspot.label}</span>
-        </button>
-      ))}
+    <div ref={containerRef} className="absolute inset-0 pointer-events-none">
+      {hotspots.map((hotspot) => {
+        // Adjust hotspot position based on actual rendered image dimensions
+        const adjustedLeft = imageScale.offsetX + (hotspot.x * imageScale.scaleX);
+        const adjustedTop = imageScale.offsetY + (hotspot.y * imageScale.scaleY);
+        const adjustedWidth = hotspot.width * imageScale.scaleX;
+        const adjustedHeight = hotspot.height * imageScale.scaleY;
+        
+        return (
+          <button
+            key={hotspot.id}
+            onClick={getHotspotAction(hotspot.type)}
+            className="absolute pointer-events-auto bg-transparent border-2 border-yellow-400 hover:bg-yellow-400/10 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium"
+            style={{
+              left: `${adjustedLeft}px`,
+              top: `${adjustedTop}px`,
+              width: `${adjustedWidth}px`,
+              height: `${adjustedHeight}px`,
+            }}
+          >
+            {getHotspotIcon(hotspot.type)}
+            <span className="ml-2">{hotspot.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 };

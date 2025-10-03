@@ -11,6 +11,7 @@ interface DeckWithSlides {
   slug: string;
   created_at: string;
   slide_count: number;
+  interactive_count: number;
 }
 
 const Index = () => {
@@ -40,10 +41,17 @@ const Index = () => {
             .select("*", { count: "exact", head: true })
             .eq("deck_slug", deck.slug);
 
+          const { count: interactiveCount } = await supabase
+            .from("slide_items")
+            .select("*", { count: "exact", head: true })
+            .eq("deck_slug", deck.slug)
+            .eq("type", "spread-word");
+
           return {
             slug: deck.slug,
             created_at: deck.created_at,
             slide_count: count || 0,
+            interactive_count: interactiveCount || 0,
           };
         })
       );
@@ -212,7 +220,7 @@ const Index = () => {
                     {formatDate(deck.created_at)}
                   </TableCell>
                   <TableCell className="text-center">{deck.slide_count}</TableCell>
-                  <TableCell className="text-center text-muted-foreground">0</TableCell>
+                  <TableCell className="text-center">{deck.interactive_count}</TableCell>
                   <TableCell className="text-center">
                     <Button
                       variant="ghost"
