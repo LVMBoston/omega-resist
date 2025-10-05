@@ -14,6 +14,181 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      daily_aggregates: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          date: string
+          deck_slug: string | null
+          eoa_id: string | null
+          id: string
+          level: number | null
+          placement_id: string | null
+          scans: number | null
+          shares: number | null
+          unique_tokens: number | null
+          updated_at: string
+          views: number | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          date: string
+          deck_slug?: string | null
+          eoa_id?: string | null
+          id?: string
+          level?: number | null
+          placement_id?: string | null
+          scans?: number | null
+          shares?: number | null
+          unique_tokens?: number | null
+          updated_at?: string
+          views?: number | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          date?: string
+          deck_slug?: string | null
+          eoa_id?: string | null
+          id?: string
+          level?: number | null
+          placement_id?: string | null
+          scans?: number | null
+          shares?: number | null
+          unique_tokens?: number | null
+          updated_at?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_aggregates_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_aggregates_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "daily_aggregates_eoa_id_fkey"
+            columns: ["eoa_id"]
+            isOneToOne: false
+            referencedRelation: "events_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_aggregates_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deck_eoa_assignments: {
+        Row: {
+          assigned_at: string
+          deck_slug: string
+          deck_version: number
+          eoa_id: string
+          id: string
+        }
+        Insert: {
+          assigned_at?: string
+          deck_slug: string
+          deck_version: number
+          eoa_id: string
+          id?: string
+        }
+        Update: {
+          assigned_at?: string
+          deck_slug?: string
+          deck_version?: number
+          eoa_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_eoa_assignments_deck_slug_deck_version_fkey"
+            columns: ["deck_slug", "deck_version"]
+            isOneToOne: false
+            referencedRelation: "deck_versions"
+            referencedColumns: ["deck_slug", "version"]
+          },
+          {
+            foreignKeyName: "deck_eoa_assignments_eoa_id_fkey"
+            columns: ["eoa_id"]
+            isOneToOne: false
+            referencedRelation: "events_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deck_versions: {
+        Row: {
+          created_at: string
+          deck_slug: string
+          id: string
+          notes: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          deck_slug: string
+          id?: string
+          notes?: string | null
+          version: number
+        }
+        Update: {
+          created_at?: string
+          deck_slug?: string
+          id?: string
+          notes?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_versions_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       decks: {
         Row: {
           created_at: string
@@ -29,6 +204,86 @@ export type Database = {
           created_at?: string
           slug?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      events_actions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          last_synced_at: string | null
+          mobilize_id: string | null
+          start_date: string | null
+          title: string
+          type: string
+          updated_at: string
+          utm_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          last_synced_at?: string | null
+          mobilize_id?: string | null
+          start_date?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          utm_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          last_synced_at?: string | null
+          mobilize_id?: string | null
+          start_date?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          utm_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_actions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      placements: {
+        Row: {
+          code: string
+          context: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          code: string
+          context?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string
+          context?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -69,6 +324,158 @@ export type Database = {
             referencedColumns: ["slug"]
           },
         ]
+      }
+      tokens: {
+        Row: {
+          created_by: string | null
+          deck_slug: string
+          eoa_id: string
+          full_url: string
+          id: string
+          level: number
+          minted_at: string
+          parent_token: string | null
+          placement_id: string | null
+          root_token: string | null
+          token: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_id: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          created_by?: string | null
+          deck_slug: string
+          eoa_id: string
+          full_url: string
+          id?: string
+          level: number
+          minted_at?: string
+          parent_token?: string | null
+          placement_id?: string | null
+          root_token?: string | null
+          token: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_id?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          created_by?: string | null
+          deck_slug?: string
+          eoa_id?: string
+          full_url?: string
+          id?: string
+          level?: number
+          minted_at?: string
+          parent_token?: string | null
+          placement_id?: string | null
+          root_token?: string | null
+          token?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_id?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "tokens_eoa_id_fkey"
+            columns: ["eoa_id"]
+            isOneToOne: false
+            referencedRelation: "events_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tokens_parent_token_fkey"
+            columns: ["parent_token"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "tokens_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "placements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tokens_root_token_fkey"
+            columns: ["root_token"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+        ]
+      }
+      url_events: {
+        Row: {
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          occurred_at: string
+          token: string
+          user_agent: string | null
+          utm_snapshot: Json | null
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          occurred_at?: string
+          token: string
+          user_agent?: string | null
+          utm_snapshot?: Json | null
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          occurred_at?: string
+          token?: string
+          user_agent?: string | null
+          utm_snapshot?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "url_events_token_fkey"
+            columns: ["token"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
       viral_slide_configs: {
         Row: {
@@ -123,10 +530,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -253,6 +666,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "viewer"],
+    },
   },
 } as const
