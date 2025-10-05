@@ -14,23 +14,14 @@ import { toast } from "sonner";
 import { Upload, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const formSchema = z
-  .object({
-    slug: z.string()
-      .min(1, "Deck slug is required")
-      .max(60, "Slug must be less than 60 characters")
-      .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
-    file: z.instanceof(FileList).optional(),
-    googleSlidesUrl: z.string().optional(),
-    compress: z.boolean().default(true),
-  })
-  .refine(
-    (data) => (data.file && data.file.length > 0) || (data.googleSlidesUrl && data.googleSlidesUrl.length > 0),
-    {
-      message: "Either upload a file or provide a Google Slides URL",
-      path: ["file"],
-    }
-  );
+const formSchema = z.object({
+  slug: z.string()
+    .min(1, "Deck slug is required")
+    .max(60, "Slug must be less than 60 characters")
+    .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
+  file: z.instanceof(FileList).refine((files) => files.length > 0, "ZIP file is required"),
+  compress: z.boolean().default(true),
+});
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -43,7 +34,6 @@ export default function DeckBuilder() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       slug: "",
-      googleSlidesUrl: "",
       compress: true,
     },
   });
@@ -150,45 +140,12 @@ export default function DeckBuilder() {
     }
   };
 
-  const handlePptxUpload = async (file: File, slug: string, compress: boolean) => {
-    setProgress("Processing PowerPoint file...");
-    toast.info("PPTX conversion coming soon! For now, please export your presentation as PNG images and upload as ZIP.");
-    throw new Error("PPTX support coming soon");
-  };
-
-  const handlePdfUpload = async (file: File, slug: string, compress: boolean) => {
-    setProgress("Processing PDF file...");
-    toast.info("PDF conversion coming soon! For now, please export your PDF pages as PNG images and upload as ZIP.");
-    throw new Error("PDF support coming soon");
-  };
-
-  const handleGoogleSlidesUpload = async (url: string, slug: string, compress: boolean) => {
-    setProgress("Fetching Google Slides...");
-    toast.info("Google Slides import coming soon! For now, please export your presentation as PNG images and upload as ZIP.");
-    throw new Error("Google Slides support coming soon");
-  };
-
   const onSubmit = async (values: FormValues) => {
     setUploading(true);
 
     try {
-      // Determine source type
-      if (values.googleSlidesUrl && values.googleSlidesUrl.length > 0) {
-        await handleGoogleSlidesUpload(values.googleSlidesUrl, values.slug, values.compress);
-      } else if (values.file && values.file.length > 0) {
-        const file = values.file[0];
-        const fileType = file.name.split('.').pop()?.toLowerCase();
-        
-        if (fileType === 'zip') {
-          await handleZipUpload(file, values.slug, values.compress);
-        } else if (fileType === 'pptx') {
-          await handlePptxUpload(file, values.slug, values.compress);
-        } else if (fileType === 'pdf') {
-          await handlePdfUpload(file, values.slug, values.compress);
-        } else {
-          throw new Error(`Unsupported file type: ${fileType}`);
-        }
-      }
+      const file = values.file[0];
+      await handleZipUpload(file, values.slug, values.compress);
       
       toast.success("Deck created successfully!");
       navigate("/");
@@ -207,7 +164,7 @@ export default function DeckBuilder() {
         <div>
           <h1 className="text-4xl font-bold mb-2">Deck Builder</h1>
           <p className="text-muted-foreground">
-            Upload slides as ZIP, PowerPoint, PDF, or import from Google Slides
+            Upload slides as a ZIP file containing PNG or JPG images
           </p>
         </div>
 
@@ -226,48 +183,18 @@ export default function DeckBuilder() {
                   name="file"
                   render={({ field: { onChange, value, ...field } }) => (
                     <FormItem>
-                      <FormLabel>Upload File</FormLabel>
+                      <FormLabel>Upload ZIP File</FormLabel>
                       <FormControl>
                         <Input
                           type="file"
-                          accept=".zip,.pptx,.pdf"
+                          accept=".zip"
                           onChange={(e) => onChange(e.target.files)}
                           disabled={uploading}
                           {...field}
                         />
                       </FormControl>
                       <p className="text-sm text-muted-foreground">
-                        Accepts ZIP (with PNG/JPG images), PowerPoint (.pptx), or PDF files
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or</span>
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="googleSlidesUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Google Slides URL</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="https://docs.google.com/presentation/d/..."
-                          {...field}
-                          disabled={uploading}
-                        />
-                      </FormControl>
-                      <p className="text-sm text-muted-foreground">
-                        Paste a sharing link (must be "viewable by anyone with link")
+                        ZIP file containing PNG or JPG images as slides
                       </p>
                       <FormMessage />
                     </FormItem>
