@@ -8,8 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -85,7 +90,10 @@ export default function CampaignManager() {
     context: "",
   });
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
+  const [eoaDialogOpen, setEoaDialogOpen] = useState(false);
+  const [placementDialogOpen, setPlacementDialogOpen] = useState(false);
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -172,7 +180,7 @@ export default function CampaignManager() {
         description: "Campaign created successfully",
       });
       setCampaignForm({ code: "", title: "", description: "" });
-      setDialogOpen(false);
+      setCampaignDialogOpen(false);
       fetchCampaigns();
     }
   };
@@ -207,7 +215,7 @@ export default function CampaignManager() {
         type: "event",
         description: "",
       });
-      setDialogOpen(false);
+      setEoaDialogOpen(false);
       fetchEoas();
     }
   };
@@ -236,7 +244,7 @@ export default function CampaignManager() {
         description: "Placement created successfully",
       });
       setPlacementForm({ code: "", name: "", description: "", context: "" });
-      setDialogOpen(false);
+      setPlacementDialogOpen(false);
       fetchPlacements();
     }
   };
@@ -303,16 +311,15 @@ export default function CampaignManager() {
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="campaigns" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-            <TabsTrigger value="eoas">Events/Actions</TabsTrigger>
             <TabsTrigger value="placements">Placements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="campaigns" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Campaigns</h2>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Dialog open={campaignDialogOpen} onOpenChange={setCampaignDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -366,152 +373,169 @@ export default function CampaignManager() {
             </div>
 
             <div className="grid gap-4">
-              {campaigns.map((campaign) => (
-                <Card key={campaign.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>{campaign.title}</CardTitle>
-                        <CardDescription>Code: {campaign.code}</CardDescription>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteCampaign(campaign.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  {campaign.description && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        {campaign.description}
-                      </p>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+              {campaigns.map((campaign) => {
+                const campaignEoas = eoas.filter((e) => e.campaign_id === campaign.id);
+                const isExpanded = expandedCampaigns.has(campaign.id);
 
-          <TabsContent value="eoas" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Events & Actions</h2>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Event/Action
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create Event/Action</DialogTitle>
-                    <DialogDescription>
-                      Add a new event or action to a campaign.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Campaign *</Label>
-                      <Select
-                        value={eoaForm.campaign_id}
-                        onValueChange={(value) =>
-                          setEoaForm({ ...eoaForm, campaign_id: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select campaign" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {campaigns.map((campaign) => (
-                            <SelectItem key={campaign.id} value={campaign.id}>
-                              {campaign.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>UTM ID *</Label>
-                      <Input
-                        value={eoaForm.utm_id}
-                        onChange={(e) =>
-                          setEoaForm({ ...eoaForm, utm_id: e.target.value })
-                        }
-                        placeholder="e.g., rally-001"
-                      />
-                    </div>
-                    <div>
-                      <Label>Title *</Label>
-                      <Input
-                        value={eoaForm.title}
-                        onChange={(e) =>
-                          setEoaForm({ ...eoaForm, title: e.target.value })
-                        }
-                        placeholder="e.g., Town Hall Rally"
-                      />
-                    </div>
-                    <div>
-                      <Label>Type</Label>
-                      <Select
-                        value={eoaForm.type}
-                        onValueChange={(value) =>
-                          setEoaForm({ ...eoaForm, type: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="event">Event</SelectItem>
-                          <SelectItem value="action">Action</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Description</Label>
-                      <Textarea
-                        value={eoaForm.description}
-                        onChange={(e) =>
-                          setEoaForm({ ...eoaForm, description: e.target.value })
-                        }
-                        placeholder="Optional description..."
-                      />
-                    </div>
-                    <Button onClick={createEoa} className="w-full">
-                      Create Event/Action
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="grid gap-4">
-              {eoas.map((eoa) => {
-                const campaign = campaigns.find((c) => c.id === eoa.campaign_id);
                 return (
-                  <Card key={eoa.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{eoa.title}</CardTitle>
-                          <CardDescription>
-                            Campaign: {campaign?.title || "Unknown"} | UTM ID:{" "}
-                            {eoa.utm_id} | Type: {eoa.type}
-                          </CardDescription>
+                  <Collapsible
+                    key={campaign.id}
+                    open={isExpanded}
+                    onOpenChange={(open) => {
+                      setExpandedCampaigns((prev) => {
+                        const next = new Set(prev);
+                        if (open) {
+                          next.add(campaign.id);
+                        } else {
+                          next.delete(campaign.id);
+                        }
+                        return next;
+                      });
+                    }}
+                  >
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <CardTitle>{campaign.title}</CardTitle>
+                            <CardDescription>Code: {campaign.code}</CardDescription>
+                            {campaign.description && (
+                              <p className="text-sm text-muted-foreground mt-2">
+                                {campaign.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteCampaign(campaign.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                    {eoa.description && (
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                          {eoa.description}
-                        </p>
+                      </CardHeader>
+
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <ChevronDown
+                                className={`mr-2 h-4 w-4 transition-transform ${
+                                  isExpanded ? "rotate-180" : ""
+                                }`}
+                              />
+                              Events/Actions ({campaignEoas.length})
+                            </Button>
+                          </CollapsibleTrigger>
+
+                          <Dialog open={eoaDialogOpen} onOpenChange={setEoaDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setEoaForm({ ...eoaForm, campaign_id: campaign.id });
+                                }}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Event/Action
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Create Event/Action</DialogTitle>
+                                <DialogDescription>
+                                  Add a new event or action to {campaign.title}.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>UTM ID *</Label>
+                                  <Input
+                                    value={eoaForm.utm_id}
+                                    onChange={(e) =>
+                                      setEoaForm({ ...eoaForm, utm_id: e.target.value })
+                                    }
+                                    placeholder="e.g., rally-001"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Title *</Label>
+                                  <Input
+                                    value={eoaForm.title}
+                                    onChange={(e) =>
+                                      setEoaForm({ ...eoaForm, title: e.target.value })
+                                    }
+                                    placeholder="e.g., Town Hall Rally"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Type</Label>
+                                  <Select
+                                    value={eoaForm.type}
+                                    onValueChange={(value) =>
+                                      setEoaForm({ ...eoaForm, type: value })
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="event">Event</SelectItem>
+                                      <SelectItem value="action">Action</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label>Description</Label>
+                                  <Textarea
+                                    value={eoaForm.description}
+                                    onChange={(e) =>
+                                      setEoaForm({ ...eoaForm, description: e.target.value })
+                                    }
+                                    placeholder="Optional description..."
+                                  />
+                                </div>
+                                <Button onClick={createEoa} className="w-full">
+                                  Create Event/Action
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+
+                        <CollapsibleContent className="space-y-2">
+                          {campaignEoas.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              No events or actions yet. Click "Add Event/Action" to create one.
+                            </p>
+                          ) : (
+                            campaignEoas.map((eoa) => (
+                              <div
+                                key={eoa.id}
+                                className="border rounded-lg p-4 bg-muted/50"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="font-semibold">{eoa.title}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      UTM ID: {eoa.utm_id} | Type: {eoa.type}
+                                    </p>
+                                    {eoa.description && (
+                                      <p className="text-sm text-muted-foreground mt-2">
+                                        {eoa.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </CollapsibleContent>
                       </CardContent>
-                    )}
-                  </Card>
+                    </Card>
+                  </Collapsible>
                 );
               })}
             </div>
@@ -520,7 +544,7 @@ export default function CampaignManager() {
           <TabsContent value="placements" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Placements</h2>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <Dialog open={placementDialogOpen} onOpenChange={setPlacementDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
