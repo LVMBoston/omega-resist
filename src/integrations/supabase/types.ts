@@ -527,15 +527,104 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      daily_aggregates_mv: {
+        Row: {
+          campaign_id: string | null
+          date: string | null
+          deck_slug: string | null
+          eoa_id: string | null
+          level: number | null
+          placement_id: string | null
+          root_token: string | null
+          scans: number | null
+          shares: number | null
+          unique_tokens: number | null
+          views: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_actions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tokens_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "tokens_eoa_id_fkey"
+            columns: ["eoa_id"]
+            isOneToOne: false
+            referencedRelation: "events_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tokens_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "placements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tokens_root_token_fkey"
+            columns: ["root_token"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+        ]
+      }
     }
     Functions: {
+      generate_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      log_event: {
+        Args: {
+          _event_type: string
+          _ip_address?: unknown
+          _token: string
+          _user_agent?: string
+          _utm_snapshot?: Json
+        }
+        Returns: string
+      }
+      mint_l00: {
+        Args: {
+          _deck_slug: string
+          _eoa_id: string
+          _placement_id: string
+          _utm_medium?: string
+        }
+        Returns: {
+          full_url: string
+          token: string
+        }[]
+      }
+      mint_share: {
+        Args: { _parent_token: string; _utm_medium: string }
+        Returns: {
+          full_url: string
+          level: number
+          token: string
+        }[]
+      }
+      refresh_daily_aggregates: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {
