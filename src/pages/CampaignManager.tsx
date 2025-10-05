@@ -1,0 +1,621 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Campaign {
+  id: string;
+  code: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+}
+
+interface EventAction {
+  id: string;
+  campaign_id: string;
+  utm_id: string;
+  title: string;
+  type: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+interface Placement {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  context: string | null;
+}
+
+export default function CampaignManager() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [eoas, setEoas] = useState<EventAction[]>([]);
+  const [placements, setPlacements] = useState<Placement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { userRole } = useAuth();
+  const { toast } = useToast();
+
+  // Campaign form state
+  const [campaignForm, setCampaignForm] = useState({
+    code: "",
+    title: "",
+    description: "",
+  });
+
+  // EoA form state
+  const [eoaForm, setEoaForm] = useState({
+    campaign_id: "",
+    utm_id: "",
+    title: "",
+    type: "event",
+    description: "",
+  });
+
+  // Placement form state
+  const [placementForm, setPlacementForm] = useState({
+    code: "",
+    name: "",
+    description: "",
+    context: "",
+  });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([fetchCampaigns(), fetchEoas(), fetchPlacements()]);
+    setLoading(false);
+  };
+
+  const fetchCampaigns = async () => {
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch campaigns: " + error.message,
+      });
+    } else {
+      setCampaigns(data || []);
+    }
+  };
+
+  const fetchEoas = async () => {
+    const { data, error } = await supabase
+      .from("events_actions")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch events/actions: " + error.message,
+      });
+    } else {
+      setEoas(data || []);
+    }
+  };
+
+  const fetchPlacements = async () => {
+    const { data, error } = await supabase
+      .from("placements")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch placements: " + error.message,
+      });
+    } else {
+      setPlacements(data || []);
+    }
+  };
+
+  const createCampaign = async () => {
+    if (!campaignForm.code || !campaignForm.title) {
+      toast({
+        variant: "destructive",
+        title: "Missing fields",
+        description: "Code and title are required",
+      });
+      return;
+    }
+
+    const { error } = await supabase.from("campaigns").insert([campaignForm]);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create campaign: " + error.message,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Campaign created successfully",
+      });
+      setCampaignForm({ code: "", title: "", description: "" });
+      setDialogOpen(false);
+      fetchCampaigns();
+    }
+  };
+
+  const createEoa = async () => {
+    if (!eoaForm.campaign_id || !eoaForm.utm_id || !eoaForm.title) {
+      toast({
+        variant: "destructive",
+        title: "Missing fields",
+        description: "Campaign, UTM ID, and title are required",
+      });
+      return;
+    }
+
+    const { error } = await supabase.from("events_actions").insert([eoaForm]);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create event/action: " + error.message,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Event/Action created successfully",
+      });
+      setEoaForm({
+        campaign_id: "",
+        utm_id: "",
+        title: "",
+        type: "event",
+        description: "",
+      });
+      setDialogOpen(false);
+      fetchEoas();
+    }
+  };
+
+  const createPlacement = async () => {
+    if (!placementForm.code || !placementForm.name) {
+      toast({
+        variant: "destructive",
+        title: "Missing fields",
+        description: "Code and name are required",
+      });
+      return;
+    }
+
+    const { error } = await supabase.from("placements").insert([placementForm]);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create placement: " + error.message,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Placement created successfully",
+      });
+      setPlacementForm({ code: "", name: "", description: "", context: "" });
+      setDialogOpen(false);
+      fetchPlacements();
+    }
+  };
+
+  const deleteCampaign = async (id: string) => {
+    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete campaign: " + error.message,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Campaign deleted",
+      });
+      fetchCampaigns();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!userRole || (userRole !== "admin" && userRole !== "manager")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground">
+            You need admin or manager access to view this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold">Campaign Manager</h1>
+              <p className="text-muted-foreground">
+                Manage campaigns, events, actions, and placements
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-6 py-8">
+        <Tabs defaultValue="campaigns" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+            <TabsTrigger value="eoas">Events/Actions</TabsTrigger>
+            <TabsTrigger value="placements">Placements</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="campaigns" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Campaigns</h2>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Campaign
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Campaign</DialogTitle>
+                    <DialogDescription>
+                      Add a new campaign to organize your events and actions.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Code *</Label>
+                      <Input
+                        value={campaignForm.code}
+                        onChange={(e) =>
+                          setCampaignForm({ ...campaignForm, code: e.target.value })
+                        }
+                        placeholder="e.g., 2024-election"
+                      />
+                    </div>
+                    <div>
+                      <Label>Title *</Label>
+                      <Input
+                        value={campaignForm.title}
+                        onChange={(e) =>
+                          setCampaignForm({ ...campaignForm, title: e.target.value })
+                        }
+                        placeholder="e.g., 2024 Election Campaign"
+                      />
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={campaignForm.description}
+                        onChange={(e) =>
+                          setCampaignForm({ ...campaignForm, description: e.target.value })
+                        }
+                        placeholder="Optional description..."
+                      />
+                    </div>
+                    <Button onClick={createCampaign} className="w-full">
+                      Create Campaign
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid gap-4">
+              {campaigns.map((campaign) => (
+                <Card key={campaign.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle>{campaign.title}</CardTitle>
+                        <CardDescription>Code: {campaign.code}</CardDescription>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteCampaign(campaign.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {campaign.description && (
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        {campaign.description}
+                      </p>
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="eoas" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Events & Actions</h2>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Event/Action
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Event/Action</DialogTitle>
+                    <DialogDescription>
+                      Add a new event or action to a campaign.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Campaign *</Label>
+                      <Select
+                        value={eoaForm.campaign_id}
+                        onValueChange={(value) =>
+                          setEoaForm({ ...eoaForm, campaign_id: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select campaign" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {campaigns.map((campaign) => (
+                            <SelectItem key={campaign.id} value={campaign.id}>
+                              {campaign.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>UTM ID *</Label>
+                      <Input
+                        value={eoaForm.utm_id}
+                        onChange={(e) =>
+                          setEoaForm({ ...eoaForm, utm_id: e.target.value })
+                        }
+                        placeholder="e.g., rally-001"
+                      />
+                    </div>
+                    <div>
+                      <Label>Title *</Label>
+                      <Input
+                        value={eoaForm.title}
+                        onChange={(e) =>
+                          setEoaForm({ ...eoaForm, title: e.target.value })
+                        }
+                        placeholder="e.g., Town Hall Rally"
+                      />
+                    </div>
+                    <div>
+                      <Label>Type</Label>
+                      <Select
+                        value={eoaForm.type}
+                        onValueChange={(value) =>
+                          setEoaForm({ ...eoaForm, type: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="event">Event</SelectItem>
+                          <SelectItem value="action">Action</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={eoaForm.description}
+                        onChange={(e) =>
+                          setEoaForm({ ...eoaForm, description: e.target.value })
+                        }
+                        placeholder="Optional description..."
+                      />
+                    </div>
+                    <Button onClick={createEoa} className="w-full">
+                      Create Event/Action
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid gap-4">
+              {eoas.map((eoa) => {
+                const campaign = campaigns.find((c) => c.id === eoa.campaign_id);
+                return (
+                  <Card key={eoa.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle>{eoa.title}</CardTitle>
+                          <CardDescription>
+                            Campaign: {campaign?.title || "Unknown"} | UTM ID:{" "}
+                            {eoa.utm_id} | Type: {eoa.type}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    {eoa.description && (
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                          {eoa.description}
+                        </p>
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="placements" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Placements</h2>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Placement
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Placement</DialogTitle>
+                    <DialogDescription>
+                      Add a new placement location for your materials.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Code *</Label>
+                      <Input
+                        value={placementForm.code}
+                        onChange={(e) =>
+                          setPlacementForm({ ...placementForm, code: e.target.value })
+                        }
+                        placeholder="e.g., FLYER-01"
+                      />
+                    </div>
+                    <div>
+                      <Label>Name *</Label>
+                      <Input
+                        value={placementForm.name}
+                        onChange={(e) =>
+                          setPlacementForm({ ...placementForm, name: e.target.value })
+                        }
+                        placeholder="e.g., Main Street Flyer"
+                      />
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={placementForm.description}
+                        onChange={(e) =>
+                          setPlacementForm({
+                            ...placementForm,
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="Optional description..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Context</Label>
+                      <Input
+                        value={placementForm.context}
+                        onChange={(e) =>
+                          setPlacementForm({
+                            ...placementForm,
+                            context: e.target.value,
+                          })
+                        }
+                        placeholder="e.g., Downtown area"
+                      />
+                    </div>
+                    <Button onClick={createPlacement} className="w-full">
+                      Create Placement
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid gap-4">
+              {placements.map((placement) => (
+                <Card key={placement.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle>{placement.name}</CardTitle>
+                        <CardDescription>
+                          Code: {placement.code}
+                          {placement.context && ` | Context: ${placement.context}`}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  {placement.description && (
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        {placement.description}
+                      </p>
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+}

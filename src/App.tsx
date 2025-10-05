@@ -11,6 +11,7 @@ import Admin from "./pages/Admin";
 import DeckBuilder from "./pages/DeckBuilder";
 import DeckViewer from "./pages/DeckViewer";
 import DeckManager from "./pages/DeckManager";
+import CampaignManager from "./pages/CampaignManager";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DeckManager />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/campaigns" 
+              element={
+                <ProtectedRoute>
+                  <CampaignManager />
                 </ProtectedRoute>
               } 
             />
