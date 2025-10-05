@@ -27,20 +27,7 @@ export default function Admin() {
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Get all users from auth
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch users: " + authError.message,
-      });
-      setLoading(false);
-      return;
-    }
-
-    // Get all roles
+    // Get all roles with user emails
     const { data: rolesData, error: rolesError } = await supabase
       .from("user_roles")
       .select("user_id, role");
@@ -55,13 +42,15 @@ export default function Admin() {
       return;
     }
 
-    // Combine data
-    const roleMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
-    const combinedUsers = authData.users.map(u => ({
-      user_id: u.id,
-      email: u.email || "No email",
-      role: roleMap.get(u.id) || null,
-    }));
+    // Get current user data to show email
+    const currentUserEmail = user?.email || "Unknown";
+    
+    // Map users with their roles
+    const combinedUsers = rolesData?.map(r => ({
+      user_id: r.user_id,
+      email: r.user_id === user?.id ? currentUserEmail : "User " + r.user_id.slice(0, 8),
+      role: r.role,
+    })) || [];
 
     setUsers(combinedUsers);
     setLoading(false);
