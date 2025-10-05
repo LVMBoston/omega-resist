@@ -178,24 +178,6 @@ export default function DeckBuilder() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="slug"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Deck Slug</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="my-deck-2024"
-                          {...field}
-                          disabled={uploading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="zipFile"
                   render={({ field: { onChange, value, ...field } }) => (
                     <FormItem>
@@ -207,6 +189,24 @@ export default function DeckBuilder() {
                           onChange={(e) => onChange(e.target.files)}
                           disabled={uploading}
                           {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Deck Slug</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="my-deck-2024"
+                          {...field}
+                          disabled={uploading}
                         />
                       </FormControl>
                       <FormMessage />
