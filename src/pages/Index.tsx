@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Plus, Star, Trash2 } from "lucide-react";
+import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import { Badge } from "@/components/ui/badge";
 
 interface DeckWithSlides {
   slug: string;
@@ -18,6 +20,7 @@ const Index = () => {
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user, userRole, signOut } = useAuth();
 
   useEffect(() => {
     fetchDecks();
@@ -165,16 +168,39 @@ const Index = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Decks</h1>
+            <h1 className="text-3xl font-bold">Democracy Forge</h1>
+            <p className="text-sm text-muted-foreground mt-1">Viral Deck Management</p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/manage")} variant="outline">
-              Manage Decks
-            </Button>
-            <Button onClick={() => navigate("/build")}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Deck
-            </Button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 mr-2">
+                  <span className="text-sm text-muted-foreground">{user.email}</span>
+                  {userRole && <Badge variant="outline">{userRole}</Badge>}
+                </div>
+                {userRole === "admin" && (
+                  <Button onClick={() => navigate("/admin")} variant="outline">
+                    <UserCog className="h-4 w-4 mr-2" />
+                    Admin
+                  </Button>
+                )}
+                <Button onClick={() => navigate("/manage")} variant="outline">
+                  Manage Decks
+                </Button>
+                <Button onClick={() => navigate("/build")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Deck
+                </Button>
+                <Button onClick={signOut} variant="ghost" size="icon">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => navigate("/auth")}>
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
