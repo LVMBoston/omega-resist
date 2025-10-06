@@ -12,6 +12,7 @@ import DeckBuilder from "./pages/DeckBuilder";
 import DeckViewer from "./pages/DeckViewer";
 import DeckManager from "./pages/DeckManager";
 import CampaignManager from "./pages/CampaignManager";
+import CampaignEoaManager from "./pages/CampaignEoaManager";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CampaignManager />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/campaigns/:campaignId" 
+              element={
+                <ProtectedRoute>
+                  <CampaignEoaManager />
                 </ProtectedRoute>
               } 
             />

@@ -8,13 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, ChevronDown } from "lucide-react";
-import { Link } from "react-router-dom";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Loader2, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -23,14 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
 interface Campaign {
   id: string;
   code: string;
@@ -42,12 +29,16 @@ interface Campaign {
 interface EventAction {
   id: string;
   campaign_id: string;
-  utm_id: string;
-  title: string;
   type: string;
-  description: string | null;
   start_date: string | null;
   end_date: string | null;
+}
+
+interface CampaignStats {
+  activeEvents: number;
+  activeActions: number;
+  earliestActive: string | null;
+  latestActive: string | null;
 }
 
 interface Placement {
@@ -59,8 +50,10 @@ interface Placement {
 }
 
 export default function CampaignManager() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [eoas, setEoas] = useState<EventAction[]>([]);
+  const [campaignStats, setCampaignStats] = useState<Map<string, CampaignStats>>(new Map());
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
   const { userRole } = useAuth();
@@ -73,15 +66,6 @@ export default function CampaignManager() {
     description: "",
   });
 
-  // EoA form state
-  const [eoaForm, setEoaForm] = useState({
-    campaign_id: "",
-    utm_id: "",
-    title: "",
-    type: "event",
-    description: "",
-  });
-
   // Placement form state
   const [placementForm, setPlacementForm] = useState({
     code: "",
@@ -91,9 +75,7 @@ export default function CampaignManager() {
   });
 
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
-  const [eoaDialogOpen, setEoaDialogOpen] = useState(false);
   const [placementDialogOpen, setPlacementDialogOpen] = useState(false);
-  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -102,6 +84,7 @@ export default function CampaignManager() {
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([fetchCampaigns(), fetchEoas(), fetchPlacements()]);
+    calculateCampaignStats();
     setLoading(false);
   };
 
@@ -125,7 +108,7 @@ export default function CampaignManager() {
   const fetchEoas = async () => {
     const { data, error } = await supabase
       .from("events_actions")
-      .select("*")
+      .select("id, campaign_id, type, start_date, end_date")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -137,6 +120,40 @@ export default function CampaignManager() {
     } else {
       setEoas(data || []);
     }
+  };
+
+  const calculateCampaignStats = () => {
+    const stats = new Map<string, CampaignStats>();
+    const now = new Date();
+    
+    campaigns.forEach((campaign) => {
+      const campaignEoas = eoas.filter((e) => e.campaign_id === campaign.id);
+      
+      const activeEoas = campaignEoas.filter((eoa) => {
+        if (!eoa.end_date) return true;
+        const endDate = new Date(eoa.end_date);
+        const cutoffDate = new Date(endDate);
+        cutoffDate.setDate(cutoffDate.getDate() + 14);
+        return now <= cutoffDate;
+      });
+
+      const activeEvents = activeEoas.filter((e) => e.type === "event").length;
+      const activeActions = activeEoas.filter((e) => e.type === "action").length;
+      
+      const activeDates = activeEoas
+        .map((e) => e.start_date)
+        .filter((d): d is string => d !== null)
+        .sort();
+      
+      stats.set(campaign.id, {
+        activeEvents,
+        activeActions,
+        earliestActive: activeDates[0] || null,
+        latestActive: activeDates[activeDates.length - 1] || null,
+      });
+    });
+    
+    setCampaignStats(stats);
   };
 
   const fetchPlacements = async () => {
@@ -182,40 +199,6 @@ export default function CampaignManager() {
       setCampaignForm({ code: "", title: "", description: "" });
       setCampaignDialogOpen(false);
       fetchCampaigns();
-    }
-  };
-
-  const createEoa = async () => {
-    if (!eoaForm.campaign_id || !eoaForm.utm_id || !eoaForm.title) {
-      toast({
-        variant: "destructive",
-        title: "Missing fields",
-        description: "Campaign, UTM ID, and title are required",
-      });
-      return;
-    }
-
-    const { error } = await supabase.from("events_actions").insert([eoaForm]);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to create event/action: " + error.message,
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Event/Action created successfully",
-      });
-      setEoaForm({
-        campaign_id: "",
-        utm_id: "",
-        title: "",
-        type: "event",
-        description: "",
-      });
-      setEoaDialogOpen(false);
       fetchEoas();
     }
   };
@@ -264,7 +247,17 @@ export default function CampaignManager() {
         description: "Campaign deleted",
       });
       fetchCampaigns();
+      fetchEoas();
     }
+  };
+
+  const formatDate = (date: string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   if (loading) {
@@ -372,170 +365,60 @@ export default function CampaignManager() {
               </Dialog>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {campaigns.map((campaign) => {
-                const campaignEoas = eoas.filter((e) => e.campaign_id === campaign.id);
-                const isExpanded = expandedCampaigns.has(campaign.id);
+                const stats = campaignStats.get(campaign.id);
 
                 return (
-                  <Collapsible
+                  <Card
                     key={campaign.id}
-                    open={isExpanded}
-                    onOpenChange={(open) => {
-                      setExpandedCampaigns((prev) => {
-                        const next = new Set(prev);
-                        if (open) {
-                          next.add(campaign.id);
-                        } else {
-                          next.delete(campaign.id);
-                        }
-                        return next;
-                      });
-                    }}
+                    className="cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
                   >
-                    <Card>
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <CardTitle>{campaign.title}</CardTitle>
-                            <CardDescription>Code: {campaign.code}</CardDescription>
-                            {campaign.description && (
-                              <p className="text-sm text-muted-foreground mt-2">
-                                {campaign.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteCampaign(campaign.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <CollapsibleTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <ChevronDown
-                                className={`mr-2 h-4 w-4 transition-transform ${
-                                  isExpanded ? "rotate-180" : ""
-                                }`}
-                              />
-                              Events/Actions ({campaignEoas.length})
-                            </Button>
-                          </CollapsibleTrigger>
-
-                          <Dialog open={eoaDialogOpen} onOpenChange={setEoaDialogOpen}>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setEoaForm({ ...eoaForm, campaign_id: campaign.id });
-                                }}
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Event/Action
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Create Event/Action</DialogTitle>
-                                <DialogDescription>
-                                  Add a new event or action to {campaign.title}.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label>UTM ID *</Label>
-                                  <Input
-                                    value={eoaForm.utm_id}
-                                    onChange={(e) =>
-                                      setEoaForm({ ...eoaForm, utm_id: e.target.value })
-                                    }
-                                    placeholder="e.g., rally-001"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Title *</Label>
-                                  <Input
-                                    value={eoaForm.title}
-                                    onChange={(e) =>
-                                      setEoaForm({ ...eoaForm, title: e.target.value })
-                                    }
-                                    placeholder="e.g., Town Hall Rally"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Type</Label>
-                                  <Select
-                                    value={eoaForm.type}
-                                    onValueChange={(value) =>
-                                      setEoaForm({ ...eoaForm, type: value })
-                                    }
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="event">Event</SelectItem>
-                                      <SelectItem value="action">Action</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label>Description</Label>
-                                  <Textarea
-                                    value={eoaForm.description}
-                                    onChange={(e) =>
-                                      setEoaForm({ ...eoaForm, description: e.target.value })
-                                    }
-                                    placeholder="Optional description..."
-                                  />
-                                </div>
-                                <Button onClick={createEoa} className="w-full">
-                                  Create Event/Action
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-
-                        <CollapsibleContent className="space-y-2">
-                          {campaignEoas.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                              No events or actions yet. Click "Add Event/Action" to create one.
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <CardTitle>{campaign.title}</CardTitle>
+                          <CardDescription>Code: {campaign.code}</CardDescription>
+                          {campaign.description && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {campaign.description}
                             </p>
-                          ) : (
-                            campaignEoas.map((eoa) => (
-                              <div
-                                key={eoa.id}
-                                className="border rounded-lg p-4 bg-muted/50"
-                              >
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <h4 className="font-semibold">{eoa.title}</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      UTM ID: {eoa.utm_id} | Type: {eoa.type}
-                                    </p>
-                                    {eoa.description && (
-                                      <p className="text-sm text-muted-foreground mt-2">
-                                        {eoa.description}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))
                           )}
-                        </CollapsibleContent>
-                      </CardContent>
-                    </Card>
-                  </Collapsible>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCampaign(campaign.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Active Events</p>
+                          <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Active Actions</p>
+                          <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Earliest Active</p>
+                          <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Latest Active</p>
+                          <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>

@@ -209,48 +209,73 @@ export type Database = {
       }
       events_actions: {
         Row: {
+          assigned_deck_slug: string | null
           campaign_id: string
+          city: string | null
           created_at: string
           description: string | null
           end_date: string | null
           id: string
           last_synced_at: string | null
           mobilize_id: string | null
+          site_name: string | null
           start_date: string | null
+          state: string | null
+          timezone: string | null
           title: string
           type: string
           updated_at: string
           utm_id: string
+          zip_code: string | null
         }
         Insert: {
+          assigned_deck_slug?: string | null
           campaign_id: string
+          city?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
           id?: string
           last_synced_at?: string | null
           mobilize_id?: string | null
+          site_name?: string | null
           start_date?: string | null
+          state?: string | null
+          timezone?: string | null
           title: string
           type: string
           updated_at?: string
           utm_id: string
+          zip_code?: string | null
         }
         Update: {
+          assigned_deck_slug?: string | null
           campaign_id?: string
+          city?: string | null
           created_at?: string
           description?: string | null
           end_date?: string | null
           id?: string
           last_synced_at?: string | null
           mobilize_id?: string | null
+          site_name?: string | null
           start_date?: string | null
+          state?: string | null
+          timezone?: string | null
           title?: string
           type?: string
           updated_at?: string
           utm_id?: string
+          zip_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "events_actions_assigned_deck_slug_fkey"
+            columns: ["assigned_deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
           {
             foreignKeyName: "events_actions_campaign_id_fkey"
             columns: ["campaign_id"]
