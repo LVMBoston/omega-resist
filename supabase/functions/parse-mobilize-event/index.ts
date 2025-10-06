@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
+import { formatInTimeZone } from "npm:date-fns-tz@3.2.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,22 @@ serve(async (req) => {
 function parseApiResponse(data: any) {
   const event = data.data;
   const location = event.location || {};
+  const timezone = event.timezone || 'UTC';
+  
+  // Convert Unix timestamps to local time in the event's timezone
+  let dateTime = '';
+  let dateTimeEnd = '';
+  
+  if (event.timeslots?.[0]?.start_date) {
+    const startDate = new Date(event.timeslots[0].start_date * 1000);
+    // Format as ISO string but in local timezone (YYYY-MM-DDTHH:mm:ss)
+    dateTime = formatInTimeZone(startDate, timezone, "yyyy-MM-dd'T'HH:mm:ss");
+  }
+  
+  if (event.timeslots?.[0]?.end_date) {
+    const endDate = new Date(event.timeslots[0].end_date * 1000);
+    dateTimeEnd = formatInTimeZone(endDate, timezone, "yyyy-MM-dd'T'HH:mm:ss");
+  }
   
   return {
     siteName: location.venue || '',
@@ -72,9 +89,9 @@ function parseApiResponse(data: any) {
     state: location.region || '',
     zipCode: location.postal_code || '',
     cityStateZip: `${location.locality || ''}, ${location.region || ''} ${location.postal_code || ''}`.trim(),
-    dateTime: event.timeslots?.[0]?.start_date ? new Date(event.timeslots[0].start_date * 1000).toISOString() : '',
-    dateTimeEnd: event.timeslots?.[0]?.end_date ? new Date(event.timeslots[0].end_date * 1000).toISOString() : '',
-    timezone: event.timezone || '',
+    dateTime,
+    dateTimeEnd,
+    timezone,
     fullAddress: `${location.address_lines?.[0] || ''}, ${location.locality || ''}, ${location.region || ''} ${location.postal_code || ''}`.trim(),
     source: 'api' as const
   };
