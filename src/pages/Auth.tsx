@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,21 @@ const passwordSchema = z.string().min(6, "Password must be at least 6 characters
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check if user came from password reset email
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsResettingPassword(true);
+      }
+    });
+  }, []);
 
   const validateInputs = () => {
     try {
@@ -130,6 +141,85 @@ export default function Auth() {
       });
     }
   };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      passwordSchema.parse(newPassword);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Password must be at least 6 characters",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: "Success!",
+        description: "Your password has been updated",
+      });
+      setIsResettingPassword(false);
+      navigate("/");
+    }
+  };
+
+  if (isResettingPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Reset Your Password</CardTitle>
+            <CardDescription>Enter your new password below</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Updating..." : "Update Password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
