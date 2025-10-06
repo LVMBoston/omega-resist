@@ -55,7 +55,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
     start_date: initialData?.start_date || "",
     end_date: initialData?.end_date || "",
     timezone: initialData?.timezone || "TBD",
-    assigned_deck_slug: initialData?.assigned_deck_slug || "",
+    assigned_deck_slug: initialData?.assigned_deck_slug || "none",
     description: initialData?.description || "",
     utm_id: initialData?.utm_id || "",
   });
@@ -92,6 +92,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     const payload = {
       ...formData,
+      assigned_deck_slug: formData.assigned_deck_slug === "none" ? null : formData.assigned_deck_slug,
       campaign_id: campaignId,
     };
 
@@ -243,7 +244,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
             <SelectValue placeholder="Select a deck..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {decks.map((deck) => (
               <SelectItem key={deck.slug} value={deck.slug}>
                 {deck.slug}
