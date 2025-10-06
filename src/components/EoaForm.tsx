@@ -45,6 +45,13 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const [loading, setLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   
+  // Helper to convert ISO timestamp to datetime-local format
+  const toDatetimeLocal = (isoString: string | undefined) => {
+    if (!isoString) return "";
+    // Remove timezone info and milliseconds for datetime-local input
+    return isoString.slice(0, 16);
+  };
+
   const [formData, setFormData] = useState({
     mobilize_id: initialData?.mobilize_id || "",
     title: initialData?.title || "",
@@ -53,8 +60,8 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
     state: initialData?.state || "",
     zip_code: initialData?.zip_code || "",
     type: initialData?.type || "event",
-    start_date: initialData?.start_date || "",
-    end_date: initialData?.end_date || "",
+    start_date: toDatetimeLocal(initialData?.start_date),
+    end_date: toDatetimeLocal(initialData?.end_date),
     timezone: initialData?.timezone || "TBD",
     assigned_deck_slug: initialData?.assigned_deck_slug || "none",
     description: initialData?.description || "",
@@ -151,8 +158,11 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     setLoading(true);
 
+    // Convert datetime-local format back to ISO timestamp
     const payload = {
       ...formData,
+      start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
+      end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
       assigned_deck_slug: formData.assigned_deck_slug === "none" ? null : formData.assigned_deck_slug,
       campaign_id: campaignId,
     };
@@ -301,7 +311,6 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
             type="datetime-local"
             value={formData.end_date}
             onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-            disabled={formData.type === "event"}
           />
         </div>
       </div>
