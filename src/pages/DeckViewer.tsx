@@ -22,6 +22,7 @@ export default function DeckViewer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -69,19 +70,22 @@ export default function DeckViewer() {
     fetchDeck();
   }, [slug]);
 
-  // Auto-enter fullscreen on load
+  // Show fullscreen prompt on load
   useEffect(() => {
     if (!loading && slides.length > 0) {
-      const enterFullscreen = async () => {
-        try {
-          await document.documentElement.requestFullscreen();
-        } catch (err) {
-          console.log("Fullscreen request failed:", err);
-        }
-      };
-      enterFullscreen();
+      setShowFullscreenPrompt(true);
     }
   }, [loading, slides]);
+
+  const enterFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setShowFullscreenPrompt(false);
+    } catch (err) {
+      console.log("Fullscreen request failed:", err);
+      toast.error("Unable to enter fullscreen mode");
+    }
+  };
 
   // Track fullscreen state
   useEffect(() => {
@@ -144,6 +148,31 @@ export default function DeckViewer() {
 
   return (
     <div className="min-h-screen bg-background">
+      {showFullscreenPrompt && (
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
+          <Card className="max-w-md w-full mx-4">
+            <CardContent className="pt-6 text-center space-y-4">
+              <h2 className="text-2xl font-bold">Ready to Present?</h2>
+              <p className="text-muted-foreground">
+                Click below to view this deck in fullscreen mode
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={enterFullscreen} size="lg">
+                  Enter Fullscreen
+                </Button>
+                <Button 
+                  onClick={() => setShowFullscreenPrompt(false)} 
+                  variant="outline"
+                  size="lg"
+                >
+                  View Normal
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
       {!isFullscreen && (
         <header className="border-b bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
