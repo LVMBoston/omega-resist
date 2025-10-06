@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,10 @@ interface Placement {
   context: string | null;
 }
 
+const codeSchema = z.string()
+  .min(1, "Code is required")
+  .regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
+
 export default function CampaignManager() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -77,6 +82,8 @@ export default function CampaignManager() {
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [placementDialogOpen, setPlacementDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [codeError, setCodeError] = useState<string>("");
+  const [placementCodeError, setPlacementCodeError] = useState<string>("");
 
   useEffect(() => {
     fetchData();
@@ -184,6 +191,16 @@ export default function CampaignManager() {
       return;
     }
 
+    const codeValidation = codeSchema.safeParse(campaignForm.code);
+    if (!codeValidation.success) {
+      toast({
+        variant: "destructive",
+        title: "Invalid code",
+        description: codeValidation.error.errors[0].message,
+      });
+      return;
+    }
+
     const { error } = await supabase.from("campaigns").insert([campaignForm]);
 
     if (error) {
@@ -212,6 +229,16 @@ export default function CampaignManager() {
         variant: "destructive",
         title: "Missing fields",
         description: "Code and title are required",
+      });
+      return;
+    }
+
+    const codeValidation = codeSchema.safeParse(campaignForm.code);
+    if (!codeValidation.success) {
+      toast({
+        variant: "destructive",
+        title: "Invalid code",
+        description: codeValidation.error.errors[0].message,
       });
       return;
     }
@@ -255,6 +282,27 @@ export default function CampaignManager() {
     if (!open) {
       setEditingCampaign(null);
       setCampaignForm({ code: "", title: "", description: "" });
+      setCodeError("");
+    }
+  };
+
+  const handleCodeChange = (value: string) => {
+    setCampaignForm({ ...campaignForm, code: value });
+    const validation = codeSchema.safeParse(value);
+    if (!validation.success && value) {
+      setCodeError(validation.error.errors[0].message);
+    } else {
+      setCodeError("");
+    }
+  };
+
+  const handlePlacementCodeChange = (value: string) => {
+    setPlacementForm({ ...placementForm, code: value });
+    const validation = codeSchema.safeParse(value);
+    if (!validation.success && value) {
+      setPlacementCodeError(validation.error.errors[0].message);
+    } else {
+      setPlacementCodeError("");
     }
   };
 
@@ -264,6 +312,16 @@ export default function CampaignManager() {
         variant: "destructive",
         title: "Missing fields",
         description: "Code and name are required",
+      });
+      return;
+    }
+
+    const codeValidation = codeSchema.safeParse(placementForm.code);
+    if (!codeValidation.success) {
+      toast({
+        variant: "destructive",
+        title: "Invalid code",
+        description: codeValidation.error.errors[0].message,
       });
       return;
     }
@@ -388,11 +446,16 @@ export default function CampaignManager() {
                       <Label>Code *</Label>
                       <Input
                         value={campaignForm.code}
-                        onChange={(e) =>
-                          setCampaignForm({ ...campaignForm, code: e.target.value })
-                        }
+                        onChange={(e) => handleCodeChange(e.target.value)}
                         placeholder="e.g., 2024-election"
+                        className={codeError ? "border-destructive" : ""}
                       />
+                      {codeError && (
+                        <p className="text-sm text-destructive mt-1">{codeError}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Only lowercase letters, numbers, hyphens, and underscores
+                      </p>
                     </div>
                     <div>
                       <Label>Title *</Label>
@@ -518,11 +581,16 @@ export default function CampaignManager() {
                       <Label>Code *</Label>
                       <Input
                         value={placementForm.code}
-                        onChange={(e) =>
-                          setPlacementForm({ ...placementForm, code: e.target.value })
-                        }
+                        onChange={(e) => handlePlacementCodeChange(e.target.value)}
                         placeholder="e.g., FLYER-01"
+                        className={placementCodeError ? "border-destructive" : ""}
                       />
+                      {placementCodeError && (
+                        <p className="text-sm text-destructive mt-1">{placementCodeError}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Only lowercase letters, numbers, hyphens, and underscores
+                      </p>
                     </div>
                     <div>
                       <Label>Name *</Label>
