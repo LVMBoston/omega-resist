@@ -1,1 +1,7 @@
 project_id = "wznilzguqjwvkysuleta"
+
+[functions.parse-mobilize-event]
+verify_jwt = false
+
+[functions.scrape-mobilize-events]
+verify_jwt = false

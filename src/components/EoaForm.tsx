@@ -43,6 +43,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const { toast } = useToast();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     mobilize_id: initialData?.mobilize_id || "",
@@ -67,6 +68,64 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const fetchDecks = async () => {
     const { data } = await supabase.from("decks").select("slug").order("slug");
     setDecks(data || []);
+  };
+
+  const handleImportFromMobilize = async () => {
+    if (!formData.mobilize_id) {
+      toast({
+        variant: "destructive",
+        title: "Missing Mobilize Code",
+        description: "Please enter a 6-digit Mobilize event ID",
+      });
+      return;
+    }
+
+    if (!/^\d{6}$/.test(formData.mobilize_id)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Mobilize Code",
+        description: "Mobilize event ID must be exactly 6 digits",
+      });
+      return;
+    }
+
+    setImportLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-mobilize-event', {
+        body: { eventId: formData.mobilize_id }
+      });
+
+      if (error) throw error;
+
+      // Auto-fill form fields with imported data
+      setFormData({
+        ...formData,
+        title: data.eventName || formData.title,
+        site_name: data.siteName || formData.site_name,
+        city: data.city || formData.city,
+        state: data.state || formData.state,
+        zip_code: data.zipCode || formData.zip_code,
+        start_date: data.dateTime ? new Date(data.dateTime).toISOString().slice(0, 16) : formData.start_date,
+        end_date: data.dateTimeEnd ? new Date(data.dateTimeEnd).toISOString().slice(0, 16) : formData.end_date,
+        timezone: data.timezone || formData.timezone,
+        description: data.eventSponsor ? `Sponsored by ${data.eventSponsor}` : formData.description,
+      });
+
+      toast({
+        title: "Import Successful",
+        description: `Imported event data from Mobilize.us (source: ${data.source})`,
+      });
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast({
+        variant: "destructive",
+        title: "Import Failed",
+        description: error.message || "Failed to import event data from Mobilize.us",
+      });
+    } finally {
+      setImportLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -125,11 +184,23 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Mobilize Code</Label>
-          <Input
-            value={formData.mobilize_id}
-            onChange={(e) => setFormData({ ...formData, mobilize_id: e.target.value })}
-            placeholder="e.g., 837854"
-          />
+          <div className="flex gap-2">
+            <Input
+              value={formData.mobilize_id}
+              onChange={(e) => setFormData({ ...formData, mobilize_id: e.target.value })}
+              placeholder="e.g., 837854"
+              maxLength={6}
+            />
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={handleImportFromMobilize}
+              disabled={importLoading || !formData.mobilize_id}
+            >
+              {importLoading ? "Importing..." : "Import"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">6-digit Mobilize event ID</p>
         </div>
         <div>
           <Label>UTM ID *</Label>
