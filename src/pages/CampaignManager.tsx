@@ -89,10 +89,15 @@ export default function CampaignManager() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (campaigns.length > 0 || eoas.length > 0) {
+      calculateCampaignStats();
+    }
+  }, [campaigns, eoas]);
+
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([fetchCampaigns(), fetchEoas(), fetchPlacements()]);
-    calculateCampaignStats();
     setLoading(false);
   };
 
