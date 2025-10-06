@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -76,6 +76,7 @@ export default function CampaignManager() {
 
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [placementDialogOpen, setPlacementDialogOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -203,6 +204,60 @@ export default function CampaignManager() {
     }
   };
 
+  const updateCampaign = async () => {
+    if (!editingCampaign) return;
+    
+    if (!campaignForm.code || !campaignForm.title) {
+      toast({
+        variant: "destructive",
+        title: "Missing fields",
+        description: "Code and title are required",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("campaigns")
+      .update(campaignForm)
+      .eq("id", editingCampaign.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update campaign: " + error.message,
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Campaign updated successfully",
+      });
+      setCampaignForm({ code: "", title: "", description: "" });
+      setEditingCampaign(null);
+      setCampaignDialogOpen(false);
+      fetchCampaigns();
+      fetchEoas();
+    }
+  };
+
+  const handleEditCampaign = (campaign: Campaign) => {
+    setEditingCampaign(campaign);
+    setCampaignForm({
+      code: campaign.code,
+      title: campaign.title,
+      description: campaign.description || "",
+    });
+    setCampaignDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setCampaignDialogOpen(open);
+    if (!open) {
+      setEditingCampaign(null);
+      setCampaignForm({ code: "", title: "", description: "" });
+    }
+  };
+
   const createPlacement = async () => {
     if (!placementForm.code || !placementForm.name) {
       toast({
@@ -312,7 +367,7 @@ export default function CampaignManager() {
           <TabsContent value="campaigns" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Campaigns</h2>
-              <Dialog open={campaignDialogOpen} onOpenChange={setCampaignDialogOpen}>
+              <Dialog open={campaignDialogOpen} onOpenChange={handleDialogClose}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -321,9 +376,11 @@ export default function CampaignManager() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Create Campaign</DialogTitle>
+                    <DialogTitle>{editingCampaign ? "Edit Campaign" : "Create Campaign"}</DialogTitle>
                     <DialogDescription>
-                      Add a new campaign to organize your events and actions.
+                      {editingCampaign 
+                        ? "Update the campaign details." 
+                        : "Add a new campaign to organize your events and actions."}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -357,8 +414,11 @@ export default function CampaignManager() {
                         placeholder="Optional description..."
                       />
                     </div>
-                    <Button onClick={createCampaign} className="w-full">
-                      Create Campaign
+                    <Button 
+                      onClick={editingCampaign ? updateCampaign : createCampaign} 
+                      className="w-full"
+                    >
+                      {editingCampaign ? "Update Campaign" : "Create Campaign"}
                     </Button>
                   </div>
                 </DialogContent>
@@ -386,16 +446,28 @@ export default function CampaignManager() {
                             </p>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteCampaign(campaign.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditCampaign(campaign);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteCampaign(campaign.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
