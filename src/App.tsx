@@ -28,46 +28,11 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/deck/:slug" element={<DeckViewer />} />
-            <Route 
-              path="/build" 
-              element={
-                <ProtectedRoute>
-                  <DeckBuilder />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/manage" 
-              element={
-                <ProtectedRoute>
-                  <DeckManager />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/campaigns" 
-              element={
-                <ProtectedRoute>
-                  <CampaignManager />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/campaigns/:campaignId" 
-              element={
-                <ProtectedRoute>
-                  <CampaignEoaManager />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <Admin />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/build" element={<DeckBuilder />} />
+            <Route path="/manage" element={<DeckManager />} />
+            <Route path="/campaigns" element={<CampaignManager />} />
+            <Route path="/campaigns/:campaignId" element={<CampaignEoaManager />} />
+            <Route path="/admin" element={<Admin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
