@@ -71,13 +71,15 @@ function parseApiResponse(data: any) {
   
   if (event.timeslots?.[0]?.start_date) {
     const startDate = new Date(event.timeslots[0].start_date * 1000);
-    // Format as ISO string but in local timezone (YYYY-MM-DDTHH:mm:ss)
-    dateTime = formatInTimeZone(startDate, timezone, "yyyy-MM-dd'T'HH:mm:ss");
+    // Format as datetime-local compatible string (YYYY-MM-DDTHH:mm) in event's local timezone
+    dateTime = formatInTimeZone(startDate, timezone, "yyyy-MM-dd'T'HH:mm");
+    console.log(`Start date conversion: UTC ${startDate.toISOString()} -> ${timezone} ${dateTime}`);
   }
   
   if (event.timeslots?.[0]?.end_date) {
     const endDate = new Date(event.timeslots[0].end_date * 1000);
-    dateTimeEnd = formatInTimeZone(endDate, timezone, "yyyy-MM-dd'T'HH:mm:ss");
+    dateTimeEnd = formatInTimeZone(endDate, timezone, "yyyy-MM-dd'T'HH:mm");
+    console.log(`End date conversion: UTC ${endDate.toISOString()} -> ${timezone} ${dateTimeEnd}`);
   }
   
   return {

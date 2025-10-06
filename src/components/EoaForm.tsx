@@ -99,6 +99,8 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
       if (error) throw error;
 
       // Auto-fill form fields with imported data
+      // dateTime and dateTimeEnd are already in the correct format (YYYY-MM-DDTHH:mm) for datetime-local inputs
+      console.log('Imported event data:', data);
       setFormData({
         ...formData,
         title: data.eventName || formData.title,
@@ -106,8 +108,8 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
         city: data.city || formData.city,
         state: data.state || formData.state,
         zip_code: data.zipCode || formData.zip_code,
-        start_date: data.dateTime ? new Date(data.dateTime).toISOString().slice(0, 16) : formData.start_date,
-        end_date: data.dateTimeEnd ? new Date(data.dateTimeEnd).toISOString().slice(0, 16) : formData.end_date,
+        start_date: data.dateTime || formData.start_date,
+        end_date: data.dateTimeEnd || formData.end_date,
         timezone: data.timezone || formData.timezone,
         description: data.eventSponsor ? `Sponsored by ${data.eventSponsor}` : formData.description,
       });
