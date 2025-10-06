@@ -21,6 +21,7 @@ export default function DeckViewer() {
   const [slides, setSlides] = useState<SlideItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -68,6 +69,30 @@ export default function DeckViewer() {
     fetchDeck();
   }, [slug]);
 
+  // Auto-enter fullscreen on load
+  useEffect(() => {
+    if (!loading && slides.length > 0) {
+      const enterFullscreen = async () => {
+        try {
+          await document.documentElement.requestFullscreen();
+        } catch (err) {
+          console.log("Fullscreen request failed:", err);
+        }
+      };
+      enterFullscreen();
+    }
+  }, [loading, slides]);
+
+  // Track fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -75,6 +100,12 @@ export default function DeckViewer() {
         document.querySelector<HTMLButtonElement>('[data-carousel-prev]')?.click();
       } else if (e.key === "ArrowRight") {
         document.querySelector<HTMLButtonElement>('[data-carousel-next]')?.click();
+      } else if (e.key === "f" || e.key === "F") {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          document.documentElement.requestFullscreen();
+        }
       }
     };
 
@@ -113,24 +144,26 @@ export default function DeckViewer() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm">
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold">{slug}</h1>
-              <p className="text-sm text-muted-foreground">{slides.length} slides</p>
+      {!isFullscreen && (
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link to="/">
+                <Button variant="ghost" size="sm">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold">{slug}</h1>
+                <p className="text-sm text-muted-foreground">{slides.length} slides</p>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <main className="container mx-auto px-6 py-12">
+      <main className={isFullscreen ? "h-screen flex items-center justify-center" : "container mx-auto px-6 py-12"}>
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
@@ -138,7 +171,7 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className="max-w-5xl mx-auto">
+          <Carousel className={isFullscreen ? "w-full h-full" : "max-w-5xl mx-auto"}>
             <CarouselContent>
               {slides.map((slide, index) => (
                 <CarouselItem key={slide.id}>
