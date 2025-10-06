@@ -263,8 +263,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
           <Input
             value={formData.timezone}
             onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-            placeholder="TBD"
-            disabled
+            placeholder="e.g., America/New_York"
           />
         </div>
       </div>
