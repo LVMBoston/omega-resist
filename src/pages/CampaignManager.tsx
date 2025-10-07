@@ -545,13 +545,15 @@ export default function CampaignManager() {
                           <p className="text-muted-foreground"># of Events/Actions</p>
                           <p className="font-semibold text-lg">{stats?.totalEventsActions || 0}</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Earliest Active</p>
-                          <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-muted-foreground">Latest Active</p>
-                          <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
+                        <div className="col-span-2 flex justify-between gap-4">
+                          <div>
+                            <p className="text-muted-foreground">Earliest Active</p>
+                            <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Latest Active</p>
+                            <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
