@@ -534,6 +534,10 @@ export default function CampaignManager() {
                           <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
                         </div>
                         <div>
+                          <p className="text-muted-foreground">UTM ID</p>
+                          <p className="font-semibold text-lg">{campaign.code}</p>
+                        </div>
+                        <div>
                           <p className="text-muted-foreground">Active Actions</p>
                           <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
                         </div>
