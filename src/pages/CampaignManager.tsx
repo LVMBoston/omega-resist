@@ -40,6 +40,7 @@ interface CampaignStats {
   activeActions: number;
   earliestActive: string | null;
   latestActive: string | null;
+  totalEventsActions: number;
 }
 
 interface Placement {
@@ -163,6 +164,7 @@ export default function CampaignManager() {
         activeActions,
         earliestActive: activeDates[0] || null,
         latestActive: activeDates[activeDates.length - 1] || null,
+        totalEventsActions: campaignEoas.length,
       });
     });
     
@@ -536,10 +538,14 @@ export default function CampaignManager() {
                           <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
                         </div>
                         <div>
+                          <p className="text-muted-foreground"># of Events/Actions</p>
+                          <p className="font-semibold text-lg">{stats?.totalEventsActions || 0}</p>
+                        </div>
+                        <div>
                           <p className="text-muted-foreground">Earliest Active</p>
                           <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
                         </div>
-                        <div>
+                        <div className="col-span-2">
                           <p className="text-muted-foreground">Latest Active</p>
                           <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
                         </div>
