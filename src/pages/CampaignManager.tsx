@@ -496,7 +496,7 @@ export default function CampaignManager() {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <CardTitle>{campaign.title}</CardTitle>
-                          <CardDescription>Code: {campaign.code}</CardDescription>
+                          <CardDescription>utm_campaign: {campaign.code}</CardDescription>
                           {campaign.description && (
                             <p className="text-sm text-muted-foreground mt-2">
                               {campaign.description}
