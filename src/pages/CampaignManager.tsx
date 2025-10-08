@@ -445,11 +445,6 @@ export default function CampaignManager() {
                         <div className="flex-1">
                           <CardTitle>{campaign.title}</CardTitle>
                           <CardDescription>utm_campaign: {campaign.code}</CardDescription>
-                          {campaign.description && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              {campaign.description}
-                            </p>
-                          )}
                         </div>
                         <div className="flex gap-1">
                           <Button
@@ -474,6 +469,11 @@ export default function CampaignManager() {
                           </Button>
                         </div>
                       </div>
+                      {campaign.description && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {campaign.description}
+                        </p>
+                      )}
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 text-sm">
