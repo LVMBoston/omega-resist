@@ -45,6 +45,7 @@ interface EventAction {
   timezone: string | null;
   assigned_deck_slug: string | null;
   description: string | null;
+  utm_content: string | null;
 }
 
 export default function CampaignEoaManager() {
@@ -60,6 +61,7 @@ export default function CampaignEoaManager() {
   const [editingEoa, setEditingEoa] = useState<EventAction | null>(null);
   const [payloadDialogOpen, setPayloadDialogOpen] = useState(false);
   const [visualizePayloadDialogOpen, setVisualizePayloadDialogOpen] = useState(false);
+  const [selectedEoa, setSelectedEoa] = useState<EventAction | null>(null);
 
   useEffect(() => {
     if (campaignId) {
@@ -238,8 +240,11 @@ export default function CampaignEoaManager() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setPayloadDialogOpen(true)}
-                            title="View Generic Payload"
+                            onClick={() => {
+                              setSelectedEoa(eoa);
+                              setPayloadDialogOpen(true);
+                            }}
+                            title="View Payload"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -323,39 +328,79 @@ export default function CampaignEoaManager() {
       </Dialog>
 
       <Dialog open={payloadDialogOpen} onOpenChange={setPayloadDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Generic Payload Structure</DialogTitle>
+            <DialogTitle>Payload Structure for {selectedEoa?.title}</DialogTitle>
             <DialogDescription>
-              URL structure with known values filled in and placeholders in braces
+              L00 and L01 payload comparison with known values filled in
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 font-mono text-sm bg-muted p-4 rounded-lg">
-            <div className="text-primary">
-              {"{domain name}"}/{"{deck-assignment}"}?
-            </div>
-            <div className="text-muted-foreground">
-              utm_campaign={campaign.code}&
-            </div>
-            <div className="text-muted-foreground">
-              utm_id={"{utm_id}"}&
-            </div>
-            <div className="text-muted-foreground">
-              utm_source={"{utm_source}"}&
-            </div>
-            <div className="text-muted-foreground">
-              utm_medium={"{utm_medium}"}&
-            </div>
-            <div className="text-muted-foreground">
-              utm_content={"{utm_content}"}&
-            </div>
-            <div className="text-muted-foreground">
-              token={"{token}"}&
-            </div>
-            <div className="text-muted-foreground">
-              level={"{level}"}&
-            </div>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="py-2">Item</TableHead>
+                <TableHead className="py-2">L00 Payload</TableHead>
+                <TableHead className="py-2">L01 Payload</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">domain name/</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{domain name}/"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{domain name}/"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">deck-assignment</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.assigned_deck_slug || "{deck-assignment}"}/</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.assigned_deck_slug || "{deck-assignment}"}/</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">utm_campaign=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{campaign.code}&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{campaign.code}&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">utm_id=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_id || "{utm_id}"}&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_id || "{utm_id}"}&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">utm_content=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_content || `{poster, handout, em}-${selectedEoa?.mobilize_id || "{Mobilize ID}"}`}&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_content || `{poster, handout, em}-${selectedEoa?.mobilize_id || "{Mobilize ID}"}`}&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">utm_source=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l00&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l01&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">utm_medium=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">qr&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'SMS&', {social media (e.g., 'fb&')}}"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">v_lvl=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">00&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">01&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">t=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l00-{selectedEoa?.mobilize_id || "{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"l01-{AUTO-MINT}"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">p=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">null</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l00-{selectedEoa?.mobilize_id || "{Mobilize ID}"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium py-1.5">m=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">null</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{em,sms,sm}"}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </DialogContent>
       </Dialog>
 
