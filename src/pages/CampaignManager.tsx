@@ -391,7 +391,7 @@ export default function CampaignManager() {
                         onChange={(e) =>
                           setCampaignForm({ ...campaignForm, title: e.target.value })
                         }
-                        placeholder="e.g., 2024 Election Campaign"
+                        placeholder="e.g., 'No Kings Nationwide Protests', 'Citizens Bank Events and Actions'"
                       />
                     </div>
                     <div>
@@ -399,7 +399,7 @@ export default function CampaignManager() {
                       <Input
                         value={campaignForm.code}
                         onChange={(e) => handleCodeChange(e.target.value)}
-                        placeholder="e.g., 2024-election"
+                        placeholder="e.g. 'no-kings', 'citizens-bank'"
                         className={codeError ? "border-destructive" : ""}
                       />
                       {codeError && (
