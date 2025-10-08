@@ -385,6 +385,16 @@ export default function CampaignManager() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
+                      <Label>Title *</Label>
+                      <Input
+                        value={campaignForm.title}
+                        onChange={(e) =>
+                          setCampaignForm({ ...campaignForm, title: e.target.value })
+                        }
+                        placeholder="e.g., 2024 Election Campaign"
+                      />
+                    </div>
+                    <div>
                       <Label>Code *</Label>
                       <Input
                         value={campaignForm.code}
@@ -396,18 +406,8 @@ export default function CampaignManager() {
                         <p className="text-sm text-destructive mt-1">{codeError}</p>
                       )}
                       <p className="text-xs text-muted-foreground mt-1">
-                        Only lowercase letters, numbers, hyphens, and underscores
+                        Only lowercase a-z, 0-9, "-", "_"
                       </p>
-                    </div>
-                    <div>
-                      <Label>Title *</Label>
-                      <Input
-                        value={campaignForm.title}
-                        onChange={(e) =>
-                          setCampaignForm({ ...campaignForm, title: e.target.value })
-                        }
-                        placeholder="e.g., 2024 Election Campaign"
-                      />
                     </div>
                     <div>
                       <Label>Description</Label>
