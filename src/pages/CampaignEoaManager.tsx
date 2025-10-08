@@ -59,6 +59,7 @@ export default function CampaignEoaManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEoa, setEditingEoa] = useState<EventAction | null>(null);
   const [payloadDialogOpen, setPayloadDialogOpen] = useState(false);
+  const [visualizePayloadDialogOpen, setVisualizePayloadDialogOpen] = useState(false);
 
   useEffect(() => {
     if (campaignId) {
@@ -176,15 +177,23 @@ export default function CampaignEoaManager() {
               <CardTitle>
                 Event/Actions for {campaign.code}
               </CardTitle>
-              <Button
-                onClick={() => {
-                  setEditingEoa(null);
-                  setDialogOpen(true);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Event/Action
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisualizePayloadDialogOpen(true)}
+                >
+                  Visualize Generic Payload
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditingEoa(null);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Event/Action
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -347,6 +356,83 @@ export default function CampaignEoaManager() {
               level={"{level}"}&
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={visualizePayloadDialogOpen} onOpenChange={setVisualizePayloadDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Visualize Generic Payload</DialogTitle>
+            <DialogDescription>
+              Comparison of L00 and L01 payload structures
+            </DialogDescription>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>L00 Payload</TableHead>
+                <TableHead>L01 Payload</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium">domain name/</TableCell>
+                <TableCell className="font-mono text-sm">{"{domain name}/"}</TableCell>
+                <TableCell className="font-mono text-sm">{"{domain name}/"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">deck-assignment</TableCell>
+                <TableCell className="font-mono text-sm">{"{deck-assignment}/"}</TableCell>
+                <TableCell className="font-mono text-sm">{"{deck-assignment}/"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">utm_campaign=</TableCell>
+                <TableCell className="font-mono text-sm">{campaign.code}&</TableCell>
+                <TableCell className="font-mono text-sm">{campaign.code}&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">utm_id=</TableCell>
+                <TableCell className="font-mono text-sm">{"{Mobilize event code}&"}</TableCell>
+                <TableCell className="font-mono text-sm">{"{Mobilize event code}&"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">utm_content=</TableCell>
+                <TableCell className="font-mono text-sm">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
+                <TableCell className="font-mono text-sm">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">utm_source=</TableCell>
+                <TableCell className="font-mono text-sm">l00&</TableCell>
+                <TableCell className="font-mono text-sm">l01&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">utm_medium=</TableCell>
+                <TableCell className="font-mono text-sm">qr&</TableCell>
+                <TableCell className="font-mono text-sm">{"{'email&', 'SMS&', {social media (e.g., 'fb&')}}"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">v_lvl=</TableCell>
+                <TableCell className="font-mono text-sm">00&</TableCell>
+                <TableCell className="font-mono text-sm">01&</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">t=</TableCell>
+                <TableCell className="font-mono text-sm">{"l00-{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm">{"l01-{AUTO-MINT}"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">p=</TableCell>
+                <TableCell className="font-mono text-sm">null</TableCell>
+                <TableCell className="font-mono text-sm">{"l00-{Mobilize ID}"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">m=</TableCell>
+                <TableCell className="font-mono text-sm">null</TableCell>
+                <TableCell className="font-mono text-sm">{"{em,sms,sm}"}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </DialogContent>
       </Dialog>
     </div>
