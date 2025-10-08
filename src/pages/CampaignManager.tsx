@@ -19,6 +19,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 interface Campaign {
   id: string;
   code: string;
@@ -67,6 +77,8 @@ export default function CampaignManager() {
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [codeError, setCodeError] = useState<string>("");
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
 
   useEffect(() => {
     fetchData();
@@ -270,8 +282,19 @@ export default function CampaignManager() {
   };
 
 
-  const deleteCampaign = async (id: string) => {
-    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+  const handleDeleteClick = (campaign: Campaign) => {
+    setCampaignToDelete(campaign);
+    setDeleteStep(1);
+  };
+
+  const handleFirstConfirm = () => {
+    setDeleteStep(2);
+  };
+
+  const handleSecondConfirm = async () => {
+    if (!campaignToDelete) return;
+
+    const { error } = await supabase.from("campaigns").delete().eq("id", campaignToDelete.id);
 
     if (error) {
       toast({
@@ -287,6 +310,14 @@ export default function CampaignManager() {
       fetchCampaigns();
       fetchEoas();
     }
+    
+    setCampaignToDelete(null);
+    setDeleteStep(1);
+  };
+
+  const handleDeleteCancel = () => {
+    setCampaignToDelete(null);
+    setDeleteStep(1);
   };
 
   const formatDate = (date: string | null) => {
@@ -436,7 +467,7 @@ export default function CampaignManager() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteCampaign(campaign.id);
+                              handleDeleteClick(campaign);
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -481,6 +512,38 @@ export default function CampaignManager() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <AlertDialog open={campaignToDelete !== null && deleteStep === 1} onOpenChange={(open) => !open && handleDeleteCancel()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deleting a campaign will remove {campaignStats.get(campaignToDelete?.id || "")?.totalEventsActions || 0} events. Do you want to delete "{campaignToDelete?.title}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFirstConfirm}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={campaignToDelete !== null && deleteStep === 2} onOpenChange={(open) => !open && handleDeleteCancel()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deleting "{campaignToDelete?.title}" is irreversible. Proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSecondConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
