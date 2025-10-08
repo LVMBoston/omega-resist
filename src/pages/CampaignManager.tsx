@@ -513,7 +513,7 @@ export default function CampaignManager() {
         </Tabs>
       </main>
 
-      <AlertDialog open={campaignToDelete !== null && deleteStep === 1} onOpenChange={(open) => !open && handleDeleteCancel()}>
+      <AlertDialog open={campaignToDelete !== null && deleteStep === 1}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
