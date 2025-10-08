@@ -50,7 +50,6 @@ export type Database = {
           eoa_id: string | null
           id: string
           level: number | null
-          placement_id: string | null
           scans: number | null
           shares: number | null
           unique_tokens: number | null
@@ -65,7 +64,6 @@ export type Database = {
           eoa_id?: string | null
           id?: string
           level?: number | null
-          placement_id?: string | null
           scans?: number | null
           shares?: number | null
           unique_tokens?: number | null
@@ -80,7 +78,6 @@ export type Database = {
           eoa_id?: string | null
           id?: string
           level?: number | null
-          placement_id?: string | null
           scans?: number | null
           shares?: number | null
           unique_tokens?: number | null
@@ -107,13 +104,6 @@ export type Database = {
             columns: ["eoa_id"]
             isOneToOne: false
             referencedRelation: "events_actions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "daily_aggregates_placement_id_fkey"
-            columns: ["placement_id"]
-            isOneToOne: false
-            referencedRelation: "placements"
             referencedColumns: ["id"]
           },
         ]
@@ -225,6 +215,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          utm_content: string | null
           utm_id: string
           zip_code: string | null
         }
@@ -245,6 +236,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
+          utm_content?: string | null
           utm_id: string
           zip_code?: string | null
         }
@@ -265,6 +257,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          utm_content?: string | null
           utm_id?: string
           zip_code?: string | null
         }
@@ -284,33 +277,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      placements: {
-        Row: {
-          code: string
-          context: string | null
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          code: string
-          context?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          code?: string
-          context?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
       }
       slide_items: {
         Row: {
@@ -360,7 +326,6 @@ export type Database = {
           level: number
           minted_at: string
           parent_token: string | null
-          placement_id: string | null
           root_token: string | null
           token: string
           utm_campaign: string | null
@@ -378,7 +343,6 @@ export type Database = {
           level: number
           minted_at?: string
           parent_token?: string | null
-          placement_id?: string | null
           root_token?: string | null
           token: string
           utm_campaign?: string | null
@@ -396,7 +360,6 @@ export type Database = {
           level?: number
           minted_at?: string
           parent_token?: string | null
-          placement_id?: string | null
           root_token?: string | null
           token?: string
           utm_campaign?: string | null
@@ -426,13 +389,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tokens"
             referencedColumns: ["token"]
-          },
-          {
-            foreignKeyName: "tokens_placement_id_fkey"
-            columns: ["placement_id"]
-            isOneToOne: false
-            referencedRelation: "placements"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "tokens_root_token_fkey"
@@ -552,58 +508,7 @@ export type Database = {
       }
     }
     Views: {
-      daily_aggregates_mv: {
-        Row: {
-          campaign_id: string | null
-          date: string | null
-          deck_slug: string | null
-          eoa_id: string | null
-          level: number | null
-          placement_id: string | null
-          root_token: string | null
-          scans: number | null
-          shares: number | null
-          unique_tokens: number | null
-          views: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "events_actions_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tokens_deck_slug_fkey"
-            columns: ["deck_slug"]
-            isOneToOne: false
-            referencedRelation: "decks"
-            referencedColumns: ["slug"]
-          },
-          {
-            foreignKeyName: "tokens_eoa_id_fkey"
-            columns: ["eoa_id"]
-            isOneToOne: false
-            referencedRelation: "events_actions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tokens_placement_id_fkey"
-            columns: ["placement_id"]
-            isOneToOne: false
-            referencedRelation: "placements"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tokens_root_token_fkey"
-            columns: ["root_token"]
-            isOneToOne: false
-            referencedRelation: "tokens"
-            referencedColumns: ["token"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       generate_token: {
@@ -628,12 +533,19 @@ export type Database = {
         Returns: string
       }
       mint_l00: {
-        Args: {
-          _deck_slug: string
-          _eoa_id: string
-          _placement_id: string
-          _utm_medium?: string
-        }
+        Args:
+          | {
+              _deck_slug: string
+              _eoa_id: string
+              _placement_id: string
+              _utm_medium?: string
+            }
+          | {
+              _deck_slug: string
+              _eoa_id: string
+              _utm_content?: string
+              _utm_medium?: string
+            }
         Returns: {
           full_url: string
           token: string

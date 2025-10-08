@@ -32,10 +32,10 @@ export async function getTokenMetrics(rootToken: string) {
 }
 
 /**
- * Get engagement metrics by placement for a root token
+ * Get engagement metrics by utm_content for a root token
  */
-export async function getEngagementByPlacement(rootToken: string) {
-  // Query url_events joined with tokens and placements
+export async function getEngagementByContent(rootToken: string) {
+  // Query url_events joined with tokens
   const { data: events, error } = await supabase
     .from("url_events")
     .select(`
@@ -43,31 +43,28 @@ export async function getEngagementByPlacement(rootToken: string) {
       token,
       tokens!inner(
         root_token,
-        placement_id,
-        placements(code, name, context)
+        utm_content
       )
     `)
     .eq("tokens.root_token", rootToken);
 
   if (error) throw error;
 
-  // Aggregate by placement
+  // Aggregate by utm_content
   const metrics = new Map();
   events?.forEach(event => {
-    const placement = event.tokens?.placements;
-    const key = placement?.code || "no-placement";
+    const content = event.tokens?.utm_content || "no-content";
     
-    if (!metrics.has(key)) {
-      metrics.set(key, {
-        placement_code: placement?.code,
-        placement_name: placement?.name,
+    if (!metrics.has(content)) {
+      metrics.set(content, {
+        utm_content: content,
         scans: 0,
         views: 0,
         shares: 0
       });
     }
     
-    const m = metrics.get(key);
+    const m = metrics.get(content);
     if (event.event_type === "scan") m.scans++;
     if (event.event_type === "view") m.views++;
     if (event.event_type === "share") m.shares++;

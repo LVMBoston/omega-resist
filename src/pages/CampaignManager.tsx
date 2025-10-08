@@ -43,13 +43,6 @@ interface CampaignStats {
   totalEventsActions: number;
 }
 
-interface Placement {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  context: string | null;
-}
 
 const codeSchema = z.string()
   .min(1, "Code is required")
@@ -60,7 +53,6 @@ export default function CampaignManager() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [eoas, setEoas] = useState<EventAction[]>([]);
   const [campaignStats, setCampaignStats] = useState<Map<string, CampaignStats>>(new Map());
-  const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
   const { userRole } = useAuth();
   const { toast } = useToast();
@@ -72,19 +64,9 @@ export default function CampaignManager() {
     description: "",
   });
 
-  // Placement form state
-  const [placementForm, setPlacementForm] = useState({
-    code: "",
-    name: "",
-    description: "",
-    context: "",
-  });
-
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
-  const [placementDialogOpen, setPlacementDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [codeError, setCodeError] = useState<string>("");
-  const [placementCodeError, setPlacementCodeError] = useState<string>("");
 
   useEffect(() => {
     fetchData();
@@ -98,7 +80,7 @@ export default function CampaignManager() {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchCampaigns(), fetchEoas(), fetchPlacements()]);
+    await Promise.all([fetchCampaigns(), fetchEoas()]);
     setLoading(false);
   };
 
@@ -171,22 +153,6 @@ export default function CampaignManager() {
     setCampaignStats(stats);
   };
 
-  const fetchPlacements = async () => {
-    const { data, error } = await supabase
-      .from("placements")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch placements: " + error.message,
-      });
-    } else {
-      setPlacements(data || []);
-    }
-  };
 
   const createCampaign = async () => {
     if (!campaignForm.code || !campaignForm.title) {
@@ -303,54 +269,6 @@ export default function CampaignManager() {
     }
   };
 
-  const handlePlacementCodeChange = (value: string) => {
-    setPlacementForm({ ...placementForm, code: value });
-    const validation = codeSchema.safeParse(value);
-    if (!validation.success && value) {
-      setPlacementCodeError(validation.error.errors[0].message);
-    } else {
-      setPlacementCodeError("");
-    }
-  };
-
-  const createPlacement = async () => {
-    if (!placementForm.code || !placementForm.name) {
-      toast({
-        variant: "destructive",
-        title: "Missing fields",
-        description: "Code and name are required",
-      });
-      return;
-    }
-
-    const codeValidation = codeSchema.safeParse(placementForm.code);
-    if (!codeValidation.success) {
-      toast({
-        variant: "destructive",
-        title: "Invalid code",
-        description: codeValidation.error.errors[0].message,
-      });
-      return;
-    }
-
-    const { error } = await supabase.from("placements").insert([placementForm]);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to create placement: " + error.message,
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Placement created successfully",
-      });
-      setPlacementForm({ code: "", name: "", description: "", context: "" });
-      setPlacementDialogOpen(false);
-      fetchPlacements();
-    }
-  };
 
   const deleteCampaign = async (id: string) => {
     const { error } = await supabase.from("campaigns").delete().eq("id", id);
@@ -402,7 +320,7 @@ export default function CampaignManager() {
             <div>
               <h1 className="text-3xl font-bold">Campaign Manager</h1>
               <p className="text-muted-foreground">
-                Manage campaigns, events, actions, and placements
+                Manage campaigns, events, and actions
               </p>
             </div>
           </div>
@@ -411,9 +329,8 @@ export default function CampaignManager() {
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="campaigns" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-            <TabsTrigger value="placements">Placements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="campaigns" className="space-y-4">
@@ -560,109 +477,6 @@ export default function CampaignManager() {
                   </Card>
                 );
               })}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="placements" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Placements</h2>
-              <Dialog open={placementDialogOpen} onOpenChange={setPlacementDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Placement
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create Placement</DialogTitle>
-                    <DialogDescription>
-                      Add a new placement location for your materials.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Code *</Label>
-                      <Input
-                        value={placementForm.code}
-                        onChange={(e) => handlePlacementCodeChange(e.target.value)}
-                        placeholder="e.g., FLYER-01"
-                        className={placementCodeError ? "border-destructive" : ""}
-                      />
-                      {placementCodeError && (
-                        <p className="text-sm text-destructive mt-1">{placementCodeError}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Only lowercase letters, numbers, hyphens, and underscores
-                      </p>
-                    </div>
-                    <div>
-                      <Label>Name *</Label>
-                      <Input
-                        value={placementForm.name}
-                        onChange={(e) =>
-                          setPlacementForm({ ...placementForm, name: e.target.value })
-                        }
-                        placeholder="e.g., Main Street Flyer"
-                      />
-                    </div>
-                    <div>
-                      <Label>Description</Label>
-                      <Textarea
-                        value={placementForm.description}
-                        onChange={(e) =>
-                          setPlacementForm({
-                            ...placementForm,
-                            description: e.target.value,
-                          })
-                        }
-                        placeholder="Optional description..."
-                      />
-                    </div>
-                    <div>
-                      <Label>Context</Label>
-                      <Input
-                        value={placementForm.context}
-                        onChange={(e) =>
-                          setPlacementForm({
-                            ...placementForm,
-                            context: e.target.value,
-                          })
-                        }
-                        placeholder="e.g., Downtown area"
-                      />
-                    </div>
-                    <Button onClick={createPlacement} className="w-full">
-                      Create Placement
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="grid gap-4">
-              {placements.map((placement) => (
-                <Card key={placement.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>{placement.name}</CardTitle>
-                        <CardDescription>
-                          Code: {placement.code}
-                          {placement.context && ` | Context: ${placement.context}`}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  {placement.description && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        {placement.description}
-                      </p>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
             </div>
           </TabsContent>
         </Tabs>

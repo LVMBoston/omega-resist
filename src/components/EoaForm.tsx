@@ -34,6 +34,7 @@ interface EoaFormProps {
     assigned_deck_slug?: string;
     description?: string;
     utm_id: string;
+    utm_content?: string;
   };
   onSuccess: () => void;
   onCancel: () => void;
@@ -66,6 +67,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
     assigned_deck_slug: initialData?.assigned_deck_slug || "none",
     description: initialData?.description || "",
     utm_id: initialData?.utm_id || "",
+    utm_content: initialData?.utm_content || "",
   });
 
   useEffect(() => {
@@ -193,7 +195,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <Label>Mobilize Code</Label>
           <div className="flex gap-2">
@@ -221,6 +223,15 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
             onChange={(e) => setFormData({ ...formData, utm_id: e.target.value })}
             placeholder="e.g., rally-001"
           />
+        </div>
+        <div>
+          <Label>UTM Content</Label>
+          <Input
+            value={formData.utm_content}
+            onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
+            placeholder="e.g., poster"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Used for placement tracking</p>
         </div>
       </div>
 

@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 const MintL00Input = z.object({
   eoaId: z.string().uuid(),
-  placementId: z.string().uuid(),
   deckSlug: z.string().min(1),
-  utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"])
+  utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"]),
+  utmContent: z.string().optional()
 });
 
 const MintL00Output = z.object({ 
@@ -14,13 +14,13 @@ const MintL00Output = z.object({
 });
 
 export async function mintL00(input: z.infer<typeof MintL00Input>) {
-  const { eoaId, placementId, deckSlug, utmMedium } = MintL00Input.parse(input);
+  const { eoaId, deckSlug, utmMedium, utmContent } = MintL00Input.parse(input);
   
   const { data, error } = await supabase.rpc("mint_l00", {
     _eoa_id: eoaId,
-    _placement_id: placementId,
     _deck_slug: deckSlug,
-    _utm_medium: utmMedium
+    _utm_medium: utmMedium,
+    _utm_content: utmContent ?? null
   });
   
   if (error) {
