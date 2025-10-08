@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 
 interface Campaign {
@@ -58,6 +58,7 @@ export default function CampaignEoaManager() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEoa, setEditingEoa] = useState<EventAction | null>(null);
+  const [payloadDialogOpen, setPayloadDialogOpen] = useState(false);
 
   useEffect(() => {
     if (campaignId) {
@@ -228,6 +229,14 @@ export default function CampaignEoaManager() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => setPayloadDialogOpen(true)}
+                            title="View Generic Payload"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => {
                               setEditingEoa(eoa);
                               setDialogOpen(true);
@@ -301,6 +310,43 @@ export default function CampaignEoaManager() {
               setEditingEoa(null);
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={payloadDialogOpen} onOpenChange={setPayloadDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Generic Payload Structure</DialogTitle>
+            <DialogDescription>
+              URL structure with known values filled in and placeholders in braces
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 font-mono text-sm bg-muted p-4 rounded-lg">
+            <div className="text-primary">
+              {"{domain name}"}/{"{deck-assignment}"}?
+            </div>
+            <div className="text-muted-foreground">
+              utm_campaign={campaign.code}&
+            </div>
+            <div className="text-muted-foreground">
+              utm_id={"{utm_id}"}&
+            </div>
+            <div className="text-muted-foreground">
+              utm_source={"{utm_source}"}&
+            </div>
+            <div className="text-muted-foreground">
+              utm_medium={"{utm_medium}"}&
+            </div>
+            <div className="text-muted-foreground">
+              utm_content={"{utm_content}"}&
+            </div>
+            <div className="text-muted-foreground">
+              token={"{token}"}&
+            </div>
+            <div className="text-muted-foreground">
+              level={"{level}"}&
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
