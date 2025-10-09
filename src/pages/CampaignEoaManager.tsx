@@ -722,7 +722,8 @@ export default function CampaignEoaManager() {
           timezone: editingEoa.timezone || "TBD",
           assigned_deck_slug: editingEoa.assigned_deck_slug || "",
           description: editingEoa.description || "",
-          utm_id: editingEoa.utm_id
+          utm_id: editingEoa.utm_id,
+          utm_content: editingEoa.utm_content || ""
         } : undefined} onSuccess={() => {
           setDialogOpen(false);
           setEditingEoa(null);
