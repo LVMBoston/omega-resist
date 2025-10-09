@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 interface Campaign {
   id: string;
@@ -58,6 +58,8 @@ export default function CampaignEoaManager() {
   const [bulkDeckSlug, setBulkDeckSlug] = useState("");
   const [bulkUtmId, setBulkUtmId] = useState("");
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   useEffect(() => {
     if (campaignId) {
       fetchData();
@@ -154,6 +156,46 @@ export default function CampaignEoaManager() {
     setBulkDeckSlug("");
     setBulkUtmId("");
   };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4" />
+    );
+  };
+
+  const sortedEoas = [...eoas].sort((a, b) => {
+    if (!sortColumn) return 0;
+
+    const aValue = a[sortColumn as keyof typeof a];
+    const bValue = b[sortColumn as keyof typeof b];
+
+    if (aValue === null || aValue === undefined) return 1;
+    if (bValue === null || bValue === undefined) return -1;
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      return sortDirection === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+
+    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
 
   const applyBulkUpdate = async () => {
     const updates: { id: string; data: Partial<EventAction> }[] = [];
@@ -341,23 +383,131 @@ export default function CampaignEoaManager() {
                         aria-label="Select all"
                       />
                     </TableHead>
-                    <TableHead>Mobilize Code</TableHead>
-                    <TableHead>utm_id</TableHead>
-                    <TableHead>Event/Action Name</TableHead>
-                    <TableHead>Site Name</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Zip Code</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Start Date/Time</TableHead>
-                    <TableHead>End Date/Time</TableHead>
-                    <TableHead>Timezone</TableHead>
-                    <TableHead>Assigned Deck</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("mobilize_id")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Mobilize Code
+                        {getSortIcon("mobilize_id")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("utm_id")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        utm_id
+                        {getSortIcon("utm_id")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("title")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Event/Action Name
+                        {getSortIcon("title")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("site_name")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Site Name
+                        {getSortIcon("site_name")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("city")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        City
+                        {getSortIcon("city")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("state")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        State
+                        {getSortIcon("state")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("zip_code")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Zip Code
+                        {getSortIcon("zip_code")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("type")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Type
+                        {getSortIcon("type")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("start_date")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Start Date/Time
+                        {getSortIcon("start_date")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("end_date")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        End Date/Time
+                        {getSortIcon("end_date")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("timezone")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Timezone
+                        {getSortIcon("timezone")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("assigned_deck_slug")}
+                        className="h-auto p-0 hover:bg-transparent font-medium"
+                      >
+                        Assigned Deck
+                        {getSortIcon("assigned_deck_slug")}
+                      </Button>
+                    </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {eoas.map(eoa => <TableRow key={eoa.id}>
+                  {sortedEoas.map(eoa => <TableRow key={eoa.id}>
                       <TableCell>
                         <Checkbox
                           checked={selectedRows.has(eoa.id)}
