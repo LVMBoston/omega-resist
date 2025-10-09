@@ -408,8 +408,8 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">7</TableCell>
                 <TableCell className="font-medium py-1.5">utm_medium=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">qr&</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'SMS&', {social media (e.g., 'fb&')}}"}</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'SMS&', {social media (e.g., 'fb&')}}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'sms&', {social media (e.g., 'fb&')}}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'sms&', {social media (e.g., 'fb&')}}"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">8</TableCell>
