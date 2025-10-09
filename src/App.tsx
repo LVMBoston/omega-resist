@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import Settings from "./pages/Settings";
 import DeckBuilder from "./pages/DeckBuilder";
 import DeckViewer from "./pages/DeckViewer";
 import DeckManager from "./pages/DeckManager";
@@ -33,6 +34,14 @@ const App = () => (
             <Route path="/campaigns" element={<CampaignManager />} />
             <Route path="/campaigns/:campaignId" element={<CampaignEoaManager />} />
             <Route path="/admin" element={<Admin />} />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
