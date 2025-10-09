@@ -72,8 +72,25 @@ export default function CampaignEoaManager() {
   }, [campaignId]);
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchCampaign(), fetchEoas()]);
+    await Promise.all([fetchCampaign(), fetchEoas(), fetchExistingTokens()]);
     setLoading(false);
+  };
+
+  const fetchExistingTokens = async () => {
+    const { data, error } = await supabase
+      .from("tokens")
+      .select("eoa_id, token, full_url")
+      .eq("level", 0);
+
+    if (error) {
+      console.error("Failed to fetch tokens:", error);
+    } else if (data) {
+      const tokenMap: Record<string, { token: string; url: string }> = {};
+      data.forEach(t => {
+        tokenMap[t.eoa_id] = { token: t.token, url: t.full_url };
+      });
+      setL00Tokens(tokenMap);
+    }
   };
   const fetchCampaign = async () => {
     const {
