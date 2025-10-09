@@ -40,14 +40,26 @@ export default function Auth() {
 
     setLoading(true);
 
-    // Use anonymous sign in with email stored in metadata
-    const { error } = await supabase.auth.signInAnonymously({
-      options: {
-        data: {
-          email: email,
-        },
-      },
+    // Auto-generate a simple password from the email
+    const autoPassword = `${email}-pass`;
+
+    // Try to sign in first
+    let { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: autoPassword,
     });
+
+    // If sign in fails, sign up
+    if (error) {
+      const signUpResult = await supabase.auth.signUp({
+        email,
+        password: autoPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      error = signUpResult.error;
+    }
 
     setLoading(false);
 
