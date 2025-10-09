@@ -40,7 +40,6 @@ export async function getEngagementByContent(rootToken: string) {
     .from("url_events")
     .select(`
       event_type,
-      token,
       tokens!inner(
         root_token,
         utm_content
