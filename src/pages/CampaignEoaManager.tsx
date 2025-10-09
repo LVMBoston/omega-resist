@@ -430,7 +430,7 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">p=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">null</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"l00-{Mobilize ID}"}</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"l01-{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{101 AUTO-MINT}"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">11</TableCell>
