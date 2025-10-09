@@ -418,6 +418,7 @@ export default function CampaignEoaManager() {
                 <TableHead className="py-2">Item</TableHead>
                 <TableHead className="py-2">L00 Payload</TableHead>
                 <TableHead className="py-2">L01 Payload</TableHead>
+                <TableHead className="py-2">L02 Payload</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -425,9 +426,11 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">domain name/</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{domain name}/"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{domain name}/"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{domain name}/"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">deck-assignment</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{deck-assignment}/"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{deck-assignment}/"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{deck-assignment}/"}</TableCell>
               </TableRow>
@@ -435,9 +438,11 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">utm_campaign=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{campaign.code}&</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{campaign.code}&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{campaign.code}&</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">utm_id=</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{Mobilize event code}&"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{Mobilize event code}&"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{Mobilize event code}&"}</TableCell>
               </TableRow>
@@ -445,35 +450,42 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">utm_content=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">utm_source=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">l00&</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">l01&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l02&</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">utm_medium=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">qr&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'SMS&', {social media (e.g., 'fb&')}}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{'email&', 'SMS&', {social media (e.g., 'fb&')}}"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">v_lvl=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">00&</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">01&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">02&</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">t=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"l00-{Mobilize ID}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"l01-{AUTO-MINT}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"l02-{AUTO-MINT}"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">p=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">null</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"l00-{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"l01-{Mobilize ID}"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">m=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">null</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{em,sms,sm}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{em,sms,sm}"}</TableCell>
               </TableRow>
             </TableBody>
