@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 interface Campaign {
   id: string;
@@ -51,6 +54,10 @@ export default function CampaignEoaManager() {
   const [payloadDialogOpen, setPayloadDialogOpen] = useState(false);
   const [visualizePayloadDialogOpen, setVisualizePayloadDialogOpen] = useState(false);
   const [selectedEoa, setSelectedEoa] = useState<EventAction | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [bulkDeckSlug, setBulkDeckSlug] = useState("");
+  const [bulkUtmId, setBulkUtmId] = useState("");
+  const [showBulkActions, setShowBulkActions] = useState(false);
   useEffect(() => {
     if (campaignId) {
       fetchData();
@@ -123,6 +130,79 @@ export default function CampaignEoaManager() {
     });
   };
 
+  const toggleRowSelection = (id: string) => {
+    const newSelection = new Set(selectedRows);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedRows(newSelection);
+  };
+
+  const toggleAllRows = () => {
+    if (selectedRows.size === eoas.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(eoas.map(e => e.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedRows(new Set());
+    setShowBulkActions(false);
+    setBulkDeckSlug("");
+    setBulkUtmId("");
+  };
+
+  const applyBulkUpdate = async () => {
+    const updates: { id: string; data: Partial<EventAction> }[] = [];
+    
+    selectedRows.forEach(id => {
+      const updateData: Partial<EventAction> = {};
+      if (bulkDeckSlug) updateData.assigned_deck_slug = bulkDeckSlug;
+      if (bulkUtmId) updateData.utm_id = bulkUtmId;
+      
+      if (Object.keys(updateData).length > 0) {
+        updates.push({ id, data: updateData });
+      }
+    });
+
+    if (updates.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No changes",
+        description: "Please provide values to update"
+      });
+      return;
+    }
+
+    try {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("events_actions")
+          .update(update.data)
+          .eq("id", update.id);
+        
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: `Updated ${updates.length} event(s)/action(s)`
+      });
+
+      clearSelection();
+      fetchEoas();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update: " + error.message
+      });
+    }
+  };
+
   const formatTimezone = (timezone: string | null) => {
     if (!timezone || timezone === "TBD") return "TBD";
     
@@ -178,6 +258,56 @@ export default function CampaignEoaManager() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
+        {selectedRows.size > 0 && (
+          <Card className="mb-4 border-primary">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{selectedRows.size} selected</span>
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowBulkActions(!showBulkActions)}
+                >
+                  {showBulkActions ? "Hide" : "Show"} Bulk Actions
+                </Button>
+              </div>
+
+              {showBulkActions && (
+                <div className="space-y-4 border-t pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bulk-deck">Assign Deck Slug</Label>
+                      <Input
+                        id="bulk-deck"
+                        placeholder="e.g., deck-2024-q4"
+                        value={bulkDeckSlug}
+                        onChange={(e) => setBulkDeckSlug(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bulk-utm">Set UTM ID</Label>
+                      <Input
+                        id="bulk-utm"
+                        placeholder="e.g., event-123"
+                        value={bulkUtmId}
+                        onChange={(e) => setBulkUtmId(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={applyBulkUpdate} className="w-full">
+                    Apply to {selectedRows.size} Selected
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -204,6 +334,13 @@ export default function CampaignEoaManager() {
               </p> : <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedRows.size === eoas.length}
+                        onCheckedChange={toggleAllRows}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>Mobilize Code</TableHead>
                     <TableHead>utm_id</TableHead>
                     <TableHead>Event/Action Name</TableHead>
@@ -221,6 +358,13 @@ export default function CampaignEoaManager() {
                 </TableHeader>
                 <TableBody>
                   {eoas.map(eoa => <TableRow key={eoa.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedRows.has(eoa.id)}
+                          onCheckedChange={() => toggleRowSelection(eoa.id)}
+                          aria-label={`Select ${eoa.title}`}
+                        />
+                      </TableCell>
                       <TableCell>{eoa.mobilize_id || "—"}</TableCell>
                       <TableCell>{eoa.utm_id}</TableCell>
                       <TableCell className="font-medium">{eoa.title}</TableCell>
