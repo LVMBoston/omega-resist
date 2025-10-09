@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
@@ -372,6 +373,31 @@ export default function CampaignEoaManager() {
     
     return timezoneMap[timezone] || timezone;
   };
+
+  const getMintReadiness = (eoa: EventAction) => {
+    const hasMobilizeId = !!eoa.mobilize_id;
+    const hasDeck = !!eoa.assigned_deck_slug;
+    const isMinted = !!l00Tokens[eoa.id];
+    
+    if (isMinted) {
+      return { status: "minted", label: "Minted", icon: Lock, className: "bg-muted text-muted-foreground" };
+    }
+    
+    if (hasMobilizeId && hasDeck) {
+      return { status: "ready", label: "Ready to Mint", icon: CheckCircle2, className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200" };
+    }
+    
+    const missing = [];
+    if (!hasMobilizeId) missing.push("Mobilize ID");
+    if (!hasDeck) missing.push("Deck");
+    
+    return { 
+      status: "incomplete", 
+      label: `Missing: ${missing.join(", ")}`, 
+      icon: AlertCircle, 
+      className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200" 
+    };
+  };
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -602,6 +628,7 @@ export default function CampaignEoaManager() {
                         {getSortIcon("assigned_deck_slug")}
                       </Button>
                     </TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>L00 Token</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -627,6 +654,18 @@ export default function CampaignEoaManager() {
                       <TableCell>{formatDateTime(eoa.end_date)}</TableCell>
                       <TableCell>{formatTimezone(eoa.timezone)}</TableCell>
                       <TableCell>{eoa.assigned_deck_slug || "—"}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          const readiness = getMintReadiness(eoa);
+                          const Icon = readiness.icon;
+                          return (
+                            <Badge variant="outline" className={readiness.className}>
+                              <Icon className="h-3 w-3 mr-1" />
+                              {readiness.label}
+                            </Badge>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>
                         {l00Tokens[eoa.id] ? (
                           <div className="space-y-2">
@@ -724,10 +763,25 @@ export default function CampaignEoaManager() {
           description: editingEoa.description || "",
           utm_id: editingEoa.utm_id,
           utm_content: editingEoa.utm_content || ""
-        } : undefined} onSuccess={() => {
+        } : undefined} onSuccess={async () => {
+          // Check if this eoa had a token before saving
+          const hadToken = editingEoa ? !!l00Tokens[editingEoa.id] : false;
+          
           setDialogOpen(false);
           setEditingEoa(null);
-          fetchEoas();
+          
+          // Refresh data
+          await fetchEoas();
+          await fetchExistingTokens();
+          
+          // Check if token was invalidated
+          if (hadToken && editingEoa && !l00Tokens[editingEoa.id]) {
+            toast({
+              title: "Token Invalidated",
+              description: "Critical fields changed. You'll need to re-mint the L00 token.",
+              variant: "default",
+            });
+          }
         }} onCancel={() => {
           setDialogOpen(false);
           setEditingEoa(null);
