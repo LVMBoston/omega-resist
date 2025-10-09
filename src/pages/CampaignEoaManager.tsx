@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
+import { QRCodeSVG } from "qrcode.react";
+import { mintL00 } from "@/lib/virality/mint";
 interface Campaign {
   id: string;
   code: string;
@@ -58,6 +60,9 @@ export default function CampaignEoaManager() {
   const [bulkDeckSlug, setBulkDeckSlug] = useState("");
   const [bulkUtmId, setBulkUtmId] = useState("");
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [generatingL00, setGeneratingL00] = useState<string | null>(null);
+  const [l00Tokens, setL00Tokens] = useState<Record<string, { token: string; url: string }>>({});
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   useEffect(() => {
@@ -155,6 +160,83 @@ export default function CampaignEoaManager() {
     setShowBulkActions(false);
     setBulkDeckSlug("");
     setBulkUtmId("");
+  };
+
+  const handleGenerateL00 = async (eoa: EventAction) => {
+    if (!eoa.assigned_deck_slug) {
+      toast({
+        title: "Missing Deck Assignment",
+        description: "Please assign a deck before generating L00 token",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingL00(eoa.id);
+    try {
+      const result = await mintL00({
+        eoaId: eoa.id,
+        deckSlug: eoa.assigned_deck_slug,
+        utmMedium: "qr",
+        utmContent: eoa.utm_content || undefined,
+      });
+
+      setL00Tokens(prev => ({
+        ...prev,
+        [eoa.id]: { token: result.token, url: result.full_url }
+      }));
+
+      toast({
+        title: "L00 Token Generated",
+        description: `Token: ${result.token}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error Generating Token",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingL00(null);
+    }
+  };
+
+  const handleCopyUrl = (url: string, eoaId: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(eoaId);
+    toast({
+      title: "URL Copied",
+      description: "L00 URL copied to clipboard",
+    });
+    setTimeout(() => setCopiedUrl(null), 2000);
+  };
+
+  const handleDownloadQR = (eoaId: string, title: string) => {
+    const svg = document.getElementById(`qr-${eoaId}`);
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `L00-${title.replace(/[^a-z0-9]/gi, '-')}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
   const handleSort = (column: string) => {
@@ -503,6 +585,7 @@ export default function CampaignEoaManager() {
                         {getSortIcon("assigned_deck_slug")}
                       </Button>
                     </TableHead>
+                    <TableHead>L00 Token</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -527,6 +610,49 @@ export default function CampaignEoaManager() {
                       <TableCell>{formatDateTime(eoa.end_date)}</TableCell>
                       <TableCell>{formatTimezone(eoa.timezone)}</TableCell>
                       <TableCell>{eoa.assigned_deck_slug || "—"}</TableCell>
+                      <TableCell>
+                        {l00Tokens[eoa.id] ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <code className="text-xs bg-muted px-2 py-1 rounded">
+                                {l00Tokens[eoa.id].token}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCopyUrl(l00Tokens[eoa.id].url, eoa.id)}
+                              >
+                                {copiedUrl === eoa.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <QRCodeSVG
+                                id={`qr-${eoa.id}`}
+                                value={l00Tokens[eoa.id].url}
+                                size={80}
+                                level="M"
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadQR(eoa.id, eoa.title)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGenerateL00(eoa)}
+                            disabled={generatingL00 === eoa.id || !eoa.assigned_deck_slug}
+                          >
+                            <QrCode className="h-4 w-4 mr-2" />
+                            {generatingL00 === eoa.id ? "Generating..." : "Generate L00"}
+                          </Button>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="ghost" size="sm" onClick={() => {
