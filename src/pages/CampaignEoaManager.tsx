@@ -122,6 +122,35 @@ export default function CampaignEoaManager() {
       minute: "2-digit"
     });
   };
+
+  const formatTimezone = (timezone: string | null) => {
+    if (!timezone || timezone === "TBD") return "TBD";
+    
+    // Map common timezone names to their short forms
+    const timezoneMap: Record<string, string> = {
+      "America/New_York": "ET",
+      "America/Chicago": "CT",
+      "America/Denver": "MT",
+      "America/Los_Angeles": "PT",
+      "America/Phoenix": "MST",
+      "America/Anchorage": "AKT",
+      "Pacific/Honolulu": "HST",
+      "America/Detroit": "ET",
+      "America/Indianapolis": "ET",
+      "America/Kentucky/Louisville": "ET",
+      "America/Kentucky/Monticello": "ET",
+      "America/Indiana/Indianapolis": "ET",
+      "America/Indiana/Knox": "CT",
+      "America/Indiana/Marengo": "ET",
+      "America/Indiana/Petersburg": "ET",
+      "America/Indiana/Tell_City": "CT",
+      "America/Indiana/Vevay": "ET",
+      "America/Indiana/Vincennes": "ET",
+      "America/Indiana/Winamac": "ET",
+    };
+    
+    return timezoneMap[timezone] || timezone;
+  };
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -200,7 +229,7 @@ export default function CampaignEoaManager() {
                       <TableCell className="capitalize">{eoa.type}</TableCell>
                       <TableCell>{formatDateTime(eoa.start_date)}</TableCell>
                       <TableCell>{formatDateTime(eoa.end_date)}</TableCell>
-                      <TableCell>{eoa.timezone || "TBD"}</TableCell>
+                      <TableCell>{formatTimezone(eoa.timezone)}</TableCell>
                       <TableCell>{eoa.assigned_deck_slug || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
