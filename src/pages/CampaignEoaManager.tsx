@@ -205,6 +205,7 @@ export default function CampaignEoaManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Mobilize Code</TableHead>
+                    <TableHead>utm_id</TableHead>
                     <TableHead>Event/Action Name</TableHead>
                     <TableHead>Site Name</TableHead>
                     <TableHead>City</TableHead>
@@ -221,6 +222,7 @@ export default function CampaignEoaManager() {
                 <TableBody>
                   {eoas.map(eoa => <TableRow key={eoa.id}>
                       <TableCell>{eoa.mobilize_id || "—"}</TableCell>
+                      <TableCell>{eoa.utm_id}</TableCell>
                       <TableCell className="font-medium">{eoa.title}</TableCell>
                       <TableCell>{eoa.site_name || "—"}</TableCell>
                       <TableCell>{eoa.city || "—"}</TableCell>
