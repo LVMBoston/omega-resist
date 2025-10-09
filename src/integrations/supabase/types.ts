@@ -566,19 +566,12 @@ export type Database = {
         Returns: string
       }
       mint_l00: {
-        Args:
-          | {
-              _deck_slug: string
-              _eoa_id: string
-              _placement_id: string
-              _utm_medium?: string
-            }
-          | {
-              _deck_slug: string
-              _eoa_id: string
-              _utm_content?: string
-              _utm_medium?: string
-            }
+        Args: {
+          _deck_slug: string
+          _eoa_id: string
+          _utm_content?: string
+          _utm_medium?: string
+        }
         Returns: {
           full_url: string
           token: string
