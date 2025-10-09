@@ -40,35 +40,26 @@ export default function Auth() {
 
     setLoading(true);
 
-    // Sign in with a temporary password (email as password for simplicity)
-    // First try to sign in
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: email, // Using email as password temporarily
+    // Use anonymous sign in with email stored in metadata
+    const { error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: {
+          email: email,
+        },
+      },
     });
 
-    // If sign in fails, try to sign up
-    if (signInError) {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password: email, // Using email as password temporarily
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
+    setLoading(false);
 
-      if (signUpError) {
-        setLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Authentication Failed",
-          description: signUpError.message,
-        });
-        return;
-      }
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: error.message,
+      });
+      return;
     }
 
-    setLoading(false);
     toast({
       title: "Success",
       description: "You've been signed in",
