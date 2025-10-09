@@ -13,7 +13,6 @@ const emailSchema = z.string().email("Invalid email address");
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -25,7 +24,7 @@ export default function Auth() {
     });
   }, [navigate]);
 
-  const handleSendMagicLink = async (e: React.FormEvent) => {
+  const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -41,28 +40,40 @@ export default function Auth() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithOtp({
+    // Sign in with a temporary password (email as password for simplicity)
+    // First try to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-      },
+      password: email, // Using email as password temporarily
     });
 
-    setLoading(false);
+    // If sign in fails, try to sign up
+    if (signInError) {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: email, // Using email as password temporarily
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
 
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign In Failed",
-        description: error.message,
-      });
-    } else {
-      setEmailSent(true);
-      toast({
-        title: "Check your email",
-        description: "We've sent you a magic link to sign in",
-      });
+      if (signUpError) {
+        setLoading(false);
+        toast({
+          variant: "destructive",
+          title: "Authentication Failed",
+          description: signUpError.message,
+        });
+        return;
+      }
     }
+
+    setLoading(false);
+    toast({
+      title: "Success",
+      description: "You've been signed in",
+    });
+    navigate("/");
   };
 
   return (
@@ -71,50 +82,26 @@ export default function Auth() {
         <CardHeader>
           <CardTitle>Democracy Forge</CardTitle>
           <CardDescription>
-            {emailSent 
-              ? "Check your email for a magic link" 
-              : "Enter your email to receive a sign-in link"
-            }
+            Enter your email to sign in
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {emailSent ? (
-            <div className="text-center space-y-4">
-              <p className="text-sm text-muted-foreground">
-                We've sent a magic link to <strong>{email}</strong>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Click the link in your email to sign in. You can close this page.
-              </p>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setEmailSent(false);
-                  setEmail("");
-                }}
-                className="w-full"
-              >
-                Send to a different email
-              </Button>
+          <form onSubmit={handleEmailSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
-          ) : (
-            <form onSubmit={handleSendMagicLink} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending..." : "Send Magic Link"}
-              </Button>
-            </form>
-          )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
