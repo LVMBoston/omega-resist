@@ -40,8 +40,8 @@ export default function Auth() {
 
     setLoading(true);
 
-    // Auto-generate a simple password from the email
-    const autoPassword = `${email}-pass`;
+    // Use email as password for simplicity
+    const autoPassword = email;
 
     // Try to sign in first
     let { error } = await supabase.auth.signInWithPassword({
