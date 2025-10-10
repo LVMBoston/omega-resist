@@ -26,14 +26,15 @@ export default function Auth() {
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        navigate("/");
-      }
       if (event === "PASSWORD_RECOVERY") {
         setIsResettingPassword(true);
+        return;
+      }
+      if (event === "SIGNED_IN" && session && !isResettingPassword) {
+        navigate("/");
       }
     });
-  }, [navigate]);
+  }, [navigate, isResettingPassword]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
