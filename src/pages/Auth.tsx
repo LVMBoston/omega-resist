@@ -8,10 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const emailSchema = z.string().email("Invalid email address");
+const authSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 export default function Auth() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -24,41 +29,41 @@ export default function Auth() {
     });
   }, [navigate]);
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      emailSchema.parse(email);
+      authSchema.parse({ email, password });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please enter a valid email address",
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: error.errors[0].message,
+        });
+      }
       return;
     }
 
     setLoading(true);
 
-    // Use email as password for simplicity
-    const autoPassword = email;
+    let error;
 
-    // Try to sign in first
-    let { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: autoPassword,
-    });
-
-    // If sign in fails, sign up
-    if (error) {
-      const signUpResult = await supabase.auth.signUp({
+    if (isSignUp) {
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
-        password: autoPassword,
+        password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
         },
       });
-      error = signUpResult.error;
+      error = signUpError;
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      error = signInError;
     }
 
     setLoading(false);
@@ -74,7 +79,7 @@ export default function Auth() {
 
     toast({
       title: "Success",
-      description: "You've been signed in",
+      description: isSignUp ? "Account created successfully" : "You've been signed in",
     });
     navigate("/");
   };
@@ -85,11 +90,11 @@ export default function Auth() {
         <CardHeader>
           <CardTitle>Democracy Forge</CardTitle>
           <CardDescription>
-            Enter your email to sign in
+            {isSignUp ? "Create your account" : "Sign in to your account"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleEmailSignIn} className="space-y-4">
+          <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -101,8 +106,28 @@ export default function Auth() {
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Sign Up" : "Sign In")}
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              className="w-full" 
+              onClick={() => setIsSignUp(!isSignUp)}
+            >
+              {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
             </Button>
           </form>
         </CardContent>
