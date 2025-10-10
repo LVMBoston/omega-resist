@@ -24,6 +24,11 @@ export default function DeckViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "Democracy Forge";
+  }, []);
+
   useEffect(() => {
     if (!slug) return;
 
