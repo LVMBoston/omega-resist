@@ -311,6 +311,33 @@ export type Database = {
         }
         Relationships: []
       }
+      shortened_urls: {
+        Row: {
+          clicks: number
+          created_at: string
+          created_by: string | null
+          full_url: string
+          id: string
+          short_code: string
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          created_by?: string | null
+          full_url: string
+          id?: string
+          short_code: string
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          created_by?: string | null
+          full_url?: string
+          id?: string
+          short_code?: string
+        }
+        Relationships: []
+      }
       slide_items: {
         Row: {
           content_url: string
@@ -544,6 +571,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_short_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -597,6 +628,17 @@ export type Database = {
       refresh_daily_aggregates: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      shorten_url: {
+        Args: { _full_url: string }
+        Returns: {
+          short_code: string
+          short_url: string
+        }[]
+      }
+      track_redirect: {
+        Args: { _short_code: string }
+        Returns: string
       }
     }
     Enums: {

@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from 'qrcode';
+import { supabase } from "@/integrations/supabase/client";
 
 export default function QrDebugTool() {
   const [url, setUrl] = useState("https://example.com");
@@ -16,6 +17,8 @@ export default function QrDebugTool() {
   const [labelBelow, setLabelBelow] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [shortenedUrl, setShortenedUrl] = useState("");
+  const [isShortening, setIsShortening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generateQR = async () => {
@@ -144,6 +147,42 @@ export default function QrDebugTool() {
     qrImg.src = qrDataUrl;
   };
 
+  const handleShortenUrl = async () => {
+    if (!url) {
+      toast.error("Please enter a URL first");
+      return;
+    }
+
+    setIsShortening(true);
+    try {
+      const { data, error } = await supabase.rpc("shorten_url", {
+        _full_url: url,
+      });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const shortUrl = data[0].short_url;
+        setShortenedUrl(shortUrl);
+        toast.success("URL shortened and copied to clipboard!");
+        navigator.clipboard.writeText(shortUrl);
+      }
+    } catch (error) {
+      console.error("Error shortening URL:", error);
+      toast.error("Failed to shorten URL");
+    } finally {
+      setIsShortening(false);
+    }
+  };
+
+  const handleUseShortUrl = () => {
+    if (shortenedUrl) {
+      setUrl(shortenedUrl);
+      setShortenedUrl("");
+      toast.success("Now using short URL");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -164,6 +203,30 @@ export default function QrDebugTool() {
                 placeholder="https://example.com"
                 rows={3}
               />
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleShortenUrl}
+                  disabled={isShortening}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  {isShortening ? "Shortening..." : "Shorten URL (Better Scannability)"}
+                </Button>
+              </div>
+              {shortenedUrl && (
+                <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-md">
+                  <code className="text-sm flex-1 truncate font-mono">{shortenedUrl}</code>
+                  <Button
+                    onClick={handleUseShortUrl}
+                    size="sm"
+                    variant="default"
+                  >
+                    Use This
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
