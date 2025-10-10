@@ -565,6 +565,15 @@ export type Database = {
         }
         Returns: string
       }
+      lookup_token: {
+        Args: { _token: string }
+        Returns: {
+          deck_slug: string
+          full_url: string
+          level: number
+          token: string
+        }[]
+      }
       mint_l00: {
         Args: {
           _deck_slug: string
