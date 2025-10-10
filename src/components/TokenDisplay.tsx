@@ -4,6 +4,7 @@ import { Copy, Download, ExternalLink, ChevronDown, ChevronUp } from "lucide-rea
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useState } from "react";
+import QRCode from 'qrcode';
 
 interface TokenDisplayProps {
   open: boolean;
@@ -21,39 +22,29 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
     toast.success(`${label} copied to clipboard`);
   };
 
-  const downloadQR = () => {
-    const svg = document.getElementById('qr-code-svg');
-    if (!svg) return;
-    
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    
-    // 2"x2" at 600 DPI for high quality printing = 1200x1200 pixels
-    const targetSize = 1200;
-    
-    img.onload = () => {
-      canvas.width = targetSize;
-      canvas.height = targetSize;
-      if (ctx) {
-        // Fill white background first
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, targetSize, targetSize);
-        // Draw scaled QR code
-        ctx.drawImage(img, 0, 0, targetSize, targetSize);
-      }
-      const pngFile = canvas.toDataURL("image/png");
+  const downloadQR = async () => {
+    try {
+      // Generate high-resolution QR code: 1200x1200 pixels (2" at 600 DPI)
+      const url = await QRCode.toDataURL(fullUrl, {
+        width: 1200,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
       
       const downloadLink = document.createElement("a");
       downloadLink.download = `qr-${token}.png`;
-      downloadLink.href = pngFile;
+      downloadLink.href = url;
       downloadLink.click();
       
-      toast.success("QR code downloaded (1200x1200px for 2\"x2\" printing)");
-    };
-    
-    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+      toast.success("QR code downloaded (2\"×2\" at 600 DPI)");
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      toast.error("Failed to download QR code");
+    }
   };
 
   return (
