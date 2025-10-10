@@ -14,6 +14,7 @@ import DeckViewer from "./pages/DeckViewer";
 import DeckManager from "./pages/DeckManager";
 import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
+import QrDebugTool from "./pages/QrDebugTool";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/manage" element={<DeckManager />} />
             <Route path="/campaigns" element={<CampaignManager />} />
             <Route path="/campaigns/:campaignId" element={<CampaignEoaManager />} />
+            <Route path="/qr-debug" element={<QrDebugTool />} />
             <Route path="/admin" element={<Admin />} />
             <Route 
               path="/settings" 
