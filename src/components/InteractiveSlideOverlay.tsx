@@ -41,19 +41,22 @@ export const InteractiveSlideOverlay = ({
   // Fetch email and SMS templates
   useEffect(() => {
     const fetchTemplates = async () => {
-      const { data } = await supabase
+      const { data: emailData } = await supabase
         .from("settings")
-        .select("key, value")
-        .in("key", ["l01_template"])
-        .in("category", ["email", "sms"]);
+        .select("value")
+        .eq("category", "email")
+        .eq("key", "l01_template")
+        .maybeSingle();
       
-      if (data) {
-        const emailSetting = data.find(s => s.key === "l01_template" && "subject" in (s.value as any));
-        const smsSetting = data.find(s => s.key === "l01_template" && !("subject" in (s.value as any)));
-        
-        if (emailSetting) setEmailTemplate(emailSetting.value as any);
-        if (smsSetting) setSmsTemplate(smsSetting.value as any);
-      }
+      const { data: smsData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("category", "sms")
+        .eq("key", "l01_template")
+        .maybeSingle();
+      
+      if (emailData) setEmailTemplate(emailData.value as any);
+      if (smsData) setSmsTemplate(smsData.value as any);
     };
     fetchTemplates();
   }, []);
