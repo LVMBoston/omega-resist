@@ -408,7 +408,7 @@ export default function CampaignEoaManager() {
   }
   return <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
+        <div className="w-full px-6 py-4">
           <div className="flex items-center gap-4">
             <Link to="/campaigns">
               <Button variant="ghost" size="sm">
@@ -424,7 +424,7 @@ export default function CampaignEoaManager() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="w-full px-6 py-8">
         {selectedRows.size > 0 && (
           <Card className="mb-4 border-primary">
             <CardContent className="pt-6">

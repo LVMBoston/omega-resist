@@ -166,7 +166,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="w-full px-6 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Democracy Forge</h1>
             <p className="text-sm text-muted-foreground mt-1">Viral Deck Management</p>
@@ -205,7 +205,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="w-full px-6 py-8">
         {loading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Loading decks...</p>
