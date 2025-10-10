@@ -30,10 +30,13 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
     const ctx = canvas.getContext("2d");
     const img = new Image();
     
+    // 2"x2" at 300 DPI = 600x600 pixels
+    const targetSize = 600;
+    
     img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx?.drawImage(img, 0, 0);
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+      ctx?.drawImage(img, 0, 0, targetSize, targetSize);
       const pngFile = canvas.toDataURL("image/png");
       
       const downloadLink = document.createElement("a");
@@ -41,7 +44,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
       downloadLink.href = pngFile;
       downloadLink.click();
       
-      toast.success("QR code downloaded");
+      toast.success("QR code downloaded (2\"x2\" at 300 DPI)");
     };
     
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
