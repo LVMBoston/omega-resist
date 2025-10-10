@@ -230,31 +230,63 @@ export default function CampaignEoaManager() {
   };
 
   const handleDownloadQR = (eoaId: string, title: string) => {
-    const svg = document.getElementById(`qr-${eoaId}`);
-    if (!svg) return;
+    const tokenData = l00Tokens[eoaId];
+    if (!tokenData) return;
 
-    const svgData = new XMLSerializer().serializeToString(svg);
+    // Generate 4"x4" @ 600 DPI = 2400x2400px for high-quality printing
+    const qrSize = 2400;
     const canvas = document.createElement("canvas");
+    canvas.width = qrSize;
+    canvas.height = qrSize;
     const ctx = canvas.getContext("2d");
-    const img = new Image();
+    
+    if (!ctx) return;
 
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx?.drawImage(img, 0, 0);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `L00-${title.replace(/[^a-z0-9]/gi, '-')}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
+    // Create a temporary container for high-res QR generation
+    const tempContainer = document.createElement("div");
+    tempContainer.style.position = "absolute";
+    tempContainer.style.left = "-9999px";
+    document.body.appendChild(tempContainer);
+
+    // Dynamically import and render QR at high resolution
+    import("qrcode").then((QRCode) => {
+      QRCode.toCanvas(canvas, tokenData.url, {
+        width: qrSize,
+        margin: 1,
+        errorCorrectionLevel: "H",
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF"
         }
-      });
-    };
+      }, (error) => {
+        document.body.removeChild(tempContainer);
+        
+        if (error) {
+          toast({
+            title: "Error",
+            description: "Failed to generate QR code",
+            variant: "destructive"
+          });
+          return;
+        }
 
-    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `L00-${title.replace(/[^a-z0-9]/gi, '-')}-4x4-600dpi.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            toast({
+              title: "QR Code Downloaded",
+              description: "4\"×4\" @ 600 DPI (2400×2400px)",
+            });
+          }
+        }, "image/png");
+      });
+    });
   };
 
   const handleSort = (column: string) => {
