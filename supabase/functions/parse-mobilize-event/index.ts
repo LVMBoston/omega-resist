@@ -2,11 +2,16 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
 import { formatInTimeZone } from "npm:date-fns-tz@3.2.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const eventIdSchema = z.object({
+  eventId: z.string().trim().min(1).max(50).regex(/^[a-zA-Z0-9_-]+$/, 'Invalid eventId format')
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -14,14 +19,18 @@ serve(async (req) => {
   }
 
   try {
-    const { eventId } = await req.json();
-
-    if (!eventId) {
+    const body = await req.json();
+    
+    const validation = eventIdSchema.safeParse(body);
+    if (!validation.success) {
+      console.error('Validation error:', validation.error);
       return new Response(
-        JSON.stringify({ error: 'eventId is required' }),
+        JSON.stringify({ error: 'Invalid request: eventId must be alphanumeric' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { eventId } = validation.data;
 
     console.log(`Fetching Mobilize event: ${eventId}`);
 
@@ -54,7 +63,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error parsing Mobilize event:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Failed to parse event. Please check the event ID and try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
