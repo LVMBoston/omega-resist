@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Copy, Download, ExternalLink, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -116,12 +116,12 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
         </div>
       </DialogContent>
 
-      <AlertDialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Scan QR Code</AlertDialogTitle>
-          </AlertDialogHeader>
-          <div className="space-y-4">
+      <Drawer open={showQRDialog} onOpenChange={setShowQRDialog}>
+        <DrawerContent className="mx-auto max-w-md">
+          <DrawerHeader>
+            <DrawerTitle>Scan QR Code</DrawerTitle>
+          </DrawerHeader>
+          <div className="space-y-4 p-4">
             <div className="flex justify-center p-8 bg-white rounded">
               <QRCodeSVG
                 id="qr-code-svg"
@@ -141,8 +141,8 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
               Download QR Code
             </Button>
           </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        </DrawerContent>
+      </Drawer>
     </Dialog>
   );
 }
