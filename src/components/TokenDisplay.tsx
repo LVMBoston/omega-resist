@@ -24,10 +24,16 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
 
   const downloadQR = async () => {
     try {
-      // Generate high-resolution QR code: 1200x1200 pixels (2" at 600 DPI)
-      const url = await QRCode.toDataURL(fullUrl, {
-        width: 1200,
-        margin: 2,
+      // Create a canvas with proper 2"x2" at 600 DPI dimensions
+      const canvas = document.createElement('canvas');
+      const size = 1200; // 2 inches × 600 DPI
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Generate QR code directly to canvas
+      await QRCode.toCanvas(canvas, fullUrl, {
+        width: size,
+        margin: 4,
         errorCorrectionLevel: 'H',
         color: {
           dark: '#000000',
@@ -35,6 +41,8 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
         }
       });
       
+      // Convert canvas to data URL and download
+      const url = canvas.toDataURL('image/png');
       const downloadLink = document.createElement("a");
       downloadLink.download = `qr-${token}.png`;
       downloadLink.href = url;
