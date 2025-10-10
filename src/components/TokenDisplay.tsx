@@ -24,65 +24,38 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
 
   const downloadQR = async () => {
     try {
-      const svg = document.getElementById('qr-code-svg');
-      if (!svg) {
-        toast.error("QR code not found");
-        return;
-      }
+      // Create a fresh canvas at exactly 1200x1200 pixels
+      const canvas = document.createElement('canvas');
+      const size = 1200; // 2" at 600 DPI
+      canvas.width = size;
+      canvas.height = size;
       
-      // Get SVG data
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      
-      // Create image from SVG
-      const img = new Image();
-      
-      img.onload = () => {
-        // Create high-res canvas: 1200x1200 for 2" at 600 DPI
-        const canvas = document.createElement('canvas');
-        const size = 1200;
-        canvas.width = size;
-        canvas.height = size;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          toast.error("Failed to create canvas");
-          return;
+      // Generate QR code directly at high resolution
+      await QRCode.toCanvas(canvas, fullUrl, {
+        width: size,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
         }
-        
-        // Fill white background
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
-        
-        // Draw QR code scaled to full canvas size
-        ctx.imageSmoothingEnabled = false; // Keep sharp edges for QR code
-        ctx.drawImage(img, 0, 0, size, size);
-        
-        // Convert to PNG and download
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const downloadUrl = URL.createObjectURL(blob);
-            const downloadLink = document.createElement('a');
-            downloadLink.download = `qr-${token}.png`;
-            downloadLink.href = downloadUrl;
-            downloadLink.click();
-            
-            // Cleanup
-            URL.revokeObjectURL(downloadUrl);
-            URL.revokeObjectURL(url);
-            
-            toast.success("QR code downloaded (1200×1200px for 2\"×2\" printing)");
-          }
-        }, 'image/png');
-      };
+      });
       
-      img.onerror = () => {
-        toast.error("Failed to load QR code image");
-        URL.revokeObjectURL(url);
-      };
-      
-      img.src = url;
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const downloadLink = document.createElement('a');
+          downloadLink.download = `qr-${token}.png`;
+          downloadLink.href = url;
+          downloadLink.click();
+          URL.revokeObjectURL(url);
+          
+          toast.success("QR code downloaded (1200×1200px for 2\"×2\" printing)");
+        } else {
+          toast.error("Failed to create QR code image");
+        }
+      }, 'image/png');
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error("Failed to download QR code");
