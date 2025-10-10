@@ -1,8 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy, Download, ExternalLink } from "lucide-react";
+import { Copy, Download, ExternalLink, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface TokenDisplayProps {
   open: boolean;
@@ -13,6 +14,8 @@ interface TokenDisplayProps {
 }
 
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: TokenDisplayProps) {
+  const [showQRDialog, setShowQRDialog] = useState(false);
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
@@ -98,29 +101,47 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">QR Code:</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={downloadQR}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-            </div>
-            <div className="flex justify-center p-6 bg-white rounded">
+            <p className="text-sm font-medium">QR Code:</p>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setShowQRDialog(true)}
+              className="w-full"
+            >
+              <QrCode className="h-5 w-5 mr-2" />
+              View Scannable QR Code
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+
+      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scan QR Code</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-center p-8 bg-white rounded">
               <QRCodeSVG
                 id="qr-code-svg"
                 value={fullUrl}
-                size={256}
+                size={384}
                 level="H"
                 includeMargin={true}
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadQR}
+              className="w-full"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download QR Code
+            </Button>
           </div>
-        </div>
-      </DialogContent>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
