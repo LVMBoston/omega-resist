@@ -30,13 +30,19 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
     const ctx = canvas.getContext("2d");
     const img = new Image();
     
-    // 2"x2" at 300 DPI = 600x600 pixels
-    const targetSize = 600;
+    // 2"x2" at 600 DPI for high quality printing = 1200x1200 pixels
+    const targetSize = 1200;
     
     img.onload = () => {
       canvas.width = targetSize;
       canvas.height = targetSize;
-      ctx?.drawImage(img, 0, 0, targetSize, targetSize);
+      if (ctx) {
+        // Fill white background first
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, targetSize, targetSize);
+        // Draw scaled QR code
+        ctx.drawImage(img, 0, 0, targetSize, targetSize);
+      }
       const pngFile = canvas.toDataURL("image/png");
       
       const downloadLink = document.createElement("a");
@@ -44,7 +50,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
       downloadLink.href = pngFile;
       downloadLink.click();
       
-      toast.success("QR code downloaded (2\"x2\" at 300 DPI)");
+      toast.success("QR code downloaded (1200x1200px for 2\"x2\" printing)");
     };
     
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
