@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,18 +26,28 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isResettingPasswordRef = useRef(false);
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
+    // Check URL hash for recovery mode immediately
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    if (hashParams.get('type') === 'recovery') {
+      setIsResettingPassword(true);
+      isResettingPasswordRef.current = true;
+    }
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsResettingPassword(true);
-        return;
-      }
-      if (event === "SIGNED_IN" && session && !isResettingPassword) {
+        isResettingPasswordRef.current = true;
+      } else if (event === "SIGNED_IN" && session && !isResettingPasswordRef.current) {
         navigate("/");
       }
     });
-  }, [navigate, isResettingPassword]);
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
