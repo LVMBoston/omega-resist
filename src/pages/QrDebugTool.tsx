@@ -239,8 +239,38 @@ export default function QrDebugTool() {
                 value={[size]}
                 onValueChange={(values) => setSize(values[0])}
               />
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSize(256)}
+                >
+                  Tiny (0.6")
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSize(512)}
+                >
+                  Standard (1.5")
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSize(640)}
+                >
+                  Large (2")
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSize(1200)}
+                >
+                  Print (2" @ 600 DPI)
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Recommended: 512px+ for reliable scanning
+                Presets optimized for common pamphlet sizes
               </p>
             </div>
 
@@ -353,8 +383,11 @@ export default function QrDebugTool() {
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">QR Code Scanability Tips</h2>
           <ul className="space-y-2 text-sm">
-            <li>✅ <strong>Minimum size:</strong> 512×512px for reliable scanning at arm's length</li>
-            <li>✅ <strong>Print size:</strong> 1200×1200px recommended for 2"×2" prints at 600 DPI</li>
+            <li>🚀 <strong className="text-primary">URL Shortening (Critical!):</strong> Shortened URLs create simpler QR codes with fewer modules, enabling reliable scanning at 0.6"×0.6" (256px) - perfect for compact pamphlets!</li>
+            <li>✅ <strong>Tiny size (0.6"):</strong> 256px works great with shortened URLs (tested with Bitly)</li>
+            <li>✅ <strong>Standard size (1.5"):</strong> 512px for reliable scanning at arm's length</li>
+            <li>✅ <strong>Large size (2"):</strong> 640px for high visibility on pamphlets</li>
+            <li>✅ <strong>Print quality:</strong> 1200px recommended for 2"×2" prints at 600 DPI</li>
             <li>✅ <strong>Error correction:</strong> Using level 'H' (30% recovery) allows for logo placement</li>
             <li>✅ <strong>Logo size:</strong> Keep logos under 20% of QR code size to maintain scanability</li>
             <li>✅ <strong>Contrast:</strong> High contrast (black on white) scans best</li>
