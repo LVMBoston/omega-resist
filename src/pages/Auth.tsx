@@ -16,8 +16,10 @@ const authSchema = z.object({
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,6 +28,9 @@ export default function Auth() {
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         navigate("/");
+      }
+      if (event === "PASSWORD_RECOVERY") {
+        setIsResettingPassword(true);
       }
     });
   }, [navigate]);
@@ -123,13 +128,56 @@ export default function Auth() {
     setIsForgotPassword(false);
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      z.string().min(6, "Password must be at least 6 characters").parse(newPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: error.errors[0].message,
+        });
+      }
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+      return;
+    }
+
+    toast({
+      title: "Password updated",
+      description: "Your password has been successfully updated",
+    });
+    setIsResettingPassword(false);
+    navigate("/");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Democracy Forge</CardTitle>
           <CardDescription>
-            {isForgotPassword 
+            {isResettingPassword
+              ? "Enter your new password"
+              : isForgotPassword 
               ? "Enter your email to reset your password" 
               : isSignUp 
               ? "Create your account" 
@@ -137,7 +185,25 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isForgotPassword ? (
+          {isResettingPassword ? (
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Updating password..." : "Update Password"}
+              </Button>
+            </form>
+          ) : isForgotPassword ? (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
