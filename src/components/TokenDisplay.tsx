@@ -1,7 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Copy, Download, ExternalLink, QrCode } from "lucide-react";
+import { Copy, Download, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -102,47 +101,50 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">QR Code:</p>
             <Button
               variant="outline"
               size="lg"
-              onClick={() => setShowQRDialog(true)}
+              onClick={() => setShowQRDialog(!showQRDialog)}
               className="w-full"
             >
-              <QrCode className="h-5 w-5 mr-2" />
-              View Scannable QR Code
+              {showQRDialog ? (
+                <>
+                  <ChevronUp className="h-5 w-5 mr-2" />
+                  Hide QR Code
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-5 w-5 mr-2" />
+                  Show Scannable QR Code
+                </>
+              )}
             </Button>
+            
+            {showQRDialog && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="flex justify-center p-8 bg-white rounded">
+                  <QRCodeSVG
+                    id="qr-code-svg"
+                    value={fullUrl}
+                    size={384}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadQR}
+                  className="w-full"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download QR Code
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>
-
-      <Drawer open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DrawerContent className="mx-auto max-w-md">
-          <DrawerHeader>
-            <DrawerTitle>Scan QR Code</DrawerTitle>
-          </DrawerHeader>
-          <div className="space-y-4 p-4">
-            <div className="flex justify-center p-8 bg-white rounded">
-              <QRCodeSVG
-                id="qr-code-svg"
-                value={fullUrl}
-                size={384}
-                level="H"
-                includeMargin={true}
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadQR}
-              className="w-full"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download QR Code
-            </Button>
-          </div>
-        </DrawerContent>
-      </Drawer>
     </Dialog>
   );
 }
