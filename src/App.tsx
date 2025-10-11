@@ -15,6 +15,7 @@ import DeckManager from "./pages/DeckManager";
 import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
 import CampaignAnalytics from "./pages/CampaignAnalytics";
+import CampaignDashboard from "./pages/CampaignDashboard";
 import SharedDashboard from "./pages/SharedDashboard";
 import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
@@ -45,6 +46,11 @@ const App = () => (
             <Route path="/campaign-analytics" element={
               <ProtectedRoute requiredRole="admin">
                 <CampaignAnalytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/campaign-dashboard" element={
+              <ProtectedRoute requiredRole="admin">
+                <CampaignDashboard />
               </ProtectedRoute>
             } />
             <Route path="/shared-dashboard/:shareCode" element={<SharedDashboard />} />
