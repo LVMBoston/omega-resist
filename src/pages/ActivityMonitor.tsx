@@ -305,11 +305,11 @@ export default function ActivityMonitor() {
             ) : (
               events.map((event) => (
               <Card key={event.id} className="hover:border-primary/50 transition-colors">
-                <CardContent className="pt-6">
+                <CardContent className="pt-3 pb-3">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
+                    <div className="flex-1 space-y-1.5">
                       {/* Event Type & Level */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge className={getEventBadgeColor(event.event_type)}>
                           {event.event_type.toUpperCase()}
                         </Badge>
@@ -321,36 +321,36 @@ export default function ActivityMonitor() {
                             SIMULATED
                           </Badge>
                         )}
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {format(new Date(event.occurred_at), "PPp")}
                         </span>
                       </div>
 
                       {/* Event Details */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium text-sm">
                             {event.tokens?.events_actions?.title || "Unknown Event"}
                           </span>
                           {event.tokens?.events_actions?.city && (
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               • {event.tokens.events_actions.city}, {event.tokens.events_actions.state}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <Smartphone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs">
                             {parseUserAgent(event.user_agent)}
                           </span>
                         </div>
 
                         {/* Location Info */}
                         {(event.city || event.region || event.country) && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <MapPin className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
                             <span>
                               {[event.city, event.region, event.country].filter(Boolean).join(', ')}
                               {event.zip_code && ` (${event.zip_code})`}
@@ -359,8 +359,8 @@ export default function ActivityMonitor() {
                         )}
 
                         {event.ip_address && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono text-muted-foreground">
                               IP: {event.ip_address}
                               {event.latitude && event.longitude && (
                                 <> • Coords: {event.latitude.toFixed(4)}, {event.longitude.toFixed(4)}</>
@@ -370,7 +370,7 @@ export default function ActivityMonitor() {
                         )}
 
                         {/* Token & Campaign Info */}
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
                           <span>Token: <code className="font-mono">{event.token}</code></span>
                           <span>Deck: <code className="font-mono">{event.tokens?.deck_slug}</code></span>
                           <span>Campaign: <code className="font-mono">{event.tokens?.utm_campaign}</code></span>
@@ -380,7 +380,7 @@ export default function ActivityMonitor() {
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <code className="font-mono bg-muted px-1.5 py-0.5 rounded cursor-help">
+                                    <code className="font-mono bg-muted px-1 py-0.5 rounded cursor-help">
                                       {event.utm_snapshot.utm_content}
                                     </code>
                                   </TooltipTrigger>
@@ -398,11 +398,11 @@ export default function ActivityMonitor() {
 
                         {/* UTM Snapshot */}
                         {event.utm_snapshot && (
-                          <details className="text-xs">
+                          <details className="text-[10px]">
                             <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                               View UTM Parameters
                             </summary>
-                            <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+                            <pre className="mt-1 p-1.5 bg-muted rounded text-[10px] overflow-x-auto">
                               {JSON.stringify(event.utm_snapshot, null, 2)}
                             </pre>
                           </details>
