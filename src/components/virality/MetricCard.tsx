@@ -59,23 +59,23 @@ export function MetricCard({
 
   return (
     <Card className={getStatusColor()}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className="pb-1 pt-4">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-4">
         <div className="flex items-baseline justify-between">
-          <div className="text-3xl font-bold">{formatValue(value)}</div>
+          <div className="text-2xl font-bold">{formatValue(value)}</div>
           {trend !== undefined && (
-            <div className={`flex items-center gap-1 text-sm ${getTrendColor()}`}>
+            <div className={`flex items-center gap-1 text-xs ${getTrendColor()}`}>
               {getTrendIcon()}
               <span>{Math.abs(trend).toFixed(1)}%</span>
             </div>
           )}
         </div>
         {description && (
-          <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         )}
       </CardContent>
     </Card>
