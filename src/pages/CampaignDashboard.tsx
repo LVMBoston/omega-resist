@@ -16,6 +16,7 @@ import { AmplificationChart } from "@/components/virality/AmplificationChart";
 import { EngagementByLevelChart } from "@/components/virality/EngagementByLevelChart";
 import { ContentPerformanceTable } from "@/components/virality/ContentPerformanceTable";
 import SharedDashboardMap from "@/components/SharedDashboardMap";
+import { SimulatorControls } from "@/components/SimulatorControls";
 import {
   getViralCoefficient,
   getConversionFunnel,
@@ -55,6 +56,7 @@ interface UrlEvent {
 
 export default function CampaignDashboard() {
   const [selectedCampaign, setSelectedCampaign] = useState<string>("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [dataSourceFilter, setDataSourceFilter] = useState<"real" | "simulated" | "both">("real");
   const [events, setEvents] = useState<UrlEvent[]>([]);
@@ -77,6 +79,7 @@ export default function CampaignDashboard() {
   useEffect(() => {
     if (!selectedCampaign && campaigns && campaigns.length > 0) {
       setSelectedCampaign(campaigns[0].code);
+      setSelectedCampaignId(campaigns[0].id);
     }
   }, [campaigns, selectedCampaign]);
 
@@ -228,11 +231,12 @@ export default function CampaignDashboard() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="filters" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+          <TabsList className="grid w-full max-w-3xl grid-cols-5">
             <TabsTrigger value="filters">Filters</TabsTrigger>
             <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="map">Map</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="simulator">Simulator</TabsTrigger>
           </TabsList>
 
           {/* Filters Tab - Single Source of Truth */}
@@ -247,7 +251,11 @@ export default function CampaignDashboard() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Campaign</label>
-                  <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+                  <Select value={selectedCampaign} onValueChange={(code) => {
+                    setSelectedCampaign(code);
+                    const campaign = campaigns?.find(c => c.code === code);
+                    if (campaign) setSelectedCampaignId(campaign.id);
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select campaign" />
                     </SelectTrigger>
@@ -459,6 +467,17 @@ export default function CampaignDashboard() {
             {funnelData && <ConversionFunnelChart data={funnelData} />}
             
             {contentData && <ContentPerformanceTable data={contentData} />}
+          </TabsContent>
+
+          <TabsContent value="simulator" className="mt-6">
+            <SimulatorControls 
+              campaignId={selectedCampaignId}
+              onSimulationComplete={() => {
+                if (dataSourceFilter === "real") {
+                  setDataSourceFilter("both");
+                }
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>
