@@ -1,11 +1,14 @@
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Input schema for minting L00 tokens.
+ * utm_content is auto-constructed by the database as {mobilize_code}-{utm_id}
+ */
 const MintL00Input = z.object({
   eoaId: z.string().uuid(),
   deckSlug: z.string().min(1),
-  utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"]),
-  utmContent: z.string().optional()
+  utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"])
 });
 
 const MintL00Output = z.object({ 
@@ -13,14 +16,17 @@ const MintL00Output = z.object({
   full_url: z.string().url() 
 });
 
+/**
+ * Mints L00 root token for an event/action.
+ * utm_content is automatically constructed as {mobilize_code}-{utm_id} by the database.
+ */
 export async function mintL00(input: z.infer<typeof MintL00Input>) {
-  const { eoaId, deckSlug, utmMedium, utmContent } = MintL00Input.parse(input);
+  const { eoaId, deckSlug, utmMedium } = MintL00Input.parse(input);
   
   const { data, error } = await supabase.rpc("mint_l00", {
     _eoa_id: eoaId,
     _deck_slug: deckSlug,
-    _utm_medium: utmMedium,
-    _utm_content: utmContent ?? null
+    _utm_medium: utmMedium
   });
   
   if (error) {

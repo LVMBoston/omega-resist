@@ -24,6 +24,7 @@ interface EventAction {
   id: string;
   campaign_id: string;
   mobilize_id: string | null;
+  mobilize_code: string | null;
   utm_id: string;
   title: string;
   site_name: string | null;
@@ -190,13 +191,21 @@ export default function CampaignEoaManager() {
       return;
     }
 
+    if (!eoa.mobilize_code) {
+      toast({
+        title: "Missing Mobilize Code",
+        description: "Please add a Mobilize Code before generating L00 token",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGeneratingL00(eoa.id);
     try {
       const result = await mintL00({
         eoaId: eoa.id,
         deckSlug: eoa.assigned_deck_slug,
-        utmMedium: "qr",
-        utmContent: eoa.utm_content || undefined,
+        utmMedium: "qr"
       });
 
       setL00Tokens(prev => ({
@@ -407,7 +416,7 @@ export default function CampaignEoaManager() {
   };
 
   const getMintReadiness = (eoa: EventAction) => {
-    const hasMobilizeId = !!eoa.mobilize_id;
+    const hasMobilizeCode = !!eoa.mobilize_code;
     const hasDeck = !!eoa.assigned_deck_slug;
     const isMinted = !!l00Tokens[eoa.id];
     
@@ -415,12 +424,12 @@ export default function CampaignEoaManager() {
       return { status: "minted", label: "Minted", icon: Lock, className: "bg-muted text-muted-foreground" };
     }
     
-    if (hasMobilizeId && hasDeck) {
+    if (hasMobilizeCode && hasDeck) {
       return { status: "ready", label: "Ready to Mint", icon: CheckCircle2, className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200" };
     }
     
     const missing = [];
-    if (!hasMobilizeId) missing.push("Mobilize ID");
+    if (!hasMobilizeCode) missing.push("Mobilize Code");
     if (!hasDeck) missing.push("Deck");
     
     return { 
@@ -543,11 +552,11 @@ export default function CampaignEoaManager() {
                     <TableHead>
                       <Button
                         variant="ghost"
-                        onClick={() => handleSort("mobilize_id")}
+                        onClick={() => handleSort("mobilize_code")}
                         className="h-auto p-0 hover:bg-transparent font-medium"
                       >
                         Mobilize Code
-                        {getSortIcon("mobilize_id")}
+                        {getSortIcon("mobilize_code")}
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -674,7 +683,7 @@ export default function CampaignEoaManager() {
                           aria-label={`Select ${eoa.title}`}
                         />
                       </TableCell>
-                      <TableCell>{eoa.mobilize_id || "—"}</TableCell>
+                      <TableCell>{eoa.mobilize_code || "—"}</TableCell>
                       <TableCell>{eoa.utm_id}</TableCell>
                       <TableCell className="font-medium">{eoa.title}</TableCell>
                       <TableCell>{eoa.site_name || "—"}</TableCell>
@@ -782,6 +791,7 @@ export default function CampaignEoaManager() {
           </DialogHeader>
           <EoaForm campaignId={campaign.id} eoaId={editingEoa?.id} initialData={editingEoa ? {
           mobilize_id: editingEoa.mobilize_id || "",
+          mobilize_code: editingEoa.mobilize_code || "",
           title: editingEoa.title,
           site_name: editingEoa.site_name || "",
           city: editingEoa.city || "",
@@ -793,8 +803,7 @@ export default function CampaignEoaManager() {
           timezone: editingEoa.timezone || "TBD",
           assigned_deck_slug: editingEoa.assigned_deck_slug || "",
           description: editingEoa.description || "",
-          utm_id: editingEoa.utm_id,
-          utm_content: editingEoa.utm_content || ""
+          utm_id: editingEoa.utm_id
         } : undefined} onSuccess={async () => {
           // Check if this eoa had a token before saving
           const hadToken = editingEoa ? !!l00Tokens[editingEoa.id] : false;
@@ -871,9 +880,21 @@ export default function CampaignEoaManager() {
               <TableRow>
                 <TableCell className="font-medium py-1.5">5</TableCell>
                 <TableCell className="font-medium py-1.5">utm_content=</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_content || `{poster, handout, em}-${selectedEoa?.mobilize_id || "{Mobilize ID}"}`}&</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_content || `{poster, handout, em}-${selectedEoa?.mobilize_id || "{Mobilize ID}"}`}&</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{selectedEoa?.utm_content || `{poster, handout, em}-${selectedEoa?.mobilize_id || "{Mobilize ID}"}`}&</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">
+                  {selectedEoa?.mobilize_code && selectedEoa?.utm_id 
+                    ? `${selectedEoa.mobilize_code}-${selectedEoa.utm_id}` 
+                    : "{mobilize_code}-{utm_id}"}&
+                </TableCell>
+                <TableCell className="font-mono text-sm py-1.5">
+                  {selectedEoa?.mobilize_code && selectedEoa?.utm_id 
+                    ? `${selectedEoa.mobilize_code}-${selectedEoa.utm_id}` 
+                    : "{mobilize_code}-{utm_id}"}&
+                </TableCell>
+                <TableCell className="font-mono text-sm py-1.5">
+                  {selectedEoa?.mobilize_code && selectedEoa?.utm_id 
+                    ? `${selectedEoa.mobilize_code}-${selectedEoa.utm_id}` 
+                    : "{mobilize_code}-{utm_id}"}&
+                </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">6</TableCell>
@@ -899,7 +920,7 @@ export default function CampaignEoaManager() {
               <TableRow>
                 <TableCell className="font-medium py-1.5">9</TableCell>
                 <TableCell className="font-medium py-1.5">t=</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">l00-{selectedEoa?.mobilize_id || "{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l00-{selectedEoa?.mobilize_code || "{mobilize_code}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{101 AUTO-MINT}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{102 AUTO-MINT}"}</TableCell>
               </TableRow>
@@ -907,7 +928,7 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">10</TableCell>
                 <TableCell className="font-medium py-1.5">p=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">null</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">l00-{selectedEoa?.mobilize_id || "{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">l00-{selectedEoa?.mobilize_code || "{mobilize_code}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{101 AUTO-MINT}"}</TableCell>
               </TableRow>
               <TableRow>
@@ -972,9 +993,9 @@ export default function CampaignEoaManager() {
               <TableRow>
                 <TableCell className="font-medium py-1.5">5</TableCell>
                 <TableCell className="font-medium py-1.5">utm_content=</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"{poster, handout, em}-{Mobilize ID}&"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{mobilize_code}-{utm_id}&"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{mobilize_code}-{utm_id}&"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"{mobilize_code}-{utm_id}&"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium py-1.5">6</TableCell>
@@ -1000,7 +1021,7 @@ export default function CampaignEoaManager() {
               <TableRow>
                 <TableCell className="font-medium py-1.5">9</TableCell>
                 <TableCell className="font-medium py-1.5">t=</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"l00-{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"l00-{mobilize_code}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{101 AUTO-MINT}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{102 AUTO-MINT}"}</TableCell>
               </TableRow>
@@ -1008,7 +1029,7 @@ export default function CampaignEoaManager() {
                 <TableCell className="font-medium py-1.5">10</TableCell>
                 <TableCell className="font-medium py-1.5">p=</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">null</TableCell>
-                <TableCell className="font-mono text-sm py-1.5">{"l00-{Mobilize ID}"}</TableCell>
+                <TableCell className="font-mono text-sm py-1.5">{"l00-{mobilize_code}"}</TableCell>
                 <TableCell className="font-mono text-sm py-1.5">{"{101 AUTO-MINT}"}</TableCell>
               </TableRow>
               <TableRow>

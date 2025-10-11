@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Activity, MapPin, Smartphone, Map, Eye, Share2, Scan } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import ActivityMap from "@/components/ActivityMap";
 import { MetricCard } from "@/components/virality/MetricCard";
@@ -345,6 +346,26 @@ export default function ActivityMonitor() {
                           <span>Token: <code className="font-mono">{event.token}</code></span>
                           <span>Deck: <code className="font-mono">{event.tokens?.deck_slug}</code></span>
                           <span>Campaign: <code className="font-mono">{event.tokens?.utm_campaign}</code></span>
+                          {event.utm_snapshot?.utm_content && (
+                            <span>
+                              UTM Content:{' '}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <code className="font-mono bg-muted px-1.5 py-0.5 rounded cursor-help">
+                                      {event.utm_snapshot.utm_content}
+                                    </code>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="space-y-1 text-xs">
+                                      <div><strong>Mobilize Code:</strong> {event.utm_snapshot.utm_content.split('-')[0]}</div>
+                                      <div><strong>UTM ID:</strong> {event.utm_snapshot.utm_content.split('-').slice(1).join('-')}</div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </span>
+                          )}
                         </div>
 
                         {/* UTM Snapshot */}

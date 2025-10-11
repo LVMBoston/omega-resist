@@ -207,6 +207,7 @@ export type Database = {
           end_date: string | null
           id: string
           last_synced_at: string | null
+          mobilize_code: string | null
           mobilize_id: string | null
           site_name: string | null
           start_date: string | null
@@ -228,6 +229,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           last_synced_at?: string | null
+          mobilize_code?: string | null
           mobilize_id?: string | null
           site_name?: string | null
           start_date?: string | null
@@ -249,6 +251,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           last_synced_at?: string | null
+          mobilize_code?: string | null
           mobilize_id?: string | null
           site_name?: string | null
           start_date?: string | null
@@ -642,12 +645,7 @@ export type Database = {
         }[]
       }
       mint_l00: {
-        Args: {
-          _deck_slug: string
-          _eoa_id: string
-          _utm_content?: string
-          _utm_medium?: string
-        }
+        Args: { _deck_slug: string; _eoa_id: string; _utm_medium?: string }
         Returns: {
           full_url: string
           token: string

@@ -22,6 +22,7 @@ interface EoaFormProps {
   eoaId?: string;
   initialData?: {
     mobilize_id?: string;
+    mobilize_code?: string;
     title: string;
     site_name?: string;
     city?: string;
@@ -34,7 +35,6 @@ interface EoaFormProps {
     assigned_deck_slug?: string;
     description?: string;
     utm_id: string;
-    utm_content?: string;
   };
   onSuccess: () => void;
   onCancel: () => void;
@@ -54,7 +54,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   };
 
   const [formData, setFormData] = useState({
-    mobilize_id: initialData?.mobilize_id || "",
+    mobilize_code: initialData?.mobilize_code || initialData?.mobilize_id || "",
     title: initialData?.title || "",
     site_name: initialData?.site_name || "",
     city: initialData?.city || "",
@@ -67,7 +67,6 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
     assigned_deck_slug: initialData?.assigned_deck_slug || "none",
     description: initialData?.description || "",
     utm_id: initialData?.utm_id || "",
-    utm_content: initialData?.utm_content || "",
   });
 
   useEffect(() => {
@@ -80,7 +79,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   };
 
   const handleImportFromMobilize = async () => {
-    if (!formData.mobilize_id) {
+    if (!formData.mobilize_code) {
       toast({
         variant: "destructive",
         title: "Missing Mobilize Code",
@@ -89,7 +88,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
       return;
     }
 
-    if (!/^\d{6}$/.test(formData.mobilize_id)) {
+    if (!/^\d{6}$/.test(formData.mobilize_code)) {
       toast({
         variant: "destructive",
         title: "Invalid Mobilize Code",
@@ -102,13 +101,11 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     try {
       const { data, error } = await supabase.functions.invoke('parse-mobilize-event', {
-        body: { eventId: formData.mobilize_id }
+        body: { eventId: formData.mobilize_code }
       });
 
       if (error) throw error;
 
-      // Auto-fill form fields with imported data
-      // dateTime and dateTimeEnd are already in the correct format (YYYY-MM-DDTHH:mm) for datetime-local inputs
       console.log('Imported event data:', data);
       setFormData({
         ...formData,
@@ -140,11 +137,11 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.utm_id) {
+    if (!formData.title || !formData.utm_id || !formData.mobilize_code) {
       toast({
         variant: "destructive",
-        title: "Missing fields",
-        description: "Title and UTM ID are required",
+        title: "Missing required fields",
+        description: "Title, UTM ID, and Mobilize Code are required",
       });
       return;
     }
@@ -195,43 +192,39 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Mobilize Code</Label>
+          <Label>Mobilize Code <span className="text-destructive">*</span></Label>
           <div className="flex gap-2">
             <Input
-              value={formData.mobilize_id}
-              onChange={(e) => setFormData({ ...formData, mobilize_id: e.target.value })}
-              placeholder="e.g., 837854"
-              maxLength={6}
+              value={formData.mobilize_code}
+              onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
+              placeholder="e.g., 837854 or ABC123"
+              maxLength={10}
             />
             <Button 
               type="button"
               variant="outline" 
               onClick={handleImportFromMobilize}
-              disabled={importLoading || !formData.mobilize_id}
+              disabled={importLoading || !formData.mobilize_code}
             >
               {importLoading ? "Importing..." : "Import"}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">6-digit Mobilize event ID</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Required: Mobilize event ID (6 digits) or custom 6-char code for non-Mobilize events
+          </p>
         </div>
         <div>
-          <Label>UTM ID *</Label>
+          <Label>UTM ID <span className="text-destructive">*</span></Label>
           <Input
             value={formData.utm_id}
             onChange={(e) => setFormData({ ...formData, utm_id: e.target.value })}
             placeholder="e.g., rally-001"
           />
-        </div>
-        <div>
-          <Label>UTM Content</Label>
-          <Input
-            value={formData.utm_content}
-            onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
-            placeholder="e.g., poster"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Used for placement tracking</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            utm_content will be auto-generated as: {formData.mobilize_code || "{code}"}-{formData.utm_id || "{utm_id}"}
+          </p>
         </div>
       </div>
 

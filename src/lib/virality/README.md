@@ -33,7 +33,7 @@ Each token maintains:
 
 ## Core Functions
 
-### 1. `mint_l00(eoa_id, placement_id, deck_slug, utm_medium)`
+### 1. `mint_l00(eoa_id, deck_slug, utm_medium)`
 
 **Purpose**: Mint root-level (L00) tokens for campaigns
 
@@ -41,19 +41,20 @@ Each token maintains:
 
 **Returns**: `{token, full_url}`
 
+**Important**: `utm_content` is automatically constructed as `{mobilize_code}-{utm_id}` by the database function. The `mobilize_code` field (either Mobilize event ID or custom 6-character code) must be present in the `events_actions` record.
+
 **Example**:
 ```typescript
 import { mintL00 } from "@/lib/virality/mint";
 
 const result = await mintL00({
   eoaId: "uuid-of-event-or-action",
-  placementId: "uuid-of-placement",
   deckSlug: "falmouth-preview",
   utmMedium: "qr"
 });
 
-console.log(result.token);     // "abc12345"
-console.log(result.full_url);  // Full URL with UTM parameters
+console.log(result.token);     // "l00-908742"
+console.log(result.full_url);  // Full URL with utm_content=908742-nkd25-02
 ```
 
 ### 2. `mint_share(parent_token, utm_medium)`
@@ -117,24 +118,32 @@ SELECT refresh_daily_aggregates();
 ## UTM Parameter Structure
 
 ### L00 (Root Token)
+
+**utm_content Format**: Automatically constructed as `{mobilize_code}-{utm_id}`  
+Example: `908742-nkd25-02` (Mobilize code 908742 + UTM ID nkd25-02)
+
 ```
 ?utm_campaign=no-kings
-&utm_id=nkd25_02
+&utm_id=nkd25-02
 &utm_source=L00
 &utm_medium=qr
-&utm_content=rally-site-001
-&t=abc12345
+&utm_content=908742-nkd25-02
+&t=l00-908742
 &v_lvl=00
 ```
 
 ### L01+ (Share Tokens)
+
+**utm_content**: Inherited unchanged from parent token for full traceability
+
 ```
 ?utm_campaign=no-kings
-&utm_id=nkd25_02
+&utm_id=nkd25-02
 &utm_source=L01
 &utm_medium=sms
+&utm_content=908742-nkd25-02
 &t=def67890
-&p=abc12345
+&p=l00-908742
 &v_lvl=01
 ```
 
@@ -219,17 +228,17 @@ See `src/lib/virality/test-queries.sql` for comprehensive E2E testing queries.
 
 ## Canonical Term Map
 
-| Democracy Forge | Database Table | Field/Column |
-|-----------------|----------------|--------------|
-| Campaign | `campaigns` | `code`, `title`, `description` |
-| EventAction (EoA) | `events_actions` | `utm_id`, `type` |
-| Deck | `decks` | `slug` |
-| DeckVersion | `deck_versions` | `deck_slug`, `version` |
-| Placement | `placements` | `code`, `name`, `context` |
-| Token | `tokens` | `token`, `level`, `parent_token`, `root_token` |
-| UrlEvent | `url_events` | `event_type`, `utm_snapshot` |
-| DailyAggregate | `daily_aggregates` | `scans`, `views`, `shares` |
-| UserRole | `user_roles` | `role` (enum: admin/manager/viewer) |
+| Democracy Forge | Database Table | Field/Column | Notes |
+|-----------------|----------------|--------------|-------|
+| Campaign | `campaigns` | `code`, `title`, `description` | |
+| EventAction (EoA) | `events_actions` | `utm_id`, `type`, `mobilize_code` | `mobilize_code` required for L00 minting |
+| Deck | `decks` | `slug` | |
+| DeckVersion | `deck_versions` | `deck_slug`, `version` | |
+| Token | `tokens` | `token`, `level`, `parent_token`, `root_token` | L00 token format: `l00-{mobilize_code}` |
+| UrlEvent | `url_events` | `event_type`, `utm_snapshot` | |
+| DailyAggregate | `daily_aggregates` | `scans`, `views`, `shares` | |
+| UserRole | `user_roles` | `role` (enum: admin/manager/viewer) | |
+| **utm_content** | `tokens` | `utm_content` | Auto-constructed as `{mobilize_code}-{utm_id}` (e.g., `908742-nkd25-02`) |
 
 ## Future Enhancements
 
