@@ -42,6 +42,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
   // Fetch Mapbox token on mount
   useEffect(() => {
+    console.log("ActivityMap mounted, fetching Mapbox token");
     fetchMapboxToken();
   }, []);
 
