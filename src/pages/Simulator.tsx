@@ -123,14 +123,33 @@ export default function Simulator() {
           continue;
         }
 
-        // Mint L00 tokens
-        for (let i = 0; i < l00Count; i++) {
-          const { token: l00Token } = await mintL00({
+        // Check if L00 token already exists for this EOA
+        const { data: existingL00 } = await supabase
+          .from('tokens')
+          .select('token')
+          .eq('eoa_id', eoa.id)
+          .eq('level', 0)
+          .single();
+
+        let l00Token: string;
+        
+        if (existingL00) {
+          // Use existing L00 token
+          l00Token = existingL00.token;
+          console.log(`Using existing L00 token for ${eoa.title}: ${l00Token}`);
+        } else {
+          // Mint new L00 token
+          const result = await mintL00({
             eoaId: eoa.id,
             deckSlug: eoa.assigned_deck_slug,
             utmMedium: "qr",
           });
+          l00Token = result.token;
+          console.log(`Minted new L00 token for ${eoa.title}: ${l00Token}`);
+        }
 
+        // Mint L00 shares (simulate multiple people scanning the same QR code)
+        for (let i = 0; i < l00Count; i++) {
           // Log L00 scan event with location
           await logEventWithLocation(l00Token, "scan", l00Location);
 
