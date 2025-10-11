@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,18 @@ import {
   randomTimestampInRange,
   type LocationData 
 } from "@/lib/virality/simulator";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2, StopCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface EoA {
   id: string;
@@ -38,6 +49,7 @@ export default function Simulator() {
   const [l03Factor, setL03Factor] = useState(1);
   const [isSimulating, setIsSimulating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch campaigns
   const { data: campaigns } = useQuery({
@@ -87,6 +99,48 @@ export default function Simulator() {
     setSelectedEoaIds(new Set());
   };
 
+  const stopSimulation = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      toast({
+        title: "Simulation stopped",
+        description: "The simulation has been aborted.",
+      });
+    }
+  };
+
+  const clearSimulationData = async () => {
+    try {
+      // Delete all events first (due to foreign key constraints)
+      const { error: eventsError } = await supabase
+        .from('url_events')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      
+      if (eventsError) throw eventsError;
+
+      // Delete all tokens
+      const { error: tokensError } = await supabase
+        .from('tokens')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      
+      if (tokensError) throw tokensError;
+
+      toast({
+        title: "Data cleared",
+        description: "All simulation data has been deleted.",
+      });
+    } catch (error) {
+      console.error("Error clearing data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear simulation data.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const runSimulation = async () => {
     if (selectedEoaIds.size === 0) {
       toast({
@@ -97,6 +151,8 @@ export default function Simulator() {
       return;
     }
 
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
     setIsSimulating(true);
     setProgress(0);
 
@@ -106,6 +162,11 @@ export default function Simulator() {
 
     try {
       for (const eoa of selectedEoas) {
+        // Check if aborted
+        if (abortControllerRef.current.signal.aborted) {
+          throw new Error("Simulation aborted");
+        }
+
         // Validate EOA has required data
         if (!eoa.zip_code || !eoa.assigned_deck_slug) {
           console.warn(`Skipping ${eoa.title}: missing zip_code or assigned_deck_slug`);
@@ -150,6 +211,11 @@ export default function Simulator() {
 
         // Mint L00 shares (simulate multiple people scanning the same QR code)
         for (let i = 0; i < l00Count; i++) {
+          // Check if aborted
+          if (abortControllerRef.current.signal.aborted) {
+            throw new Error("Simulation aborted");
+          }
+
           // Log L00 scan event with location
           await logEventWithLocation(l00Token, "scan", l00Location);
 
@@ -194,6 +260,10 @@ export default function Simulator() {
       });
     } catch (error: any) {
       console.error("Simulation error:", error);
+      if (error.message === "Simulation aborted") {
+        // Don't show error toast for user-initiated abort
+        return;
+      }
       toast({
         title: "Simulation failed",
         description: error.message || "An error occurred during simulation",
@@ -202,6 +272,7 @@ export default function Simulator() {
     } finally {
       setIsSimulating(false);
       setProgress(0);
+      abortControllerRef.current = null;
     }
   };
 
@@ -393,6 +464,46 @@ export default function Simulator() {
                   "Run Simulation"
                 )}
               </Button>
+
+              {isSimulating && (
+                <Button
+                  onClick={stopSimulation}
+                  variant="destructive"
+                  className="w-full"
+                  size="lg"
+                >
+                  <StopCircle className="mr-2 h-4 w-4" />
+                  Stop Simulation
+                </Button>
+              )}
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    size="lg"
+                    disabled={isSimulating}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear All Data
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all simulation data?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all tokens and events from the database. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearSimulationData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </CardContent>
           </Card>
         )}
