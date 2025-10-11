@@ -160,7 +160,7 @@ export default function Simulator() {
               parentToken: l00Token,
               utmMedium: "social",
             });
-            await logEventWithLocation(l01Token, "view", l01Location);
+            await logEventWithLocation(l01Token, "share", l01Location);
 
             // Mint L02 tokens
             for (let k = 0; k < l02Factor; k++) {
@@ -169,7 +169,7 @@ export default function Simulator() {
                 parentToken: l01Token,
                 utmMedium: "social",
               });
-              await logEventWithLocation(l02Token, "view", l02Location);
+              await logEventWithLocation(l02Token, "share", l02Location);
 
               // Mint L03 tokens
               for (let m = 0; m < l03Factor; m++) {
@@ -178,7 +178,7 @@ export default function Simulator() {
                   parentToken: l02Token,
                   utmMedium: "p2p",
                 });
-                await logEventWithLocation(l03Token, "view", l03Location);
+                await logEventWithLocation(l03Token, "share", l03Location);
               }
             }
           }
