@@ -833,7 +833,9 @@ export default function CampaignEoaManager() {
       <Dialog open={payloadDialogOpen} onOpenChange={setPayloadDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Payload Structure for {selectedEoa?.title}</DialogTitle>
+            <DialogTitle>
+              Payload Structure for: {selectedEoa?.mobilize_code || "{mobilize_code}"} - {campaign.title} {selectedEoa?.city || ""}
+            </DialogTitle>
             <DialogDescription>
               Comparison of L00, L01, and L02 payload structures with known values filled in
             </DialogDescription>
