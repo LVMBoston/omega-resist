@@ -66,6 +66,37 @@ export default function CampaignDashboard() {
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
 
+  // Sync filters across tabs using localStorage
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "campaign-dashboard-filters" && e.newValue) {
+        const filters = JSON.parse(e.newValue);
+        const params = new URLSearchParams(searchParams);
+        params.set("campaign", filters.campaign);
+        params.set("campaignId", filters.campaignId);
+        params.set("eventType", filters.eventType);
+        params.set("dataSource", filters.dataSource);
+        setSearchParams(params, { replace: true });
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [searchParams, setSearchParams]);
+
+  // Update localStorage when filters change
+  useEffect(() => {
+    if (selectedCampaign && selectedCampaignId) {
+      const filters = {
+        campaign: selectedCampaign,
+        campaignId: selectedCampaignId,
+        eventType: eventTypeFilter,
+        dataSource: dataSourceFilter,
+      };
+      localStorage.setItem("campaign-dashboard-filters", JSON.stringify(filters));
+    }
+  }, [selectedCampaign, selectedCampaignId, eventTypeFilter, dataSourceFilter]);
+
   // Fetch campaigns
   const { data: campaigns, isLoading: campaignsLoading } = useQuery({
     queryKey: ["campaigns"],
