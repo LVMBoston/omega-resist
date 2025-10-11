@@ -59,11 +59,27 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     try {
       mapboxgl.accessToken = mapboxToken;
 
+      // Restore saved position or use default
+      const savedPosition = localStorage.getItem('activityMapPosition');
+      let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
+      let zoom = 4; // Default zoom
+
+      if (savedPosition) {
+        try {
+          const parsed = JSON.parse(savedPosition);
+          center = parsed.center;
+          zoom = parsed.zoom;
+          console.log("Restored map position:", center, "zoom:", zoom);
+        } catch (e) {
+          console.warn("Failed to parse saved map position:", e);
+        }
+      }
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/light-v11",
-        center: [-98.5795, 39.8283], // Center of USA
-        zoom: 4,
+        center,
+        zoom,
         projection: "mercator" as any,
       });
 
@@ -83,6 +99,17 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       map.current.on("load", () => {
         console.log("Map loaded, fetching events");
         fetchEvents();
+      });
+
+      // Save position on move end
+      map.current.on("moveend", () => {
+        if (!map.current) return;
+        const center = map.current.getCenter();
+        const zoom = map.current.getZoom();
+        localStorage.setItem('activityMapPosition', JSON.stringify({
+          center: [center.lng, center.lat],
+          zoom
+        }));
       });
     } catch (err) {
       console.error("Error initializing map:", err);
