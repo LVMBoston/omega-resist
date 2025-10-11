@@ -47,13 +47,13 @@ export function MetricCard({
   const getStatusColor = () => {
     switch (status) {
       case "good":
-        return "border-green-500/50 bg-green-500/5";
+        return "border-blue-500/50 bg-blue-500/5";
       case "warning":
-        return "border-yellow-500/50 bg-yellow-500/5";
+        return "border-purple-500/50 bg-purple-500/5";
       case "bad":
         return "border-red-500/50 bg-red-500/5";
       default:
-        return "";
+        return "border-green-500/50 bg-green-500/5";
     }
   };
 

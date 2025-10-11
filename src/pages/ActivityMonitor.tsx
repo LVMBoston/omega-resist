@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, Map } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, Map, Eye, Share2, Scan } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import ActivityMap from "@/components/ActivityMap";
+import { MetricCard } from "@/components/virality/MetricCard";
 
 interface UrlEvent {
   id: string;
@@ -40,8 +41,11 @@ export default function ActivityMonitor() {
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+  const [l00Filter, setL00Filter] = useState<string>("all");
+  const [l00Options, setL00Options] = useState<Array<{ eoa_id: string; mobilize_code: string; city: string; state: string }>>([]);
 
   useEffect(() => {
+    fetchL00Options();
     fetchEvents();
     
     // Subscribe to real-time updates
@@ -63,7 +67,44 @@ export default function ActivityMonitor() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventTypeFilter]);
+  }, [eventTypeFilter, l00Filter]);
+
+  const fetchL00Options = async () => {
+    const { data, error } = await supabase
+      .from("tokens")
+      .select(`
+        eoa_id,
+        events_actions!inner(
+          utm_id,
+          city,
+          state
+        )
+      `)
+      .eq("level", 0);
+
+    if (error) {
+      console.error("Error fetching L00 options:", error);
+      return;
+    }
+
+    if (!data) return;
+
+    // Create unique list of L00 options using a plain object
+    const optionsObj: Record<string, { eoa_id: string; mobilize_code: string; city: string; state: string }> = {};
+    
+    data.forEach((item: any) => {
+      if (item.eoa_id && !optionsObj[item.eoa_id]) {
+        optionsObj[item.eoa_id] = {
+          eoa_id: item.eoa_id,
+          mobilize_code: item.events_actions?.utm_id || "Unknown",
+          city: item.events_actions?.city || "",
+          state: item.events_actions?.state || "",
+        };
+      }
+    });
+
+    setL00Options(Object.values(optionsObj));
+  };
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -89,6 +130,10 @@ export default function ActivityMonitor() {
 
     if (eventTypeFilter !== "all") {
       query = query.eq("event_type", eventTypeFilter);
+    }
+
+    if (l00Filter !== "all") {
+      query = query.eq("tokens.eoa_id", l00Filter);
     }
 
     const { data, error } = await query;
@@ -127,6 +172,11 @@ export default function ActivityMonitor() {
     return "🖥️ " + ua.slice(0, 30) + "...";
   };
 
+  // Calculate metrics
+  const scansCount = events.filter(e => e.event_type === "scan").length;
+  const viewsCount = events.filter(e => e.event_type === "view").length;
+  const sharesCount = events.filter(e => e.event_type === "share").length;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -148,23 +198,64 @@ export default function ActivityMonitor() {
           </p>
         </div>
 
+        {/* Metric Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <MetricCard
+            title="Scans"
+            value={scansCount}
+            format="number"
+            status="good"
+          />
+          <MetricCard
+            title="Views"
+            value={viewsCount}
+            format="number"
+            status="neutral"
+          />
+          <MetricCard
+            title="Shares"
+            value={sharesCount}
+            format="number"
+            status="warning"
+          />
+        </div>
+
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Filters</CardTitle>
-            <CardDescription>Filter events by type</CardDescription>
+            <CardDescription>Filter events by type and L00 code</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Events</SelectItem>
-                <SelectItem value="scan">Scans Only</SelectItem>
-                <SelectItem value="view">Views Only</SelectItem>
-                <SelectItem value="share">Shares Only</SelectItem>
-              </SelectContent>
-            </Select>
+          <CardContent className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-2 block">Event Type</label>
+              <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  <SelectItem value="scan">Scans Only</SelectItem>
+                  <SelectItem value="view">Views Only</SelectItem>
+                  <SelectItem value="share">Shares Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-2 block">L00 - Mobilize Code</label>
+              <Select value={l00Filter} onValueChange={setL00Filter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All L00 Codes</SelectItem>
+                  {l00Options.map((option) => (
+                    <SelectItem key={option.eoa_id} value={option.eoa_id}>
+                      {option.mobilize_code} - {option.city}, {option.state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
