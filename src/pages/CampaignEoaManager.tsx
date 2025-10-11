@@ -228,6 +228,64 @@ export default function CampaignEoaManager() {
     }
   };
 
+  const handleBulkGenerateL00 = async () => {
+    const selectedEoas = eoas.filter(eoa => selectedRows.has(eoa.id));
+    
+    // Filter out already minted and validate requirements
+    const readyToMint = selectedEoas.filter(eoa => {
+      const alreadyMinted = !!l00Tokens[eoa.id];
+      const hasRequirements = !!eoa.mobilize_code && !!eoa.assigned_deck_slug;
+      return !alreadyMinted && hasRequirements;
+    });
+
+    if (readyToMint.length === 0) {
+      toast({
+        title: "No Tokens to Generate",
+        description: "Selected rows are either already minted or missing required fields (Mobilize Code, Deck)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const eoa of readyToMint) {
+      try {
+        const result = await mintL00({
+          eoaId: eoa.id,
+          deckSlug: eoa.assigned_deck_slug!,
+          utmMedium: "qr"
+        });
+
+        setL00Tokens(prev => ({
+          ...prev,
+          [eoa.id]: { token: result.token, url: result.full_url }
+        }));
+
+        successCount++;
+      } catch (error: any) {
+        console.error(`Failed to mint L00 for ${eoa.title}:`, error);
+        errorCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast({
+        title: "Bulk L00 Generation Complete",
+        description: `Generated ${successCount} token${successCount !== 1 ? 's' : ''}${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+      });
+    }
+
+    if (errorCount > 0 && successCount === 0) {
+      toast({
+        title: "Bulk Generation Failed",
+        description: `Failed to generate ${errorCount} token${errorCount !== 1 ? 's' : ''}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCopyUrl = (url: string, eoaId: string) => {
     navigator.clipboard.writeText(url);
     setCopiedUrl(eoaId);
@@ -670,7 +728,22 @@ export default function CampaignEoaManager() {
                       </Button>
                     </TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>L00 Token</TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <span>L00 Token</span>
+                        {selectedRows.size > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleBulkGenerateL00}
+                            className="h-7 text-xs"
+                          >
+                            <QrCode className="h-3 w-3 mr-1" />
+                            Generate Selected ({selectedRows.size})
+                          </Button>
+                        )}
+                      </div>
+                    </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
