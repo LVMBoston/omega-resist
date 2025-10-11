@@ -31,11 +31,14 @@ export default function SharedDashboard() {
 
   const validateShare = async () => {
     if (!shareCode) {
+      console.log("No share code provided");
       setLoading(false);
       return;
     }
 
     try {
+      console.log("Validating share code:", shareCode);
+      
       // Validate share code
       const { data: share, error } = await supabase
         .from("dashboard_shares")
@@ -50,7 +53,10 @@ export default function SharedDashboard() {
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
 
+      console.log("Share query result:", { share, error });
+
       if (error || !share) {
+        console.error("Share validation failed:", error);
         setIsValid(false);
         setLoading(false);
         return;
