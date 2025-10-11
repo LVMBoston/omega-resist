@@ -50,6 +50,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
   // Initialize map when token is available
   useEffect(() => {
+    console.log("Map initialization effect triggered, mapboxToken:", mapboxToken ? "present" : "null", "mapContainer:", mapContainer.current ? "present" : "null", "map:", map.current ? "present" : "null");
+    
     if (!mapboxToken || !mapContainer.current || map.current) return;
 
     console.log("Initializing Mapbox map with token");
@@ -65,6 +67,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         projection: "mercator" as any,
       });
 
+      console.log("Map instance created");
+
       // Add navigation controls
       map.current.addControl(
         new mapboxgl.NavigationControl({
@@ -72,6 +76,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         }),
         "top-right"
       );
+
+      console.log("Navigation controls added");
 
       // Wait for map to load before adding data
       map.current.on("load", () => {
@@ -84,6 +90,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     }
 
     return () => {
+      console.log("Cleaning up map");
       map.current?.remove();
     };
   }, [mapboxToken]);
