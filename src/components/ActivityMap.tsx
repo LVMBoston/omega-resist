@@ -386,21 +386,15 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     );
   }
 
-  if (loading && !map.current) {
-    return (
-      <div className="flex items-center justify-center h-[600px]">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="relative">
       <div ref={mapContainer} className="w-full h-[600px] rounded-lg" />
       {loading && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Loading events...</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+          <div className="bg-background px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Loading map...</span>
+          </div>
         </div>
       )}
       {!loading && events.length === 0 && (
