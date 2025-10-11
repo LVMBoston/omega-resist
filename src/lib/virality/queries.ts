@@ -3,11 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Get breadth (unique tokens per level) and depth (max level) for a root token
  */
-export async function getTokenMetrics(rootToken: string) {
-  const { data, error } = await supabase
+export async function getTokenMetrics(rootToken: string, includeSimulated: boolean = false) {
+  let query = supabase
     .from("tokens")
     .select("level")
     .eq("root_token", rootToken);
+
+  if (!includeSimulated) {
+    query = query.eq("is_simulated", false);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -34,9 +40,9 @@ export async function getTokenMetrics(rootToken: string) {
 /**
  * Get engagement metrics by utm_content for a root token
  */
-export async function getEngagementByContent(rootToken: string) {
+export async function getEngagementByContent(rootToken: string, includeSimulated: boolean = false) {
   // Query url_events joined with tokens
-  const { data: events, error } = await supabase
+  let query = supabase
     .from("url_events")
     .select(`
       event_type,
@@ -46,6 +52,12 @@ export async function getEngagementByContent(rootToken: string) {
       )
     `)
     .eq("tokens.root_token", rootToken);
+
+  if (!includeSimulated) {
+    query = query.eq("is_simulated", false);
+  }
+
+  const { data: events, error } = await query;
 
   if (error) throw error;
 
@@ -97,13 +109,18 @@ export async function getCampaignAggregates(campaignId: string, startDate?: stri
 /**
  * Get token chain (parent/child relationships)
  */
-export async function getTokenChain(token: string) {
-  const { data, error } = await supabase
+export async function getTokenChain(token: string, includeSimulated: boolean = false) {
+  let query = supabase
     .from("tokens")
     .select("token, level, parent_token, root_token, utm_source, utm_medium, minted_at")
     .or(`token.eq.${token},parent_token.eq.${token},root_token.eq.${token}`)
     .order("level", { ascending: true });
 
+  if (!includeSimulated) {
+    query = query.eq("is_simulated", false);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }

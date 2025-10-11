@@ -199,14 +199,21 @@ export default function Simulator() {
           l00Token = existingL00.token;
           console.log(`Using existing L00 token for ${eoa.title}: ${l00Token}`);
         } else {
-          // Mint new L00 token
+          // Mint new L00 token and mark as simulated
           const result = await mintL00({
             eoaId: eoa.id,
             deckSlug: eoa.assigned_deck_slug,
             utmMedium: "qr",
           });
           l00Token = result.token;
-          console.log(`Minted new L00 token for ${eoa.title}: ${l00Token}`);
+          
+          // Mark the token as simulated
+          await supabase
+            .from('tokens')
+            .update({ is_simulated: true })
+            .eq('token', l00Token);
+          
+          console.log(`Minted new simulated L00 token for ${eoa.title}: ${l00Token}`);
         }
 
         // Mint L00 shares (simulate multiple people scanning the same QR code)
@@ -219,35 +226,44 @@ export default function Simulator() {
           // Log L00 scan event with location
           await logEventWithLocation(l00Token, "scan", l00Location);
 
-          // Mint L01 tokens
-          for (let j = 0; j < l01Factor; j++) {
-            const l01Location = getLocationForLevel(1, l00Location);
-            const { token: l01Token } = await mintShare({
-              parentToken: l00Token,
-              utmMedium: "social",
-            });
-            await logEventWithLocation(l01Token, "share", l01Location);
-
-            // Mint L02 tokens
-            for (let k = 0; k < l02Factor; k++) {
-              const l02Location = getLocationForLevel(2, l01Location);
-              const { token: l02Token } = await mintShare({
-                parentToken: l01Token,
+            // Mint L01 tokens
+            for (let j = 0; j < l01Factor; j++) {
+              const l01Location = getLocationForLevel(1, l00Location);
+              const { token: l01Token } = await mintShare({
+                parentToken: l00Token,
                 utmMedium: "social",
               });
-              await logEventWithLocation(l02Token, "share", l02Location);
+              
+              // Mark as simulated
+              await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
+              await logEventWithLocation(l01Token, "share", l01Location);
 
-              // Mint L03 tokens
-              for (let m = 0; m < l03Factor; m++) {
-                const l03Location = getLocationForLevel(3, l02Location);
-                const { token: l03Token } = await mintShare({
-                  parentToken: l02Token,
-                  utmMedium: "p2p",
+              // Mint L02 tokens
+              for (let k = 0; k < l02Factor; k++) {
+                const l02Location = getLocationForLevel(2, l01Location);
+                const { token: l02Token } = await mintShare({
+                  parentToken: l01Token,
+                  utmMedium: "social",
                 });
-                await logEventWithLocation(l03Token, "share", l03Location);
+                
+                // Mark as simulated
+                await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
+                await logEventWithLocation(l02Token, "share", l02Location);
+
+                // Mint L03 tokens
+                for (let m = 0; m < l03Factor; m++) {
+                  const l03Location = getLocationForLevel(3, l02Location);
+                  const { token: l03Token } = await mintShare({
+                    parentToken: l02Token,
+                    utmMedium: "p2p",
+                  });
+                  
+                  // Mark as simulated
+                  await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
+                  await logEventWithLocation(l03Token, "share", l03Location);
+                }
               }
             }
-          }
         }
 
         completedSteps++;

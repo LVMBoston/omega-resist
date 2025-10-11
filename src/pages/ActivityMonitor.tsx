@@ -25,6 +25,7 @@ interface UrlEvent {
   country: string | null;
   country_code: string | null;
   zip_code: string | null;
+  is_simulated: boolean;
   tokens?: {
     level: number;
     deck_slug: string;
@@ -43,6 +44,7 @@ export default function ActivityMonitor() {
   const [loading, setLoading] = useState(true);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [l00Filter, setL00Filter] = useState<string>("all");
+  const [showSimulated, setShowSimulated] = useState<boolean>(false);
   const [l00Options, setL00Options] = useState<Array<{ eoa_id: string; mobilize_code: string; city: string; state: string }>>([]);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function ActivityMonitor() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventTypeFilter, l00Filter]);
+  }, [eventTypeFilter, l00Filter, showSimulated]);
 
   const fetchL00Options = async () => {
     const { data, error } = await supabase
@@ -135,6 +137,11 @@ export default function ActivityMonitor() {
 
     if (l00Filter !== "all") {
       query = query.eq("tokens.eoa_id", l00Filter);
+    }
+
+    // Filter by simulated status
+    if (!showSimulated) {
+      query = query.eq("is_simulated", false);
     }
 
     const { data, error } = await query;
@@ -224,7 +231,7 @@ export default function ActivityMonitor() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Filters</CardTitle>
-            <CardDescription>Filter events by type and L00 code</CardDescription>
+            <CardDescription>Filter events by type, L00 code, and data source</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
@@ -254,6 +261,18 @@ export default function ActivityMonitor() {
                       {option.mobilize_code} - {option.city}, {option.state}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-2 block">Data Source</label>
+              <Select value={showSimulated ? "all" : "real"} onValueChange={(v) => setShowSimulated(v === "all")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="real">Real Data Only</SelectItem>
+                  <SelectItem value="all">Include Simulated</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -293,6 +312,11 @@ export default function ActivityMonitor() {
                         <Badge variant="outline">
                           {getLevelBadge(event.tokens?.level || 0)}
                         </Badge>
+                        {event.is_simulated && (
+                          <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+                            SIMULATED
+                          </Badge>
+                        )}
                         <span className="text-sm text-muted-foreground">
                           {format(new Date(event.occurred_at), "PPp")}
                         </span>

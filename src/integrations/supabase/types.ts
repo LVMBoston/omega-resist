@@ -386,6 +386,7 @@ export type Database = {
           eoa_id: string
           full_url: string
           id: string
+          is_simulated: boolean
           level: number
           minted_at: string
           parent_token: string | null
@@ -403,6 +404,7 @@ export type Database = {
           eoa_id: string
           full_url: string
           id?: string
+          is_simulated?: boolean
           level: number
           minted_at?: string
           parent_token?: string | null
@@ -420,6 +422,7 @@ export type Database = {
           eoa_id?: string
           full_url?: string
           id?: string
+          is_simulated?: boolean
           level?: number
           minted_at?: string
           parent_token?: string | null
@@ -470,6 +473,7 @@ export type Database = {
           event_type: string
           id: string
           ip_address: unknown | null
+          is_simulated: boolean
           latitude: number | null
           longitude: number | null
           occurred_at: string
@@ -486,6 +490,7 @@ export type Database = {
           event_type: string
           id?: string
           ip_address?: unknown | null
+          is_simulated?: boolean
           latitude?: number | null
           longitude?: number | null
           occurred_at?: string
@@ -502,6 +507,7 @@ export type Database = {
           event_type?: string
           id?: string
           ip_address?: unknown | null
+          is_simulated?: boolean
           latitude?: number | null
           longitude?: number | null
           occurred_at?: string

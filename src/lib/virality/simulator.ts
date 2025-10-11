@@ -320,23 +320,28 @@ export async function logEventWithLocation(
   eventType: "scan" | "view" | "share",
   location: LocationData
 ) {
-  const { data, error } = await supabase.rpc("log_event", {
-    _token: token,
-    _event_type: eventType,
-    _utm_snapshot: null,
-    _ip_address: null,
-    _user_agent: "Simulator/1.0",
-    _latitude: location.latitude,
-    _longitude: location.longitude,
-    _city: location.city,
-    _region: location.region,
-    _country: location.country,
-    _country_code: location.country_code,
-    _zip_code: location.zip_code,
-  });
+  // Insert directly with is_simulated flag
+  const { data, error } = await supabase
+    .from("url_events")
+    .insert({
+      token,
+      event_type: eventType,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      city: location.city,
+      region: location.region,
+      country: location.country,
+      country_code: location.country_code,
+      zip_code: location.zip_code,
+      is_simulated: true,
+      user_agent: "Simulator/1.0",
+      occurred_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
   if (error) {
-    console.error("logEventWithLocation error:", error);
+    console.error("Error logging simulated event:", error);
     throw error;
   }
 
