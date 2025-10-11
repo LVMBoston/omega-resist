@@ -137,16 +137,11 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         .select(
           `
           *,
-          tokens!inner(
+          tokens(
             level,
             deck_slug,
             utm_campaign,
-            eoa_id,
-            events_actions(
-              title,
-              city,
-              state
-            )
+            eoa_id
           )
         `
         )
@@ -162,6 +157,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       const { data, error } = await query;
 
       if (error) throw error;
+
+      console.log("Fetched events for map:", data?.length);
 
       const eventsData = (data || []) as UrlEvent[];
       setEvents(eventsData);
@@ -195,9 +192,6 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
           city: event.city,
           region: event.region,
           country: event.country,
-          eoaTitle: event.tokens?.events_actions?.title || "Unknown",
-          eoaCity: event.tokens?.events_actions?.city,
-          eoaState: event.tokens?.events_actions?.state,
           deckSlug: event.tokens?.deck_slug,
           campaign: event.tokens?.utm_campaign,
         },
@@ -335,12 +329,6 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
             </div>
             <div class="space-y-1 text-sm">
               <div><strong>Location:</strong> ${props.city || "Unknown"}, ${props.region || ""}</div>
-              <div><strong>Event:</strong> ${props.eoaTitle}</div>
-              ${
-                props.eoaCity
-                  ? `<div><strong>Event Location:</strong> ${props.eoaCity}, ${props.eoaState}</div>`
-                  : ""
-              }
               <div><strong>Time:</strong> ${format(new Date(props.occurredAt), "PPp")}</div>
               <div><strong>Deck:</strong> <code class="text-xs">${props.deckSlug}</code></div>
               <div><strong>Token:</strong> <code class="text-xs">${props.token}</code></div>
