@@ -50,6 +50,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
   useEffect(() => {
     if (!mapboxToken || !mapContainer.current || map.current) return;
 
+    console.log("Initializing Mapbox map with token");
+
     try {
       mapboxgl.accessToken = mapboxToken;
 
@@ -71,6 +73,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
       // Wait for map to load before adding data
       map.current.on("load", () => {
+        console.log("Map loaded, fetching events");
         fetchEvents();
       });
     } catch (err) {
@@ -130,6 +133,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
   };
 
   const fetchEvents = async () => {
+    console.log("fetchEvents called, loading:", loading);
     setLoading(true);
 
     try {
@@ -155,9 +159,13 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         query = query.eq("event_type", eventTypeFilter);
       }
 
+      console.log("Executing query for events...");
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching events:", error);
+        throw error;
+      }
 
       console.log("Fetched events for map:", data?.length);
 
@@ -165,7 +173,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       setEvents(eventsData);
       updateMapData(eventsData);
     } catch (err) {
-      console.error("Error fetching events:", err);
+      console.error("Error in fetchEvents:", err);
       setError("Failed to load events");
     } finally {
       setLoading(false);
