@@ -15,6 +15,8 @@ import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, 
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
+import { shortenUrlsBatch } from "@/lib/virality/shortener";
+import { TokenDisplay } from "@/components/TokenDisplay";
 interface Campaign {
   id: string;
   code: string;
@@ -63,8 +65,14 @@ export default function CampaignEoaManager() {
   const [bulkUtmId, setBulkUtmId] = useState("");
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [generatingL00, setGeneratingL00] = useState<string | null>(null);
-  const [l00Tokens, setL00Tokens] = useState<Record<string, { token: string; url: string }>>({});
+  const [l00Tokens, setL00Tokens] = useState<Record<string, { token: string; url: string; shortUrl?: string; shorteningInProgress?: boolean }>>({});
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [selectedTokenForDisplay, setSelectedTokenForDisplay] = useState<{
+    token: string;
+    url: string;
+    shortUrl?: string;
+    eoaTitle: string;
+  } | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   useEffect(() => {
@@ -201,23 +209,67 @@ export default function CampaignEoaManager() {
     }
 
     setGeneratingL00(eoa.id);
-    try {
-      const result = await mintL00({
-        eoaId: eoa.id,
-        deckSlug: eoa.assigned_deck_slug,
-        utmMedium: "qr"
-      });
+    
+    // Mark as shortening in progress
+    setL00Tokens(prev => ({
+      ...prev,
+      [eoa.id]: { 
+        token: "", 
+        url: "", 
+        shorteningInProgress: true 
+      }
+    }));
 
+    try {
+      // Lazy shortening: get token immediately, shorten in background
+      const result = await mintL00(
+        {
+          eoaId: eoa.id,
+          deckSlug: eoa.assigned_deck_slug,
+          utmMedium: "qr"
+        },
+        {
+          lazy: true,
+          onShortened: (shortUrl) => {
+            // Update with short URL when ready
+            setL00Tokens(prev => ({
+              ...prev,
+              [eoa.id]: { 
+                ...prev[eoa.id],
+                shortUrl,
+                shorteningInProgress: false
+              }
+            }));
+            
+            toast({
+              title: "Short URL Ready",
+              description: shortUrl,
+            });
+          }
+        }
+      );
+
+      // Immediately update with token and full URL
       setL00Tokens(prev => ({
         ...prev,
-        [eoa.id]: { token: result.token, url: result.full_url }
+        [eoa.id]: { 
+          token: result.token, 
+          url: result.full_url,
+          shorteningInProgress: true // Still shortening in background
+        }
       }));
 
       toast({
         title: "L00 Token Generated",
-        description: `Token: ${result.token}`,
+        description: `Token: ${result.token} (shortening URL...)`,
       });
     } catch (error: any) {
+      setL00Tokens(prev => {
+        const updated = { ...prev };
+        delete updated[eoa.id];
+        return updated;
+      });
+      
       toast({
         title: "Error Generating Token",
         description: error.message,
@@ -249,20 +301,35 @@ export default function CampaignEoaManager() {
 
     let successCount = 0;
     let errorCount = 0;
+    const urlsToShorten: { eoaId: string; fullUrl: string }[] = [];
+
+    // Step 1: Mint all tokens (fast, no shortening)
+    toast({
+      title: "Generating Tokens...",
+      description: `Processing ${readyToMint.length} tokens`,
+    });
 
     for (const eoa of readyToMint) {
       try {
-        const result = await mintL00({
-          eoaId: eoa.id,
-          deckSlug: eoa.assigned_deck_slug!,
-          utmMedium: "qr"
-        });
+        const result = await mintL00(
+          {
+            eoaId: eoa.id,
+            deckSlug: eoa.assigned_deck_slug!,
+            utmMedium: "qr"
+          },
+          { lazy: false } // Don't shorten yet, batch it later
+        );
 
         setL00Tokens(prev => ({
           ...prev,
-          [eoa.id]: { token: result.token, url: result.full_url }
+          [eoa.id]: { 
+            token: result.token, 
+            url: result.full_url,
+            shorteningInProgress: true
+          }
         }));
 
+        urlsToShorten.push({ eoaId: eoa.id, fullUrl: result.full_url });
         successCount++;
       } catch (error: any) {
         console.error(`Failed to mint L00 for ${eoa.title}:`, error);
@@ -270,10 +337,32 @@ export default function CampaignEoaManager() {
       }
     }
 
-    if (successCount > 0) {
+    // Step 2: Batch shorten all URLs in parallel
+    if (urlsToShorten.length > 0) {
       toast({
-        title: "Bulk L00 Generation Complete",
-        description: `Generated ${successCount} token${successCount !== 1 ? 's' : ''}${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        title: "Shortening URLs...",
+        description: `Processing ${urlsToShorten.length} URLs in parallel`,
+      });
+
+      const fullUrls = urlsToShorten.map(item => item.fullUrl);
+      const shortUrlMap = await shortenUrlsBatch(fullUrls);
+
+      // Update state with short URLs
+      setL00Tokens(prev => {
+        const updated = { ...prev };
+        urlsToShorten.forEach(({ eoaId, fullUrl }) => {
+          if (updated[eoaId]) {
+            updated[eoaId].shortUrl = shortUrlMap.get(fullUrl);
+            updated[eoaId].shorteningInProgress = false;
+          }
+        });
+        return updated;
+      });
+
+      const shortUrlCount = shortUrlMap.size;
+      toast({
+        title: "Bulk Generation Complete",
+        description: `✅ ${successCount} tokens generated\n🔗 ${shortUrlCount} URLs shortened${errorCount > 0 ? `\n❌ ${errorCount} failed` : ''}`,
       });
     }
 
@@ -782,34 +871,45 @@ export default function CampaignEoaManager() {
                       </TableCell>
                       <TableCell>
                         {l00Tokens[eoa.id] ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <code className="text-xs bg-muted px-2 py-1 rounded">
-                                {l00Tokens[eoa.id].token}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCopyUrl(l00Tokens[eoa.id].url, eoa.id)}
-                              >
-                                {copiedUrl === eoa.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <QRCodeSVG
-                                id={`qr-${eoa.id}`}
-                                value={l00Tokens[eoa.id].url}
-                                size={80}
-                                level="M"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDownloadQR(eoa.id, eoa.title)}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            {l00Tokens[eoa.id].shorteningInProgress ? (
+                              <Badge variant="secondary" className="animate-pulse">
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Shortening...
+                              </Badge>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const tokenData = l00Tokens[eoa.id];
+                                    const urlToUse = tokenData.shortUrl || tokenData.url;
+                                    handleCopyUrl(urlToUse, eoa.id);
+                                  }}
+                                >
+                                  <Copy className="h-4 w-4 mr-1" />
+                                  {l00Tokens[eoa.id].shortUrl ? "Short URL" : "URL"}
+                                </Button>
+                                {l00Tokens[eoa.id].shortUrl && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Shortened
+                                  </Badge>
+                                )}
+                              </>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedTokenForDisplay({ 
+                                token: l00Tokens[eoa.id].token, 
+                                url: l00Tokens[eoa.id].url,
+                                shortUrl: l00Tokens[eoa.id].shortUrl,
+                                eoaTitle: eoa.title 
+                              })}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </div>
                         ) : (
                           <Button
@@ -1118,5 +1218,14 @@ export default function CampaignEoaManager() {
           </Table>
         </DialogContent>
       </Dialog>
+
+      <TokenDisplay
+        open={!!selectedTokenForDisplay}
+        onOpenChange={(open) => !open && setSelectedTokenForDisplay(null)}
+        token={selectedTokenForDisplay?.token || ""}
+        fullUrl={selectedTokenForDisplay?.url || ""}
+        shortUrl={selectedTokenForDisplay?.shortUrl}
+        eoaTitle={selectedTokenForDisplay?.eoaTitle || ""}
+      />
     </div>;
 }

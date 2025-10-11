@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { shortenUrl } from "./shortener";
 
 /**
  * Input schema for minting L00 tokens.
@@ -13,16 +14,22 @@ const MintL00Input = z.object({
 
 const MintL00Output = z.object({ 
   token: z.string(), 
-  full_url: z.string().url() 
+  full_url: z.string().url(),
+  short_url: z.string().url().optional()
 });
 
 /**
  * Mints L00 root token for an event/action.
  * utm_content is automatically constructed as {mobilize_code}-{utm_id} by the database.
+ * Optionally shortens URL in background if lazy=true
  */
-export async function mintL00(input: z.infer<typeof MintL00Input>) {
+export async function mintL00(
+  input: z.infer<typeof MintL00Input>,
+  options?: { lazy?: boolean; onShortened?: (shortUrl: string) => void }
+) {
   const { eoaId, deckSlug, utmMedium } = MintL00Input.parse(input);
   
+  // Step 1: Mint token (fast, ~300ms)
   const { data, error } = await supabase.rpc("mint_l00", {
     _eoa_id: eoaId,
     _deck_slug: deckSlug,
@@ -34,9 +41,39 @@ export async function mintL00(input: z.infer<typeof MintL00Input>) {
     throw new Error("DECK_VIRAL_MINT_L00_FAILED: " + error.message);
   }
   
-  // RPC returns array of rows, get first row
   const result = Array.isArray(data) ? data[0] : data;
-  return MintL00Output.parse(result);
+  const tokenData = MintL00Output.parse(result);
+
+  // Step 2: Shorten URL (lazy or blocking)
+  if (options?.lazy) {
+    // Background shortening (non-blocking)
+    shortenUrl(tokenData.full_url)
+      .then(shortUrl => {
+        console.log(`🔗 Background shortened: ${shortUrl}`);
+        if (options.onShortened) {
+          options.onShortened(shortUrl);
+        }
+      })
+      .catch(error => {
+        console.error("Background shortening failed:", error);
+      });
+    
+    // Return immediately without short URL
+    return tokenData;
+  } else {
+    // Blocking shortening (wait for short URL)
+    try {
+      const shortUrl = await shortenUrl(tokenData.full_url);
+      return {
+        ...tokenData,
+        short_url: shortUrl
+      };
+    } catch (error) {
+      console.error("Failed to shorten URL:", error);
+      // Return without short URL on failure
+      return tokenData;
+    }
+  }
 }
 
 const MintShareInput = z.object({

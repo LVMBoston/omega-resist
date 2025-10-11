@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Copy, Download, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
@@ -11,10 +12,11 @@ interface TokenDisplayProps {
   onOpenChange: (open: boolean) => void;
   token: string;
   fullUrl: string;
+  shortUrl?: string;
   eoaTitle: string;
 }
 
-export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: TokenDisplayProps) {
+export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(false);
 
   const copyToClipboard = (text: string, label: string) => {
@@ -24,6 +26,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
 
   const downloadQR = async () => {
     try {
+      const urlForQr = shortUrl || fullUrl; // Use short URL if available
       // Create a fresh canvas at exactly 1200x1200 pixels
       const canvas = document.createElement('canvas');
       const size = 1200; // 2" at 600 DPI
@@ -31,7 +34,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
       canvas.height = size;
       
       // Generate QR code directly at high resolution
-      await QRCode.toCanvas(canvas, fullUrl, {
+      await QRCode.toCanvas(canvas, urlForQr, {
         width: size,
         margin: 2,
         errorCorrectionLevel: 'H',
@@ -90,14 +93,53 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
             <p className="text-sm bg-muted p-3 rounded font-mono">{token}</p>
           </div>
 
+          {/* Short URL Section (Emphasized) */}
+          {shortUrl && (
+            <div className="space-y-2 p-4 border-2 border-primary rounded-lg bg-primary/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">Recommended</Badge>
+                  <p className="text-sm font-semibold">Short URL:</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => copyToClipboard(shortUrl, "Short URL")}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(shortUrl, '_blank')}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm bg-white dark:bg-muted p-3 rounded font-mono border">
+                {shortUrl}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                ✓ Cleaner QR codes • Easier to share • Same tracking
+              </p>
+            </div>
+          )}
+
+          {/* Full URL Section (De-emphasized when short URL exists) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Full URL:</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Full URL {shortUrl && "(for reference)"}:
+              </p>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(fullUrl, "URL")}
+                  onClick={() => copyToClipboard(fullUrl, "Full URL")}
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   Copy
@@ -112,7 +154,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
                 </Button>
               </div>
             </div>
-            <p className="text-xs bg-muted p-3 rounded break-all">{fullUrl}</p>
+            <p className="text-xs bg-muted p-3 rounded font-mono break-all">{fullUrl}</p>
           </div>
 
           <div className="space-y-2">
@@ -137,10 +179,15 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
             
             {showQRDialog && (
               <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                <div className="flex justify-center p-8 bg-white rounded">
+                {shortUrl && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    ✓ QR code uses shortened URL for optimal scanning
+                  </p>
+                )}
+                <div className="flex justify-center p-8 bg-white dark:bg-muted rounded">
                   <QRCodeSVG
                     id="qr-code-svg"
-                    value={fullUrl}
+                    value={shortUrl || fullUrl}
                     size={384}
                     level="H"
                     includeMargin={true}
@@ -153,7 +200,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, eoaTitle }: T
                   className="w-full"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download QR Code
+                  Download High-Res QR Code
                 </Button>
               </div>
             )}
