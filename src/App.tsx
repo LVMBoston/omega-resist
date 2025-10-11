@@ -18,6 +18,7 @@ import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
 import ActivityMonitor from "./pages/ActivityMonitor";
 import Simulator from "./pages/Simulator";
+import ViralityDashboard from "./pages/ViralityDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/virality-dashboard"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ViralityDashboard />
                 </ProtectedRoute>
               } 
             />
