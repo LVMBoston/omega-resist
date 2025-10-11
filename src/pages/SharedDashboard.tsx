@@ -8,6 +8,7 @@ import { ViralCoefficientChart } from "@/components/virality/ViralCoefficientCha
 import { ConversionFunnelChart } from "@/components/virality/ConversionFunnelChart";
 import { AmplificationChart } from "@/components/virality/AmplificationChart";
 import { EngagementByLevelChart } from "@/components/virality/EngagementByLevelChart";
+import SharedDashboardMap from "@/components/SharedDashboardMap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,6 +17,7 @@ import {
   getAmplificationByLevel,
   getEngagementByLevel,
   getViralCycleTime,
+  getGeographicSpread,
 } from "@/lib/virality/analytics";
 
 export default function SharedDashboard() {
@@ -31,14 +33,11 @@ export default function SharedDashboard() {
 
   const validateShare = async () => {
     if (!shareCode) {
-      console.log("No share code provided");
       setLoading(false);
       return;
     }
 
     try {
-      console.log("Validating share code:", shareCode);
-      
       // Validate share code
       const { data: share, error } = await supabase
         .from("dashboard_shares")
@@ -53,10 +52,7 @@ export default function SharedDashboard() {
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
 
-      console.log("Share query result:", { share, error });
-
       if (error || !share) {
-        console.error("Share validation failed:", error);
         setIsValid(false);
         setLoading(false);
         return;
@@ -120,6 +116,12 @@ export default function SharedDashboard() {
     enabled: isValid && !!campaignId,
   });
 
+  const { data: geoData } = useQuery({
+    queryKey: ["shared-geographic", campaignId],
+    queryFn: () => getGeographicSpread(campaignId!),
+    enabled: isValid && !!campaignId,
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -170,10 +172,11 @@ export default function SharedDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="funnel">Funnel</TabsTrigger>
             <TabsTrigger value="levels">Levels</TabsTrigger>
+            <TabsTrigger value="geography">Geography</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -187,6 +190,10 @@ export default function SharedDashboard() {
           <TabsContent value="levels" className="space-y-6">
             {amplificationData && <AmplificationChart data={amplificationData} />}
             {engagementData && <EngagementByLevelChart data={engagementData} />}
+          </TabsContent>
+
+          <TabsContent value="geography">
+            <SharedDashboardMap geoData={geoData || []} />
           </TabsContent>
         </Tabs>
       </div>
