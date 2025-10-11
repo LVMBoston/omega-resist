@@ -16,6 +16,7 @@ import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
 import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
+import ActivityMonitor from "./pages/ActivityMonitor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,11 @@ const App = () => (
             <Route path="/qr-debug" element={<QrDebugTool />} />
             <Route path="/s/:code" element={<ShortUrlRedirect />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/activity" element={
+              <ProtectedRoute requiredRole="admin">
+                <ActivityMonitor />
+              </ProtectedRoute>
+            } />
             <Route 
               path="/settings" 
               element={
