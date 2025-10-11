@@ -108,6 +108,42 @@ export type Database = {
           },
         ]
       }
+      dashboard_shares: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_viewed_at: string | null
+          share_code: string
+          view_count: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          last_viewed_at?: string | null
+          share_code: string
+          view_count?: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_viewed_at?: string | null
+          share_code?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       deck_eoa_assignments: {
         Row: {
           assigned_at: string
@@ -383,6 +419,7 @@ export type Database = {
         Row: {
           created_by: string | null
           deck_slug: string
+          deleted_at: string | null
           eoa_id: string
           full_url: string
           id: string
@@ -401,6 +438,7 @@ export type Database = {
         Insert: {
           created_by?: string | null
           deck_slug: string
+          deleted_at?: string | null
           eoa_id: string
           full_url: string
           id?: string
@@ -419,6 +457,7 @@ export type Database = {
         Update: {
           created_by?: string | null
           deck_slug?: string
+          deleted_at?: string | null
           eoa_id?: string
           full_url?: string
           id?: string
@@ -470,6 +509,7 @@ export type Database = {
           city: string | null
           country: string | null
           country_code: string | null
+          deleted_at: string | null
           event_type: string
           id: string
           ip_address: unknown | null
@@ -487,6 +527,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           country_code?: string | null
+          deleted_at?: string | null
           event_type: string
           id?: string
           ip_address?: unknown | null
@@ -504,6 +545,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           country_code?: string | null
+          deleted_at?: string | null
           event_type?: string
           id?: string
           ip_address?: unknown | null
@@ -601,6 +643,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_share_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_short_code: {
         Args: Record<PropertyKey, never>
         Returns: string
