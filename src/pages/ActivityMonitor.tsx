@@ -44,7 +44,7 @@ export default function ActivityMonitor() {
   const [loading, setLoading] = useState(true);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [l00Filter, setL00Filter] = useState<string>("all");
-  const [showSimulated, setShowSimulated] = useState<boolean>(false);
+  const [dataSourceFilter, setDataSourceFilter] = useState<"real" | "simulated" | "both">("real");
   const [l00Options, setL00Options] = useState<Array<{ eoa_id: string; mobilize_code: string; city: string; state: string }>>([]);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function ActivityMonitor() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventTypeFilter, l00Filter, showSimulated]);
+  }, [eventTypeFilter, l00Filter, dataSourceFilter]);
 
   const fetchL00Options = async () => {
     const { data, error } = await supabase
@@ -140,9 +140,12 @@ export default function ActivityMonitor() {
     }
 
     // Filter by simulated status
-    if (!showSimulated) {
+    if (dataSourceFilter === "real") {
       query = query.eq("is_simulated", false);
+    } else if (dataSourceFilter === "simulated") {
+      query = query.eq("is_simulated", true);
     }
+    // If "both", no filter applied
 
     const { data, error } = await query;
 
@@ -266,13 +269,14 @@ export default function ActivityMonitor() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Data Source</label>
-              <Select value={showSimulated ? "all" : "real"} onValueChange={(v) => setShowSimulated(v === "all")}>
+              <Select value={dataSourceFilter} onValueChange={(v) => setDataSourceFilter(v as "real" | "simulated" | "both")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="real">Real Data Only</SelectItem>
-                  <SelectItem value="all">Include Simulated</SelectItem>
+                  <SelectItem value="simulated">Simulated Data Only</SelectItem>
+                  <SelectItem value="both">Both Combined</SelectItem>
                 </SelectContent>
               </Select>
             </div>
