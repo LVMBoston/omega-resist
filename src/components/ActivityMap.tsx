@@ -120,12 +120,17 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
   }, [eventTypeFilter]);
 
   const fetchMapboxToken = async () => {
+    console.log("fetchMapboxToken called");
     try {
+      console.log("Invoking get-mapbox-token function");
       const { data, error } = await supabase.functions.invoke("get-mapbox-token");
+
+      console.log("get-mapbox-token response:", { data, error });
 
       if (error) throw error;
       if (!data?.token) throw new Error("No token returned");
 
+      console.log("Setting Mapbox token:", data.token.substring(0, 20) + "...");
       setMapboxToken(data.token);
     } catch (err) {
       console.error("Error fetching Mapbox token:", err);
