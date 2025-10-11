@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,12 +56,15 @@ interface UrlEvent {
 }
 
 export default function CampaignDashboard() {
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("");
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
-  const [dataSourceFilter, setDataSourceFilter] = useState<"real" | "simulated" | "both">("real");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  
+  // Get filter values from URL params
+  const selectedCampaign = searchParams.get("campaign") || "";
+  const selectedCampaignId = searchParams.get("campaignId") || "";
+  const eventTypeFilter = searchParams.get("eventType") || "all";
+  const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
 
   // Fetch campaigns
   const { data: campaigns, isLoading: campaignsLoading } = useQuery({
@@ -75,13 +79,17 @@ export default function CampaignDashboard() {
     },
   });
 
-  // Set initial campaign
+  // Set initial campaign from URL or default to first campaign
   useEffect(() => {
     if (!selectedCampaign && campaigns && campaigns.length > 0) {
-      setSelectedCampaign(campaigns[0].code);
-      setSelectedCampaignId(campaigns[0].id);
+      const params = new URLSearchParams(searchParams);
+      params.set("campaign", campaigns[0].code);
+      params.set("campaignId", campaigns[0].id);
+      if (!params.has("eventType")) params.set("eventType", "all");
+      if (!params.has("dataSource")) params.set("dataSource", "real");
+      setSearchParams(params, { replace: true });
     }
-  }, [campaigns, selectedCampaign]);
+  }, [campaigns, selectedCampaign, searchParams, setSearchParams]);
 
   // Fetch events when filters change
   useEffect(() => {
@@ -252,9 +260,13 @@ export default function CampaignDashboard() {
                 <div>
                   <label className="text-sm font-medium mb-2 block">Campaign</label>
                   <Select value={selectedCampaign} onValueChange={(code) => {
-                    setSelectedCampaign(code);
                     const campaign = campaigns?.find(c => c.code === code);
-                    if (campaign) setSelectedCampaignId(campaign.id);
+                    if (campaign) {
+                      const params = new URLSearchParams(searchParams);
+                      params.set("campaign", code);
+                      params.set("campaignId", campaign.id);
+                      setSearchParams(params);
+                    }
                   }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select campaign" />
@@ -271,7 +283,11 @@ export default function CampaignDashboard() {
                 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Event Type</label>
-                  <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                  <Select value={eventTypeFilter} onValueChange={(value) => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("eventType", value);
+                    setSearchParams(params);
+                  }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -286,7 +302,11 @@ export default function CampaignDashboard() {
                 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Data Source</label>
-                  <Select value={dataSourceFilter} onValueChange={(v) => setDataSourceFilter(v as "real" | "simulated" | "both")}>
+                  <Select value={dataSourceFilter} onValueChange={(value) => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("dataSource", value);
+                    setSearchParams(params);
+                  }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -474,7 +494,9 @@ export default function CampaignDashboard() {
               campaignId={selectedCampaignId}
               onSimulationComplete={() => {
                 if (dataSourceFilter === "real") {
-                  setDataSourceFilter("both");
+                  const params = new URLSearchParams(searchParams);
+                  params.set("dataSource", "both");
+                  setSearchParams(params);
                 }
               }}
             />
