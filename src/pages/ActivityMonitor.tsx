@@ -14,6 +14,13 @@ interface UrlEvent {
   user_agent: string | null;
   utm_snapshot: any;
   occurred_at: string;
+  latitude: number | null;
+  longitude: number | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  country_code: string | null;
+  zip_code: string | null;
   tokens?: {
     level: number;
     deck_slug: string;
@@ -206,10 +213,24 @@ export default function ActivityMonitor() {
                           </span>
                         </div>
 
+                        {/* Location Info */}
+                        {(event.city || event.region || event.country) && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                            <span>
+                              {[event.city, event.region, event.country].filter(Boolean).join(', ')}
+                              {event.zip_code && ` (${event.zip_code})`}
+                            </span>
+                          </div>
+                        )}
+
                         {event.ip_address && (
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-mono text-muted-foreground">
                               IP: {event.ip_address}
+                              {event.latitude && event.longitude && (
+                                <> • Coords: {event.latitude.toFixed(4)}, {event.longitude.toFixed(4)}</>
+                              )}
                             </span>
                           </div>
                         )}

@@ -70,15 +70,69 @@ const LogEventInput = z.object({
   ua: z.string().optional()
 });
 
+interface GeoLocationData {
+  latitude: number | null;
+  longitude: number | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  country_code: string | null;
+  zip_code: string | null;
+}
+
+async function fetchGeolocation(): Promise<GeoLocationData> {
+  try {
+    console.log("📍 Fetching geolocation...");
+    const { data, error } = await supabase.functions.invoke('geoip');
+    
+    if (error) {
+      console.error("📍 Geolocation fetch error:", error);
+      return {
+        latitude: null,
+        longitude: null,
+        city: null,
+        region: null,
+        country: null,
+        country_code: null,
+        zip_code: null
+      };
+    }
+    
+    console.log("📍 Geolocation data:", data);
+    return data;
+  } catch (error) {
+    console.error("📍 Geolocation exception:", error);
+    return {
+      latitude: null,
+      longitude: null,
+      city: null,
+      region: null,
+      country: null,
+      country_code: null,
+      zip_code: null
+    };
+  }
+}
+
 export async function logEvent(input: z.infer<typeof LogEventInput>) {
   const { token, eventType, utmSnapshot, ip, ua } = LogEventInput.parse(input);
+  
+  // Fetch geolocation data
+  const geoData = await fetchGeolocation();
   
   const { data, error } = await supabase.rpc("log_event", {
     _token: token,
     _event_type: eventType,
     _utm_snapshot: utmSnapshot ?? null,
     _ip_address: ip ?? null,
-    _user_agent: ua ?? null
+    _user_agent: ua ?? null,
+    _latitude: geoData.latitude,
+    _longitude: geoData.longitude,
+    _city: geoData.city,
+    _region: geoData.region,
+    _country: geoData.country,
+    _country_code: geoData.country_code,
+    _zip_code: geoData.zip_code
   });
   
   if (error) {

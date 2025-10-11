@@ -461,31 +461,52 @@ export type Database = {
       }
       url_events: {
         Row: {
+          city: string | null
+          country: string | null
+          country_code: string | null
           event_type: string
           id: string
           ip_address: unknown | null
+          latitude: number | null
+          longitude: number | null
           occurred_at: string
+          region: string | null
           token: string
           user_agent: string | null
           utm_snapshot: Json | null
+          zip_code: string | null
         }
         Insert: {
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
           event_type: string
           id?: string
           ip_address?: unknown | null
+          latitude?: number | null
+          longitude?: number | null
           occurred_at?: string
+          region?: string | null
           token: string
           user_agent?: string | null
           utm_snapshot?: Json | null
+          zip_code?: string | null
         }
         Update: {
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
           event_type?: string
           id?: string
           ip_address?: unknown | null
+          latitude?: number | null
+          longitude?: number | null
           occurred_at?: string
+          region?: string | null
           token?: string
           user_agent?: string | null
           utm_snapshot?: Json | null
+          zip_code?: string | null
         }
         Relationships: [
           {
@@ -587,13 +608,28 @@ export type Database = {
         Returns: boolean
       }
       log_event: {
-        Args: {
-          _event_type: string
-          _ip_address?: unknown
-          _token: string
-          _user_agent?: string
-          _utm_snapshot?: Json
-        }
+        Args:
+          | {
+              _city?: string
+              _country?: string
+              _country_code?: string
+              _event_type: string
+              _ip_address?: unknown
+              _latitude?: number
+              _longitude?: number
+              _region?: string
+              _token: string
+              _user_agent?: string
+              _utm_snapshot?: Json
+              _zip_code?: string
+            }
+          | {
+              _event_type: string
+              _ip_address?: unknown
+              _token: string
+              _user_agent?: string
+              _utm_snapshot?: Json
+            }
         Returns: string
       }
       lookup_token: {
