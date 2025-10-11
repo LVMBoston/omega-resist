@@ -319,7 +319,9 @@ export default function CampaignAnalytics() {
   const scansCount = events.filter(e => e.event_type === "scan").length;
   const viewsCount = events.filter(e => e.event_type === "view").length;
   const sharesCount = events.filter(e => e.event_type === "share").length;
-  const avgCycleTime = cycleTimeData?.avg_hours ? `${cycleTimeData.avg_hours.toFixed(1)}h` : "N/A";
+  const avgCycleTime = cycleTimeData && cycleTimeData.length > 0
+    ? cycleTimeData.reduce((sum, ct) => sum + ct.avg_hours, 0) / cycleTimeData.length
+    : 0;
 
   if (!selectedCampaign) {
     return (
@@ -376,7 +378,7 @@ export default function CampaignAnalytics() {
             <MetricCard title="Scans" value={scansCount} format="number" status="good" />
             <MetricCard title="Views" value={viewsCount} format="number" status="neutral" />
             <MetricCard title="Shares" value={sharesCount} format="number" status="warning" />
-            <MetricCard title="Avg Cycle Time" value={avgCycleTime} format="text" status="neutral" />
+            <MetricCard title="Cycle Time" value={avgCycleTime} format="time" status="neutral" />
           </div>
         </div>
 
@@ -567,7 +569,7 @@ export default function CampaignAnalytics() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-6">
-                  {viralCoeffData && <ViralCoefficientChart data={viralCoeffData} />}
+                  {viralCoeffData && <ViralCoefficientChart kFactor={viralCoeffData.k_factor} />}
                 </TabsContent>
 
                 <TabsContent value="funnel">

@@ -142,7 +142,15 @@ export type Database = {
           share_code?: string
           view_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_dashboard_shares_campaign"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deck_eoa_assignments: {
         Row: {

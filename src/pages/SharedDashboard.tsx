@@ -56,11 +56,25 @@ export default function SharedDashboard() {
         return;
       }
 
-      // Track view
-      await supabase.rpc("increment_share_view", { share_code: shareCode });
+      // Track view - get current count first
+      const { data: shareData } = await supabase
+        .from("dashboard_shares")
+        .select("view_count")
+        .eq("share_code", shareCode)
+        .single();
+
+      if (shareData) {
+        await supabase
+          .from("dashboard_shares")
+          .update({
+            view_count: shareData.view_count + 1,
+            last_viewed_at: new Date().toISOString(),
+          })
+          .eq("share_code", shareCode);
+      }
 
       setCampaignId(share.campaign_id);
-      setCampaignTitle(share.campaigns?.title || "Campaign");
+      setCampaignTitle((share as any).campaigns?.title || "Campaign");
       setIsValid(true);
     } catch (error) {
       console.error("Error validating share:", error);
@@ -112,8 +126,10 @@ export default function SharedDashboard() {
     return <Navigate to="/404" replace />;
   }
 
-  const avgCycleTime = cycleTimeData?.avg_hours ? `${cycleTimeData.avg_hours.toFixed(1)}h` : "N/A";
-  const viralCoeff = viralCoeffData?.[0]?.viral_coefficient || 0;
+  const avgCycleTime = cycleTimeData && cycleTimeData.length > 0
+    ? cycleTimeData.reduce((sum, ct) => sum + ct.avg_hours, 0) / cycleTimeData.length
+    : 0;
+  const viralCoeff = viralCoeffData?.k_factor || 0;
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -131,20 +147,18 @@ export default function SharedDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <MetricCard
             title="Viral Coefficient"
-            value={viralCoeff}
-            format="number"
+            value={viralCoeff.toFixed(2)}
             status={viralCoeff > 1 ? "good" : "warning"}
           />
           <MetricCard
             title="Avg Cycle Time"
             value={avgCycleTime}
-            format="text"
+            format="time"
             status="neutral"
           />
           <MetricCard
             title="Campaign Status"
             value="Active"
-            format="text"
             status="good"
           />
         </div>
@@ -157,7 +171,7 @@ export default function SharedDashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {viralCoeffData && <ViralCoefficientChart data={viralCoeffData} />}
+            {viralCoeffData && <ViralCoefficientChart kFactor={viralCoeffData.k_factor} />}
           </TabsContent>
 
           <TabsContent value="funnel">

@@ -14,9 +14,10 @@ import DeckViewer from "./pages/DeckViewer";
 import DeckManager from "./pages/DeckManager";
 import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
+import CampaignAnalytics from "./pages/CampaignAnalytics";
+import SharedDashboard from "./pages/SharedDashboard";
 import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
-import ActivityMonitor from "./pages/ActivityMonitor";
 import Simulator from "./pages/Simulator";
 import ViralityDashboard from "./pages/ViralityDashboard";
 import NotFound from "./pages/NotFound";
@@ -41,11 +42,12 @@ const App = () => (
             <Route path="/qr-debug" element={<QrDebugTool />} />
             <Route path="/s/:code" element={<ShortUrlRedirect />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path="/activity" element={
+            <Route path="/campaign-analytics" element={
               <ProtectedRoute requiredRole="admin">
-                <ActivityMonitor />
+                <CampaignAnalytics />
               </ProtectedRoute>
             } />
+            <Route path="/shared-dashboard/:shareCode" element={<SharedDashboard />} />
             <Route path="/simulator" element={
               <ProtectedRoute requiredRole="admin">
                 <Simulator />

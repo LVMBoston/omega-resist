@@ -96,12 +96,12 @@ export default function Admin() {
       .from("dashboard_shares")
       .select(`
         *,
-        campaigns(title)
+        campaigns!fk_dashboard_shares_campaign(title)
       `)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setShares(data as DashboardShare[]);
+      setShares(data as any);
     }
   };
 
