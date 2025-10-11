@@ -15,6 +15,11 @@ export const SIMULATOR_CITIES: Record<string, { lat: number; lng: number; city: 
   "02101": { lat: 42.3601, lng: -71.0589, city: "Boston", region: "MA", country: "United States" },
   "30301": { lat: 33.7490, lng: -84.3880, city: "Atlanta", region: "GA", country: "United States" },
   "33101": { lat: 25.7617, lng: -80.1918, city: "Miami", region: "FL", country: "United States" },
+  // Campaign-specific zip codes
+  "99501": { lat: 61.2181, lng: -149.9003, city: "Anchorage", region: "AK", country: "United States" },
+  "02540": { lat: 41.5515, lng: -70.6148, city: "Falmouth", region: "MA", country: "United States" },
+  "85085": { lat: 33.6820, lng: -112.1040, city: "Phoenix", region: "AZ", country: "United States" },
+  "91360": { lat: 34.1964, lng: -118.8742, city: "Thousand Oaks", region: "CA", country: "United States" },
 };
 
 export interface LocationData {
