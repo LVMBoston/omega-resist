@@ -40,6 +40,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
+  console.log("ActivityMap component rendering, eventTypeFilter:", eventTypeFilter);
+
   // Fetch Mapbox token on mount
   useEffect(() => {
     console.log("ActivityMap mounted, fetching Mapbox token");
