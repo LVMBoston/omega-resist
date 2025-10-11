@@ -1,0 +1,383 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { mintL00, mintShare } from "@/lib/virality/mint";
+import { 
+  getL00Location, 
+  getLocationForLevel, 
+  logEventWithLocation,
+  randomTimestampInRange,
+  type LocationData 
+} from "@/lib/virality/simulator";
+import { Loader2 } from "lucide-react";
+
+interface EoA {
+  id: string;
+  title: string;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  assigned_deck_slug: string | null;
+}
+
+export default function Simulator() {
+  const { toast } = useToast();
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
+  const [selectedEoaIds, setSelectedEoaIds] = useState<Set<string>>(new Set());
+  const [l00Count, setL00Count] = useState(10);
+  const [l01Factor, setL01Factor] = useState(3);
+  const [l02Factor, setL02Factor] = useState(2);
+  const [l03Factor, setL03Factor] = useState(1);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // Fetch campaigns
+  const { data: campaigns } = useQuery({
+    queryKey: ["campaigns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, code, title")
+        .order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch EOAs for selected campaign
+  const { data: eoas, isLoading: eoasLoading } = useQuery({
+    queryKey: ["eoas", selectedCampaignId],
+    queryFn: async () => {
+      if (!selectedCampaignId) return [];
+      const { data, error } = await supabase
+        .from("events_actions")
+        .select("id, title, city, state, zip_code, assigned_deck_slug")
+        .eq("campaign_id", selectedCampaignId)
+        .order("title");
+      if (error) throw error;
+      return data as EoA[];
+    },
+    enabled: !!selectedCampaignId,
+  });
+
+  const toggleEoaSelection = (eoaId: string) => {
+    const newSelection = new Set(selectedEoaIds);
+    if (newSelection.has(eoaId)) {
+      newSelection.delete(eoaId);
+    } else {
+      newSelection.add(eoaId);
+    }
+    setSelectedEoaIds(newSelection);
+  };
+
+  const selectAllEoas = () => {
+    if (!eoas) return;
+    setSelectedEoaIds(new Set(eoas.map(e => e.id)));
+  };
+
+  const deselectAllEoas = () => {
+    setSelectedEoaIds(new Set());
+  };
+
+  const runSimulation = async () => {
+    if (selectedEoaIds.size === 0) {
+      toast({
+        title: "No EOAs selected",
+        description: "Please select at least one event/action to simulate.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSimulating(true);
+    setProgress(0);
+
+    const selectedEoas = eoas?.filter(e => selectedEoaIds.has(e.id)) || [];
+    const totalSteps = selectedEoas.length;
+    let completedSteps = 0;
+
+    try {
+      for (const eoa of selectedEoas) {
+        // Validate EOA has required data
+        if (!eoa.zip_code || !eoa.assigned_deck_slug) {
+          console.warn(`Skipping ${eoa.title}: missing zip_code or assigned_deck_slug`);
+          completedSteps++;
+          setProgress((completedSteps / totalSteps) * 100);
+          continue;
+        }
+
+        // Get L00 base location
+        const l00Location = getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
+        if (!l00Location) {
+          console.warn(`Skipping ${eoa.title}: zip_code ${eoa.zip_code} not in simulator cities`);
+          completedSteps++;
+          setProgress((completedSteps / totalSteps) * 100);
+          continue;
+        }
+
+        // Mint L00 tokens
+        for (let i = 0; i < l00Count; i++) {
+          const { token: l00Token } = await mintL00({
+            eoaId: eoa.id,
+            deckSlug: eoa.assigned_deck_slug,
+            utmMedium: "qr",
+          });
+
+          // Log L00 scan event with location
+          await logEventWithLocation(l00Token, "scan", l00Location);
+
+          // Mint L01 tokens
+          for (let j = 0; j < l01Factor; j++) {
+            const l01Location = getLocationForLevel(1, l00Location);
+            const { token: l01Token } = await mintShare({
+              parentToken: l00Token,
+              utmMedium: "social",
+            });
+            await logEventWithLocation(l01Token, "view", l01Location);
+
+            // Mint L02 tokens
+            for (let k = 0; k < l02Factor; k++) {
+              const l02Location = getLocationForLevel(2, l01Location);
+              const { token: l02Token } = await mintShare({
+                parentToken: l01Token,
+                utmMedium: "social",
+              });
+              await logEventWithLocation(l02Token, "view", l02Location);
+
+              // Mint L03 tokens
+              for (let m = 0; m < l03Factor; m++) {
+                const l03Location = getLocationForLevel(3, l02Location);
+                const { token: l03Token } = await mintShare({
+                  parentToken: l02Token,
+                  utmMedium: "p2p",
+                });
+                await logEventWithLocation(l03Token, "view", l03Location);
+              }
+            }
+          }
+        }
+
+        completedSteps++;
+        setProgress((completedSteps / totalSteps) * 100);
+      }
+
+      toast({
+        title: "Simulation complete",
+        description: `Generated tokens and events for ${selectedEoas.length} EOAs`,
+      });
+    } catch (error: any) {
+      console.error("Simulation error:", error);
+      toast({
+        title: "Simulation failed",
+        description: error.message || "An error occurred during simulation",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSimulating(false);
+      setProgress(0);
+    }
+  };
+
+  const totalTokensPerEoa = l00Count * (1 + l01Factor + l01Factor * l02Factor + l01Factor * l02Factor * l03Factor);
+
+  return (
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Viral Token Simulator</h1>
+          <p className="text-muted-foreground">
+            Generate synthetic viral tokens and events with realistic location data
+          </p>
+        </div>
+
+        {/* Campaign Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>1. Select Campaign</CardTitle>
+            <CardDescription>Choose the campaign to simulate</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                {campaigns?.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.title} ({campaign.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {/* EOA Selection */}
+        {selectedCampaignId && (
+          <Card>
+            <CardHeader>
+              <CardTitle>2. Select Events/Actions</CardTitle>
+              <CardDescription>Choose which EOAs to simulate (uses EOA zip codes for L00 locations)</CardDescription>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={selectAllEoas}>
+                  Select All
+                </Button>
+                <Button variant="outline" size="sm" onClick={deselectAllEoas}>
+                  Deselect All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {eoasLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading events...</span>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {eoas?.map((eoa) => (
+                    <div key={eoa.id} className="flex items-center gap-3 p-2 border rounded">
+                      <Checkbox
+                        checked={selectedEoaIds.has(eoa.id)}
+                        onCheckedChange={() => toggleEoaSelection(eoa.id)}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium">{eoa.title}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {eoa.city}, {eoa.state} {eoa.zip_code} • Deck: {eoa.assigned_deck_slug || "None"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Simulation Parameters */}
+        {selectedCampaignId && (
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Configure Simulation</CardTitle>
+              <CardDescription>
+                Set branching factors (each EOA will generate ~{totalTokensPerEoa} tokens)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="l00-count">L00 Tokens per EOA</Label>
+                  <Input
+                    id="l00-count"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={l00Count}
+                    onChange={(e) => setL00Count(parseInt(e.target.value) || 1)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base location from EOA zip code
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="l01-factor">L01 per L00</Label>
+                  <Input
+                    id="l01-factor"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={l01Factor}
+                    onChange={(e) => setL01Factor(parseInt(e.target.value) || 0)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ±3-5 miles from L00
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="l02-factor">L02 per L01</Label>
+                  <Input
+                    id="l02-factor"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={l02Factor}
+                    onChange={(e) => setL02Factor(parseInt(e.target.value) || 0)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ±15-20 miles from L01
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="l03-factor">L03 per L02</Label>
+                  <Input
+                    id="l03-factor"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={l03Factor}
+                    onChange={(e) => setL03Factor(parseInt(e.target.value) || 0)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ±50-70 miles from L02
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Run Simulation */}
+        {selectedCampaignId && (
+          <Card>
+            <CardHeader>
+              <CardTitle>4. Run Simulation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm space-y-1">
+                  <div>Selected EOAs: <strong>{selectedEoaIds.size}</strong></div>
+                  <div>Tokens per EOA: <strong>{totalTokensPerEoa}</strong></div>
+                  <div>Total tokens: <strong>{selectedEoaIds.size * totalTokensPerEoa}</strong></div>
+                </div>
+              </div>
+
+              {isSimulating && (
+                <div className="space-y-2">
+                  <Progress value={progress} />
+                  <p className="text-sm text-muted-foreground text-center">
+                    Simulating... {Math.round(progress)}%
+                  </p>
+                </div>
+              )}
+
+              <Button
+                onClick={runSimulation}
+                disabled={isSimulating || selectedEoaIds.size === 0}
+                className="w-full"
+                size="lg"
+              >
+                {isSimulating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Simulating...
+                  </>
+                ) : (
+                  "Run Simulation"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

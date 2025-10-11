@@ -17,6 +17,7 @@ import CampaignEoaManager from "./pages/CampaignEoaManager";
 import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
 import ActivityMonitor from "./pages/ActivityMonitor";
+import Simulator from "./pages/Simulator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,8 +45,13 @@ const App = () => (
                 <ActivityMonitor />
               </ProtectedRoute>
             } />
+            <Route path="/simulator" element={
+              <ProtectedRoute requiredRole="admin">
+                <Simulator />
+              </ProtectedRoute>
+            } />
             <Route 
-              path="/settings" 
+              path="/settings"
               element={
                 <ProtectedRoute requiredRole="admin">
                   <Settings />
