@@ -136,44 +136,44 @@ export default function CampaignDashboard() {
 
   // Fetch analytics data
   const { data: viralCoefficient } = useQuery({
-    queryKey: ["viralCoefficient", selectedCampaign],
-    queryFn: () => getViralCoefficient(selectedCampaign),
+    queryKey: ["viralCoefficient", selectedCampaign, dataSourceFilter],
+    queryFn: () => getViralCoefficient(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 
   const { data: funnelData } = useQuery({
-    queryKey: ["conversionFunnel", selectedCampaign],
-    queryFn: () => getConversionFunnel(selectedCampaign),
+    queryKey: ["conversionFunnel", selectedCampaign, dataSourceFilter],
+    queryFn: () => getConversionFunnel(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 
   const { data: amplificationData } = useQuery({
-    queryKey: ["amplification", selectedCampaign],
-    queryFn: () => getAmplificationByLevel(selectedCampaign),
+    queryKey: ["amplification", selectedCampaign, dataSourceFilter],
+    queryFn: () => getAmplificationByLevel(selectedCampaign, dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 
   const { data: engagementData } = useQuery({
-    queryKey: ["engagement", selectedCampaign],
-    queryFn: () => getEngagementByLevel(selectedCampaign),
+    queryKey: ["engagement", selectedCampaign, dataSourceFilter],
+    queryFn: () => getEngagementByLevel(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 
   const { data: cycleTimeData } = useQuery({
-    queryKey: ["cycleTime", selectedCampaign],
-    queryFn: () => getViralCycleTime(selectedCampaign),
+    queryKey: ["cycleTime", selectedCampaign, dataSourceFilter],
+    queryFn: () => getViralCycleTime(selectedCampaign, dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 
   const { data: contentData } = useQuery({
-    queryKey: ["contentPerformance", selectedCampaign],
-    queryFn: () => getTopPerformingContent(selectedCampaign),
+    queryKey: ["contentPerformance", selectedCampaign, dataSourceFilter],
+    queryFn: () => getTopPerformingContent(selectedCampaign, "shares", dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 
   const { data: geoData } = useQuery({
-    queryKey: ["geographic", selectedCampaign],
-    queryFn: () => getGeographicSpread(selectedCampaign),
+    queryKey: ["geographic", selectedCampaign, dataSourceFilter],
+    queryFn: () => getGeographicSpread(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign,
   });
 

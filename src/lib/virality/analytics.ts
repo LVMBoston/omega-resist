@@ -66,13 +66,20 @@ export interface ContentPerformance {
  */
 export async function getViralCoefficient(
   campaignId: string,
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<ViralCoefficient> {
   // Get all tokens for this campaign
   let tokensQuery = supabase
     .from("tokens")
-    .select("token, level, minted_at")
+    .select("token, level, minted_at, is_simulated")
     .eq("utm_campaign", campaignId);
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
 
   if (dateRange) {
     tokensQuery = tokensQuery
@@ -94,11 +101,19 @@ export async function getViralCoefficient(
     };
   }
 
-  const { data: shareEvents, error: shareError } = await supabase
+  let shareQuery = supabase
     .from("url_events")
-    .select("token")
+    .select("token, is_simulated")
     .in("token", tokenList)
     .eq("event_type", "share");
+
+  if (dataSource === "real") {
+    shareQuery = shareQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    shareQuery = shareQuery.eq("is_simulated", true);
+  }
+
+  const { data: shareEvents, error: shareError } = await shareQuery;
 
   if (shareError) throw shareError;
 
@@ -122,14 +137,23 @@ export async function getViralCoefficient(
  * Calculate viral cycle time - average time between level transitions
  */
 export async function getViralCycleTime(
-  campaignId: string
+  campaignId: string,
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<CycleTime[]> {
-  const { data: tokens, error } = await supabase
+  let tokensQuery = supabase
     .from("tokens")
-    .select("token, parent_token, level, minted_at")
+    .select("token, parent_token, level, minted_at, is_simulated")
     .eq("utm_campaign", campaignId)
     .not("parent_token", "is", null)
     .order("minted_at");
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
+
+  const { data: tokens, error } = await tokensQuery;
 
   if (error) throw error;
 
@@ -180,13 +204,22 @@ export async function getViralCycleTime(
  */
 export async function getConversionFunnel(
   campaignId: string,
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<ConversionFunnel> {
   // Get tokens for campaign
-  const { data: tokens } = await supabase
+  let tokensQuery = supabase
     .from("tokens")
-    .select("token")
+    .select("token, is_simulated")
     .eq("utm_campaign", campaignId);
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
+
+  const { data: tokens } = await tokensQuery;
 
   const tokenList = tokens?.map((t) => t.token) || [];
   if (tokenList.length === 0) {
@@ -203,8 +236,14 @@ export async function getConversionFunnel(
   // Get events
   let eventsQuery = supabase
     .from("url_events")
-    .select("event_type")
+    .select("event_type, is_simulated")
     .in("token", tokenList);
+
+  if (dataSource === "real") {
+    eventsQuery = eventsQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    eventsQuery = eventsQuery.eq("is_simulated", true);
+  }
 
   if (dateRange) {
     eventsQuery = eventsQuery
@@ -237,12 +276,21 @@ export async function getConversionFunnel(
  * Get amplification data by level (branching factor)
  */
 export async function getAmplificationByLevel(
-  campaignId: string
+  campaignId: string,
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<AmplificationData[]> {
-  const { data: tokens, error } = await supabase
+  let tokensQuery = supabase
     .from("tokens")
-    .select("token, parent_token, level")
+    .select("token, parent_token, level, is_simulated")
     .eq("utm_campaign", campaignId);
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
+
+  const { data: tokens, error } = await tokensQuery;
 
   if (error) throw error;
 
@@ -280,12 +328,21 @@ export async function getAmplificationByLevel(
  */
 export async function getEngagementByLevel(
   campaignId: string,
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<EngagementByLevel[]> {
-  const { data: tokens } = await supabase
+  let tokensQuery = supabase
     .from("tokens")
-    .select("token, level")
+    .select("token, level, is_simulated")
     .eq("utm_campaign", campaignId);
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
+
+  const { data: tokens } = await tokensQuery;
 
   const tokensByLevel = new Map<number, string[]>();
   tokens?.forEach((t) => {
@@ -298,8 +355,14 @@ export async function getEngagementByLevel(
   for (const [level, tokenList] of tokensByLevel.entries()) {
     let eventsQuery = supabase
       .from("url_events")
-      .select("event_type")
+      .select("event_type, is_simulated")
       .in("token", tokenList);
+
+    if (dataSource === "real") {
+      eventsQuery = eventsQuery.eq("is_simulated", false);
+    } else if (dataSource === "simulated") {
+      eventsQuery = eventsQuery.eq("is_simulated", true);
+    }
 
     if (dateRange) {
       eventsQuery = eventsQuery
@@ -326,12 +389,21 @@ export async function getEngagementByLevel(
  */
 export async function getGeographicSpread(
   campaignId: string,
-  level?: number
+  level?: number,
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<GeographicPoint[]> {
-  const { data: tokens } = await supabase
+  let tokensQuery = supabase
     .from("tokens")
-    .select("token, level")
+    .select("token, level, is_simulated")
     .eq("utm_campaign", campaignId);
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
+
+  const { data: tokens } = await tokensQuery;
 
   let tokenList = tokens?.map((t) => t.token) || [];
   
@@ -341,12 +413,20 @@ export async function getGeographicSpread(
 
   if (tokenList.length === 0) return [];
 
-  const { data: events, error } = await supabase
+  let eventsQuery = supabase
     .from("url_events")
-    .select("latitude, longitude, city, region, country, token")
+    .select("latitude, longitude, city, region, country, token, is_simulated")
     .in("token", tokenList)
     .not("latitude", "is", null)
     .not("longitude", "is", null);
+
+  if (dataSource === "real") {
+    eventsQuery = eventsQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    eventsQuery = eventsQuery.eq("is_simulated", true);
+  }
+
+  const { data: events, error } = await eventsQuery;
 
   if (error) throw error;
 
@@ -380,12 +460,21 @@ export async function getGeographicSpread(
  */
 export async function getTopPerformingContent(
   campaignId: string,
-  metric: "shares" | "views" | "viral_coefficient" = "shares"
+  metric: "shares" | "views" | "viral_coefficient" = "shares",
+  dataSource: "real" | "simulated" | "both" = "both"
 ): Promise<ContentPerformance[]> {
-  const { data: tokens } = await supabase
+  let tokensQuery = supabase
     .from("tokens")
-    .select("token, utm_content")
+    .select("token, utm_content, is_simulated")
     .eq("utm_campaign", campaignId);
+
+  if (dataSource === "real") {
+    tokensQuery = tokensQuery.eq("is_simulated", false);
+  } else if (dataSource === "simulated") {
+    tokensQuery = tokensQuery.eq("is_simulated", true);
+  }
+
+  const { data: tokens } = await tokensQuery;
 
   const contentMap = new Map<string, string[]>();
   tokens?.forEach((t) => {
@@ -397,10 +486,18 @@ export async function getTopPerformingContent(
   const results: ContentPerformance[] = [];
 
   for (const [content, tokenList] of contentMap.entries()) {
-    const { data: events } = await supabase
+    let eventsQuery = supabase
       .from("url_events")
-      .select("event_type")
+      .select("event_type, is_simulated")
       .in("token", tokenList);
+
+    if (dataSource === "real") {
+      eventsQuery = eventsQuery.eq("is_simulated", false);
+    } else if (dataSource === "simulated") {
+      eventsQuery = eventsQuery.eq("is_simulated", true);
+    }
+
+    const { data: events } = await eventsQuery;
 
     const scans = events?.filter((e) => e.event_type === "scan").length || 0;
     const views = events?.filter((e) => e.event_type === "view").length || 0;
