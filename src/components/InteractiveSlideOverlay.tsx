@@ -162,14 +162,14 @@ export const InteractiveSlideOverlay = ({
         return;
       }
 
-      console.log("📧 Calling mintShare...");
+      console.log("📧 Calling mintShare with payload:", { parentToken, utmMedium: "em" });
       // Mint new share token
-      const { token, full_url } = await mintShare({
+      const result = await mintShare({
         parentToken,
         utmMedium: "em",
       });
-      console.log("📧 Minted token:", token);
-      console.log("📧 Full URL:", full_url);
+      console.log("📧 Complete mintShare response:", result);
+      const { token, full_url, level } = result;
 
       // Use template or fallback
       const subject = emailTemplate?.subject || "Check out this presentation";
@@ -193,7 +193,8 @@ export const InteractiveSlideOverlay = ({
         description: "Share this deck via email",
       });
     } catch (error) {
-      console.error("❌ Email share error:", error);
+      console.error("❌ Email share error (full):", error);
+      console.error("❌ Error details:", JSON.stringify(error, null, 2));
       toast({
         variant: "destructive",
         title: "Error",
