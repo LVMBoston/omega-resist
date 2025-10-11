@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, Map } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import ActivityMap from "@/components/ActivityMap";
 
 interface UrlEvent {
   id: string;
@@ -166,15 +168,27 @@ export default function ActivityMonitor() {
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
-          {events.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No events yet. Share your QR codes to start tracking activity!
-              </CardContent>
-            </Card>
-          ) : (
-            events.map((event) => (
+        <Tabs defaultValue="list" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Event List
+            </TabsTrigger>
+            <TabsTrigger value="map" className="flex items-center gap-2">
+              <Map className="w-4 h-4" />
+              Map View
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="list" className="space-y-4">
+            {events.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No events yet. Share your QR codes to start tracking activity!
+                </CardContent>
+              </Card>
+            ) : (
+              events.map((event) => (
               <Card key={event.id} className="hover:border-primary/50 transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between gap-4">
@@ -258,9 +272,18 @@ export default function ActivityMonitor() {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="map">
+            <Card>
+              <CardContent className="p-0">
+                <ActivityMap eventTypeFilter={eventTypeFilter} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

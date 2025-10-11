@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.scrape-mobilize-events]
 verify_jwt = false
+
+[functions.get-mapbox-token]
+verify_jwt = false
