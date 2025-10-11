@@ -226,93 +226,97 @@ export default function CampaignDashboard() {
           </p>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-            <CardDescription>Select campaign and filter options</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Campaign</label>
-              <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select campaign" />
-                </SelectTrigger>
-                <SelectContent>
-                  {campaigns?.map((campaign) => (
-                    <SelectItem key={campaign.id} value={campaign.code}>
-                      {campaign.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Event Type</label>
-              <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="scan">Scans Only</SelectItem>
-                  <SelectItem value="view">Views Only</SelectItem>
-                  <SelectItem value="share">Shares Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Data Source</label>
-              <Select value={dataSourceFilter} onValueChange={(v) => setDataSourceFilter(v as "real" | "simulated" | "both")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="real">Real Data Only</SelectItem>
-                  <SelectItem value="simulated">Simulated Data Only</SelectItem>
-                  <SelectItem value="both">Both Combined</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <MetricCard
-            title="Viral Coefficient"
-            value={viralCoefficient?.k_factor.toFixed(2) || "0"}
-            status={(viralCoefficient?.k_factor || 0) >= 1 ? "good" : "warning"}
-          />
-          <MetricCard
-            title="Share Rate"
-            value={(funnelData?.view_to_share_rate || 0).toFixed(1)}
-            format="percentage"
-            status={(funnelData?.view_to_share_rate || 0) >= 10 ? "good" : "neutral"}
-          />
-          <MetricCard
-            title="Avg Cycle Time"
-            value={avgCycleTime}
-            format="time"
-            status="neutral"
-          />
-          <MetricCard
-            title="Total Reach"
-            value={viralCoefficient?.unique_tokens || 0}
-            status="good"
-          />
-        </div>
-
         {/* Tabbed Content */}
-        <Tabs defaultValue="events" className="w-full">
-          <TabsList className="grid w-full max-w-3xl grid-cols-5">
+        <Tabs defaultValue="filters" className="w-full">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+            <TabsTrigger value="filters">Filters</TabsTrigger>
             <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="map">Map</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="funnel">Funnel</TabsTrigger>
-            <TabsTrigger value="content">Content</TabsTrigger>
           </TabsList>
+
+          {/* Filters Tab - Single Source of Truth */}
+          <TabsContent value="filters" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configure Filters</CardTitle>
+                <CardDescription>
+                  These filters will apply across all tabs (Events, Map, Analytics)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Campaign</label>
+                  <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select campaign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns?.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.code}>
+                          {campaign.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Event Type</label>
+                  <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Events</SelectItem>
+                      <SelectItem value="scan">Scans Only</SelectItem>
+                      <SelectItem value="view">Views Only</SelectItem>
+                      <SelectItem value="share">Shares Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Data Source</label>
+                  <Select value={dataSourceFilter} onValueChange={(v) => setDataSourceFilter(v as "real" | "simulated" | "both")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="real">Real Data Only</SelectItem>
+                      <SelectItem value="simulated">Simulated Data Only</SelectItem>
+                      <SelectItem value="both">Both Combined</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Filter Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Selection</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="text-sm">
+                  <span className="font-medium">Campaign:</span>{" "}
+                  <span className="text-muted-foreground">
+                    {campaigns?.find(c => c.code === selectedCampaign)?.title || "None"}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">Event Type:</span>{" "}
+                  <span className="text-muted-foreground">{eventTypeFilter === "all" ? "All Events" : eventTypeFilter}</span>
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">Data Source:</span>{" "}
+                  <span className="text-muted-foreground">
+                    {dataSourceFilter === "real" ? "Real Data Only" : dataSourceFilter === "simulated" ? "Simulated Data Only" : "Both Combined"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="events" className="space-y-4 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -416,20 +420,44 @@ export default function CampaignDashboard() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6 mt-6">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                title="Viral Coefficient"
+                value={viralCoefficient?.k_factor.toFixed(2) || "0"}
+                status={(viralCoefficient?.k_factor || 0) >= 1 ? "good" : "warning"}
+              />
+              <MetricCard
+                title="Share Rate"
+                value={(funnelData?.view_to_share_rate || 0).toFixed(1)}
+                format="percentage"
+                status={(funnelData?.view_to_share_rate || 0) >= 10 ? "good" : "neutral"}
+              />
+              <MetricCard
+                title="Avg Cycle Time"
+                value={avgCycleTime}
+                format="time"
+                status="neutral"
+              />
+              <MetricCard
+                title="Total Reach"
+                value={viralCoefficient?.unique_tokens || 0}
+                status="good"
+              />
+            </div>
+
+            {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {viralCoefficient && (
                 <ViralCoefficientChart kFactor={viralCoefficient.k_factor} />
               )}
               {amplificationData && <AmplificationChart data={amplificationData} />}
             </div>
+            
             {engagementData && <EngagementByLevelChart data={engagementData} />}
-          </TabsContent>
-
-          <TabsContent value="funnel" className="mt-6">
+            
             {funnelData && <ConversionFunnelChart data={funnelData} />}
-          </TabsContent>
-
-          <TabsContent value="content" className="mt-6">
+            
             {contentData && <ContentPerformanceTable data={contentData} />}
           </TabsContent>
         </Tabs>
