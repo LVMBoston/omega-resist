@@ -176,16 +176,14 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
         setProgress((completedSteps / totalSteps) * 100);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["url_events"] });
-      queryClient.invalidateQueries({ queryKey: ["viralCoefficient"] });
-      queryClient.invalidateQueries({ queryKey: ["conversionFunnel"] });
-      queryClient.invalidateQueries({ queryKey: ["amplification"] });
-      queryClient.invalidateQueries({ queryKey: ["engagement"] });
-      queryClient.invalidateQueries({ queryKey: ["cycleTime"] });
-      queryClient.invalidateQueries({ queryKey: ["contentPerformance"] });
-      queryClient.invalidateQueries({ queryKey: ["geographic"] });
+      // Invalidate all analytics queries to refresh data
+      await queryClient.invalidateQueries();
 
-      toast({ title: "Simulation complete!", description: `Check other tabs for results from ${selectedEoas.length} EOAs` });
+      toast({ 
+        title: "Simulation complete!", 
+        description: `Generated data for ${selectedEoas.length} EOAs. Switch to "Simulated" or "Both" data source in Filters to view.`,
+        duration: 8000
+      });
       
       if (onSimulationComplete) onSimulationComplete();
     } catch (error: any) {
