@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { mintL00, mintShare } from "@/lib/virality/mint";
 import { getL00Location, getLocationForLevel, logEventWithLocation } from "@/lib/virality/simulator";
+import { clearShortUrlCache } from "@/lib/virality/shortener";
 import { Loader2, Trash2, StopCircle } from "lucide-react";
 import {
   AlertDialog,
@@ -434,6 +435,18 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               <StopCircle className="mr-2 h-4 w-4" />Stop Simulation
             </Button>
           )}
+
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              clearShortUrlCache();
+              toast({ title: "Cache cleared", description: "Short URL cache has been cleared." });
+            }} 
+            disabled={isSimulating}
+            className="w-full"
+          >
+            Clear URL Cache
+          </Button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
