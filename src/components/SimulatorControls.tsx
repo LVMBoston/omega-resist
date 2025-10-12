@@ -128,6 +128,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
     abortControllerRef.current = new AbortController();
     setIsSimulating(true);
     setProgress(0);
+    let lastRefreshTime = Date.now();
 
     const selectedEoas = eoas?.filter(e => selectedEoaIds.has(e.id)) || [];
     const totalSteps = selectedEoas.length;
@@ -193,9 +194,16 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
         completedSteps++;
         setProgress((completedSteps / totalSteps) * 100);
+        
+        // Trigger periodic refresh every 5 seconds
+        const now = Date.now();
+        if (now - lastRefreshTime >= 5000) {
+          if (onSimulationComplete) onSimulationComplete();
+          lastRefreshTime = now;
+        }
       }
 
-      // Invalidate all analytics queries to refresh data
+      // Final refresh at completion
       await queryClient.invalidateQueries();
 
       toast({ 

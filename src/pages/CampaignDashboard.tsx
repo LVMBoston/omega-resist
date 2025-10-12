@@ -378,7 +378,7 @@ export default function CampaignDashboard() {
           </TabsContent>
 
           <TabsContent value="events" className="space-y-4 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 animate-fade-in">
               <MetricCard
                 title="Scans"
                 value={scansCount}
@@ -411,7 +411,7 @@ export default function CampaignDashboard() {
               </Card>
             ) : (
               events.map((event) => (
-                <Card key={event.id} className="hover:border-primary/50 transition-colors">
+                <Card key={event.id} className="hover:border-primary/50 transition-colors animate-fade-in">
                   <CardContent className="pt-3 pb-3">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-1.5">
@@ -474,13 +474,13 @@ export default function CampaignDashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="map" className="mt-6">
+          <TabsContent value="map" className="mt-6 animate-fade-in">
             <SharedDashboardMap geoData={geoData || []} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6 mt-6">
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
               <MetricCard
                 title="Viral Coefficient"
                 value={viralCoefficient?.k_factor.toFixed(2) || "0"}
@@ -506,18 +506,24 @@ export default function CampaignDashboard() {
             </div>
 
             {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in">
               {viralCoefficient && (
                 <ViralCoefficientChart kFactor={viralCoefficient.k_factor} />
               )}
               {amplificationData && <AmplificationChart data={amplificationData} />}
             </div>
             
-            {engagementData && <EngagementByLevelChart data={engagementData} />}
+            <div className="animate-fade-in">
+              {engagementData && <EngagementByLevelChart data={engagementData} />}
+            </div>
             
-            {funnelData && <ConversionFunnelChart data={funnelData} />}
+            <div className="animate-fade-in">
+              {funnelData && <ConversionFunnelChart data={funnelData} />}
+            </div>
             
-            {contentData && <ContentPerformanceTable data={contentData} />}
+            <div className="animate-fade-in">
+              {contentData && <ContentPerformanceTable data={contentData} />}
+            </div>
           </TabsContent>
 
           <TabsContent value="simulator" className="mt-6">
