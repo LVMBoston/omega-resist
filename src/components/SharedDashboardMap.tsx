@@ -52,6 +52,7 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
         style: "mapbox://styles/mapbox/light-v11",
         zoom: 1,
         center: [0, 20],
+        projection: "mercator" as any,
       });
 
       map.current.addControl(
