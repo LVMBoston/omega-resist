@@ -212,43 +212,46 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           continue;
         }
 
-        // Generate multiple L00 tokens for this EoA
+        // Mint ONE L00 token per EoA (each EoA can only have one L00)
+        const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
+        const l00Token = result.token;
+        await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
+        
+        // Log multiple scan/view events for this L00 based on l00Count
         for (let i = 0; i < l00Count; i++) {
-          if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
-
-          // Mint a new L00 token for each iteration
-          const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
-          const l00Token = result.token;
-          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
-          
-          // Log scan and view events for L00
           await logEventWithLocation(l00Token, "scan", l00Location);
           await logEventWithLocation(l00Token, "view", l00Location);
+        }
 
-          // Generate L01 tokens (shares from L00)
-          for (let j = 0; j < l01Factor; j++) {
-            const l01Location = getLocationForLevel(1, l00Location);
-            const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
-            await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
-            await logEventWithLocation(l01Token, "view", l01Location);
-            await logEventWithLocation(l01Token, "share", l01Location);
+        // Generate L01 tokens (shares from L00)
+        for (let j = 0; j < l01Factor; j++) {
+          if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
+          
+          const l01Location = getLocationForLevel(1, l00Location);
+          const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
+          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
+          await logEventWithLocation(l01Token, "view", l01Location);
+          await logEventWithLocation(l01Token, "share", l01Location);
 
-            // Generate L02 tokens (shares from L01)
-            for (let k = 0; k < l02Factor; k++) {
-              const l02Location = getLocationForLevel(2, l01Location);
-              const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
-              await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
-              await logEventWithLocation(l02Token, "view", l02Location);
-              await logEventWithLocation(l02Token, "share", l02Location);
+          // Generate L02 tokens (shares from L01)
+          for (let k = 0; k < l02Factor; k++) {
+            if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
+            
+            const l02Location = getLocationForLevel(2, l01Location);
+            const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
+            await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
+            await logEventWithLocation(l02Token, "view", l02Location);
+            await logEventWithLocation(l02Token, "share", l02Location);
 
-              // Generate L03 tokens (shares from L02)
-              for (let m = 0; m < l03Factor; m++) {
-                const l03Location = getLocationForLevel(3, l02Location);
-                const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
-                await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
-                await logEventWithLocation(l03Token, "view", l03Location);
-                await logEventWithLocation(l03Token, "share", l03Location);
-              }
+            // Generate L03 tokens (shares from L02)
+            for (let m = 0; m < l03Factor; m++) {
+              if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
+              
+              const l03Location = getLocationForLevel(3, l02Location);
+              const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
+              await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
+              await logEventWithLocation(l03Token, "view", l03Location);
+              await logEventWithLocation(l03Token, "share", l03Location);
             }
           }
         }
@@ -285,10 +288,10 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
     }
   };
 
-  const totalTokensPerEoa = l00Count * (1 + l01Factor + l01Factor * l02Factor + l01Factor * l02Factor * l03Factor);
+  const totalTokensPerEoa = 1 + l01Factor + l01Factor * l02Factor + l01Factor * l02Factor * l03Factor;
   const expectedScansPerEoa = l00Count;
-  const expectedViewsPerEoa = l00Count + l00Count * l01Factor + l00Count * l01Factor * l02Factor + l00Count * l01Factor * l02Factor * l03Factor;
-  const expectedSharesPerEoa = l00Count * l01Factor + l00Count * l01Factor * l02Factor + l00Count * l01Factor * l02Factor * l03Factor;
+  const expectedViewsPerEoa = l00Count + l01Factor + l01Factor * l02Factor + l01Factor * l02Factor * l03Factor;
+  const expectedSharesPerEoa = l01Factor + l01Factor * l02Factor + l01Factor * l02Factor * l03Factor;
 
   if (!campaignId) {
     return (
@@ -343,8 +346,9 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="l00-count">L00 Tokens per EOA</Label>
+              <Label htmlFor="l00-count">L00 Scan/View Events</Label>
               <Input id="l00-count" type="number" min={1} max={100} value={l00Count} onChange={(e) => setL00Count(parseInt(e.target.value) || 1)} />
+              <p className="text-xs text-muted-foreground mt-1">Number of scan+view events for the L00 token</p>
             </div>
             <div>
               <Label htmlFor="l01-factor">L01 per L00</Label>
