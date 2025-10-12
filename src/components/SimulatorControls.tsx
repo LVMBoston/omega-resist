@@ -111,6 +111,9 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       await queryClient.invalidateQueries();
 
       toast({ title: "Data cleared", description: "All simulation data has been deleted." });
+      
+      // Trigger callback to refresh parent components
+      if (onSimulationComplete) onSimulationComplete();
     } catch (error) {
       toast({ title: "Error", description: "Failed to clear simulation data.", variant: "destructive" });
     }

@@ -524,6 +524,10 @@ export default function CampaignDashboard() {
             <SimulatorControls 
               campaignId={selectedCampaignId}
               onSimulationComplete={() => {
+                // Refetch events to update all views
+                fetchEvents();
+                
+                // Switch to "both" mode when simulation completes with new data
                 if (dataSourceFilter === "real") {
                   const params = new URLSearchParams(searchParams);
                   params.set("dataSource", "both");
