@@ -94,19 +94,30 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       console.log("Starting simulation data cleanup...");
       
       // Count before deletion
-      const { count: eventsBefore } = await supabase
+      const { count: eventsBefore, error: eventsCountError } = await supabase
         .from("url_events")
         .select("*", { count: "exact", head: true })
         .eq("is_simulated", true);
       
-      const { count: tokensBefore } = await supabase
+      if (eventsCountError) {
+        console.error("Error counting events:", eventsCountError);
+        throw eventsCountError;
+      }
+      
+      const { count: tokensBefore, error: tokensCountError } = await supabase
         .from("tokens")
         .select("*", { count: "exact", head: true })
         .eq("is_simulated", true);
       
-      console.log(`Found ${eventsBefore} simulated events and ${tokensBefore} simulated tokens`);
+      if (tokensCountError) {
+        console.error("Error counting tokens:", tokensCountError);
+        throw tokensCountError;
+      }
+      
+      console.log(`Found ${eventsBefore} simulated events and ${tokensBefore} simulated tokens to delete`);
 
       // Delete simulated URL events FIRST (before tokens, to avoid FK constraint issues)
+      console.log("Attempting to delete simulated events...");
       const { error: eventsError, count: eventsDeleted } = await supabase
         .from("url_events")
         .delete({ count: "exact" })
@@ -114,11 +125,17 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
       if (eventsError) {
         console.error("Failed to delete events:", eventsError);
+        toast({
+          title: "Error deleting events",
+          description: `${eventsError.message}`,
+          variant: "destructive"
+        });
         throw eventsError;
       }
-      console.log(`Deleted ${eventsDeleted} simulated events`);
+      console.log(`Successfully deleted ${eventsDeleted} simulated events`);
 
       // Delete simulated tokens SECOND (after events are gone)
+      console.log("Attempting to delete simulated tokens...");
       const { error: tokensError, count: tokensDeleted } = await supabase
         .from("tokens")
         .delete({ count: "exact" })
@@ -126,15 +143,33 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
       if (tokensError) {
         console.error("Failed to delete tokens:", tokensError);
+        toast({
+          title: "Error deleting tokens",
+          description: `${tokensError.message}`,
+          variant: "destructive"
+        });
         throw tokensError;
       }
-      console.log(`Deleted ${tokensDeleted} simulated tokens`);
+      console.log(`Successfully deleted ${tokensDeleted} simulated tokens`);
+
+      // Verify deletion
+      const { count: eventsAfter } = await supabase
+        .from("url_events")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", true);
+      
+      const { count: tokensAfter } = await supabase
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", true);
+      
+      console.log(`After deletion: ${eventsAfter} events and ${tokensAfter} tokens remaining`);
 
       // Invalidate all queries to refresh the entire dashboard
       await queryClient.invalidateQueries();
 
       toast({ 
-        title: "Data cleared", 
+        title: "Data cleared successfully", 
         description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens.` 
       });
       
