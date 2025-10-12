@@ -122,7 +122,7 @@ export default function CampaignEoaManager() {
     const {
       data,
       error
-    } = await supabase.from("events_actions").select("*").eq("campaign_id", campaignId).order("start_date", {
+    } = await supabase.from("events_actions").select("*").eq("campaign_id", campaignId).order("zip_code", {
       ascending: true
     });
     if (error) {
