@@ -166,16 +166,22 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       
       console.log(`After deletion: ${eventsAfter} events and ${tokensAfter} tokens remaining`);
 
-      // Invalidate all queries to refresh the entire dashboard
-      await queryClient.invalidateQueries();
+      // Force refresh all relevant queries
+      await queryClient.invalidateQueries({ queryKey: ["url_events"] });
+      await queryClient.invalidateQueries({ queryKey: ["tokens"] });
+      await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["viralityMetrics"] });
+      await queryClient.refetchQueries();
 
       toast({ 
         title: "Data cleared successfully", 
-        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens.` 
+        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens. Refreshing dashboard...` 
       });
       
       // Trigger callback to refresh parent components
-      if (onSimulationComplete) onSimulationComplete();
+      if (onSimulationComplete) {
+        setTimeout(() => onSimulationComplete(), 500);
+      }
     } catch (error) {
       toast({ title: "Error", description: "Failed to clear simulation data.", variant: "destructive" });
     }
