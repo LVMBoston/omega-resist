@@ -147,38 +147,41 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           continue;
         }
 
-        const { data: existingL00 } = await supabase.from('tokens').select('token').eq('eoa_id', eoa.id).eq('level', 0).single();
-
-        let l00Token: string;
-        if (existingL00) {
-          l00Token = existingL00.token;
-        } else {
-          const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
-          l00Token = result.token;
-          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
-        }
-
+        // Generate multiple L00 tokens for this EoA
         for (let i = 0; i < l00Count; i++) {
           if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
 
+          // Mint a new L00 token for each iteration
+          const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
+          const l00Token = result.token;
+          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
+          
+          // Log scan and view events for L00
           await logEventWithLocation(l00Token, "scan", l00Location);
+          await logEventWithLocation(l00Token, "view", l00Location);
 
+          // Generate L01 tokens (shares from L00)
           for (let j = 0; j < l01Factor; j++) {
             const l01Location = getLocationForLevel(1, l00Location);
             const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
             await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
+            await logEventWithLocation(l01Token, "view", l01Location);
             await logEventWithLocation(l01Token, "share", l01Location);
 
+            // Generate L02 tokens (shares from L01)
             for (let k = 0; k < l02Factor; k++) {
               const l02Location = getLocationForLevel(2, l01Location);
               const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
+              await logEventWithLocation(l02Token, "view", l02Location);
               await logEventWithLocation(l02Token, "share", l02Location);
 
+              // Generate L03 tokens (shares from L02)
               for (let m = 0; m < l03Factor; m++) {
                 const l03Location = getLocationForLevel(3, l02Location);
                 const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
+                await logEventWithLocation(l03Token, "view", l03Location);
                 await logEventWithLocation(l03Token, "share", l03Location);
               }
             }
@@ -211,6 +214,9 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
   };
 
   const totalTokensPerEoa = l00Count * (1 + l01Factor + l01Factor * l02Factor + l01Factor * l02Factor * l03Factor);
+  const expectedScansPerEoa = l00Count;
+  const expectedViewsPerEoa = l00Count + l00Count * l01Factor + l00Count * l01Factor * l02Factor + l00Count * l01Factor * l02Factor * l03Factor;
+  const expectedSharesPerEoa = l00Count * l01Factor + l00Count * l01Factor * l02Factor + l00Count * l01Factor * l02Factor * l03Factor;
 
   if (!campaignId) {
     return (
@@ -289,11 +295,50 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           <CardTitle>Run Simulation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 bg-muted rounded-lg">
+          <div className="p-4 bg-muted rounded-lg space-y-3">
             <div className="text-sm space-y-1">
               <div>Selected EOAs: <strong>{selectedEoaIds.size}</strong></div>
               <div>Tokens per EOA: <strong>{totalTokensPerEoa}</strong></div>
               <div>Total tokens: <strong>{selectedEoaIds.size * totalTokensPerEoa}</strong></div>
+            </div>
+            
+            <div className="border-t pt-3">
+              <div className="text-sm font-medium mb-2">Expected Events per EOA:</div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="p-2 bg-blue-500/10 rounded border border-blue-500/20">
+                  <div className="text-blue-600 font-medium">Scans</div>
+                  <div className="text-lg font-bold text-blue-700">{expectedScansPerEoa}</div>
+                  <div className="text-[10px] text-muted-foreground">L00 only</div>
+                </div>
+                <div className="p-2 bg-green-500/10 rounded border border-green-500/20">
+                  <div className="text-green-600 font-medium">Views</div>
+                  <div className="text-lg font-bold text-green-700">{expectedViewsPerEoa}</div>
+                  <div className="text-[10px] text-muted-foreground">All levels</div>
+                </div>
+                <div className="p-2 bg-purple-500/10 rounded border border-purple-500/20">
+                  <div className="text-purple-600 font-medium">Shares</div>
+                  <div className="text-lg font-bold text-purple-700">{expectedSharesPerEoa}</div>
+                  <div className="text-[10px] text-muted-foreground">L01-L03</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="border-t pt-3">
+              <div className="text-sm font-medium mb-2">Total Expected Events ({selectedEoaIds.size} EOAs):</div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="p-2 bg-background rounded border">
+                  <div className="text-muted-foreground">Total Scans</div>
+                  <div className="text-lg font-bold">{expectedScansPerEoa * selectedEoaIds.size}</div>
+                </div>
+                <div className="p-2 bg-background rounded border">
+                  <div className="text-muted-foreground">Total Views</div>
+                  <div className="text-lg font-bold">{expectedViewsPerEoa * selectedEoaIds.size}</div>
+                </div>
+                <div className="p-2 bg-background rounded border">
+                  <div className="text-muted-foreground">Total Shares</div>
+                  <div className="text-lg font-bold">{expectedSharesPerEoa * selectedEoaIds.size}</div>
+                </div>
+              </div>
             </div>
           </div>
 
