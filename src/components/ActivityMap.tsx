@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface UrlEvent {
   id: string;
@@ -34,6 +36,7 @@ interface ActivityMapProps {
 
 export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [tokenInput, setTokenInput] = useState("");
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +45,25 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
   console.log("ActivityMap component rendering, eventTypeFilter:", eventTypeFilter);
 
-  // Fetch Mapbox token on mount
+  // Load Mapbox token from localStorage on mount
   useEffect(() => {
-    console.log("ActivityMap mounted, fetching Mapbox token");
-    fetchMapboxToken();
+    console.log("ActivityMap mounted, loading Mapbox token from localStorage");
+    const savedToken = localStorage.getItem("mapbox_token");
+    if (savedToken) {
+      setMapboxToken(savedToken);
+      setLoading(false);
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  const handleSaveToken = () => {
+    if (tokenInput.trim()) {
+      localStorage.setItem("mapbox_token", tokenInput.trim());
+      setMapboxToken(tokenInput.trim());
+      setTokenInput("");
+    }
+  };
 
   // Initialize map when token is available
   useEffect(() => {
@@ -153,25 +170,6 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     };
   }, [eventTypeFilter]);
 
-  const fetchMapboxToken = async () => {
-    console.log("fetchMapboxToken called");
-    try {
-      console.log("Invoking get-mapbox-token function");
-      const { data, error } = await supabase.functions.invoke("get-mapbox-token");
-
-      console.log("get-mapbox-token response:", { data, error });
-
-      if (error) throw error;
-      if (!data?.token) throw new Error("No token returned");
-
-      console.log("Setting Mapbox token:", data.token.substring(0, 20) + "...");
-      setMapboxToken(data.token);
-    } catch (err) {
-      console.error("Error fetching Mapbox token:", err);
-      setError("Failed to load map token");
-      setLoading(false);
-    }
-  };
 
   const fetchEvents = async () => {
     console.log("fetchEvents called, loading:", loading);
@@ -410,6 +408,38 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>{error}</AlertDescription>
       </Alert>
+    );
+  }
+
+  if (!mapboxToken) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[600px] gap-4 p-6 border rounded-lg m-4">
+        <AlertCircle className="w-8 h-8 text-muted-foreground" />
+        <div className="text-center space-y-2">
+          <p className="font-medium">Mapbox Token Required</p>
+          <p className="text-sm text-muted-foreground">
+            Enter your Mapbox public token to view the activity map.{" "}
+            <a
+              href="https://account.mapbox.com/access-tokens/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Get your token here
+            </a>
+          </p>
+        </div>
+        <div className="flex gap-2 w-full max-w-md">
+          <Input
+            type="text"
+            placeholder="pk.eyJ1IjoieW91cnVzZXJuYW1lIi..."
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSaveToken()}
+          />
+          <Button onClick={handleSaveToken}>Save</Button>
+        </div>
+      </div>
     );
   }
 

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface GeographicPoint {
   latitude: number;
@@ -21,24 +22,26 @@ interface SharedDashboardMapProps {
 
 export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps) {
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [tokenInput, setTokenInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
-  // Fetch Mapbox token
+  // Load Mapbox token from localStorage
   useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("get-mapbox-token");
-        if (error) throw error;
-        setMapboxToken(data.token);
-      } catch (err) {
-        console.error("Error fetching Mapbox token:", err);
-        setError("Failed to load map");
-      }
-    };
-    fetchToken();
+    const savedToken = localStorage.getItem("mapbox_token");
+    if (savedToken) {
+      setMapboxToken(savedToken);
+    }
   }, []);
+
+  const handleSaveToken = () => {
+    if (tokenInput.trim()) {
+      localStorage.setItem("mapbox_token", tokenInput.trim());
+      setMapboxToken(tokenInput.trim());
+      setTokenInput("");
+    }
+  };
 
   // Initialize map
   useEffect(() => {
@@ -194,8 +197,32 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
 
   if (!mapboxToken) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="flex flex-col items-center justify-center h-96 gap-4 p-6 border rounded-lg">
+        <AlertCircle className="w-8 h-8 text-muted-foreground" />
+        <div className="text-center space-y-2">
+          <p className="font-medium">Mapbox Token Required</p>
+          <p className="text-sm text-muted-foreground">
+            Enter your Mapbox public token to view the map.{" "}
+            <a
+              href="https://account.mapbox.com/access-tokens/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Get your token here
+            </a>
+          </p>
+        </div>
+        <div className="flex gap-2 w-full max-w-md">
+          <Input
+            type="text"
+            placeholder="pk.eyJ1IjoieW91cnVzZXJuYW1lIi..."
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSaveToken()}
+          />
+          <Button onClick={handleSaveToken}>Save</Button>
+        </div>
       </div>
     );
   }
