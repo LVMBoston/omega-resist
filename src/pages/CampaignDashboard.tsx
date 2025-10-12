@@ -243,9 +243,36 @@ export default function CampaignDashboard() {
     ? cycleTimeData.reduce((sum, ct) => sum + ct.avg_hours, 0) / cycleTimeData.length
     : 0;
 
-  const scansCount = events.filter(e => e.event_type === "scan").length;
-  const viewsCount = events.filter(e => e.event_type === "view").length;
-  const sharesCount = events.filter(e => e.event_type === "share").length;
+  // Fetch total event counts (not limited to last 50)
+  const { data: eventCounts } = useQuery({
+    queryKey: ["eventCounts", selectedCampaign, dataSourceFilter],
+    queryFn: async () => {
+      let baseQuery = supabase
+        .from("url_events")
+        .select("event_type, tokens!inner(utm_campaign)", { count: "exact", head: false })
+        .eq("tokens.utm_campaign", selectedCampaign);
+
+      if (dataSourceFilter === "real") {
+        baseQuery = baseQuery.eq("is_simulated", false);
+      } else if (dataSourceFilter === "simulated") {
+        baseQuery = baseQuery.eq("is_simulated", true);
+      }
+
+      const { data, error } = await baseQuery;
+      if (error) throw error;
+
+      const scans = data?.filter(e => e.event_type === "scan").length || 0;
+      const views = data?.filter(e => e.event_type === "view").length || 0;
+      const shares = data?.filter(e => e.event_type === "share").length || 0;
+
+      return { scans, views, shares };
+    },
+    enabled: !!selectedCampaign,
+  });
+
+  const scansCount = eventCounts?.scans || 0;
+  const viewsCount = eventCounts?.views || 0;
+  const sharesCount = eventCounts?.shares || 0;
 
   if (campaignsLoading) {
     return (
