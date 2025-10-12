@@ -149,8 +149,7 @@ export default function CampaignDashboard() {
         )
       `)
       .eq("tokens.utm_campaign", selectedCampaign)
-      .order("occurred_at", { ascending: false })
-      .limit(50);
+      .order("occurred_at", { ascending: false });
 
     if (eventTypeFilter !== "all") {
       query = query.eq("event_type", eventTypeFilter);
