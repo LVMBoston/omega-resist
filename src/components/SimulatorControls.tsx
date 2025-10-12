@@ -91,11 +91,24 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
   const clearSimulationData = async () => {
     try {
-      await supabase.from('url_events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      queryClient.invalidateQueries({ queryKey: ["url_events"] });
-      queryClient.invalidateQueries({ queryKey: ["tokens"] });
+      // Delete only simulated tokens
+      const { error: tokensError } = await supabase
+        .from("tokens")
+        .delete()
+        .eq("is_simulated", true);
+
+      if (tokensError) throw tokensError;
+
+      // Delete only simulated URL events
+      const { error: eventsError } = await supabase
+        .from("url_events")
+        .delete()
+        .eq("is_simulated", true);
+
+      if (eventsError) throw eventsError;
+
+      // Invalidate all queries to refresh the entire dashboard
+      await queryClient.invalidateQueries();
 
       toast({ title: "Data cleared", description: "All simulation data has been deleted." });
     } catch (error) {
