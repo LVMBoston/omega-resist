@@ -91,26 +91,52 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
   const clearSimulationData = async () => {
     try {
-      // Delete only simulated tokens
-      const { error: tokensError } = await supabase
-        .from("tokens")
-        .delete()
-        .eq("is_simulated", true);
-
-      if (tokensError) throw tokensError;
-
-      // Delete only simulated URL events
-      const { error: eventsError } = await supabase
+      console.log("Starting simulation data cleanup...");
+      
+      // Count before deletion
+      const { count: eventsBefore } = await supabase
         .from("url_events")
-        .delete()
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", true);
+      
+      const { count: tokensBefore } = await supabase
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", true);
+      
+      console.log(`Found ${eventsBefore} simulated events and ${tokensBefore} simulated tokens`);
+
+      // Delete simulated URL events FIRST (before tokens, to avoid FK constraint issues)
+      const { error: eventsError, count: eventsDeleted } = await supabase
+        .from("url_events")
+        .delete({ count: "exact" })
         .eq("is_simulated", true);
 
-      if (eventsError) throw eventsError;
+      if (eventsError) {
+        console.error("Failed to delete events:", eventsError);
+        throw eventsError;
+      }
+      console.log(`Deleted ${eventsDeleted} simulated events`);
+
+      // Delete simulated tokens SECOND (after events are gone)
+      const { error: tokensError, count: tokensDeleted } = await supabase
+        .from("tokens")
+        .delete({ count: "exact" })
+        .eq("is_simulated", true);
+
+      if (tokensError) {
+        console.error("Failed to delete tokens:", tokensError);
+        throw tokensError;
+      }
+      console.log(`Deleted ${tokensDeleted} simulated tokens`);
 
       // Invalidate all queries to refresh the entire dashboard
       await queryClient.invalidateQueries();
 
-      toast({ title: "Data cleared", description: "All simulation data has been deleted." });
+      toast({ 
+        title: "Data cleared", 
+        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens.` 
+      });
       
       // Trigger callback to refresh parent components
       if (onSimulationComplete) onSimulationComplete();
