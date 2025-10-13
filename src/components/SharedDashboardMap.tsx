@@ -27,12 +27,37 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
-  // Load Mapbox token from localStorage
+  // Load Mapbox token from backend or localStorage
   useEffect(() => {
-    const savedToken = localStorage.getItem("mapbox_token");
-    if (savedToken) {
-      setMapboxToken(savedToken);
-    }
+    const fetchToken = async () => {
+      try {
+        // Import supabase client
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        
+        if (error) throw error;
+        
+        if (data?.token) {
+          setMapboxToken(data.token);
+          localStorage.setItem("mapbox_token", data.token);
+        } else {
+          // Fallback to localStorage
+          const savedToken = localStorage.getItem("mapbox_token");
+          if (savedToken) {
+            setMapboxToken(savedToken);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching Mapbox token:", err);
+        // Fallback to localStorage
+        const savedToken = localStorage.getItem("mapbox_token");
+        if (savedToken) {
+          setMapboxToken(savedToken);
+        }
+      }
+    };
+    
+    fetchToken();
   }, []);
 
   const handleSaveToken = () => {

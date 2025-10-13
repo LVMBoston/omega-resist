@@ -45,16 +45,42 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
   console.log("ActivityMap component rendering, eventTypeFilter:", eventTypeFilter);
 
-  // Load Mapbox token from localStorage on mount
+  // Load Mapbox token from backend or localStorage
   useEffect(() => {
-    console.log("ActivityMap mounted, loading Mapbox token from localStorage");
-    const savedToken = localStorage.getItem("mapbox_token");
-    if (savedToken) {
-      setMapboxToken(savedToken);
-      setLoading(false);
-    } else {
-      setLoading(false);
-    }
+    console.log("ActivityMap mounted, fetching Mapbox token");
+    
+    const fetchToken = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        
+        if (error) throw error;
+        
+        if (data?.token) {
+          console.log("Mapbox token fetched from backend");
+          setMapboxToken(data.token);
+          localStorage.setItem("mapbox_token", data.token);
+        } else {
+          // Fallback to localStorage
+          const savedToken = localStorage.getItem("mapbox_token");
+          if (savedToken) {
+            console.log("Using Mapbox token from localStorage");
+            setMapboxToken(savedToken);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching Mapbox token:", err);
+        // Fallback to localStorage
+        const savedToken = localStorage.getItem("mapbox_token");
+        if (savedToken) {
+          console.log("Using Mapbox token from localStorage after error");
+          setMapboxToken(savedToken);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchToken();
   }, []);
 
   const handleSaveToken = () => {
