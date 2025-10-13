@@ -44,7 +44,6 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const { toast } = useToast();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(false);
-  const [importLoading, setImportLoading] = useState(false);
   
   // Helper to convert ISO timestamp to datetime-local format
   const toDatetimeLocal = (isoString: string | undefined) => {
@@ -78,70 +77,12 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
     setDecks(data || []);
   };
 
-  const handleImportFromMobilize = async () => {
-    if (!formData.mobilize_code) {
-      toast({
-        variant: "destructive",
-        title: "Missing Mobilize Code",
-        description: "Please enter a 6-digit Mobilize event ID",
-      });
-      return;
-    }
-
-    if (!/^\d{6}$/.test(formData.mobilize_code)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Mobilize Code",
-        description: "Mobilize event ID must be exactly 6 digits",
-      });
-      return;
-    }
-
-    setImportLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('parse-mobilize-event', {
-        body: { eventId: formData.mobilize_code }
-      });
-
-      if (error) throw error;
-
-      console.log('Imported event data:', data);
-      setFormData({
-        ...formData,
-        title: data.eventName || formData.title,
-        site_name: data.siteName || formData.site_name,
-        city: data.city || formData.city,
-        state: data.state || formData.state,
-        zip_code: data.zipCode || formData.zip_code,
-        start_date: data.dateTime || formData.start_date,
-        end_date: data.dateTimeEnd || formData.end_date,
-        timezone: data.timezone || formData.timezone,
-        description: data.eventSponsor ? `Sponsored by ${data.eventSponsor}` : formData.description,
-      });
-
-      toast({
-        title: "Import Successful",
-        description: `Imported event data from Mobilize.us (source: ${data.source})`,
-      });
-    } catch (error: any) {
-      console.error('Import error:', error);
-      toast({
-        variant: "destructive",
-        title: "Import Failed",
-        description: error.message || "Failed to import event data from Mobilize.us",
-      });
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!formData.title || !formData.utm_id || !formData.mobilize_code) {
       toast({
         variant: "destructive",
         title: "Missing required fields",
-        description: "Title, UTM ID, and Mobilize Code are required",
+        description: "Title, UTM ID, and Event Code are required",
       });
       return;
     }
@@ -194,25 +135,15 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Mobilize Code <span className="text-destructive">*</span></Label>
-          <div className="flex gap-2">
-            <Input
-              value={formData.mobilize_code}
-              onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
-              placeholder="e.g., 837854 or ABC123"
-              maxLength={10}
-            />
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={handleImportFromMobilize}
-              disabled={importLoading || !formData.mobilize_code}
-            >
-              {importLoading ? "Importing..." : "Import"}
-            </Button>
-          </div>
+          <Label>Event Code <span className="text-destructive">*</span></Label>
+          <Input
+            value={formData.mobilize_code}
+            onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
+            placeholder="e.g., EVENT01"
+            maxLength={10}
+          />
           <p className="text-xs text-muted-foreground mt-1">
-            Required: Mobilize event ID (6 digits) or custom 6-char code for non-Mobilize events
+            Required: Unique event identifier (6-10 characters)
           </p>
         </div>
         <div>

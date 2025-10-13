@@ -3,11 +3,5 @@ project_id = "wznilzguqjwvkysuleta"
 [functions.geoip]
 verify_jwt = false
 
-[functions.parse-mobilize-event]
-verify_jwt = false
-
-[functions.scrape-mobilize-events]
-verify_jwt = false
-
 [functions.get-mapbox-token]
 verify_jwt = false
