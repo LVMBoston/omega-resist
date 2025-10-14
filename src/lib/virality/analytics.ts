@@ -430,12 +430,12 @@ export async function getGeographicSpread(
 
   if (error) throw error;
 
-  // Aggregate by location
+  // Aggregate by location AND level
   const locationMap = new Map<string, GeographicPoint>();
 
   events?.forEach((e) => {
     const token = tokens?.find((t) => t.token === e.token);
-    const key = `${e.latitude},${e.longitude}`;
+    const key = `${e.latitude},${e.longitude},${token?.level || 0}`;
     
     if (!locationMap.has(key)) {
       locationMap.set(key, {
