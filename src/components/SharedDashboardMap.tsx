@@ -27,6 +27,16 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
+  const resetToUSView = () => {
+    if (map.current) {
+      map.current.flyTo({
+        center: [-98.5795, 39.8283], // Geographic center of USA
+        zoom: 4,
+        duration: 2000,
+      });
+    }
+  };
+
   // Load Mapbox token from backend or localStorage
   useEffect(() => {
     const fetchToken = async () => {
@@ -262,8 +272,63 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
   }
 
   return (
-    <div className="relative w-full h-96 rounded-lg overflow-hidden border">
+    <div className="relative w-full h-[calc(100vh-16rem)] rounded-lg overflow-hidden border">
       <div ref={mapContainer} className="absolute inset-0" />
+      
+      {/* U.S. View Reset Button */}
+      <div className="absolute top-4 left-4 z-10">
+        <Button 
+          onClick={resetToUSView}
+          variant="secondary"
+          size="sm"
+          className="shadow-lg"
+        >
+          U.S. View
+        </Button>
+      </div>
+
+      {/* Legend */}
+      <div className="absolute bottom-4 left-4 z-10 bg-background/95 backdrop-blur-sm p-4 rounded-lg shadow-lg border">
+        <div className="text-sm font-semibold mb-3">Map Legend</div>
+        
+        {/* Event Level Colors */}
+        <div className="space-y-2 mb-4">
+          <div className="text-xs font-medium mb-1.5">Event Level:</div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
+            <span>Level 0</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
+            <span>Level 1</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f59e0b' }}></div>
+            <span>Level 2</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }}></div>
+            <span>Level 3</span>
+          </div>
+        </div>
+
+        {/* Event Count Sizes */}
+        <div className="space-y-2">
+          <div className="text-xs font-medium mb-1.5">Event Count:</div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-2 h-2 rounded-full bg-primary"></div>
+            <span>1-9 events</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-3 h-3 rounded-full bg-primary"></div>
+            <span>10-49 events</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-4 h-4 rounded-full bg-primary"></div>
+            <span>50+ events</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
