@@ -18,9 +18,10 @@ interface GeographicPoint {
 
 interface SharedDashboardMapProps {
   geoData: GeographicPoint[];
+  levelFilter?: string;
 }
 
-export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps) {
+export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }: SharedDashboardMapProps) {
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -116,14 +117,18 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
     if (map.current && map.current.loaded() && geoData.length > 0) {
       updateMapData();
     }
-  }, [geoData]);
+  }, [geoData, levelFilter]);
 
   const updateMapData = () => {
     if (!map.current || !map.current.loaded() || geoData.length === 0) return;
 
+    // Filter geoData by selected levels
+    const activeLevels = levelFilter.split(',').map(Number);
+    const visibleData = geoData.filter(point => activeLevels.includes(point.level));
+
     const geojson = {
       type: "FeatureCollection" as const,
-      features: geoData.map((point) => ({
+      features: visibleData.map((point) => ({
         type: "Feature" as const,
         geometry: {
           type: "Point" as const,
@@ -211,10 +216,10 @@ export default function SharedDashboardMap({ geoData }: SharedDashboardMapProps)
       if (map.current) map.current.getCanvas().style.cursor = "";
     });
 
-    // Fit bounds to show all points
-    if (geoData.length > 0) {
+    // Fit bounds to show all visible points
+    if (visibleData.length > 0) {
       const bounds = new mapboxgl.LngLatBounds();
-      geoData.forEach((point) => {
+      visibleData.forEach((point) => {
         bounds.extend([point.longitude, point.latitude]);
       });
       map.current.fitBounds(bounds, { padding: 50, maxZoom: 10 });

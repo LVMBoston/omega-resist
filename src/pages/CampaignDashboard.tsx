@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -71,6 +73,7 @@ export default function CampaignDashboard() {
   const selectedCampaignId = searchParams.get("campaignId") || "";
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
+  const levelFilter = searchParams.get("levels") || "0,1,2,3";
 
   // Sync filters across tabs using localStorage
   useEffect(() => {
@@ -82,6 +85,7 @@ export default function CampaignDashboard() {
         params.set("campaignId", filters.campaignId);
         params.set("eventType", filters.eventType);
         params.set("dataSource", filters.dataSource);
+        params.set("levels", filters.levels);
         setSearchParams(params, { replace: true });
       }
     };
@@ -98,10 +102,11 @@ export default function CampaignDashboard() {
         campaignId: selectedCampaignId,
         eventType: eventTypeFilter,
         dataSource: dataSourceFilter,
+        levels: levelFilter,
       };
       localStorage.setItem("campaign-dashboard-filters", JSON.stringify(filters));
     }
-  }, [selectedCampaign, selectedCampaignId, eventTypeFilter, dataSourceFilter]);
+  }, [selectedCampaign, selectedCampaignId, eventTypeFilter, dataSourceFilter, levelFilter]);
 
   // Fetch campaigns
   const { data: campaigns, isLoading: campaignsLoading } = useQuery({
@@ -521,6 +526,40 @@ export default function CampaignDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Viral Levels (for Map)</label>
+                  <div className="flex gap-4 flex-wrap">
+                    {[0, 1, 2, 3].map((level) => {
+                      const currentLevels = levelFilter.split(',').map(Number);
+                      const isChecked = currentLevels.includes(level);
+                      return (
+                        <div key={level} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`level-${level}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const params = new URLSearchParams(searchParams);
+                              let newLevels = currentLevels.filter(l => l !== level);
+                              if (checked) {
+                                newLevels.push(level);
+                                newLevels.sort();
+                              }
+                              params.set("levels", newLevels.join(','));
+                              setSearchParams(params);
+                            }}
+                          />
+                          <Label
+                            htmlFor={`level-${level}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            L{level.toString().padStart(2, '0')}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -544,6 +583,12 @@ export default function CampaignDashboard() {
                   <span className="font-medium">Data Source:</span>{" "}
                   <span className="text-muted-foreground">
                     {dataSourceFilter === "real" ? "Real Data Only" : dataSourceFilter === "simulated" ? "Simulated Data Only" : "Both Combined"}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">Viral Levels:</span>{" "}
+                  <span className="text-muted-foreground">
+                    {levelFilter.split(',').map(l => `L${l.padStart(2, '0')}`).join(', ')}
                   </span>
                 </div>
               </CardContent>
@@ -801,7 +846,7 @@ export default function CampaignDashboard() {
           </TabsContent>
 
           <TabsContent value="map" className="mt-6 animate-fade-in">
-            <SharedDashboardMap geoData={geoData || []} />
+            <SharedDashboardMap geoData={geoData || []} levelFilter={levelFilter} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6 mt-6">
