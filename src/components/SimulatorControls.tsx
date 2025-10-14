@@ -219,10 +219,27 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           continue;
         }
 
-        // Mint ONE L00 token per EoA (each EoA can only have one L00)
-        const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
-        const l00Token = result.token;
-        await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
+        // Check if L00 token already exists for this EOA
+        const { data: existingL00 } = await supabase
+          .from('tokens')
+          .select('token')
+          .eq('eoa_id', eoa.id)
+          .eq('level', 0)
+          .maybeSingle();
+
+        let l00Token: string;
+        
+        if (existingL00) {
+          // Use existing L00 token
+          l00Token = existingL00.token;
+          console.log(`Using existing L00 token for ${eoa.title}: ${l00Token}`);
+        } else {
+          // Mint new L00 token and mark as simulated
+          const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
+          l00Token = result.token;
+          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
+          console.log(`Minted new simulated L00 token for ${eoa.title}: ${l00Token}`);
+        }
         
         // Log multiple scan/view events for this L00 based on l00Count
         for (let i = 0; i < l00Count; i++) {
