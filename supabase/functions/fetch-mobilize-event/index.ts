@@ -51,6 +51,33 @@ serve(async (req) => {
     const event = data.data;
     const location = event.location || {};
     
+    // Helper function to convert Unix timestamp to local datetime string for the event's timezone
+    const formatDatetimeInTimezone = (unixTimestamp: number, timezone: string): string => {
+      const date = new Date(unixTimestamp * 1000);
+      
+      // Use Intl.DateTimeFormat to get the date/time in the target timezone
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      
+      const parts = formatter.formatToParts(date);
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      const hour = parts.find(p => p.type === 'hour')?.value;
+      const minute = parts.find(p => p.type === 'minute')?.value;
+      
+      return `${year}-${month}-${day}T${hour}:${minute}`;
+    };
+    
+    const eventTimezone = event.timezone || 'America/New_York';
+    
     const formattedData = {
       title: event.title || '',
       site_name: event.sponsor?.name || '',
@@ -59,12 +86,12 @@ serve(async (req) => {
       zip_code: location.postal_code || '',
       type: event.event_type || 'UNKNOWN',
       start_date: event.timeslots?.[0]?.start_date 
-        ? new Date(event.timeslots[0].start_date * 1000).toISOString()
+        ? formatDatetimeInTimezone(event.timeslots[0].start_date, eventTimezone)
         : '',
       end_date: event.timeslots?.[0]?.end_date
-        ? new Date(event.timeslots[0].end_date * 1000).toISOString()
+        ? formatDatetimeInTimezone(event.timeslots[0].end_date, eventTimezone)
         : '',
-      timezone: event.timezone || 'America/New_York',
+      timezone: eventTimezone,
       description: event.description || '',
     };
 
