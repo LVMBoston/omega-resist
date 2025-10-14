@@ -71,7 +71,15 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
   useEffect(() => {
     fetchDecks();
-  }, []);
+    
+    // Load last utm_id for this campaign if not editing
+    if (!initialData?.utm_id) {
+      const savedUtmId = localStorage.getItem(`eoa_last_utm_${campaignId}`);
+      if (savedUtmId) {
+        setFormData(prev => ({ ...prev, utm_id: savedUtmId }));
+      }
+    }
+  }, [campaignId]);
 
   const fetchDecks = async () => {
     const { data } = await supabase.from("decks").select("slug").order("slug");
@@ -214,7 +222,14 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
           <Label>UTM ID <span className="text-destructive">*</span></Label>
           <Input
             value={formData.utm_id}
-            onChange={(e) => setFormData({ ...formData, utm_id: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, utm_id: value });
+              // Save to localStorage for this campaign
+              if (value.trim()) {
+                localStorage.setItem(`eoa_last_utm_${campaignId}`, value);
+              }
+            }}
             placeholder="e.g., rally-001"
           />
           <p className="text-xs text-muted-foreground mt-1">
