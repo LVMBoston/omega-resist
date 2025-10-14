@@ -289,6 +289,9 @@ export default function CampaignDashboard() {
           id,
           occurred_at,
           event_type,
+          city,
+          region,
+          zip_code,
           tokens!inner(
             level,
             utm_content,
@@ -763,11 +766,11 @@ export default function CampaignDashboard() {
                               <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
                               <TableCell>{event.tokens.events_actions.mobilize_code || 'N/A'}</TableCell>
                               <TableCell>
-                                {event.tokens.events_actions.city && event.tokens.events_actions.state
-                                  ? `${event.tokens.events_actions.city}, ${event.tokens.events_actions.state}`
+                                {event.city && event.region
+                                  ? `${event.city}, ${event.region}`
                                   : 'N/A'}
                               </TableCell>
-                              <TableCell>{formatZipCode(event.tokens.events_actions.zip_code)}</TableCell>
+                              <TableCell>{formatZipCode(event.zip_code)}</TableCell>
                               <TableCell>
                                 <Badge variant="outline">{formatLevel(event.tokens.level)}</Badge>
                               </TableCell>
