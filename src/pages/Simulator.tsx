@@ -195,8 +195,9 @@ export default function Simulator() {
         let l00Token: string;
         
         if (existingL00) {
-          // Use existing L00 token
+          // Use existing L00 token and mark as simulated
           l00Token = existingL00.token;
+          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
           console.log(`Using existing L00 token for ${eoa.title}: ${l00Token}`);
         } else {
           // Mint new L00 token and mark as simulated
