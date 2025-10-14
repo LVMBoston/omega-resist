@@ -31,6 +31,7 @@ interface EoA {
   state: string | null;
   zip_code: string | null;
   assigned_deck_slug: string | null;
+  mobilize_code: string | null;
 }
 
 interface SimulatorControlsProps {
@@ -55,7 +56,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
     queryFn: async () => {
       const { data, error } = await supabase
         .from("events_actions")
-        .select("id, title, city, state, zip_code, assigned_deck_slug")
+        .select("id, title, city, state, zip_code, assigned_deck_slug, mobilize_code")
         .eq("campaign_id", campaignId)
         .order("title");
       if (error) throw error;
@@ -206,8 +207,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       for (const eoa of selectedEoas) {
         if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
 
-        if (!eoa.zip_code || !eoa.assigned_deck_slug) {
-          const reason = !eoa.zip_code ? "Missing zip code" : "No deck assigned";
+        if (!eoa.zip_code || !eoa.assigned_deck_slug || !eoa.mobilize_code) {
+          const reason = !eoa.zip_code ? "Missing zip code" : !eoa.assigned_deck_slug ? "No deck assigned" : "Missing mobilize code";
           toast({
             title: "Skipped EoA",
             description: `${eoa.title}: ${reason}`,
