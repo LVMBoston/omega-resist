@@ -126,6 +126,289 @@ export const SIMULATOR_CITIES: Record<string, { lat: number; lng: number; city: 
   "77006": { lat: 29.7408, lng: -95.3910, city: "Houston", region: "TX", country: "United States" },
   "77007": { lat: 29.7709, lng: -95.3949, city: "Houston", region: "TX", country: "United States" },
   "77008": { lat: 29.7971, lng: -95.4010, city: "Houston", region: "TX", country: "United States" },
+  
+  // Dallas area
+  "75201": { lat: 32.7767, lng: -96.7970, city: "Dallas", region: "TX", country: "United States" },
+  "75202": { lat: 32.7811, lng: -96.7951, city: "Dallas", region: "TX", country: "United States" },
+  "75203": { lat: 32.7696, lng: -96.7698, city: "Dallas", region: "TX", country: "United States" },
+  "75204": { lat: 32.8063, lng: -96.7854, city: "Dallas", region: "TX", country: "United States" },
+  "75205": { lat: 32.8202, lng: -96.7943, city: "Dallas", region: "TX", country: "United States" },
+  "75206": { lat: 32.8412, lng: -96.7730, city: "Dallas", region: "TX", country: "United States" },
+  "75207": { lat: 32.7879, lng: -96.8154, city: "Dallas", region: "TX", country: "United States" },
+  
+  // Austin area
+  "78701": { lat: 30.2713, lng: -97.7437, city: "Austin", region: "TX", country: "United States" },
+  "78702": { lat: 30.2638, lng: -97.7196, city: "Austin", region: "TX", country: "United States" },
+  "78703": { lat: 30.2857, lng: -97.7631, city: "Austin", region: "TX", country: "United States" },
+  "78704": { lat: 30.2437, lng: -97.7645, city: "Austin", region: "TX", country: "United States" },
+  "78705": { lat: 30.2897, lng: -97.7412, city: "Austin", region: "TX", country: "United States" },
+  
+  // San Antonio area
+  "78201": { lat: 29.4498, lng: -98.4738, city: "San Antonio", region: "TX", country: "United States" },
+  "78202": { lat: 29.4379, lng: -98.4621, city: "San Antonio", region: "TX", country: "United States" },
+  "78203": { lat: 29.4023, lng: -98.4596, city: "San Antonio", region: "TX", country: "United States" },
+  "78204": { lat: 29.4087, lng: -98.5115, city: "San Antonio", region: "TX", country: "United States" },
+  "78205": { lat: 29.4252, lng: -98.4946, city: "San Antonio", region: "TX", country: "United States" },
+  
+  // Denver area
+  "80201": { lat: 39.7515, lng: -104.9955, city: "Denver", region: "CO", country: "United States" },
+  "80202": { lat: 39.7506, lng: -105.0007, city: "Denver", region: "CO", country: "United States" },
+  "80203": { lat: 39.7307, lng: -104.9802, city: "Denver", region: "CO", country: "United States" },
+  "80204": { lat: 39.7393, lng: -105.0075, city: "Denver", region: "CO", country: "United States" },
+  "80205": { lat: 39.7586, lng: -104.9633, city: "Denver", region: "CO", country: "United States" },
+  "80206": { lat: 39.7290, lng: -104.9537, city: "Denver", region: "CO", country: "United States" },
+  "80207": { lat: 39.7724, lng: -104.9074, city: "Denver", region: "CO", country: "United States" },
+  
+  // Portland area
+  "97201": { lat: 45.4990, lng: -122.6900, city: "Portland", region: "OR", country: "United States" },
+  "97202": { lat: 45.4783, lng: -122.6360, city: "Portland", region: "OR", country: "United States" },
+  "97203": { lat: 45.5935, lng: -122.7391, city: "Portland", region: "OR", country: "United States" },
+  "97204": { lat: 45.5188, lng: -122.6766, city: "Portland", region: "OR", country: "United States" },
+  "97205": { lat: 45.5223, lng: -122.6978, city: "Portland", region: "OR", country: "United States" },
+  "97206": { lat: 45.4802, lng: -122.5967, city: "Portland", region: "OR", country: "United States" },
+  "97209": { lat: 45.5310, lng: -122.6855, city: "Portland", region: "OR", country: "United States" },
+  
+  // Las Vegas area
+  "89101": { lat: 36.1716, lng: -115.1391, city: "Las Vegas", region: "NV", country: "United States" },
+  "89102": { lat: 36.1455, lng: -115.1639, city: "Las Vegas", region: "NV", country: "United States" },
+  "89103": { lat: 36.1247, lng: -115.1745, city: "Las Vegas", region: "NV", country: "United States" },
+  "89104": { lat: 36.1597, lng: -115.0926, city: "Las Vegas", region: "NV", country: "United States" },
+  "89106": { lat: 36.1749, lng: -115.1727, city: "Las Vegas", region: "NV", country: "United States" },
+  
+  // Nashville area
+  "37201": { lat: 36.1622, lng: -86.7742, city: "Nashville", region: "TN", country: "United States" },
+  "37203": { lat: 36.1546, lng: -86.7909, city: "Nashville", region: "TN", country: "United States" },
+  "37204": { lat: 36.1173, lng: -86.7681, city: "Nashville", region: "TN", country: "United States" },
+  "37205": { lat: 36.1064, lng: -86.8450, city: "Nashville", region: "TN", country: "United States" },
+  "37206": { lat: 36.1834, lng: -86.7356, city: "Nashville", region: "TN", country: "United States" },
+  "37209": { lat: 36.1516, lng: -86.8289, city: "Nashville", region: "TN", country: "United States" },
+  
+  // Minneapolis area
+  "55401": { lat: 44.9778, lng: -93.2650, city: "Minneapolis", region: "MN", country: "United States" },
+  "55402": { lat: 44.9764, lng: -93.2729, city: "Minneapolis", region: "MN", country: "United States" },
+  "55403": { lat: 44.9740, lng: -93.2594, city: "Minneapolis", region: "MN", country: "United States" },
+  "55404": { lat: 44.9633, lng: -93.2572, city: "Minneapolis", region: "MN", country: "United States" },
+  "55405": { lat: 44.9684, lng: -93.2813, city: "Minneapolis", region: "MN", country: "United States" },
+  "55406": { lat: 44.9301, lng: -93.2226, city: "Minneapolis", region: "MN", country: "United States" },
+  
+  // St. Paul area
+  "55101": { lat: 44.9441, lng: -93.0939, city: "St. Paul", region: "MN", country: "United States" },
+  "55102": { lat: 44.9496, lng: -93.1002, city: "St. Paul", region: "MN", country: "United States" },
+  "55103": { lat: 44.9605, lng: -93.1178, city: "St. Paul", region: "MN", country: "United States" },
+  "55104": { lat: 44.9538, lng: -93.1587, city: "St. Paul", region: "MN", country: "United States" },
+  "55105": { lat: 44.9363, lng: -93.1527, city: "St. Paul", region: "MN", country: "United States" },
+  
+  // Detroit area
+  "48201": { lat: 42.3470, lng: -83.0691, city: "Detroit", region: "MI", country: "United States" },
+  "48202": { lat: 42.3694, lng: -83.0782, city: "Detroit", region: "MI", country: "United States" },
+  "48203": { lat: 42.3808, lng: -83.0615, city: "Detroit", region: "MI", country: "United States" },
+  "48204": { lat: 42.3736, lng: -83.1285, city: "Detroit", region: "MI", country: "United States" },
+  "48205": { lat: 42.4062, lng: -82.9988, city: "Detroit", region: "MI", country: "United States" },
+  "48206": { lat: 42.3520, lng: -83.0872, city: "Detroit", region: "MI", country: "United States" },
+  
+  // Cleveland area
+  "44101": { lat: 41.4818, lng: -81.6909, city: "Cleveland", region: "OH", country: "United States" },
+  "44102": { lat: 41.4674, lng: -81.7458, city: "Cleveland", region: "OH", country: "United States" },
+  "44103": { lat: 41.5061, lng: -81.6287, city: "Cleveland", region: "OH", country: "United States" },
+  "44104": { lat: 41.4720, lng: -81.6144, city: "Cleveland", region: "OH", country: "United States" },
+  "44105": { lat: 41.4531, lng: -81.6193, city: "Cleveland", region: "OH", country: "United States" },
+  "44106": { lat: 41.5062, lng: -81.6032, city: "Cleveland", region: "OH", country: "United States" },
+  
+  // Columbus area
+  "43201": { lat: 40.0087, lng: -83.0126, city: "Columbus", region: "OH", country: "United States" },
+  "43202": { lat: 40.0179, lng: -83.0292, city: "Columbus", region: "OH", country: "United States" },
+  "43203": { lat: 39.9494, lng: -82.9827, city: "Columbus", region: "OH", country: "United States" },
+  "43204": { lat: 39.9590, lng: -83.0782, city: "Columbus", region: "OH", country: "United States" },
+  "43205": { lat: 39.9668, lng: -82.9774, city: "Columbus", region: "OH", country: "United States" },
+  "43206": { lat: 39.9375, lng: -82.9900, city: "Columbus", region: "OH", country: "United States" },
+  
+  // Pittsburgh area
+  "15201": { lat: 40.4710, lng: -79.9548, city: "Pittsburgh", region: "PA", country: "United States" },
+  "15202": { lat: 40.5170, lng: -80.0868, city: "Pittsburgh", region: "PA", country: "United States" },
+  "15203": { lat: 40.4290, lng: -79.9795, city: "Pittsburgh", region: "PA", country: "United States" },
+  "15204": { lat: 40.4584, lng: -80.0661, city: "Pittsburgh", region: "PA", country: "United States" },
+  "15205": { lat: 40.4389, lng: -80.0774, city: "Pittsburgh", region: "PA", country: "United States" },
+  "15206": { lat: 40.4664, lng: -79.9228, city: "Pittsburgh", region: "PA", country: "United States" },
+  
+  // Baltimore area
+  "21201": { lat: 39.2904, lng: -76.6122, city: "Baltimore", region: "MD", country: "United States" },
+  "21202": { lat: 39.2963, lng: -76.6048, city: "Baltimore", region: "MD", country: "United States" },
+  "21205": { lat: 39.3007, lng: -76.5751, city: "Baltimore", region: "MD", country: "United States" },
+  "21206": { lat: 39.3437, lng: -76.5368, city: "Baltimore", region: "MD", country: "United States" },
+  "21209": { lat: 39.3721, lng: -76.6652, city: "Baltimore", region: "MD", country: "United States" },
+  "21211": { lat: 39.3287, lng: -76.6278, city: "Baltimore", region: "MD", country: "United States" },
+  
+  // Washington DC area
+  "20001": { lat: 38.9072, lng: -77.0130, city: "Washington", region: "DC", country: "United States" },
+  "20002": { lat: 38.9004, lng: -76.9922, city: "Washington", region: "DC", country: "United States" },
+  "20003": { lat: 38.8846, lng: -76.9944, city: "Washington", region: "DC", country: "United States" },
+  "20004": { lat: 38.8996, lng: -77.0275, city: "Washington", region: "DC", country: "United States" },
+  "20005": { lat: 38.9072, lng: -77.0369, city: "Washington", region: "DC", country: "United States" },
+  "20006": { lat: 38.8996, lng: -77.0430, city: "Washington", region: "DC", country: "United States" },
+  
+  // Charlotte area
+  "28202": { lat: 35.2271, lng: -80.8431, city: "Charlotte", region: "NC", country: "United States" },
+  "28203": { lat: 35.2088, lng: -80.8553, city: "Charlotte", region: "NC", country: "United States" },
+  "28204": { lat: 35.2181, lng: -80.8583, city: "Charlotte", region: "NC", country: "United States" },
+  "28205": { lat: 35.2198, lng: -80.8061, city: "Charlotte", region: "NC", country: "United States" },
+  "28206": { lat: 35.2561, lng: -80.8198, city: "Charlotte", region: "NC", country: "United States" },
+  "28207": { lat: 35.1930, lng: -80.8309, city: "Charlotte", region: "NC", country: "United States" },
+  
+  // Raleigh area
+  "27601": { lat: 35.7796, lng: -78.6382, city: "Raleigh", region: "NC", country: "United States" },
+  "27602": { lat: 35.7625, lng: -78.6308, city: "Raleigh", region: "NC", country: "United States" },
+  "27603": { lat: 35.7312, lng: -78.6223, city: "Raleigh", region: "NC", country: "United States" },
+  "27604": { lat: 35.8235, lng: -78.5764, city: "Raleigh", region: "NC", country: "United States" },
+  "27605": { lat: 35.8047, lng: -78.6564, city: "Raleigh", region: "NC", country: "United States" },
+  "27606": { lat: 35.7432, lng: -78.7269, city: "Raleigh", region: "NC", country: "United States" },
+  
+  // Richmond area
+  "23218": { lat: 37.5407, lng: -77.4360, city: "Richmond", region: "VA", country: "United States" },
+  "23219": { lat: 37.5407, lng: -77.4430, city: "Richmond", region: "VA", country: "United States" },
+  "23220": { lat: 37.5538, lng: -77.4595, city: "Richmond", region: "VA", country: "United States" },
+  "23221": { lat: 37.5527, lng: -77.4847, city: "Richmond", region: "VA", country: "United States" },
+  "23222": { lat: 37.5763, lng: -77.4325, city: "Richmond", region: "VA", country: "United States" },
+  
+  // Jacksonville area
+  "32202": { lat: 30.3280, lng: -81.6557, city: "Jacksonville", region: "FL", country: "United States" },
+  "32204": { lat: 30.3074, lng: -81.6979, city: "Jacksonville", region: "FL", country: "United States" },
+  "32205": { lat: 30.2984, lng: -81.7151, city: "Jacksonville", region: "FL", country: "United States" },
+  "32206": { lat: 30.3369, lng: -81.6285, city: "Jacksonville", region: "FL", country: "United States" },
+  "32207": { lat: 30.3018, lng: -81.6364, city: "Jacksonville", region: "FL", country: "United States" },
+  
+  // Orlando area
+  "32801": { lat: 28.5383, lng: -81.3792, city: "Orlando", region: "FL", country: "United States" },
+  "32803": { lat: 28.5594, lng: -81.3682, city: "Orlando", region: "FL", country: "United States" },
+  "32804": { lat: 28.5645, lng: -81.3936, city: "Orlando", region: "FL", country: "United States" },
+  "32805": { lat: 28.5297, lng: -81.4144, city: "Orlando", region: "FL", country: "United States" },
+  "32806": { lat: 28.5104, lng: -81.3674, city: "Orlando", region: "FL", country: "United States" },
+  
+  // Tampa area
+  "33602": { lat: 27.9519, lng: -82.4587, city: "Tampa", region: "FL", country: "United States" },
+  "33603": { lat: 28.0012, lng: -82.4490, city: "Tampa", region: "FL", country: "United States" },
+  "33604": { lat: 27.9893, lng: -82.4232, city: "Tampa", region: "FL", country: "United States" },
+  "33605": { lat: 27.9609, lng: -82.4339, city: "Tampa", region: "FL", country: "United States" },
+  "33606": { lat: 27.9360, lng: -82.4745, city: "Tampa", region: "FL", country: "United States" },
+  
+  // New Orleans area
+  "70112": { lat: 29.9511, lng: -90.0715, city: "New Orleans", region: "LA", country: "United States" },
+  "70113": { lat: 29.9456, lng: -90.0808, city: "New Orleans", region: "LA", country: "United States" },
+  "70115": { lat: 29.9241, lng: -90.0966, city: "New Orleans", region: "LA", country: "United States" },
+  "70116": { lat: 29.9633, lng: -90.0610, city: "New Orleans", region: "LA", country: "United States" },
+  "70117": { lat: 29.9718, lng: -90.0322, city: "New Orleans", region: "LA", country: "United States" },
+  "70118": { lat: 29.9487, lng: -90.1138, city: "New Orleans", region: "LA", country: "United States" },
+  
+  // Memphis area
+  "38103": { lat: 35.1432, lng: -90.0505, city: "Memphis", region: "TN", country: "United States" },
+  "38104": { lat: 35.1334, lng: -90.0206, city: "Memphis", region: "TN", country: "United States" },
+  "38105": { lat: 35.1562, lng: -90.0282, city: "Memphis", region: "TN", country: "United States" },
+  "38106": { lat: 35.0890, lng: -90.0573, city: "Memphis", region: "TN", country: "United States" },
+  "38107": { lat: 35.1636, lng: -90.0054, city: "Memphis", region: "TN", country: "United States" },
+  
+  // Louisville area
+  "40202": { lat: 38.2542, lng: -85.7594, city: "Louisville", region: "KY", country: "United States" },
+  "40203": { lat: 38.2398, lng: -85.7287, city: "Louisville", region: "KY", country: "United States" },
+  "40204": { lat: 38.2274, lng: -85.7224, city: "Louisville", region: "KY", country: "United States" },
+  "40205": { lat: 38.2196, lng: -85.6918, city: "Louisville", region: "KY", country: "United States" },
+  "40206": { lat: 38.2506, lng: -85.6976, city: "Louisville", region: "KY", country: "United States" },
+  
+  // Indianapolis area
+  "46201": { lat: 39.7685, lng: -86.1485, city: "Indianapolis", region: "IN", country: "United States" },
+  "46202": { lat: 39.7817, lng: -86.1625, city: "Indianapolis", region: "IN", country: "United States" },
+  "46203": { lat: 39.7335, lng: -86.1454, city: "Indianapolis", region: "IN", country: "United States" },
+  "46204": { lat: 39.7683, lng: -86.1625, city: "Indianapolis", region: "IN", country: "United States" },
+  "46205": { lat: 39.8205, lng: -86.1376, city: "Indianapolis", region: "IN", country: "United States" },
+  
+  // Milwaukee area
+  "53202": { lat: 43.0389, lng: -87.9065, city: "Milwaukee", region: "WI", country: "United States" },
+  "53203": { lat: 43.0431, lng: -87.9190, city: "Milwaukee", region: "WI", country: "United States" },
+  "53204": { lat: 43.0085, lng: -87.9298, city: "Milwaukee", region: "WI", country: "United States" },
+  "53205": { lat: 43.0658, lng: -87.9308, city: "Milwaukee", region: "WI", country: "United States" },
+  "53206": { lat: 43.0780, lng: -87.9465, city: "Milwaukee", region: "WI", country: "United States" },
+  
+  // Kansas City area
+  "64101": { lat: 39.1008, lng: -94.5833, city: "Kansas City", region: "MO", country: "United States" },
+  "64102": { lat: 39.0997, lng: -94.5786, city: "Kansas City", region: "MO", country: "United States" },
+  "64105": { lat: 39.0912, lng: -94.5770, city: "Kansas City", region: "MO", country: "United States" },
+  "64106": { lat: 39.1072, lng: -94.5679, city: "Kansas City", region: "MO", country: "United States" },
+  "64108": { lat: 39.0758, lng: -94.5763, city: "Kansas City", region: "MO", country: "United States" },
+  
+  // St. Louis area
+  "63101": { lat: 38.6270, lng: -90.1994, city: "St. Louis", region: "MO", country: "United States" },
+  "63102": { lat: 38.6333, lng: -90.1895, city: "St. Louis", region: "MO", country: "United States" },
+  "63103": { lat: 38.6356, lng: -90.2053, city: "St. Louis", region: "MO", country: "United States" },
+  "63104": { lat: 38.6078, lng: -90.2169, city: "St. Louis", region: "MO", country: "United States" },
+  "63105": { lat: 38.6511, lng: -90.3351, city: "Clayton", region: "MO", country: "United States" },
+  
+  // Omaha area
+  "68102": { lat: 41.2587, lng: -95.9378, city: "Omaha", region: "NE", country: "United States" },
+  "68103": { lat: 41.2371, lng: -95.9466, city: "Omaha", region: "NE", country: "United States" },
+  "68104": { lat: 41.2968, lng: -95.9765, city: "Omaha", region: "NE", country: "United States" },
+  "68105": { lat: 41.2315, lng: -95.9813, city: "Omaha", region: "NE", country: "United States" },
+  "68106": { lat: 41.2138, lng: -96.0134, city: "Omaha", region: "NE", country: "United States" },
+  
+  // Salt Lake City area
+  "84101": { lat: 40.7608, lng: -111.8910, city: "Salt Lake City", region: "UT", country: "United States" },
+  "84102": { lat: 40.7547, lng: -111.8653, city: "Salt Lake City", region: "UT", country: "United States" },
+  "84103": { lat: 40.7820, lng: -111.8766, city: "Salt Lake City", region: "UT", country: "United States" },
+  "84104": { lat: 40.7374, lng: -111.9499, city: "Salt Lake City", region: "UT", country: "United States" },
+  "84105": { lat: 40.7363, lng: -111.8636, city: "Salt Lake City", region: "UT", country: "United States" },
+  
+  // Albuquerque area
+  "87102": { lat: 35.0844, lng: -106.6504, city: "Albuquerque", region: "NM", country: "United States" },
+  "87104": { lat: 35.1036, lng: -106.6770, city: "Albuquerque", region: "NM", country: "United States" },
+  "87105": { lat: 35.0441, lng: -106.6824, city: "Albuquerque", region: "NM", country: "United States" },
+  "87106": { lat: 35.0662, lng: -106.6153, city: "Albuquerque", region: "NM", country: "United States" },
+  "87107": { lat: 35.1376, lng: -106.6297, city: "Albuquerque", region: "NM", country: "United States" },
+  
+  // Tucson area
+  "85701": { lat: 32.2226, lng: -110.9747, city: "Tucson", region: "AZ", country: "United States" },
+  "85702": { lat: 32.2540, lng: -110.9384, city: "Tucson", region: "AZ", country: "United States" },
+  "85705": { lat: 32.2684, lng: -111.0090, city: "Tucson", region: "AZ", country: "United States" },
+  "85706": { lat: 32.1538, lng: -110.9735, city: "Tucson", region: "AZ", country: "United States" },
+  "85710": { lat: 32.2023, lng: -110.8762, city: "Tucson", region: "AZ", country: "United States" },
+  
+  // Sacramento area
+  "95814": { lat: 38.5816, lng: -121.4944, city: "Sacramento", region: "CA", country: "United States" },
+  "95815": { lat: 38.6047, lng: -121.4554, city: "Sacramento", region: "CA", country: "United States" },
+  "95816": { lat: 38.5643, lng: -121.4768, city: "Sacramento", region: "CA", country: "United States" },
+  "95817": { lat: 38.5509, lng: -121.4707, city: "Sacramento", region: "CA", country: "United States" },
+  "95818": { lat: 38.5629, lng: -121.4884, city: "Sacramento", region: "CA", country: "United States" },
+  
+  // Fresno area
+  "93701": { lat: 36.7378, lng: -119.7871, city: "Fresno", region: "CA", country: "United States" },
+  "93702": { lat: 36.7932, lng: -119.8081, city: "Fresno", region: "CA", country: "United States" },
+  "93703": { lat: 36.7824, lng: -119.7575, city: "Fresno", region: "CA", country: "United States" },
+  "93704": { lat: 36.8237, lng: -119.7693, city: "Fresno", region: "CA", country: "United States" },
+  "93705": { lat: 36.7748, lng: -119.8364, city: "Fresno", region: "CA", country: "United States" },
+  
+  // San Diego area
+  "92101": { lat: 32.7157, lng: -117.1611, city: "San Diego", region: "CA", country: "United States" },
+  "92102": { lat: 32.7040, lng: -117.1289, city: "San Diego", region: "CA", country: "United States" },
+  "92103": { lat: 32.7523, lng: -117.1644, city: "San Diego", region: "CA", country: "United States" },
+  "92104": { lat: 32.7420, lng: -117.1303, city: "San Diego", region: "CA", country: "United States" },
+  "92105": { lat: 32.7331, lng: -117.0978, city: "San Diego", region: "CA", country: "United States" },
+  
+  // San Jose area
+  "95110": { lat: 37.3382, lng: -121.8863, city: "San Jose", region: "CA", country: "United States" },
+  "95112": { lat: 37.3541, lng: -121.8682, city: "San Jose", region: "CA", country: "United States" },
+  "95113": { lat: 37.3338, lng: -121.8883, city: "San Jose", region: "CA", country: "United States" },
+  "95116": { lat: 37.3519, lng: -121.8459, city: "San Jose", region: "CA", country: "United States" },
+  "95117": { lat: 37.3103, lng: -121.9506, city: "San Jose", region: "CA", country: "United States" },
+  
+  // Boise area
+  "83702": { lat: 43.6150, lng: -116.2023, city: "Boise", region: "ID", country: "United States" },
+  "83703": { lat: 43.6065, lng: -116.2489, city: "Boise", region: "ID", country: "United States" },
+  "83704": { lat: 43.6532, lng: -116.2936, city: "Boise", region: "ID", country: "United States" },
+  "83705": { lat: 43.5979, lng: -116.1638, city: "Boise", region: "ID", country: "United States" },
+  "83706": { lat: 43.5737, lng: -116.2362, city: "Boise", region: "ID", country: "United States" },
+  
+  // Spokane area
+  "99201": { lat: 47.6588, lng: -117.4260, city: "Spokane", region: "WA", country: "United States" },
+  "99202": { lat: 47.6451, lng: -117.3915, city: "Spokane", region: "WA", country: "United States" },
+  "99203": { lat: 47.6370, lng: -117.4097, city: "Spokane", region: "WA", country: "United States" },
+  "99204": { lat: 47.6525, lng: -117.4437, city: "Spokane", region: "WA", country: "United States" },
+  "99205": { lat: 47.6923, lng: -117.4281, city: "Spokane", region: "WA", country: "United States" },
 };
 
 export interface LocationData {
