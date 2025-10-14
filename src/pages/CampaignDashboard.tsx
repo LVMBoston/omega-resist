@@ -299,6 +299,7 @@ export default function CampaignDashboard() {
             eoa_id,
             events_actions!inner(
               mobilize_code,
+              utm_id,
               city,
               state,
               zip_code,
@@ -395,8 +396,12 @@ export default function CampaignDashboard() {
         bVal = b.tokens.level;
         break;
       case 'utm_content':
-        aVal = a.tokens.utm_content || '';
-        bVal = b.tokens.utm_content || '';
+        aVal = a.tokens.events_actions.mobilize_code && a.tokens.events_actions.utm_id
+          ? `${a.tokens.events_actions.mobilize_code}-${a.tokens.events_actions.utm_id}`
+          : '';
+        bVal = b.tokens.events_actions.mobilize_code && b.tokens.events_actions.utm_id
+          ? `${b.tokens.events_actions.mobilize_code}-${b.tokens.events_actions.utm_id}`
+          : '';
         break;
       case 'event_type':
         aVal = a.event_type;
@@ -774,7 +779,11 @@ export default function CampaignDashboard() {
                               <TableCell>
                                 <Badge variant="outline">{formatLevel(event.tokens.level)}</Badge>
                               </TableCell>
-                              <TableCell className="font-mono text-xs">{event.tokens.utm_content || 'N/A'}</TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {event.tokens.events_actions.mobilize_code && event.tokens.events_actions.utm_id
+                                  ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}`
+                                  : 'N/A'}
+                              </TableCell>
                               <TableCell>
                                 <Badge className={getEventBadgeColor(event.event_type)}>
                                   {event.event_type.toUpperCase()}
