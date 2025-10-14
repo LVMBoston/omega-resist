@@ -207,90 +207,101 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       for (const eoa of selectedEoas) {
         if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
 
-        if (!eoa.zip_code || !eoa.assigned_deck_slug || !eoa.mobilize_code) {
-          const reason = !eoa.zip_code ? "Missing zip code" : !eoa.assigned_deck_slug ? "No deck assigned" : "Missing mobilize code";
-          toast({
-            title: "Skipped EoA",
-            description: `${eoa.title}: ${reason}`,
-            variant: "destructive",
-          });
-          completedSteps++;
-          setProgress((completedSteps / totalSteps) * 100);
-          continue;
-        }
+        try {
+          if (!eoa.zip_code || !eoa.assigned_deck_slug || !eoa.mobilize_code) {
+            const reason = !eoa.zip_code ? "Missing zip code" : !eoa.assigned_deck_slug ? "No deck assigned" : "Missing mobilize code";
+            toast({
+              title: "Skipped EoA",
+              description: `${eoa.title}: ${reason}`,
+              variant: "destructive",
+            });
+            completedSteps++;
+            setProgress((completedSteps / totalSteps) * 100);
+            continue;
+          }
 
-        const l00Location = getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
-        if (!l00Location) {
-          toast({
-            title: "Skipped EoA",
-            description: `${eoa.title}: Zip code ${eoa.zip_code} not found in simulator database`,
-            variant: "destructive",
-          });
-          completedSteps++;
-          setProgress((completedSteps / totalSteps) * 100);
-          continue;
-        }
+          const l00Location = getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
+          if (!l00Location) {
+            toast({
+              title: "Skipped EoA",
+              description: `${eoa.title}: Zip code ${eoa.zip_code} not found in simulator database`,
+              variant: "destructive",
+            });
+            completedSteps++;
+            setProgress((completedSteps / totalSteps) * 100);
+            continue;
+          }
 
-        // Check if L00 token already exists for this EOA
-        const { data: existingL00 } = await supabase
-          .from('tokens')
-          .select('token')
-          .eq('eoa_id', eoa.id)
-          .eq('level', 0)
-          .maybeSingle();
+          // Check if L00 token already exists for this EOA
+          const { data: existingL00 } = await supabase
+            .from('tokens')
+            .select('token')
+            .eq('eoa_id', eoa.id)
+            .eq('level', 0)
+            .maybeSingle();
 
-        let l00Token: string;
-        
-        if (existingL00) {
-          // Use existing L00 token and mark as simulated
-          l00Token = existingL00.token;
-          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
-          console.log(`Using existing L00 token for ${eoa.title}: ${l00Token}`);
-        } else {
-          // Mint new L00 token and mark as simulated
-          const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
-          l00Token = result.token;
-          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
-          console.log(`Minted new simulated L00 token for ${eoa.title}: ${l00Token}`);
-        }
-        
-        // Log multiple scan/view events for this L00 based on l00Count
-        for (let i = 0; i < l00Count; i++) {
-          await logEventWithLocation(l00Token, "scan", l00Location);
-          await logEventWithLocation(l00Token, "view", l00Location);
-        }
-
-        // Generate L01 tokens (shares from L00)
-        for (let j = 0; j < l01Factor; j++) {
-          if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
+          let l00Token: string;
           
-          const l01Location = getLocationForLevel(1, l00Location);
-          const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
-          await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
-          await logEventWithLocation(l01Token, "view", l01Location);
-          await logEventWithLocation(l01Token, "share", l01Location);
+          if (existingL00) {
+            // Use existing L00 token and mark as simulated
+            l00Token = existingL00.token;
+            await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
+            console.log(`Using existing L00 token for ${eoa.title}: ${l00Token}`);
+          } else {
+            // Mint new L00 token and mark as simulated
+            const result = await mintL00({ eoaId: eoa.id, deckSlug: eoa.assigned_deck_slug, utmMedium: "qr" });
+            l00Token = result.token;
+            await supabase.from('tokens').update({ is_simulated: true }).eq('token', l00Token);
+            console.log(`Minted new simulated L00 token for ${eoa.title}: ${l00Token}`);
+          }
+          
+          // Log multiple scan/view events for this L00 based on l00Count
+          for (let i = 0; i < l00Count; i++) {
+            await logEventWithLocation(l00Token, "scan", l00Location);
+            await logEventWithLocation(l00Token, "view", l00Location);
+          }
 
-          // Generate L02 tokens (shares from L01)
-          for (let k = 0; k < l02Factor; k++) {
+          // Generate L01 tokens (shares from L00)
+          for (let j = 0; j < l01Factor; j++) {
             if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
             
-            const l02Location = getLocationForLevel(2, l01Location);
-            const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
-            await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
-            await logEventWithLocation(l02Token, "view", l02Location);
-            await logEventWithLocation(l02Token, "share", l02Location);
+            const l01Location = getLocationForLevel(1, l00Location);
+            const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
+            await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
+            await logEventWithLocation(l01Token, "view", l01Location);
+            await logEventWithLocation(l01Token, "share", l01Location);
 
-            // Generate L03 tokens (shares from L02)
-            for (let m = 0; m < l03Factor; m++) {
+            // Generate L02 tokens (shares from L01)
+            for (let k = 0; k < l02Factor; k++) {
               if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
               
-              const l03Location = getLocationForLevel(3, l02Location);
-              const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
-              await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
-              await logEventWithLocation(l03Token, "view", l03Location);
-              await logEventWithLocation(l03Token, "share", l03Location);
+              const l02Location = getLocationForLevel(2, l01Location);
+              const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
+              await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
+              await logEventWithLocation(l02Token, "view", l02Location);
+              await logEventWithLocation(l02Token, "share", l02Location);
+
+              // Generate L03 tokens (shares from L02)
+              for (let m = 0; m < l03Factor; m++) {
+                if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
+                
+                const l03Location = getLocationForLevel(3, l02Location);
+                const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
+                await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
+                await logEventWithLocation(l03Token, "view", l03Location);
+                await logEventWithLocation(l03Token, "share", l03Location);
+              }
             }
           }
+
+          console.log(`✓ Successfully completed ${eoa.title}`);
+        } catch (eoaError: any) {
+          console.error(`Error processing ${eoa.title}:`, eoaError);
+          toast({
+            title: "EoA Processing Error",
+            description: `${eoa.title}: ${eoaError.message}`,
+            variant: "destructive",
+          });
         }
 
         completedSteps++;
