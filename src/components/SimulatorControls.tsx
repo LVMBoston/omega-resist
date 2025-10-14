@@ -483,18 +483,6 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             </Button>
           )}
 
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              clearShortUrlCache();
-              toast({ title: "Cache cleared", description: "Short URL cache has been cleared." });
-            }} 
-            disabled={isSimulating}
-            className="w-full"
-          >
-            Clear URL Cache
-          </Button>
-
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="w-full" disabled={isSimulating}>
@@ -505,12 +493,18 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete ALL tokens and events from ALL campaigns. This cannot be undone.
+                  This will permanently delete ALL tokens and events from ALL campaigns, and clear the short URL cache. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={clearSimulationData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                <AlertDialogAction 
+                  onClick={() => {
+                    clearShortUrlCache();
+                    clearSimulationData();
+                  }} 
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
                   Delete Everything
                 </AlertDialogAction>
               </AlertDialogFooter>
