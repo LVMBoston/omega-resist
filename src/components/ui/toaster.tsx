@@ -7,8 +7,11 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
+        // Error toasts (destructive variant) should stay until dismissed
+        const duration = props.variant === "destructive" ? Infinity : undefined;
+        
         return (
-          <Toast key={id} {...props}>
+          <Toast key={id} {...props} duration={duration}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && <ToastDescription>{description}</ToastDescription>}
