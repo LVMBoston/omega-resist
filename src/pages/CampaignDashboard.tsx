@@ -680,7 +680,7 @@ export default function CampaignDashboard() {
                     </div>
 
                     {/* Table */}
-                    <ScrollArea className="h-[600px]">
+                    <ScrollArea className="h-[calc(100vh-300px)] min-h-[600px]">
                       <Table>
                         <TableHeader>
                           <TableRow>
