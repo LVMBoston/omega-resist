@@ -870,7 +870,26 @@ export default function CampaignDashboard() {
                             const params = new URLSearchParams(searchParams);
                             let newLevels = currentLevels.filter(l => l !== level);
                             if (checked) {
-                              newLevels.
+                              newLevels.push(level);
+                              newLevels.sort();
+                            }
+                            params.set("levels", newLevels.join(','));
+                            setSearchParams(params);
+                          }}
+                        />
+                        <Label
+                          htmlFor={`map-level-${level}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          L{level.toString().padStart(2, '0')}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6 mt-6">
             {/* Key Metrics */}
