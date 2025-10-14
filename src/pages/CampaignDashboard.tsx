@@ -4,11 +4,13 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import ActivityMap from "@/components/ActivityMap";
 import { MetricCard } from "@/components/virality/MetricCard";
 import { ViralCoefficientChart } from "@/components/virality/ViralCoefficientChart";
@@ -59,6 +61,10 @@ export default function CampaignDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ column: string; direction: 'asc' | 'desc' }>({
+    column: 'timestamp',
+    direction: 'desc'
+  });
   
   // Get filter values from URL params
   const selectedCampaign = searchParams.get("campaign") || "";
@@ -273,6 +279,138 @@ export default function CampaignDashboard() {
   const viewsCount = eventCounts?.views || 0;
   const sharesCount = eventCounts?.shares || 0;
 
+  // Fetch EventsV2 data
+  const { data: eventsV2Data, isLoading: eventsV2Loading } = useQuery({
+    queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from("url_events")
+        .select(`
+          id,
+          occurred_at,
+          event_type,
+          tokens!inner(
+            level,
+            utm_content,
+            utm_campaign,
+            eoa_id,
+            events_actions!inner(
+              mobilize_code,
+              city,
+              state,
+              zip_code,
+              id
+            )
+          )
+        `)
+        .eq("tokens.utm_campaign", selectedCampaign)
+        .order("occurred_at", { ascending: false });
+
+      if (eventTypeFilter !== "all") {
+        query = query.eq("event_type", eventTypeFilter);
+      }
+
+      if (dataSourceFilter === "real") {
+        query = query.eq("is_simulated", false);
+      } else if (dataSourceFilter === "simulated") {
+        query = query.eq("is_simulated", true);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedCampaign,
+  });
+
+  // Helper functions for EventsV2
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
+  };
+
+  const formatLevel = (level: number) => {
+    return `L${level.toString().padStart(2, '0')}`;
+  };
+
+  const formatZipCode = (zip: string | null) => {
+    if (!zip) return "";
+    return zip.padStart(5, '0');
+  };
+
+  // Calculate metrics for EventsV2
+  const eventsV2Metrics = eventsV2Data ? {
+    uniqueMobilizeCodes: new Set(eventsV2Data.map((e: any) => e.tokens.events_actions.mobilize_code)).size,
+    scansCount: eventsV2Data.filter((e: any) => e.event_type === 'scan').length,
+    viewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view').length,
+    sharesCount: eventsV2Data.filter((e: any) => e.event_type === 'share').length,
+    totalRows: eventsV2Data.length,
+    earliestTimestamp: eventsV2Data.length > 0 
+      ? formatTimestamp(eventsV2Data[eventsV2Data.length - 1].occurred_at)
+      : 'N/A',
+    latestTimestamp: eventsV2Data.length > 0 
+      ? formatTimestamp(eventsV2Data[0].occurred_at)
+      : 'N/A',
+  } : null;
+
+  // Sorting logic for EventsV2
+  const handleSort = (column: string) => {
+    setSortConfig(prev => ({
+      column,
+      direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const sortedEventsV2 = eventsV2Data ? [...eventsV2Data].sort((a: any, b: any) => {
+    const { column, direction } = sortConfig;
+    let aVal: any, bVal: any;
+
+    switch (column) {
+      case 'timestamp':
+        aVal = new Date(a.occurred_at).getTime();
+        bVal = new Date(b.occurred_at).getTime();
+        break;
+      case 'mobilize_code':
+        aVal = a.tokens.events_actions.mobilize_code || '';
+        bVal = b.tokens.events_actions.mobilize_code || '';
+        break;
+      case 'location':
+        aVal = `${a.tokens.events_actions.city || ''}, ${a.tokens.events_actions.state || ''}`;
+        bVal = `${b.tokens.events_actions.city || ''}, ${b.tokens.events_actions.state || ''}`;
+        break;
+      case 'zip':
+        aVal = a.tokens.events_actions.zip_code || '';
+        bVal = b.tokens.events_actions.zip_code || '';
+        break;
+      case 'level':
+        aVal = a.tokens.level;
+        bVal = b.tokens.level;
+        break;
+      case 'utm_content':
+        aVal = a.tokens.utm_content || '';
+        bVal = b.tokens.utm_content || '';
+        break;
+      case 'event_type':
+        aVal = a.event_type;
+        bVal = b.event_type;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+    return 0;
+  }) : [];
+
+  // Get campaign title for EventsV2
+  const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || "N/A";
+
   if (campaignsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -296,9 +434,10 @@ export default function CampaignDashboard() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="filters" className="w-full">
-          <TabsList className="grid w-full max-w-3xl grid-cols-5">
+          <TabsList className="grid w-full max-w-4xl grid-cols-6">
             <TabsTrigger value="filters">Filters</TabsTrigger>
             <TabsTrigger value="events">Events</TabsTrigger>
+            <TabsTrigger value="eventsv2">EventsV2</TabsTrigger>
             <TabsTrigger value="map">Map</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="simulator">Simulator</TabsTrigger>
@@ -498,6 +637,155 @@ export default function CampaignDashboard() {
                 </Card>
               ))
             )}
+          </TabsContent>
+
+          {/* EventsV2 Tab */}
+          <TabsContent value="eventsv2" className="mt-6 animate-fade-in">
+            <Card>
+              <CardContent className="pt-6">
+                {eventsV2Loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                  </div>
+                ) : !eventsV2Data || eventsV2Data.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    No events found for the selected filters.
+                  </div>
+                ) : (
+                  <>
+                    {/* First Block - Campaign Summary */}
+                    <div className="flex items-center justify-between border-b pb-4 mb-4">
+                      <span className="text-sm font-medium">Campaign: {campaignTitle}</span>
+                      <div className="flex items-center gap-6 text-sm">
+                        <span className="text-muted-foreground">Earliest: {eventsV2Metrics?.earliestTimestamp}</span>
+                        <span className="text-muted-foreground">Latest: {eventsV2Metrics?.latestTimestamp}</span>
+                      </div>
+                    </div>
+
+                    {/* Second Block - Metrics Summary */}
+                    <div className="flex items-center gap-6 py-4 border-b mb-4 text-sm flex-wrap">
+                      <span># Mobilize Sites: <strong>{eventsV2Metrics?.uniqueMobilizeCodes}</strong></span>
+                      <span># Scans: <strong>{eventsV2Metrics?.scansCount}</strong></span>
+                      <span># Views: <strong>{eventsV2Metrics?.viewsCount}</strong></span>
+                      <span># Shares: <strong>{eventsV2Metrics?.sharesCount}</strong></span>
+                      <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong></span>
+                    </div>
+
+                    {/* Table */}
+                    <ScrollArea className="h-[600px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[80px]">Row #</TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('timestamp')}
+                            >
+                              <div className="flex items-center gap-1">
+                                TimeStamp
+                                {sortConfig.column === 'timestamp' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('mobilize_code')}
+                            >
+                              <div className="flex items-center gap-1">
+                                Mobilize Code
+                                {sortConfig.column === 'mobilize_code' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('location')}
+                            >
+                              <div className="flex items-center gap-1">
+                                City, State
+                                {sortConfig.column === 'location' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('zip')}
+                            >
+                              <div className="flex items-center gap-1">
+                                Zip Code
+                                {sortConfig.column === 'zip' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('level')}
+                            >
+                              <div className="flex items-center gap-1">
+                                Event Level
+                                {sortConfig.column === 'level' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('utm_content')}
+                            >
+                              <div className="flex items-center gap-1">
+                                utm_content
+                                {sortConfig.column === 'utm_content' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('event_type')}
+                            >
+                              <div className="flex items-center gap-1">
+                                Event Type
+                                {sortConfig.column === 'event_type' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedEventsV2.map((event: any, index: number) => (
+                            <TableRow key={event.id}>
+                              <TableCell>{index + 1}</TableCell>
+                              <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
+                              <TableCell>{event.tokens.events_actions.mobilize_code || 'N/A'}</TableCell>
+                              <TableCell>
+                                {event.tokens.events_actions.city && event.tokens.events_actions.state
+                                  ? `${event.tokens.events_actions.city}, ${event.tokens.events_actions.state}`
+                                  : 'N/A'}
+                              </TableCell>
+                              <TableCell>{formatZipCode(event.tokens.events_actions.zip_code)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{formatLevel(event.tokens.level)}</Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">{event.tokens.utm_content || 'N/A'}</TableCell>
+                              <TableCell>
+                                <Badge className={getEventBadgeColor(event.event_type)}>
+                                  {event.event_type.toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="map" className="mt-6 animate-fade-in">
