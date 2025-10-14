@@ -18,6 +18,9 @@ export const SIMULATOR_CITIES: Record<string, { lat: number; lng: number; city: 
   // Campaign-specific zip codes
   "99501": { lat: 61.2181, lng: -149.9003, city: "Anchorage", region: "AK", country: "United States" },
   "02540": { lat: 41.5515, lng: -70.6148, city: "Falmouth", region: "MA", country: "United States" },
+  "02601": { lat: 41.6521, lng: -70.2795, city: "Hyannis", region: "MA", country: "United States" },
+  "02568": { lat: 41.3887, lng: -70.6083, city: "Vineyard Haven", region: "MA", country: "United States" },
+  "02657": { lat: 42.0551, lng: -70.1710, city: "Provincetown", region: "MA", country: "United States" },
   "85085": { lat: 33.6820, lng: -112.1040, city: "Phoenix", region: "AZ", country: "United States" },
   "91360": { lat: 34.1964, lng: -118.8742, city: "Thousand Oaks", region: "CA", country: "United States" },
   

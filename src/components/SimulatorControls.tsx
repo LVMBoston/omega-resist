@@ -207,6 +207,12 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
         if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
 
         if (!eoa.zip_code || !eoa.assigned_deck_slug) {
+          const reason = !eoa.zip_code ? "Missing zip code" : "No deck assigned";
+          toast({
+            title: "Skipped EoA",
+            description: `${eoa.title}: ${reason}`,
+            variant: "destructive",
+          });
           completedSteps++;
           setProgress((completedSteps / totalSteps) * 100);
           continue;
@@ -214,6 +220,11 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
         const l00Location = getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
         if (!l00Location) {
+          toast({
+            title: "Skipped EoA",
+            description: `${eoa.title}: Zip code ${eoa.zip_code} not found in simulator database`,
+            variant: "destructive",
+          });
           completedSteps++;
           setProgress((completedSteps / totalSteps) * 100);
           continue;
