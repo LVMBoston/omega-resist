@@ -44,6 +44,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const { toast } = useToast();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingMobilize, setFetchingMobilize] = useState(false);
   
   // Helper to convert ISO timestamp to datetime-local format
   const toDatetimeLocal = (isoString: string | undefined) => {
@@ -75,6 +76,58 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const fetchDecks = async () => {
     const { data } = await supabase.from("decks").select("slug").order("slug");
     setDecks(data || []);
+  };
+
+  const fetchFromMobilize = async () => {
+    if (!formData.mobilize_code) {
+      toast({
+        variant: "destructive",
+        title: "Event Code Required",
+        description: "Please enter an Event Code (Mobilize event ID) first",
+      });
+      return;
+    }
+
+    setFetchingMobilize(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-mobilize-event', {
+        body: { mobilizeCode: formData.mobilize_code }
+      });
+
+      if (error) throw error;
+
+      if (data && !data.error) {
+        setFormData(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          site_name: data.site_name || prev.site_name,
+          city: data.city || prev.city,
+          state: data.state || prev.state,
+          zip_code: data.zip_code || prev.zip_code,
+          type: data.type || prev.type,
+          start_date: data.start_date ? toDatetimeLocal(data.start_date) : prev.start_date,
+          end_date: data.end_date ? toDatetimeLocal(data.end_date) : prev.end_date,
+          timezone: data.timezone || prev.timezone,
+          description: data.description || prev.description,
+        }));
+
+        toast({
+          title: "Success",
+          description: "Event data fetched from Mobilize.us",
+        });
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      console.error('Error fetching from Mobilize:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to fetch event from Mobilize.us",
+      });
+    } finally {
+      setFetchingMobilize(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -136,14 +189,25 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Event Code <span className="text-destructive">*</span></Label>
-          <Input
-            value={formData.mobilize_code}
-            onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
-            placeholder="e.g., EVENT01"
-            maxLength={10}
-          />
+          <div className="flex gap-2">
+            <Input
+              value={formData.mobilize_code}
+              onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
+              placeholder="Enter Mobilize event ID"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              onClick={fetchFromMobilize}
+              disabled={fetchingMobilize || !formData.mobilize_code}
+              variant="outline"
+              size="sm"
+            >
+              {fetchingMobilize ? "Fetching..." : "Fetch"}
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Required: Unique event identifier (6-10 characters)
+            Enter Mobilize event ID and click "Fetch" to auto-populate fields
           </p>
         </div>
         <div>
