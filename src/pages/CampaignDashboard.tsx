@@ -845,9 +845,32 @@ export default function CampaignDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="map" className="mt-6 animate-fade-in">
+          <TabsContent value="map" className="mt-6 animate-fade-in space-y-4">
             <SharedDashboardMap geoData={geoData || []} levelFilter={levelFilter} />
-          </TabsContent>
+            
+            {/* Level Filter Controls */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Filter by Viral Level</CardTitle>
+                <CardDescription>
+                  Toggle levels to see viral spread progression
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-6 flex-wrap">
+                  {[0, 1, 2, 3].map((level) => {
+                    const currentLevels = levelFilter.split(',').map(Number);
+                    const isChecked = currentLevels.includes(level);
+                    return (
+                      <div key={level} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`map-level-${level}`}
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            const params = new URLSearchParams(searchParams);
+                            let newLevels = currentLevels.filter(l => l !== level);
+                            if (checked) {
+                              newLevels.
 
           <TabsContent value="analytics" className="space-y-6 mt-6">
             {/* Key Metrics */}
