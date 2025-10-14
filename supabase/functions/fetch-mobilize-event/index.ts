@@ -59,10 +59,10 @@ serve(async (req) => {
       zip_code: location.postal_code || '',
       type: event.event_type || 'UNKNOWN',
       start_date: event.timeslots?.[0]?.start_date 
-        ? new Date(event.timeslots[0].start_date * 1000).toISOString().split('T')[0]
+        ? new Date(event.timeslots[0].start_date * 1000).toISOString()
         : '',
       end_date: event.timeslots?.[0]?.end_date
-        ? new Date(event.timeslots[0].end_date * 1000).toISOString().split('T')[0]
+        ? new Date(event.timeslots[0].end_date * 1000).toISOString()
         : '',
       timezone: event.timezone || 'America/New_York',
       description: event.description || '',
