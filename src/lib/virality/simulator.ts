@@ -213,77 +213,116 @@ function selectRandomNearbyLocation(
 }
 
 /**
- * Generate L01 location (±3-5 miles from L00) using real nearby zip codes
+ * Get a completely random US location (for viral jumps)
+ */
+function getRandomUSLocation(): { zipCode: string; data: { lat: number; lng: number; city: string; region: string; country: string } } {
+  const allZipCodes = Object.entries(SIMULATOR_CITIES);
+  const randomIndex = Math.floor(Math.random() * allZipCodes.length);
+  return {
+    zipCode: allZipCodes[randomIndex][0],
+    data: allZipCodes[randomIndex][1]
+  };
+}
+
+/**
+ * Generate L01 location - 70% local (within 10 miles), 30% anywhere in US
  */
 export function getL01Location(parentLocation: LocationData): LocationData {
-  const nearbyLocation = selectRandomNearbyLocation(
-    parentLocation.latitude,
-    parentLocation.longitude,
-    0.05 // ±0.05° ≈ ±3-5 miles
-  );
+  const isViralJump = Math.random() < 0.30; // 30% chance of viral jump
   
-  if (!nearbyLocation) {
+  let selectedLocation;
+  if (isViralJump) {
+    // Viral jump to anywhere in US
+    selectedLocation = getRandomUSLocation();
+  } else {
+    // Local share within ~10 miles
+    selectedLocation = selectRandomNearbyLocation(
+      parentLocation.latitude,
+      parentLocation.longitude,
+      0.15 // ±0.15° ≈ ±10 miles
+    );
+  }
+  
+  if (!selectedLocation) {
     return parentLocation;
   }
   
   return {
-    latitude: nearbyLocation.data.lat,
-    longitude: nearbyLocation.data.lng,
-    city: nearbyLocation.data.city,
-    region: nearbyLocation.data.region,
-    country: nearbyLocation.data.country,
+    latitude: selectedLocation.data.lat,
+    longitude: selectedLocation.data.lng,
+    city: selectedLocation.data.city,
+    region: selectedLocation.data.region,
+    country: selectedLocation.data.country,
     country_code: "US",
-    zip_code: nearbyLocation.zipCode,
+    zip_code: selectedLocation.zipCode,
   };
 }
 
 /**
- * Generate L02 location (±15-20 miles from L01) using real nearby zip codes
+ * Generate L02 location - 50% regional (within 50 miles), 50% anywhere in US
  */
 export function getL02Location(parentLocation: LocationData): LocationData {
-  const nearbyLocation = selectRandomNearbyLocation(
-    parentLocation.latitude,
-    parentLocation.longitude,
-    0.25 // ±0.25° ≈ ±15-20 miles
-  );
+  const isViralJump = Math.random() < 0.50; // 50% chance of viral jump
   
-  if (!nearbyLocation) {
+  let selectedLocation;
+  if (isViralJump) {
+    // Viral jump to anywhere in US
+    selectedLocation = getRandomUSLocation();
+  } else {
+    // Regional share within ~50 miles
+    selectedLocation = selectRandomNearbyLocation(
+      parentLocation.latitude,
+      parentLocation.longitude,
+      0.75 // ±0.75° ≈ ±50 miles
+    );
+  }
+  
+  if (!selectedLocation) {
     return parentLocation;
   }
   
   return {
-    latitude: nearbyLocation.data.lat,
-    longitude: nearbyLocation.data.lng,
-    city: nearbyLocation.data.city,
-    region: nearbyLocation.data.region,
-    country: nearbyLocation.data.country,
+    latitude: selectedLocation.data.lat,
+    longitude: selectedLocation.data.lng,
+    city: selectedLocation.data.city,
+    region: selectedLocation.data.region,
+    country: selectedLocation.data.country,
     country_code: "US",
-    zip_code: nearbyLocation.zipCode,
+    zip_code: selectedLocation.zipCode,
   };
 }
 
 /**
- * Generate L03 location (±50-70 miles from L02) using real nearby zip codes
+ * Generate L03 location - 20% regional (within 100 miles), 80% anywhere in US
  */
 export function getL03Location(parentLocation: LocationData): LocationData {
-  const nearbyLocation = selectRandomNearbyLocation(
-    parentLocation.latitude,
-    parentLocation.longitude,
-    1.0 // ±1° ≈ ±50-70 miles
-  );
+  const isViralJump = Math.random() < 0.80; // 80% chance of viral jump
   
-  if (!nearbyLocation) {
+  let selectedLocation;
+  if (isViralJump) {
+    // Viral jump to anywhere in US
+    selectedLocation = getRandomUSLocation();
+  } else {
+    // Regional share within ~100 miles
+    selectedLocation = selectRandomNearbyLocation(
+      parentLocation.latitude,
+      parentLocation.longitude,
+      1.5 // ±1.5° ≈ ±100 miles
+    );
+  }
+  
+  if (!selectedLocation) {
     return parentLocation;
   }
   
   return {
-    latitude: nearbyLocation.data.lat,
-    longitude: nearbyLocation.data.lng,
-    city: nearbyLocation.data.city,
-    region: nearbyLocation.data.region,
-    country: nearbyLocation.data.country,
+    latitude: selectedLocation.data.lat,
+    longitude: selectedLocation.data.lng,
+    city: selectedLocation.data.city,
+    region: selectedLocation.data.region,
+    country: selectedLocation.data.country,
     country_code: "US",
-    zip_code: nearbyLocation.zipCode,
+    zip_code: selectedLocation.zipCode,
   };
 }
 
