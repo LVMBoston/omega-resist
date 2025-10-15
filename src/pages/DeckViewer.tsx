@@ -233,8 +233,14 @@ export default function DeckViewer() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious data-carousel-prev />
-            <CarouselNext data-carousel-next />
+            <CarouselPrevious 
+              data-carousel-prev 
+              className={isFullscreen ? "left-4 -translate-y-1/2" : undefined}
+            />
+            <CarouselNext 
+              data-carousel-next 
+              className={isFullscreen ? "right-4 -translate-y-1/2" : undefined}
+            />
           </Carousel>
         )}
       </main>
