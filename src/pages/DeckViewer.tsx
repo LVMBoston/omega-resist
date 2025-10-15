@@ -7,6 +7,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlide";
+import { logEvent } from "@/lib/virality/mint";
 
 interface SlideItem {
   id: string;
@@ -31,6 +32,7 @@ export default function DeckViewer() {
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const [eventLogged, setEventLogged] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -82,6 +84,41 @@ export default function DeckViewer() {
 
     fetchDeck();
   }, [slug]);
+
+  // Log view event when deck loads with viral token
+  useEffect(() => {
+    const logViewEvent = async () => {
+      if (eventLogged || loading || !viralToken) return;
+
+      try {
+        // Extract UTM parameters for snapshot
+        const utmSnapshot = {
+          utm_campaign: searchParams.get("utm_campaign") || undefined,
+          utm_source: searchParams.get("utm_source") || undefined,
+          utm_medium: searchParams.get("utm_medium") || undefined,
+          utm_content: searchParams.get("utm_content") || undefined,
+          utm_id: searchParams.get("utm_id") || undefined,
+          v_lvl: searchParams.get("v_lvl") || undefined,
+          parent_token: searchParams.get("p") || undefined,
+        };
+
+        console.log("Logging view event for token:", viralToken, utmSnapshot);
+
+        await logEvent({
+          token: viralToken,
+          eventType: "view",
+          utmSnapshot,
+        });
+
+        setEventLogged(true);
+        console.log("View event logged successfully");
+      } catch (err) {
+        console.error("Failed to log view event:", err);
+      }
+    };
+
+    logViewEvent();
+  }, [viralToken, searchParams, loading, eventLogged]);
 
   // Auto-enter fullscreen on load
   useEffect(() => {
