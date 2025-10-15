@@ -88,7 +88,27 @@ export default function DeckViewer() {
   // Log view event when deck loads with viral token
   useEffect(() => {
     const logViewEvent = async () => {
-      if (eventLogged || loading || !viralToken) return;
+      console.log("🔍 LogViewEvent check:", { 
+        eventLogged, 
+        loading, 
+        viralToken,
+        hasToken: !!viralToken 
+      });
+
+      if (eventLogged) {
+        console.log("⏭️ Event already logged, skipping");
+        return;
+      }
+      
+      if (loading) {
+        console.log("⏳ Still loading, waiting...");
+        return;
+      }
+      
+      if (!viralToken) {
+        console.log("❌ No viral token found in URL");
+        return;
+      }
 
       try {
         // Extract UTM parameters for snapshot
@@ -102,18 +122,23 @@ export default function DeckViewer() {
           parent_token: searchParams.get("p") || undefined,
         };
 
-        console.log("Logging view event for token:", viralToken, utmSnapshot);
+        console.log("✅ Logging view event for token:", viralToken);
+        console.log("📊 UTM snapshot:", utmSnapshot);
 
-        await logEvent({
+        const result = await logEvent({
           token: viralToken,
           eventType: "view",
           utmSnapshot,
         });
 
+        console.log("✅ View event logged successfully:", result);
         setEventLogged(true);
-        console.log("View event logged successfully");
       } catch (err) {
-        console.error("Failed to log view event:", err);
+        console.error("❌ Failed to log view event:", err);
+        console.error("Error details:", {
+          message: err instanceof Error ? err.message : String(err),
+          viralToken,
+        });
       }
     };
 
