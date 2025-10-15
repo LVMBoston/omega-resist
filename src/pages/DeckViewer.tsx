@@ -173,7 +173,7 @@ export default function DeckViewer() {
 
   return (
     <div className={`min-h-screen bg-background ${iOSFullscreen ? 'fixed inset-0 z-50' : ''}`}>
-      {showFullscreenPrompt && (
+      {showFullscreenPrompt && !isIOS && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="max-w-md w-full mx-4">
             <CardContent className="pt-6 text-center space-y-4">
