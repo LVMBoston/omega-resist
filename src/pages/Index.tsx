@@ -1,16 +1,14 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
-
 const Index = () => {
   useEffect(() => {
     document.title = "Democracy Forge | Event Management System";
   }, []);
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
+  return <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
       <div className="max-w-md text-center space-y-6">
-        <h1 className="text-3xl font-bold">Event Management System</h1>
+        <h1 className="font-bold text-4xl text-black">OMEGA
+Tools and Infrastructure for Campaigns of Resistance</h1>
         <p className="text-muted-foreground">
           Manage your campaigns, decks, and analytics
         </p>
@@ -27,8 +25,6 @@ const Index = () => {
           </Button>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
