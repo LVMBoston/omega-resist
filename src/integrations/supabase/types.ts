@@ -646,6 +646,39 @@ export type Database = {
           },
         ]
       }
+      zip_codes: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          latitude: number
+          longitude: number
+          state_id: string | null
+          state_name: string | null
+          timezone: string | null
+          zip_code: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          latitude: number
+          longitude: number
+          state_id?: string | null
+          state_name?: string | null
+          timezone?: string | null
+          zip_code: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          latitude?: number
+          longitude?: number
+          state_id?: string | null
+          state_name?: string | null
+          timezone?: string | null
+          zip_code?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

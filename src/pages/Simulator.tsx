@@ -176,7 +176,7 @@ export default function Simulator() {
         }
 
         // Get L00 base location
-        const l00Location = getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
+        const l00Location = await getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
         if (!l00Location) {
           console.warn(`Skipping ${eoa.title}: zip_code ${eoa.zip_code} not in simulator cities`);
           completedSteps++;
@@ -229,7 +229,7 @@ export default function Simulator() {
 
             // Mint L01 tokens
             for (let j = 0; j < l01Factor; j++) {
-              const l01Location = getLocationForLevel(1, l00Location);
+              const l01Location = await getLocationForLevel(1, l00Location);
               const { token: l01Token } = await mintShare({
                 parentToken: l00Token,
                 utmMedium: "social",
@@ -241,7 +241,7 @@ export default function Simulator() {
 
               // Mint L02 tokens
               for (let k = 0; k < l02Factor; k++) {
-                const l02Location = getLocationForLevel(2, l01Location);
+                const l02Location = await getLocationForLevel(2, l01Location);
                 const { token: l02Token } = await mintShare({
                   parentToken: l01Token,
                   utmMedium: "social",
@@ -253,7 +253,7 @@ export default function Simulator() {
 
                 // Mint L03 tokens
                 for (let m = 0; m < l03Factor; m++) {
-                  const l03Location = getLocationForLevel(3, l02Location);
+                  const l03Location = await getLocationForLevel(3, l02Location);
                   const { token: l03Token } = await mintShare({
                     parentToken: l02Token,
                     utmMedium: "p2p",

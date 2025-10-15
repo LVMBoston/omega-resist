@@ -220,7 +220,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             continue;
           }
 
-          const l00Location = getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
+          const l00Location = await getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
           if (!l00Location) {
             toast({
               title: "Skipped EoA",
@@ -265,7 +265,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           for (let j = 0; j < l01Factor; j++) {
             if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
             
-            const l01Location = getLocationForLevel(1, l00Location);
+            const l01Location = await getLocationForLevel(1, l00Location);
             const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
             await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
             await logEventWithLocation(l01Token, "view", l01Location);
@@ -275,7 +275,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             for (let k = 0; k < l02Factor; k++) {
               if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
               
-              const l02Location = getLocationForLevel(2, l01Location);
+              const l02Location = await getLocationForLevel(2, l01Location);
               const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
               await logEventWithLocation(l02Token, "view", l02Location);
@@ -285,7 +285,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               for (let m = 0; m < l03Factor; m++) {
                 if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
                 
-                const l03Location = getLocationForLevel(3, l02Location);
+                const l03Location = await getLocationForLevel(3, l02Location);
                 const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
                 await logEventWithLocation(l03Token, "view", l03Location);
