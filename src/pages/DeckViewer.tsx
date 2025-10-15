@@ -30,8 +30,7 @@ export default function DeckViewer() {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   
-  // Only show prompt on non-iOS devices
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -84,34 +83,22 @@ export default function DeckViewer() {
     fetchDeck();
   }, [slug]);
 
-  // Show fullscreen prompt on load (or auto-enter on iOS)
+  // Auto-enter fullscreen on load
   useEffect(() => {
-    if (!loading && slides.length > 0) {
+    if (!loading && slides.length > 0 && !hasAutoOpened) {
+      setHasAutoOpened(true);
       if (isIOS) {
-        // Automatically enter CSS fullscreen on iOS - no prompt
+        // Use CSS-based fullscreen for iOS
         setIOSFullscreen(true);
       } else {
-        // Only show prompt on non-iOS devices
-        setShowFullscreenPrompt(true);
+        // Request fullscreen for other devices
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log("Fullscreen request failed:", err);
+        });
       }
     }
-  }, [loading, slides.length, isIOS]);
+  }, [loading, slides.length, hasAutoOpened, isIOS]);
 
-  const enterFullscreen = async () => {
-    if (isIOS) {
-      // Use CSS-based fullscreen for iOS
-      setIOSFullscreen(true);
-      setShowFullscreenPrompt(false);
-      return;
-    }
-    try {
-      await document.documentElement.requestFullscreen();
-      setShowFullscreenPrompt(false);
-    } catch (err) {
-      console.log("Fullscreen request failed:", err);
-      toast.error("Unable to enter fullscreen mode");
-    }
-  };
 
   // Track fullscreen state
   useEffect(() => {
@@ -176,31 +163,6 @@ export default function DeckViewer() {
 
   return (
     <div className={`min-h-screen bg-background ${iOSFullscreen ? 'fixed inset-0 z-50' : ''}`}>
-      {showFullscreenPrompt && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
-          <Card className="max-w-md w-full mx-4">
-            <CardContent className="pt-6 text-center space-y-4">
-              <h2 className="text-2xl font-bold">Ready to Present?</h2>
-              <p className="text-muted-foreground">
-                Click below to view this deck in fullscreen mode
-              </p>
-              <div className="flex gap-3 justify-center">
-                <Button onClick={enterFullscreen} size="lg">
-                  Enter Fullscreen
-                </Button>
-                <Button 
-                  onClick={() => setShowFullscreenPrompt(false)} 
-                  variant="outline"
-                  size="lg"
-                >
-                  View Normal
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      
       {!effectiveFullscreen && (
         <header className="border-b bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
