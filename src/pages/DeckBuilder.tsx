@@ -151,7 +151,9 @@ export default function DeckBuilder() {
       navigate("/");
     } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error(error.message || "Failed to create deck");
+      toast.error(error.message || "Failed to create deck", {
+        duration: Infinity,
+      });
     } finally {
       setUploading(false);
       setProgress("");
