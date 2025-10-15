@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   description?: string;
+  tooltip?: string;
   trend?: number;
   status?: "good" | "warning" | "bad" | "neutral";
   format?: "number" | "percentage" | "time";
@@ -14,6 +16,7 @@ export function MetricCard({
   title,
   value,
   description,
+  tooltip,
   trend,
   status = "neutral",
   format = "number",
@@ -60,24 +63,26 @@ export function MetricCard({
   return (
     <Card className={getStatusColor()}>
       <CardHeader className="pb-1 pt-4">
-        <CardTitle className="text-xs font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <div className="flex items-center gap-1.5">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
+            {title}
+          </CardTitle>
+          {tooltip && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-sm">{tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="pb-4">
         <div className="flex items-baseline justify-between">
           <div className="text-2xl font-bold">{formatValue(value)}</div>
           {trend !== undefined && (
-            <div className={`flex items-center gap-1 text-xs ${getTrendColor()}`}>
-              {getTrendIcon()}
-              <span>{Math.abs(trend).toFixed(1)}%</span>
-            </div>
-          )}
-        </div>
-        {description && (
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+            <div className={
