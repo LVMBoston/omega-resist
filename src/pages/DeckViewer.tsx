@@ -24,19 +24,14 @@ export default function DeckViewer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [iOSFullscreen, setIOSFullscreen] = useState(false);
   
   // Detect iOS immediately
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   
-  console.log('iOS Detection:', { 
-    isIOS, 
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    maxTouchPoints: navigator.maxTouchPoints 
-  });
+  // Only show prompt on non-iOS devices
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -95,12 +90,12 @@ export default function DeckViewer() {
       if (isIOS) {
         // Automatically enter CSS fullscreen on iOS - no prompt
         setIOSFullscreen(true);
-        setShowFullscreenPrompt(false); // Explicitly disable prompt
       } else {
+        // Only show prompt on non-iOS devices
         setShowFullscreenPrompt(true);
       }
     }
-  }, [loading, slides, isIOS]);
+  }, [loading, slides.length, isIOS]);
 
   const enterFullscreen = async () => {
     if (isIOS) {
@@ -181,7 +176,7 @@ export default function DeckViewer() {
 
   return (
     <div className={`min-h-screen bg-background ${iOSFullscreen ? 'fixed inset-0 z-50' : ''}`}>
-      {showFullscreenPrompt && !isIOS && (
+      {showFullscreenPrompt && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="max-w-md w-full mx-4">
             <CardContent className="pt-6 text-center space-y-4">
