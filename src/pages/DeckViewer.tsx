@@ -86,12 +86,17 @@ export default function DeckViewer() {
     fetchDeck();
   }, [slug]);
 
-  // Show fullscreen prompt on load
+  // Show fullscreen prompt on load (or auto-enter on iOS)
   useEffect(() => {
     if (!loading && slides.length > 0) {
-      setShowFullscreenPrompt(true);
+      if (isIOS) {
+        // Automatically enter CSS fullscreen on iOS
+        setIOSFullscreen(true);
+      } else {
+        setShowFullscreenPrompt(true);
+      }
     }
-  }, [loading, slides]);
+  }, [loading, slides, isIOS]);
 
   const enterFullscreen = async () => {
     if (isIOS) {
