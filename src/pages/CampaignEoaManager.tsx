@@ -95,9 +95,29 @@ export default function CampaignEoaManager() {
     if (error) {
       console.error("Failed to fetch tokens:", error);
     } else if (data) {
-      const tokenMap: Record<string, { token: string; url: string }> = {};
+      // Fetch shortened URLs for all full URLs
+      const { data: shortUrls, error: shortError } = await supabase
+        .from("shortened_urls")
+        .select("full_url, short_code")
+        .in("full_url", data.map(t => t.full_url));
+
+      if (shortError) {
+        console.error("Failed to fetch shortened URLs:", shortError);
+      }
+
+      // Create map of full_url -> short_code
+      const shortUrlMap = new Map<string, string>();
+      shortUrls?.forEach(su => {
+        shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
+      });
+
+      const tokenMap: Record<string, { token: string; url: string; shortUrl?: string }> = {};
       data.forEach(t => {
-        tokenMap[t.eoa_id] = { token: t.token, url: t.full_url };
+        tokenMap[t.eoa_id] = { 
+          token: t.token, 
+          url: t.full_url,
+          shortUrl: shortUrlMap.get(t.full_url)
+        };
       });
       setL00Tokens(tokenMap);
     }
