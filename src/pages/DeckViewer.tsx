@@ -18,9 +18,14 @@ interface SlideItem {
 }
 
 export default function DeckViewer() {
+  console.log("🎬 DeckViewer component mounted!");
+  
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const viralToken = searchParams.get("t");
+  
+  console.log("🎯 Component initialization:", { slug, viralToken, allParams: Object.fromEntries(searchParams) });
+  
   const [slides, setSlides] = useState<SlideItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +41,12 @@ export default function DeckViewer() {
 
   // Set page title
   useEffect(() => {
+    console.log("📄 Setting page title useEffect running");
     document.title = "Democracy Forge";
   }, []);
 
   useEffect(() => {
+    console.log("🔄 Fetch deck useEffect running, slug:", slug);
     if (!slug) return;
 
     const fetchDeck = async () => {
