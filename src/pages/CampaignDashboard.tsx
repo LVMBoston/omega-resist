@@ -393,6 +393,10 @@ export default function CampaignDashboard() {
         bVal = `${b.tokens.events_actions.city || ''}, ${b.tokens.events_actions.state || ''}`;
         break;
       case 'zip':
+        aVal = a.zip_code || '';
+        bVal = b.zip_code || '';
+        break;
+      case 'event_zip':
         aVal = a.tokens.events_actions.zip_code || '';
         bVal = b.tokens.events_actions.zip_code || '';
         break;
@@ -768,8 +772,19 @@ export default function CampaignDashboard() {
                               onClick={() => handleSort('zip')}
                             >
                               <div className="flex items-center gap-1">
-                                Zip Code
+                                Cell Tower Zip
                                 {sortConfig.column === 'zip' && (
+                                  <ArrowUpDown className="w-3 h-3" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleSort('event_zip')}
+                            >
+                              <div className="flex items-center gap-1">
+                                Event Zip
+                                {sortConfig.column === 'event_zip' && (
                                   <ArrowUpDown className="w-3 h-3" />
                                 )}
                               </div>
@@ -821,6 +836,7 @@ export default function CampaignDashboard() {
                                   : 'N/A'}
                               </TableCell>
                               <TableCell>{formatZipCode(event.zip_code)}</TableCell>
+                              <TableCell>{formatZipCode(event.tokens.events_actions.zip_code)}</TableCell>
                               <TableCell>
                                 <Badge variant="outline">{formatLevel(event.tokens.level)}</Badge>
                               </TableCell>
