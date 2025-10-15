@@ -232,14 +232,26 @@ export default function CampaignEoaManager() {
           lazy: true,
           onShortened: (shortUrl) => {
             // Update with short URL when ready
-            setL00Tokens(prev => ({
-              ...prev,
-              [eoa.id]: { 
-                ...prev[eoa.id],
-                shortUrl,
-                shorteningInProgress: false
-              }
-            }));
+            setL00Tokens(prev => {
+              const updated = {
+                ...prev,
+                [eoa.id]: { 
+                  ...prev[eoa.id],
+                  shortUrl,
+                  shorteningInProgress: false
+                }
+              };
+              
+              // Update the dialog if it's showing this token
+              setSelectedTokenForDisplay(prevDisplay => {
+                if (prevDisplay && prevDisplay.token === updated[eoa.id].token) {
+                  return { ...prevDisplay, shortUrl };
+                }
+                return prevDisplay;
+              });
+              
+              return updated;
+            });
             
             toast({
               title: "Short URL Ready",
@@ -258,6 +270,13 @@ export default function CampaignEoaManager() {
           shorteningInProgress: true // Still shortening in background
         }
       }));
+
+      // Automatically open the TokenDisplay dialog
+      setSelectedTokenForDisplay({
+        token: result.token,
+        url: result.full_url,
+        eoaTitle: eoa.title
+      });
 
       toast({
         title: "L00 Token Generated",
