@@ -112,11 +112,13 @@ export const InteractiveSlideOverlay = ({
       console.log("2️⃣ SMS Template:", JSON.stringify(smsTemplate, null, 2));
       
       if (!viralToken) {
-        console.error("❌ ERROR: No viral token found");
+        console.error("❌ ERROR: No viral token found in URL");
+        console.log("Current URL:", window.location.href);
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "No token found in URL",
+          title: "Share Link Required",
+          description: "This slide needs to be accessed via a viral share link to enable sharing. Please use a link from a previous share.",
+          duration: Infinity,
         });
         return;
       }
@@ -182,11 +184,13 @@ export const InteractiveSlideOverlay = ({
       console.log("2️⃣ Email Template:", JSON.stringify(emailTemplate, null, 2));
       
       if (!viralToken) {
-        console.error("❌ ERROR: No viral token found");
+        console.error("❌ ERROR: No viral token found in URL");
+        console.log("Current URL:", window.location.href);
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "No token found in URL",
+          title: "Share Link Required",
+          description: "This slide needs to be accessed via a viral share link to enable sharing. Please use a link from a previous share.",
+          duration: Infinity,
         });
         return;
       }
