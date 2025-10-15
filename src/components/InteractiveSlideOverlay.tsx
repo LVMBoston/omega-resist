@@ -100,7 +100,12 @@ export const InteractiveSlideOverlay = ({
 
     updateImageDimensions();
     window.addEventListener('resize', updateImageDimensions);
-    return () => window.removeEventListener('resize', updateImageDimensions);
+    document.addEventListener('fullscreenchange', updateImageDimensions);
+    
+    return () => {
+      window.removeEventListener('resize', updateImageDimensions);
+      document.removeEventListener('fullscreenchange', updateImageDimensions);
+    };
   }, [imageUrl]);
 
   const handleSMS = async () => {

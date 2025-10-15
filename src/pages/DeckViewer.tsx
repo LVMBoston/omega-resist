@@ -25,6 +25,14 @@ export default function DeckViewer() {
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  // Detect iOS
+  useEffect(() => {
+    const checkIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIOS(checkIOS);
+  }, []);
 
   // Set page title
   useEffect(() => {
@@ -85,6 +93,10 @@ export default function DeckViewer() {
   }, [loading, slides]);
 
   const enterFullscreen = async () => {
+    if (isIOS) {
+      toast.error("Fullscreen mode is not supported on iOS devices. Please use 'View Normal' mode.");
+      return;
+    }
     try {
       await document.documentElement.requestFullscreen();
       setShowFullscreenPrompt(false);
@@ -164,12 +176,14 @@ export default function DeckViewer() {
                 Click below to view this deck in fullscreen mode
               </p>
               <div className="flex gap-3 justify-center">
-                <Button onClick={enterFullscreen} size="lg">
-                  Enter Fullscreen
-                </Button>
+                {!isIOS && (
+                  <Button onClick={enterFullscreen} size="lg">
+                    Enter Fullscreen
+                  </Button>
+                )}
                 <Button 
                   onClick={() => setShowFullscreenPrompt(false)} 
-                  variant="outline"
+                  variant={isIOS ? "default" : "outline"}
                   size="lg"
                 >
                   View Normal
