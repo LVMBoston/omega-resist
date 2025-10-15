@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ interface SlideItem {
 
 export default function DeckViewer() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const viralToken = searchParams.get("t");
   const [slides, setSlides] = useState<SlideItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,7 +215,7 @@ export default function DeckViewer() {
                     <CardContent className="p-0">
                       <div className="relative aspect-video bg-muted">
                         {slide.type === "spread-word" ? (
-                          <ViralSlide slideId={slide.id} deckSlug={slug || ""} />
+                          <ViralSlide slideId={slide.id} deckSlug={slug || ""} viralToken={viralToken} />
                         ) : (
                           <img
                             src={slide.content_url}

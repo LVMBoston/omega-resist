@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 interface ViralSlideProps {
   slideId: string;
   deckSlug: string;
+  viralToken: string | null;
 }
 
 interface Hotspot {
@@ -23,7 +24,7 @@ interface ViralConfig {
   hotspots: Hotspot[];
 }
 
-export const ViralSlide = ({ slideId, deckSlug }: ViralSlideProps) => {
+export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -76,6 +77,7 @@ export const ViralSlide = ({ slideId, deckSlug }: ViralSlideProps) => {
         hotspots={config.hotspots}
         deckSlug={deckSlug}
         imageUrl={config.image_url}
+        viralToken={viralToken}
       />
     </div>
   );

@@ -19,15 +19,16 @@ interface InteractiveSlideOverlayProps {
   hotspots: Hotspot[];
   deckSlug: string;
   imageUrl: string;
+  viralToken: string | null;
 }
 
 export const InteractiveSlideOverlay = ({
   hotspots,
   deckSlug,
   imageUrl,
+  viralToken,
 }: InteractiveSlideOverlayProps) => {
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageDimensions, setImageDimensions] = useState({ 
     offsetX: 0, 
@@ -104,8 +105,10 @@ export const InteractiveSlideOverlay = ({
 
   const handleSMS = async () => {
     try {
-      const parentToken = searchParams.get("t");
-      if (!parentToken) {
+      console.log("📱 SMS button clicked. Viral token:", viralToken);
+      console.log("📱 SMS template loaded:", smsTemplate);
+      
+      if (!viralToken) {
         toast({
           variant: "destructive",
           title: "Error",
@@ -114,16 +117,22 @@ export const InteractiveSlideOverlay = ({
         return;
       }
 
+      console.log("📱 Calling mintShare with payload:", { parentToken: viralToken, utmMedium: "sms" });
       // Mint new share token
-      const { token, full_url } = await mintShare({
-        parentToken,
+      const result = await mintShare({
+        parentToken: viralToken,
         utmMedium: "sms",
       });
+      console.log("📱 Complete mintShare response:", result);
+      const { token, full_url } = result;
 
       // Use template or fallback
       const message = smsTemplate?.body 
         ? smsTemplate.body.replace("{{link}}", full_url)
         : `Check out this deck: ${full_url}`;
+
+      console.log("📱 SMS message:", message);
+      console.log("📱 SMS URL being opened:", `sms:?body=${encodeURIComponent(message)}`);
 
       const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
       const link = document.createElement('a');
@@ -138,7 +147,8 @@ export const InteractiveSlideOverlay = ({
         description: "Share this deck via text message",
       });
     } catch (error) {
-      console.error("SMS share error:", error);
+      console.error("❌ SMS share error (full):", error);
+      console.error("❌ Error details:", JSON.stringify(error, null, 2));
       toast({
         variant: "destructive",
         title: "Error",
@@ -149,11 +159,10 @@ export const InteractiveSlideOverlay = ({
 
   const handleEmail = async () => {
     try {
-      const parentToken = searchParams.get("t");
-      console.log("📧 Email button clicked. Parent token:", parentToken);
+      console.log("📧 Email button clicked. Viral token:", viralToken);
       console.log("📧 Email template loaded:", emailTemplate);
       
-      if (!parentToken) {
+      if (!viralToken) {
         toast({
           variant: "destructive",
           title: "Error",
@@ -162,10 +171,10 @@ export const InteractiveSlideOverlay = ({
         return;
       }
 
-      console.log("📧 Calling mintShare with payload:", { parentToken, utmMedium: "em" });
+      console.log("📧 Calling mintShare with payload:", { parentToken: viralToken, utmMedium: "em" });
       // Mint new share token
       const result = await mintShare({
-        parentToken,
+        parentToken: viralToken,
         utmMedium: "em",
       });
       console.log("📧 Complete mintShare response:", result);
