@@ -7,8 +7,8 @@ const Index = () => {
   }, []);
   return <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
       <div className="max-w-md text-center space-y-6">
-        <h1 className="font-bold text-4xl text-black">OMEGA
-Tools and Infrastructure for Campaigns of Resistance</h1>
+        <h1 className="font-bold text-6xl text-black">OMEGA</h1>
+        <h2 className="font-bold text-4xl text-black">Tools and Infrastructure for Campaigns of Resistance</h2>
         <p className="text-muted-foreground">
           Manage your campaigns, decks, and analytics
         </p>
@@ -16,11 +16,6 @@ Tools and Infrastructure for Campaigns of Resistance</h1>
           <Button asChild>
             <Link to="/admin">
               Admin Dashboard
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/simulator">
-              Simulator
             </Link>
           </Button>
         </div>
