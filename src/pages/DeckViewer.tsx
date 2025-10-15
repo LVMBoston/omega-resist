@@ -26,6 +26,7 @@ export default function DeckViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [iOSFullscreen, setIOSFullscreen] = useState(false);
 
   // Detect iOS
   useEffect(() => {
@@ -94,7 +95,9 @@ export default function DeckViewer() {
 
   const enterFullscreen = async () => {
     if (isIOS) {
-      toast.error("Fullscreen mode is not supported on iOS devices. Please use 'View Normal' mode.");
+      // Use CSS-based fullscreen for iOS
+      setIOSFullscreen(true);
+      setShowFullscreenPrompt(false);
       return;
     }
     try {
@@ -165,8 +168,10 @@ export default function DeckViewer() {
     );
   }
 
+  const effectiveFullscreen = isFullscreen || iOSFullscreen;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${iOSFullscreen ? 'fixed inset-0 z-50' : ''}`}>
       {showFullscreenPrompt && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="max-w-md w-full mx-4">
@@ -176,14 +181,12 @@ export default function DeckViewer() {
                 Click below to view this deck in fullscreen mode
               </p>
               <div className="flex gap-3 justify-center">
-                {!isIOS && (
-                  <Button onClick={enterFullscreen} size="lg">
-                    Enter Fullscreen
-                  </Button>
-                )}
+                <Button onClick={enterFullscreen} size="lg">
+                  Enter Fullscreen
+                </Button>
                 <Button 
                   onClick={() => setShowFullscreenPrompt(false)} 
-                  variant={isIOS ? "default" : "outline"}
+                  variant="outline"
                   size="lg"
                 >
                   View Normal
@@ -194,7 +197,7 @@ export default function DeckViewer() {
         </div>
       )}
       
-      {!isFullscreen && (
+      {!effectiveFullscreen && (
         <header className="border-b bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -213,7 +216,7 @@ export default function DeckViewer() {
         </header>
       )}
 
-      <main className={isFullscreen ? "h-screen flex items-center justify-center" : "container mx-auto px-6 py-12"}>
+      <main className={effectiveFullscreen ? "h-screen flex items-center justify-center" : "container mx-auto px-6 py-12"}>
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
@@ -221,7 +224,7 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className={isFullscreen ? "w-full h-full" : "max-w-5xl mx-auto"}>
+          <Carousel className={effectiveFullscreen ? "w-full h-full" : "max-w-5xl mx-auto"}>
             <CarouselContent>
               {slides.map((slide, index) => (
                 <CarouselItem key={slide.id}>
@@ -249,11 +252,11 @@ export default function DeckViewer() {
             </CarouselContent>
             <CarouselPrevious 
               data-carousel-prev 
-              className={isFullscreen ? "left-4 -translate-y-1/2" : undefined}
+              className={effectiveFullscreen ? "left-4 -translate-y-1/2" : undefined}
             />
             <CarouselNext 
               data-carousel-next 
-              className={isFullscreen ? "right-4 -translate-y-1/2" : undefined}
+              className={effectiveFullscreen ? "right-4 -translate-y-1/2" : undefined}
             />
           </Carousel>
         )}
