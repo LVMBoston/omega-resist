@@ -4,15 +4,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 const ShortUrlRedirect = () => {
+  console.log("🔀 ShortUrlRedirect component mounted");
+  
   const { code } = useParams<{ code: string }>();
+  console.log("🔑 Short code from URL:", code);
+  
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("🔄 Redirect useEffect running");
+    
     const redirect = async () => {
       if (!code) {
+        console.log("❌ No short code provided");
         setError("No redirect code provided");
         return;
       }
+
+      console.log("📞 Calling track_redirect with code:", code);
 
       try {
         // Call the track_redirect function to get full URL and increment clicks
@@ -20,12 +29,16 @@ const ShortUrlRedirect = () => {
           _short_code: code,
         });
 
+        console.log("📥 track_redirect response:", { data, error: rpcError });
+
         if (rpcError || !data) {
+          console.error("❌ Redirect error:", rpcError);
           setError("Short URL not found");
-          console.error("Redirect error:", rpcError);
           return;
         }
 
+        console.log("✅ Redirecting to:", data);
+        
         // Redirect to the full URL
         window.location.href = data;
       } catch (err) {
