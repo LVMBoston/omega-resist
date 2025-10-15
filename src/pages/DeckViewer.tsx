@@ -30,6 +30,13 @@ export default function DeckViewer() {
   // Detect iOS immediately
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  
+  console.log('iOS Detection:', { 
+    isIOS, 
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    maxTouchPoints: navigator.maxTouchPoints 
+  });
 
   // Set page title
   useEffect(() => {
@@ -84,11 +91,14 @@ export default function DeckViewer() {
 
   // Show fullscreen prompt on load (or auto-enter on iOS)
   useEffect(() => {
+    console.log('Fullscreen useEffect:', { loading, slidesLength: slides.length, isIOS });
     if (!loading && slides.length > 0) {
       if (isIOS) {
+        console.log('Setting iOS fullscreen to true');
         // Automatically enter CSS fullscreen on iOS
         setIOSFullscreen(true);
       } else {
+        console.log('Showing fullscreen prompt');
         setShowFullscreenPrompt(true);
       }
     }
