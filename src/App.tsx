@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import DeckManagement from "./pages/DeckManagement";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
@@ -33,7 +34,8 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+          <Route path="/" element={<Index />} />
+          <Route path="/deck-management" element={<DeckManagement />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/deck/:slug" element={<DeckViewer />} />
             <Route path="/build" element={<DeckBuilder />} />
