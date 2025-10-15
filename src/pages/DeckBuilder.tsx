@@ -52,20 +52,34 @@ export default function DeckBuilder() {
     }
   };
 
+  const getMimeType = (filename: string): string => {
+    const ext = filename.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      default:
+        return 'application/octet-stream';
+    }
+  };
+
   const handleZipUpload = async (zipFile: File, slug: string, compress: boolean) => {
     setProgress("Reading ZIP file...");
     
     const zip = await JSZip.loadAsync(zipFile);
     
     // Extract PNG/JPG files
-    const imageFiles: { name: string; data: Blob }[] = [];
+    const imageFiles: { name: string; data: Blob; mimeType: string }[] = [];
     const filePromises: Promise<void>[] = [];
 
     zip.forEach((relativePath, file) => {
       if (!file.dir && /\.(png|jpg|jpeg)$/i.test(relativePath)) {
         filePromises.push(
           file.async("blob").then((blob) => {
-            imageFiles.push({ name: relativePath, data: blob });
+            const mimeType = getMimeType(relativePath);
+            imageFiles.push({ name: relativePath, data: blob, mimeType });
           })
         );
       }
@@ -97,26 +111,27 @@ export default function DeckBuilder() {
 
     // Upload slides
     for (let i = 0; i < imageFiles.length; i++) {
-      const { name, data } = imageFiles[i];
+      const { name, data, mimeType } = imageFiles[i];
       setProgress(`Uploading slide ${i + 1} of ${imageFiles.length}...`);
 
-      let uploadBlob = data;
+      let uploadBlob: Blob = data;
       let isCompressed = false;
 
       // Compress if enabled
       if (compress && /\.(png|jpg|jpeg)$/i.test(name)) {
         setProgress(`Compressing slide ${i + 1}...`);
-        uploadBlob = await compressImage(new File([data], name));
+        const imageFile = new File([data], name, { type: mimeType });
+        uploadBlob = await compressImage(imageFile);
         isCompressed = true;
       }
 
       const fileName = `${slug}/${i.toString().padStart(3, "0")}-${name}`;
       
-      // Upload to storage
+      // Upload to storage with correct mime type
       const { error: uploadError } = await supabase.storage
         .from("slides")
         .upload(fileName, uploadBlob, {
-          contentType: uploadBlob.type,
+          contentType: mimeType,
           upsert: false,
         });
 
