@@ -91,14 +91,12 @@ export default function DeckViewer() {
 
   // Show fullscreen prompt on load (or auto-enter on iOS)
   useEffect(() => {
-    console.log('Fullscreen useEffect:', { loading, slidesLength: slides.length, isIOS });
     if (!loading && slides.length > 0) {
       if (isIOS) {
-        console.log('Setting iOS fullscreen to true');
-        // Automatically enter CSS fullscreen on iOS
+        // Automatically enter CSS fullscreen on iOS - no prompt
         setIOSFullscreen(true);
+        setShowFullscreenPrompt(false); // Explicitly disable prompt
       } else {
-        console.log('Showing fullscreen prompt');
         setShowFullscreenPrompt(true);
       }
     }
