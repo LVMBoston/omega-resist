@@ -25,15 +25,11 @@ export default function DeckViewer() {
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
   const [iOSFullscreen, setIOSFullscreen] = useState(false);
-
-  // Detect iOS
-  useEffect(() => {
-    const checkIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    setIsIOS(checkIOS);
-  }, []);
+  
+  // Detect iOS immediately
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   // Set page title
   useEffect(() => {
