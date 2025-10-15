@@ -105,10 +105,14 @@ export const InteractiveSlideOverlay = ({
 
   const handleSMS = async () => {
     try {
-      console.log("📱 SMS button clicked. Viral token:", viralToken);
-      console.log("📱 SMS template loaded:", smsTemplate);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("📱 SMS SHARE INITIATED");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("1️⃣ Parent Token from URL:", viralToken);
+      console.log("2️⃣ SMS Template:", JSON.stringify(smsTemplate, null, 2));
       
       if (!viralToken) {
+        console.error("❌ ERROR: No viral token found");
         toast({
           variant: "destructive",
           title: "Error",
@@ -117,22 +121,34 @@ export const InteractiveSlideOverlay = ({
         return;
       }
 
-      console.log("📱 Calling mintShare with payload:", { parentToken: viralToken, utmMedium: "sms" });
+      const mintSharePayload = { 
+        parentToken: viralToken, 
+        utmMedium: "sms" as const
+      };
+      console.log("3️⃣ mintShare Request Payload:", JSON.stringify(mintSharePayload, null, 2));
+      
       // Mint new share token
-      const result = await mintShare({
-        parentToken: viralToken,
-        utmMedium: "sms",
-      });
-      console.log("📱 Complete mintShare response:", result);
-      const { token, full_url } = result;
+      const result = await mintShare(mintSharePayload);
+      
+      console.log("4️⃣ mintShare Response:", JSON.stringify(result, null, 2));
+      const { token, full_url, level } = result;
 
       // Use template or fallback
       const message = smsTemplate?.body 
         ? smsTemplate.body.replace("{{link}}", full_url)
         : `Check out this deck: ${full_url}`;
 
-      console.log("📱 SMS message:", message);
-      console.log("📱 SMS URL being opened:", `sms:?body=${encodeURIComponent(message)}`);
+      const finalPayload = {
+        newToken: token,
+        level: level,
+        fullUrl: full_url,
+        message: message,
+        encodedSmsUrl: `sms:?body=${encodeURIComponent(message)}`
+      };
+      
+      console.log("5️⃣ Final SMS Payload:", JSON.stringify(finalPayload, null, 2));
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
 
       const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
       const link = document.createElement('a');
@@ -159,10 +175,14 @@ export const InteractiveSlideOverlay = ({
 
   const handleEmail = async () => {
     try {
-      console.log("📧 Email button clicked. Viral token:", viralToken);
-      console.log("📧 Email template loaded:", emailTemplate);
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("📧 EMAIL SHARE INITIATED");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("1️⃣ Parent Token from URL:", viralToken);
+      console.log("2️⃣ Email Template:", JSON.stringify(emailTemplate, null, 2));
       
       if (!viralToken) {
+        console.error("❌ ERROR: No viral token found");
         toast({
           variant: "destructive",
           title: "Error",
@@ -171,13 +191,16 @@ export const InteractiveSlideOverlay = ({
         return;
       }
 
-      console.log("📧 Calling mintShare with payload:", { parentToken: viralToken, utmMedium: "em" });
+      const mintSharePayload = { 
+        parentToken: viralToken, 
+        utmMedium: "em" as const
+      };
+      console.log("3️⃣ mintShare Request Payload:", JSON.stringify(mintSharePayload, null, 2));
+      
       // Mint new share token
-      const result = await mintShare({
-        parentToken: viralToken,
-        utmMedium: "em",
-      });
-      console.log("📧 Complete mintShare response:", result);
+      const result = await mintShare(mintSharePayload);
+      
+      console.log("4️⃣ mintShare Response:", JSON.stringify(result, null, 2));
       const { token, full_url, level } = result;
 
       // Use template or fallback
@@ -186,8 +209,18 @@ export const InteractiveSlideOverlay = ({
         ? emailTemplate.body.replace("{{link}}", full_url)
         : `I thought you might be interested in this: ${full_url}`;
 
-      console.log("📧 Email subject:", subject);
-      console.log("📧 Email body:", body);
+      const finalPayload = {
+        newToken: token,
+        level: level,
+        fullUrl: full_url,
+        subject: subject,
+        body: body,
+        mailtoUrl: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      };
+      
+      console.log("5️⃣ Final Email Payload:", JSON.stringify(finalPayload, null, 2));
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
 
       const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       const link = document.createElement('a');
