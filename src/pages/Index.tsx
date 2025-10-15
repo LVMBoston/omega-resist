@@ -11,7 +11,7 @@ const Index = () => {
         <img src={omegaLogo} alt="Omega Resistance Logo" className="w-96 mx-auto" />
         <h1 className="font-bold text-6xl text-white">OMEGA</h1>
         <h2 className="font-bold text-4xl text-white">Tools and Infrastructure for Campaigns of Resistance</h2>
-        <p className="text-muted-foreground">
+        <p className="text-black">
           Manage your campaigns, decks, and analytics
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
