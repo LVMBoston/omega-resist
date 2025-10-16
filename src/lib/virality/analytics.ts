@@ -430,6 +430,13 @@ export async function getGeographicSpread(
 
   if (error) throw error;
 
+  console.log(`getGeographicSpread for campaign ${campaignId}:`, {
+    totalTokens: tokens?.length || 0,
+    filteredTokens: tokenList.length,
+    totalEvents: events?.length || 0,
+    dataSource,
+  });
+
   // Aggregate by location AND level
   const locationMap = new Map<string, GeographicPoint>();
 
@@ -452,7 +459,15 @@ export async function getGeographicSpread(
     locationMap.get(key)!.event_count++;
   });
 
-  return Array.from(locationMap.values());
+  const result = Array.from(locationMap.values());
+  console.log(`getGeographicSpread result: ${result.length} points`, {
+    L00_points: result.filter(p => p.level === 0).length,
+    L01_points: result.filter(p => p.level === 1).length,
+    L02_points: result.filter(p => p.level === 2).length,
+    L03_points: result.filter(p => p.level === 3).length,
+  });
+  
+  return result;
 }
 
 /**
