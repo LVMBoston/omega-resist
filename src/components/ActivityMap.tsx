@@ -328,7 +328,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       },
     });
 
-    // Add unclustered points
+    // Add unclustered points - colored by level
     map.current.addLayer({
       id: "unclustered-point",
       type: "circle",
@@ -337,14 +337,16 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       paint: {
         "circle-color": [
           "match",
-          ["get", "eventType"],
-          "scan",
-          "#3b82f6",
-          "view",
-          "#10b981",
-          "share",
-          "#a855f7",
-          "#6b7280",
+          ["get", "level"],
+          0,
+          "#3b82f6", // L00 - Blue
+          1,
+          "#10b981", // L01 - Green
+          2,
+          "#f59e0b", // L02 - Amber
+          3,
+          "#a855f7", // L03 - Purple
+          "#6b7280", // Default - Gray
         ],
         "circle-radius": 8,
         "circle-stroke-width": 2,
