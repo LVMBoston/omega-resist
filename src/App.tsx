@@ -22,6 +22,7 @@ import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
 import Simulator from "./pages/Simulator";
 import ViralityDashboard from "./pages/ViralityDashboard";
+import ZipCodeImporter from "./pages/ZipCodeImporter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <ViralityDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/zip-code-importer"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ZipCodeImporter />
                 </ProtectedRoute>
               } 
             />
