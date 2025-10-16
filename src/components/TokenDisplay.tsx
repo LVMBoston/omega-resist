@@ -17,7 +17,7 @@ interface TokenDisplayProps {
 }
 
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
-  const [showQRDialog, setShowQRDialog] = useState(false);
+  const [showQRDialog, setShowQRDialog] = useState(true);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
