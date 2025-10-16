@@ -41,12 +41,35 @@ interface EoA {
 
 export default function Simulator() {
   const { toast } = useToast();
+  
+  // Load saved settings from localStorage
+  const loadSavedSettings = () => {
+    try {
+      const saved = localStorage.getItem('simulator-settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          selectedEoaIds: new Set<string>(parsed.selectedEoaIds || []),
+          l00Count: parsed.l00Count || 10,
+          l01Factor: parsed.l01Factor || 3,
+          l02Factor: parsed.l02Factor || 2,
+          l03Factor: parsed.l03Factor || 1,
+        };
+      }
+    } catch (e) {
+      console.error('Failed to load simulator settings:', e);
+    }
+    return null;
+  };
+
+  const savedSettings = loadSavedSettings();
+  
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
-  const [selectedEoaIds, setSelectedEoaIds] = useState<Set<string>>(new Set());
-  const [l00Count, setL00Count] = useState(10);
-  const [l01Factor, setL01Factor] = useState(3);
-  const [l02Factor, setL02Factor] = useState(2);
-  const [l03Factor, setL03Factor] = useState(1);
+  const [selectedEoaIds, setSelectedEoaIds] = useState<Set<string>>(savedSettings?.selectedEoaIds || new Set());
+  const [l00Count, setL00Count] = useState(savedSettings?.l00Count || 10);
+  const [l01Factor, setL01Factor] = useState(savedSettings?.l01Factor || 3);
+  const [l02Factor, setL02Factor] = useState(savedSettings?.l02Factor || 2);
+  const [l03Factor, setL03Factor] = useState(savedSettings?.l03Factor || 1);
   const [isSimulating, setIsSimulating] = useState(false);
   const [progress, setProgress] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -80,6 +103,21 @@ export default function Simulator() {
     enabled: !!selectedCampaignId,
   });
 
+  // Save settings to localStorage whenever they change
+  const saveSettings = () => {
+    try {
+      localStorage.setItem('simulator-settings', JSON.stringify({
+        selectedEoaIds: Array.from(selectedEoaIds),
+        l00Count,
+        l01Factor,
+        l02Factor,
+        l03Factor,
+      }));
+    } catch (e) {
+      console.error('Failed to save simulator settings:', e);
+    }
+  };
+
   const toggleEoaSelection = (eoaId: string) => {
     const newSelection = new Set(selectedEoaIds);
     if (newSelection.has(eoaId)) {
@@ -88,15 +126,19 @@ export default function Simulator() {
       newSelection.add(eoaId);
     }
     setSelectedEoaIds(newSelection);
+    // Save after state update
+    setTimeout(() => saveSettings(), 0);
   };
 
   const selectAllEoas = () => {
     if (!eoas) return;
     setSelectedEoaIds(new Set(eoas.map(e => e.id)));
+    setTimeout(() => saveSettings(), 0);
   };
 
   const deselectAllEoas = () => {
     setSelectedEoaIds(new Set());
+    setTimeout(() => saveSettings(), 0);
   };
 
   const stopSimulation = () => {
@@ -133,6 +175,9 @@ export default function Simulator() {
       setL01Factor(3);
       setL02Factor(2);
       setL03Factor(1);
+      
+      // Clear saved settings
+      localStorage.removeItem('simulator-settings');
 
       toast({
         title: "Data cleared",
@@ -396,7 +441,10 @@ export default function Simulator() {
                     min={1}
                     max={100}
                     value={l00Count}
-                    onChange={(e) => setL00Count(parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      setL00Count(parseInt(e.target.value) || 1);
+                      setTimeout(() => saveSettings(), 0);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Base location from EOA zip code
@@ -410,7 +458,10 @@ export default function Simulator() {
                     min={0}
                     max={10}
                     value={l01Factor}
-                    onChange={(e) => setL01Factor(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      setL01Factor(parseInt(e.target.value) || 0);
+                      setTimeout(() => saveSettings(), 0);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     ±3-5 miles from L00
@@ -424,7 +475,10 @@ export default function Simulator() {
                     min={0}
                     max={10}
                     value={l02Factor}
-                    onChange={(e) => setL02Factor(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      setL02Factor(parseInt(e.target.value) || 0);
+                      setTimeout(() => saveSettings(), 0);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     ±15-20 miles from L01
@@ -438,7 +492,10 @@ export default function Simulator() {
                     min={0}
                     max={10}
                     value={l03Factor}
-                    onChange={(e) => setL03Factor(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      setL03Factor(parseInt(e.target.value) || 0);
+                      setTimeout(() => saveSettings(), 0);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     ±50-70 miles from L02
