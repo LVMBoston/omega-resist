@@ -94,6 +94,9 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
         projection: "mercator" as any,
       });
 
+      // Disable scroll zoom to prevent unwanted zoom on scroll
+      map.current.scrollZoom.disable();
+
       map.current.addControl(
         new mapboxgl.NavigationControl({ visualizePitch: true }),
         "top-right"
