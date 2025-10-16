@@ -127,9 +127,16 @@ export default function Simulator() {
       
       if (tokensError) throw tokensError;
 
+      // Reset all simulation settings to defaults
+      setSelectedEoaIds(new Set());
+      setL00Count(10);
+      setL01Factor(3);
+      setL02Factor(2);
+      setL03Factor(1);
+
       toast({
         title: "Data cleared",
-        description: "All simulation data has been deleted.",
+        description: "All simulation data has been deleted and settings reset.",
       });
     } catch (error) {
       console.error("Error clearing data:", error);

@@ -174,9 +174,16 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       await queryClient.invalidateQueries({ queryKey: ["viralityMetrics"] });
       await queryClient.refetchQueries();
 
+      // Reset all simulation settings to defaults
+      setSelectedEoaIds(new Set());
+      setL00Count(10);
+      setL01Factor(3);
+      setL02Factor(2);
+      setL03Factor(1);
+
       toast({ 
         title: "Data cleared successfully", 
-        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens. Refreshing dashboard...` 
+        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens. Settings reset to defaults.` 
       });
       
       // Trigger callback to refresh parent components
