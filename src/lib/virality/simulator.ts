@@ -24,7 +24,8 @@ async function initializeZipCodeCache(): Promise<void> {
   console.log('Loading zip code database...');
   const { data, error } = await supabase
     .from('zip_codes')
-    .select('zip_code, latitude, longitude, city, state_id, state_name');
+    .select('zip_code, latitude, longitude, city, state_id, state_name')
+    .limit(100000); // Increase limit to ensure all zip codes are loaded
   
   if (error) {
     console.error('Error loading zip codes:', error);
