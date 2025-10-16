@@ -218,15 +218,6 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
     map.current.on("mouseleave", "points", () => {
       if (map.current) map.current.getCanvas().style.cursor = "";
     });
-
-    // Fit bounds to show all visible points
-    if (visibleData.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      visibleData.forEach((point) => {
-        bounds.extend([point.longitude, point.latitude]);
-      });
-      map.current.fitBounds(bounds, { padding: 50, maxZoom: 10 });
-    }
   };
 
   if (error) {
