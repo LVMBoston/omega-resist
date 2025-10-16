@@ -930,11 +930,6 @@ export default function CampaignEoaManager() {
                                   <Copy className="h-4 w-4 mr-1" />
                                   {l00Tokens[eoa.id].shortUrl ? "Short URL" : "URL"}
                                 </Button>
-                                {l00Tokens[eoa.id].shortUrl && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Shortened
-                                  </Badge>
-                                )}
                               </>
                             )}
                             <Button
