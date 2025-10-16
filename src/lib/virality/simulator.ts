@@ -22,10 +22,12 @@ async function initializeZipCodeCache(): Promise<void> {
   if (zipCodeCache && allZipCodes) return; // Already initialized
   
   console.log('Loading zip code database...');
+  
+  // Fetch all zip codes using range to bypass the 1000 row default limit
   const { data, error } = await supabase
     .from('zip_codes')
     .select('zip_code, latitude, longitude, city, state_id, state_name')
-    .limit(100000); // Increase limit to ensure all zip codes are loaded
+    .range(0, 99999); // Fetch up to 100k records
   
   if (error) {
     console.error('Error loading zip codes:', error);
