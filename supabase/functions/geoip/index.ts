@@ -39,8 +39,9 @@ serve(async (req) => {
       );
     }
 
-    // Call ipapi.co to get location data (free, no API key needed)
-    const geoResponse = await fetch(`https://ipapi.co/${ip}/json/`);
+    // Call ipapi.co with API key for paid tier
+    const apiKey = Deno.env.get('IPAPI_API_KEY');
+    const geoResponse = await fetch(`https://ipapi.co/${ip}/json/?key=${apiKey}`);
     
     if (!geoResponse.ok) {
       console.error('📍 Geolocation API error:', await geoResponse.text());
