@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
@@ -1058,7 +1058,7 @@ export default function CampaignEoaManager() {
                       setSelectedEoa(eoa);
                       setPayloadDialogOpen(true);
                     }} title="View Payload">
-                            <Eye className="h-4 w-4" />
+                            <FileJson className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => {
                       setEditingEoa(eoa);
