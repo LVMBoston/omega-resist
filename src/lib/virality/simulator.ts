@@ -30,6 +30,7 @@ async function initializeZipCodeCache(): Promise<void> {
   let offset = 0;
   const batchSize = 1000;
   let hasMore = true;
+  let batchCount = 0;
   
   while (hasMore) {
     const { data, error } = await supabase
@@ -46,6 +47,9 @@ async function initializeZipCodeCache(): Promise<void> {
       hasMore = false;
       break;
     }
+    
+    batchCount++;
+    console.log(`Loaded batch ${batchCount}: ${data.length} records (offset ${offset})`);
     
     data.forEach((row) => {
       // Normalize zip code to 5 digits with leading zeros
@@ -76,7 +80,13 @@ async function initializeZipCodeCache(): Promise<void> {
     throw new Error('No zip code data found in database. Please import the data first.');
   }
   
-  console.log(`✓ Loaded ${allZipCodes.length} zip codes into cache`);
+  console.log(`✓ Loaded ${allZipCodes.length} zip codes into cache from ${batchCount} batches`);
+  
+  // Debug: Check if specific zip codes are in cache
+  const testZips = ['02657', '01945', '02633'];
+  testZips.forEach(zip => {
+    console.log(`Test zip ${zip}: ${zipCodeCache!.has(zip) ? 'FOUND' : 'NOT FOUND'}`);
+  });
 }
 
 /**
