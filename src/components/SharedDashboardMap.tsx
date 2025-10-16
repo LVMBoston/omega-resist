@@ -5,6 +5,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 
 interface GeographicPoint {
   latitude: number;
@@ -25,6 +26,7 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(40); // 10-100 in steps of 10
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
 
@@ -35,6 +37,17 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
         zoom: 4,
         duration: 2000,
       });
+      setZoomLevel(40);
+    }
+  };
+
+  const handleZoomChange = (value: number[]) => {
+    const newZoom = value[0];
+    setZoomLevel(newZoom);
+    if (map.current) {
+      // Map slider value (10-100) to zoom level (3-12)
+      const mapboxZoom = 2 + (newZoom / 10);
+      map.current.setZoom(mapboxZoom);
     }
   };
 
@@ -274,8 +287,8 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
     <div className="relative w-full h-[calc(100vh-16rem)] rounded-lg overflow-hidden border">
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* U.S. View Reset Button */}
-      <div className="absolute top-4 left-4 z-10">
+      {/* U.S. View Reset Button and Zoom Control */}
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-3">
         <Button 
           onClick={resetToUSView}
           variant="secondary"
@@ -284,6 +297,18 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
         >
           U.S. View
         </Button>
+        
+        <div className="bg-background/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border">
+          <div className="text-xs font-medium mb-2">Zoom Level: {zoomLevel}</div>
+          <Slider
+            value={[zoomLevel]}
+            onValueChange={handleZoomChange}
+            min={10}
+            max={100}
+            step={10}
+            className="w-32"
+          />
+        </div>
       </div>
 
       {/* Legend */}
