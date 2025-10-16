@@ -23,40 +23,58 @@ async function initializeZipCodeCache(): Promise<void> {
   
   console.log('Loading zip code database...');
   
-  // Fetch all zip codes using range to bypass the 1000 row default limit
-  const { data, error } = await supabase
-    .from('zip_codes')
-    .select('zip_code, latitude, longitude, city, state_id, state_name')
-    .range(0, 99999); // Fetch up to 100k records
-  
-  if (error) {
-    console.error('Error loading zip codes:', error);
-    throw new Error('Failed to load zip code data from database');
-  }
-  
-  if (!data || data.length === 0) {
-    throw new Error('No zip code data found in database. Please import the data first.');
-  }
-  
   zipCodeCache = new Map();
   allZipCodes = [];
   
-  data.forEach((row) => {
-    // Normalize zip code to 5 digits with leading zeros
-    const normalizedZip = row.zip_code.toString().padStart(5, '0');
+  // Fetch all zip codes in batches to handle large datasets
+  let offset = 0;
+  const batchSize = 1000;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('zip_codes')
+      .select('zip_code, latitude, longitude, city, state_id, state_name')
+      .range(offset, offset + batchSize - 1);
     
-    const location: LocationData = {
-      latitude: Number(row.latitude),
-      longitude: Number(row.longitude),
-      city: row.city || '',
-      region: row.state_name || '',
-      country: 'United States',
-      country_code: 'US',
-      zip_code: normalizedZip,
-    };
-    zipCodeCache!.set(normalizedZip, location);
-    allZipCodes!.push(location);
-  });
+    if (error) {
+      console.error('Error loading zip codes:', error);
+      throw new Error('Failed to load zip code data from database');
+    }
+    
+    if (!data || data.length === 0) {
+      hasMore = false;
+      break;
+    }
+    
+    data.forEach((row) => {
+      // Normalize zip code to 5 digits with leading zeros
+      const normalizedZip = row.zip_code.toString().padStart(5, '0');
+      
+      const location: LocationData = {
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        city: row.city || '',
+        region: row.state_name || '',
+        country: 'United States',
+        country_code: 'US',
+        zip_code: normalizedZip,
+      };
+      zipCodeCache!.set(normalizedZip, location);
+      allZipCodes!.push(location);
+    });
+    
+    offset += batchSize;
+    
+    // If we got less than a full batch, we're done
+    if (data.length < batchSize) {
+      hasMore = false;
+    }
+  }
+  
+  if (allZipCodes.length === 0) {
+    throw new Error('No zip code data found in database. Please import the data first.');
+  }
   
   console.log(`✓ Loaded ${allZipCodes.length} zip codes into cache`);
 }
