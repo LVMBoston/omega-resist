@@ -66,10 +66,13 @@ export async function getL00Location(
 ): Promise<LocationData | null> {
   await initializeZipCodeCache();
   
-  const location = zipCodeCache!.get(zipCode);
+  // Normalize zip code to 5 digits with leading zeros
+  const normalizedZip = zipCode.toString().padStart(5, '0');
+  
+  const location = zipCodeCache!.get(normalizedZip);
   
   if (!location) {
-    console.warn(`Zip code ${zipCode} not found in database`);
+    console.warn(`Zip code ${normalizedZip} (original: ${zipCode}) not found in database`);
     return null;
   }
   
