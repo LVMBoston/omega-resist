@@ -796,6 +796,7 @@ export default function CampaignEoaManager() {
               </CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setVisualizePayloadDialogOpen(true)}>
+                  <FileJson className="mr-2 h-4 w-4" />
                   Visualize Generic Payload
                 </Button>
                 <Button onClick={() => {
