@@ -184,13 +184,13 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
         setTimeout(() => onSimulationComplete(), 500);
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to clear simulation data.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to clear simulation data.", variant: "destructive", duration: Infinity });
     }
   };
 
   const runSimulation = async () => {
     if (selectedEoaIds.size === 0) {
-      toast({ title: "No EOAs selected", description: "Please select at least one event/action.", variant: "destructive" });
+      toast({ title: "No EOAs selected", description: "Please select at least one event/action.", variant: "destructive", duration: Infinity });
       return;
     }
 
@@ -214,6 +214,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               title: "Skipped EoA",
               description: `${eoa.title}: ${reason}`,
               variant: "destructive",
+              duration: Infinity,
             });
             completedSteps++;
             setProgress((completedSteps / totalSteps) * 100);
@@ -226,6 +227,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               title: "Skipped EoA",
               description: `${eoa.title}: Zip code ${eoa.zip_code} not found in simulator database`,
               variant: "destructive",
+              duration: Infinity,
             });
             completedSteps++;
             setProgress((completedSteps / totalSteps) * 100);
@@ -327,7 +329,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       if (onSimulationComplete) onSimulationComplete();
     } catch (error: any) {
       if (error.message !== "Simulation aborted") {
-        toast({ title: "Simulation failed", description: error.message, variant: "destructive" });
+        toast({ title: "Simulation failed", description: error.message, variant: "destructive", duration: Infinity });
       }
     } finally {
       setIsSimulating(false);
