@@ -319,6 +319,92 @@ export default function CampaignEoaManager() {
     }
   };
 
+  const handleGenerateAllL00 = async () => {
+    // Filter out already minted and validate requirements for ALL rows
+    const readyToMint = eoas.filter(eoa => {
+      const alreadyMinted = !!l00Tokens[eoa.id];
+      const hasRequirements = !!eoa.mobilize_code && !!eoa.assigned_deck_slug;
+      return !alreadyMinted && hasRequirements;
+    });
+
+    if (readyToMint.length === 0) {
+      toast({
+        title: "No Tokens to Generate",
+        description: "All rows are either already minted or missing required fields (Mobilize Code, Deck)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+    const urlsToShorten: { eoaId: string; fullUrl: string }[] = [];
+
+    // Step 1: Mint all tokens (fast, no shortening)
+    toast({
+      title: "Generating Tokens...",
+      description: `Processing ${readyToMint.length} tokens`,
+    });
+
+    for (const eoa of readyToMint) {
+      try {
+        const result = await mintL00(
+          {
+            eoaId: eoa.id,
+            deckSlug: eoa.assigned_deck_slug!,
+            utmMedium: "qr"
+          },
+          { lazy: false } // Don't shorten yet, batch it later
+        );
+
+        setL00Tokens(prev => ({
+          ...prev,
+          [eoa.id]: { 
+            token: result.token, 
+            url: result.full_url,
+            shorteningInProgress: true
+          }
+        }));
+
+        urlsToShorten.push({ eoaId: eoa.id, fullUrl: result.full_url });
+        successCount++;
+      } catch (error: any) {
+        console.error(`Failed to mint L00 for ${eoa.title}:`, error);
+        errorCount++;
+      }
+    }
+
+    // Step 2: Batch shorten all URLs in parallel
+    if (urlsToShorten.length > 0) {
+      toast({
+        title: "Shortening URLs...",
+        description: `Processing ${urlsToShorten.length} URLs in parallel`,
+      });
+
+      const fullUrls = urlsToShorten.map(item => item.fullUrl);
+      const shortUrlMap = await shortenUrlsBatch(fullUrls);
+
+      // Update state with short URLs
+      setL00Tokens(prev => {
+        const updated = { ...prev };
+        urlsToShorten.forEach(({ eoaId, fullUrl }) => {
+          if (updated[eoaId]) {
+            updated[eoaId].shortUrl = shortUrlMap.get(fullUrl);
+            updated[eoaId].shorteningInProgress = false;
+          }
+        });
+        return updated;
+      });
+    }
+
+    toast({
+      title: "Bulk Generation Complete",
+      description: `Generated ${successCount} tokens${errorCount > 0 ? `, ${errorCount} failed` : ""}`,
+    });
+
+    clearSelection();
+  };
+
   const handleBulkGenerateL00 = async () => {
     const selectedEoas = eoas.filter(eoa => selectedRows.has(eoa.id));
     
@@ -859,6 +945,15 @@ export default function CampaignEoaManager() {
                     <TableHead>
                       <div className="flex items-center gap-2">
                         <span>L00 Token</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGenerateAllL00}
+                          className="h-7 text-xs"
+                        >
+                          <QrCode className="h-3 w-3 mr-1" />
+                          Generate All
+                        </Button>
                         {selectedRows.size > 0 && (
                           <Button
                             variant="outline"
