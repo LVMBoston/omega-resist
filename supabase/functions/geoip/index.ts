@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,8 +53,8 @@ serve(async (req) => {
 
     console.log('📍 Geolocation data:', geoData);
 
-    // Return structured geolocation data
-    const locationData = {
+    // Initialize location data from ipapi.co
+    let locationData = {
       ip,
       latitude: geoData.latitude || null,
       longitude: geoData.longitude || null,
@@ -63,6 +64,34 @@ serve(async (req) => {
       country_code: geoData.country_code || null,
       zip_code: geoData.postal || null,
     };
+
+    // If we have a US zip code but missing coordinates, enhance with our local data
+    if (geoData.country_code === 'US' && geoData.postal && (!geoData.latitude || !geoData.longitude)) {
+      console.log('📍 Enhancing US location with local zip code data:', geoData.postal);
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data: zipData, error: zipError } = await supabase
+        .rpc('get_coordinates_from_zip', { p_zip_code: geoData.postal });
+
+      if (!zipError && zipData && zipData.length > 0) {
+        const localZipData = zipData[0];
+        console.log('📍 Enhanced with local data:', localZipData);
+        
+        // Merge with priority to local data for US locations
+        locationData = {
+          ...locationData,
+          latitude: localZipData.latitude || locationData.latitude,
+          longitude: localZipData.longitude || locationData.longitude,
+          city: localZipData.city || locationData.city,
+          region: localZipData.state_name || locationData.region,
+        };
+      } else if (zipError) {
+        console.error('📍 Error fetching local zip data:', zipError);
+      }
+    }
 
     return new Response(
       JSON.stringify(locationData),

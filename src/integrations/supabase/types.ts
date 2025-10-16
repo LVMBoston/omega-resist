@@ -696,6 +696,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_coordinates_from_zip: {
+        Args: { p_zip_code: string }
+        Returns: {
+          city: string
+          latitude: number
+          longitude: number
+          state_name: string
+          timezone: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
