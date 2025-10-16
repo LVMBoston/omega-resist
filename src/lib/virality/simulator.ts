@@ -39,6 +39,9 @@ async function initializeZipCodeCache(): Promise<void> {
   allZipCodes = [];
   
   data.forEach((row) => {
+    // Normalize zip code to 5 digits with leading zeros
+    const normalizedZip = row.zip_code.toString().padStart(5, '0');
+    
     const location: LocationData = {
       latitude: Number(row.latitude),
       longitude: Number(row.longitude),
@@ -46,9 +49,9 @@ async function initializeZipCodeCache(): Promise<void> {
       region: row.state_name || '',
       country: 'United States',
       country_code: 'US',
-      zip_code: row.zip_code,
+      zip_code: normalizedZip,
     };
-    zipCodeCache!.set(row.zip_code, location);
+    zipCodeCache!.set(normalizedZip, location);
     allZipCodes!.push(location);
   });
   
