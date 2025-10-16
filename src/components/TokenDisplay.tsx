@@ -24,16 +24,14 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     toast.success(`${label} copied to clipboard`);
   };
 
-  const downloadQR = async () => {
+  const copyQRToClipboard = async () => {
     try {
-      const urlForQr = shortUrl || fullUrl; // Use short URL if available
-      // Create a fresh canvas at exactly 1200x1200 pixels
+      const urlForQr = shortUrl || fullUrl;
       const canvas = document.createElement('canvas');
-      const size = 1200; // 2" at 600 DPI
+      const size = 1200;
       canvas.width = size;
       canvas.height = size;
       
-      // Generate QR code directly at high resolution
       await QRCode.toCanvas(canvas, urlForQr, {
         width: size,
         margin: 2,
@@ -44,7 +42,47 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
         }
       });
       
-      // Convert to blob and download
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                'image/png': blob
+              })
+            ]);
+            toast.success("QR code copied to clipboard!");
+          } catch (clipboardError) {
+            console.error('Clipboard error:', clipboardError);
+            toast.error("Failed to copy to clipboard. Try downloading instead.");
+          }
+        } else {
+          toast.error("Failed to create QR code image");
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      toast.error("Failed to copy QR code");
+    }
+  };
+
+  const downloadQR = async () => {
+    try {
+      const urlForQr = shortUrl || fullUrl;
+      const canvas = document.createElement('canvas');
+      const size = 1200;
+      canvas.width = size;
+      canvas.height = size;
+      
+      await QRCode.toCanvas(canvas, urlForQr, {
+        width: size,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
@@ -193,15 +231,24 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                     includeMargin={true}
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadQR}
-                  className="w-full"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download High-Res QR Code
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={copyQRToClipboard}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Image
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadQR}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
               </div>
             )}
           </div>
