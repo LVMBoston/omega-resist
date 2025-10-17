@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -76,6 +76,7 @@ export default function CampaignDashboard() {
   });
   const [showFirstWarning, setShowFirstWarning] = useState(false);
   const [showSecondWarning, setShowSecondWarning] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -271,6 +272,26 @@ export default function CampaignDashboard() {
     return "🖥️ Device";
   };
   const avgCycleTime = cycleTimeData && cycleTimeData.length > 0 ? cycleTimeData.reduce((sum, ct) => sum + ct.avg_hours, 0) / cycleTimeData.length : 0;
+
+  const handleRefreshEventsV2 = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["eventsV2"] });
+      await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
+      toast({
+        title: "Data Refreshed",
+        description: "EventsV2 data has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Refresh Failed",
+        description: "Failed to refresh data. Please try again.",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Fetch total event counts (not limited to last 50)
   const {
@@ -879,9 +900,20 @@ export default function CampaignDashboard() {
                     {/* First Block - Campaign Summary */}
                     <div className="flex items-center justify-between border-b pb-4 mb-4">
                       <span className="text-sm font-medium">Campaign: {campaignTitle}</span>
-                      <div className="flex items-center gap-6 text-sm">
-                        <span className="text-muted-foreground">Earliest: {eventsV2Metrics?.earliestTimestamp}</span>
-                        <span className="text-muted-foreground">Latest: {eventsV2Metrics?.latestTimestamp}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-6 text-sm">
+                          <span className="text-muted-foreground">Earliest: {eventsV2Metrics?.earliestTimestamp}</span>
+                          <span className="text-muted-foreground">Latest: {eventsV2Metrics?.latestTimestamp}</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRefreshEventsV2}
+                          disabled={isRefreshing}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </Button>
                       </div>
                     </div>
 
