@@ -73,6 +73,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
   const [isSimulating, setIsSimulating] = useState(false);
   const [progress, setProgress] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [showFirstWarning, setShowFirstWarning] = useState(false);
+  const [showSecondWarning, setShowSecondWarning] = useState(false);
 
   const { data: eoas, isLoading: eoasLoading } = useQuery({
     queryKey: ["eoas", campaignId],
@@ -236,6 +238,108 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to clear simulation data.", variant: "destructive", duration: Infinity });
+    }
+  };
+
+  const clearRealData = async () => {
+    try {
+      console.log("Starting REAL data cleanup...");
+      
+      // Count before deletion
+      const { count: eventsBefore, error: eventsCountError } = await supabase
+        .from("url_events")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      if (eventsCountError) {
+        console.error("Error counting events:", eventsCountError);
+        throw eventsCountError;
+      }
+      
+      const { count: tokensBefore, error: tokensCountError } = await supabase
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      if (tokensCountError) {
+        console.error("Error counting tokens:", tokensCountError);
+        throw tokensCountError;
+      }
+      
+      console.log(`Found ${eventsBefore} real events and ${tokensBefore} real tokens to delete`);
+
+      // Delete real URL events FIRST (before tokens, to avoid FK constraint issues)
+      console.log("Attempting to delete real events...");
+      const { error: eventsError, count: eventsDeleted } = await supabase
+        .from("url_events")
+        .delete({ count: "exact" })
+        .eq("is_simulated", false);
+
+      if (eventsError) {
+        console.error("Failed to delete events:", eventsError);
+        toast({
+          title: "Error deleting events",
+          description: `${eventsError.message}`,
+          variant: "destructive"
+        });
+        throw eventsError;
+      }
+      console.log(`Successfully deleted ${eventsDeleted} real events`);
+
+      // Delete real tokens SECOND (after events are gone)
+      console.log("Attempting to delete real tokens...");
+      const { error: tokensError, count: tokensDeleted } = await supabase
+        .from("tokens")
+        .delete({ count: "exact" })
+        .eq("is_simulated", false);
+
+      if (tokensError) {
+        console.error("Failed to delete tokens:", tokensError);
+        toast({
+          title: "Error deleting tokens",
+          description: `${tokensError.message}`,
+          variant: "destructive"
+        });
+        throw tokensError;
+      }
+      console.log(`Successfully deleted ${tokensDeleted} real tokens`);
+
+      // Verify deletion
+      const { count: eventsAfter } = await supabase
+        .from("url_events")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      const { count: tokensAfter } = await supabase
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      console.log(`After deletion: ${eventsAfter} events and ${tokensAfter} tokens remaining`);
+
+      // Force refresh all relevant queries
+      await queryClient.invalidateQueries({ queryKey: ["url_events"] });
+      await queryClient.invalidateQueries({ queryKey: ["tokens"] });
+      await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["viralityMetrics"] });
+      await queryClient.refetchQueries();
+
+      toast({ 
+        title: "Real data cleared successfully", 
+        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens from production data.`,
+        variant: "destructive"
+      });
+      
+      // Trigger callback to refresh parent components
+      if (onSimulationComplete) {
+        setTimeout(() => onSimulationComplete(), 500);
+      }
+      
+      // Close dialogs
+      setShowFirstWarning(false);
+      setShowSecondWarning(false);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to clear real data.", variant: "destructive", duration: Infinity });
     }
   };
 
@@ -476,6 +580,77 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               }} />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/50 bg-destructive/5">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger Zone: Delete Real Data</CardTitle>
+          <CardDescription>Permanently delete all real (non-simulated) campaign data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog open={showFirstWarning} onOpenChange={setShowFirstWarning}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Erase All Real Data
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete All Real Data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will delete all real (non-simulated) tokens and events from your database. 
+                  This action cannot be undone. Are you sure you want to continue?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setShowFirstWarning(false);
+                    setShowSecondWarning(true);
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={showSecondWarning} onOpenChange={setShowSecondWarning}>
+            <AlertDialogContent className="border-destructive">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive text-xl font-bold">
+                  ⚠️ FINAL WARNING ⚠️
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <p className="font-bold text-foreground">
+                    You are about to PERMANENTLY DELETE all real production data!
+                  </p>
+                  <p className="text-destructive font-semibold">
+                    This will erase ALL real tokens, events, and analytics from your campaigns.
+                  </p>
+                  <p className="font-medium">
+                    This action is IRREVERSIBLE and CANNOT BE UNDONE.
+                  </p>
+                  <p className="text-sm">
+                    Only simulated data will remain. Are you absolutely certain you want to proceed?
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel - Keep My Data</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={clearRealData}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
+                >
+                  YES, DELETE EVERYTHING
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 
