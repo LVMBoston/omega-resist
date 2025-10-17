@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2 } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -321,11 +321,13 @@ export default function CampaignDashboard() {
           city,
           region,
           zip_code,
+          token,
           tokens!inner(
             level,
             utm_content,
             utm_campaign,
             eoa_id,
+            full_url,
             events_actions!inner(
               mobilize_code,
               utm_id,
@@ -351,6 +353,28 @@ export default function CampaignDashboard() {
         error
       } = await query;
       if (error) throw error;
+
+      // Fetch shortened URLs for all unique full URLs
+      if (data && data.length > 0) {
+        const uniqueFullUrls = [...new Set(data.map((e: any) => e.tokens.full_url))];
+        const { data: shortUrls } = await supabase
+          .from("shortened_urls")
+          .select("full_url, short_code")
+          .in("full_url", uniqueFullUrls);
+
+        // Map full URLs to short URLs
+        const shortUrlMap = new Map<string, string>();
+        shortUrls?.forEach((su: any) => {
+          shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
+        });
+
+        // Add short_url to each event
+        return data.map((event: any) => ({
+          ...event,
+          short_url: shortUrlMap.get(event.tokens.full_url)
+        }));
+      }
+
       return data;
     },
     enabled: !!selectedCampaign
@@ -924,6 +948,7 @@ export default function CampaignDashboard() {
                                 {sortConfig.column === 'event_type' && <ArrowUpDown className="w-3 h-3" />}
                               </div>
                             </TableHead>
+                            <TableHead>Short URL</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -946,6 +971,28 @@ export default function CampaignDashboard() {
                                 <Badge className={getEventBadgeColor(event.event_type)}>
                                   {event.event_type.toUpperCase()}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {event.short_url ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs truncate max-w-[200px]">{event.short_url}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(event.short_url);
+                                        toast({
+                                          title: "Short URL copied!",
+                                        });
+                                      }}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">No short URL</span>
+                                )}
                               </TableCell>
                             </TableRow>)}
                         </TableBody>
