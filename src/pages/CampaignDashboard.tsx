@@ -966,7 +966,12 @@ export default function CampaignDashboard() {
           </TabsContent>
 
           <TabsContent value="simulator" className="mt-6">
-            <SimulatorControls 
+            <Card className="mb-4">
+              <CardContent className="pt-6">
+                <span className="text-sm font-medium">Campaign: {campaignTitle}</span>
+              </CardContent>
+            </Card>
+            <SimulatorControls
               campaignId={selectedCampaignId}
               onSimulationComplete={() => {
                 // Refetch events to update all views
