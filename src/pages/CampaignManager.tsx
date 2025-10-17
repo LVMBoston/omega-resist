@@ -11,24 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 interface Campaign {
   id: string;
   code: string;
@@ -36,7 +20,6 @@ interface Campaign {
   description: string | null;
   created_at: string;
 }
-
 interface EventAction {
   id: string;
   campaign_id: string;
@@ -44,7 +27,6 @@ interface EventAction {
   start_date: string | null;
   end_date: string | null;
 }
-
 interface CampaignStats {
   activeEvents: number;
   activeActions: number;
@@ -52,227 +34,215 @@ interface CampaignStats {
   latestActive: string | null;
   totalEventsActions: number;
 }
-
-
-const codeSchema = z.string()
-  .min(1, "Code is required")
-  .regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
-
+const codeSchema = z.string().min(1, "Code is required").regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
 export default function CampaignManager() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [eoas, setEoas] = useState<EventAction[]>([]);
   const [campaignStats, setCampaignStats] = useState<Map<string, CampaignStats>>(new Map());
   const [loading, setLoading] = useState(true);
-  const { userRole } = useAuth();
-  const { toast } = useToast();
+  const {
+    userRole
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
 
   // Campaign form state
   const [campaignForm, setCampaignForm] = useState({
     code: "",
     title: "",
-    description: "",
+    description: ""
   });
-
   const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [codeError, setCodeError] = useState<string>("");
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
-
   useEffect(() => {
     fetchData();
   }, []);
-
   useEffect(() => {
     if (campaigns.length > 0 || eoas.length > 0) {
       calculateCampaignStats();
     }
   }, [campaigns, eoas]);
-
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([fetchCampaigns(), fetchEoas()]);
     setLoading(false);
   };
-
   const fetchCampaigns = async () => {
-    const { data, error } = await supabase
-      .from("campaigns")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const {
+      data,
+      error
+    } = await supabase.from("campaigns").select("*").order("created_at", {
+      ascending: false
+    });
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch campaigns: " + error.message,
+        description: "Failed to fetch campaigns: " + error.message
       });
     } else {
       setCampaigns(data || []);
     }
   };
-
   const fetchEoas = async () => {
-    const { data, error } = await supabase
-      .from("events_actions")
-      .select("id, campaign_id, type, start_date, end_date")
-      .order("created_at", { ascending: false });
-
+    const {
+      data,
+      error
+    } = await supabase.from("events_actions").select("id, campaign_id, type, start_date, end_date").order("created_at", {
+      ascending: false
+    });
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch events/actions: " + error.message,
+        description: "Failed to fetch events/actions: " + error.message
       });
     } else {
       setEoas(data || []);
     }
   };
-
   const calculateCampaignStats = () => {
     const stats = new Map<string, CampaignStats>();
     const now = new Date();
-    
-    campaigns.forEach((campaign) => {
-      const campaignEoas = eoas.filter((e) => e.campaign_id === campaign.id);
-      
-      const activeEoas = campaignEoas.filter((eoa) => {
+    campaigns.forEach(campaign => {
+      const campaignEoas = eoas.filter(e => e.campaign_id === campaign.id);
+      const activeEoas = campaignEoas.filter(eoa => {
         if (!eoa.end_date) return true;
         const endDate = new Date(eoa.end_date);
         const cutoffDate = new Date(endDate);
         cutoffDate.setDate(cutoffDate.getDate() + 14);
         return now <= cutoffDate;
       });
-
-      const activeEvents = activeEoas.filter((e) => e.type === "event").length;
-      const activeActions = activeEoas.filter((e) => e.type === "action").length;
-      
-      const activeDates = activeEoas
-        .map((e) => e.start_date)
-        .filter((d): d is string => d !== null)
-        .sort();
-      
+      const activeEvents = activeEoas.filter(e => e.type === "event").length;
+      const activeActions = activeEoas.filter(e => e.type === "action").length;
+      const activeDates = activeEoas.map(e => e.start_date).filter((d): d is string => d !== null).sort();
       stats.set(campaign.id, {
         activeEvents,
         activeActions,
         earliestActive: activeDates[0] || null,
         latestActive: activeDates[activeDates.length - 1] || null,
-        totalEventsActions: campaignEoas.length,
+        totalEventsActions: campaignEoas.length
       });
     });
-    
     setCampaignStats(stats);
   };
-
-
   const createCampaign = async () => {
     if (!campaignForm.code || !campaignForm.title) {
       toast({
         variant: "destructive",
         title: "Missing fields",
-        description: "Code and title are required",
+        description: "Code and title are required"
       });
       return;
     }
-
     const codeValidation = codeSchema.safeParse(campaignForm.code);
     if (!codeValidation.success) {
       toast({
         variant: "destructive",
         title: "Invalid code",
-        description: codeValidation.error.errors[0].message,
+        description: codeValidation.error.errors[0].message
       });
       return;
     }
-
-    const { error } = await supabase.from("campaigns").insert([campaignForm]);
-
+    const {
+      error
+    } = await supabase.from("campaigns").insert([campaignForm]);
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create campaign: " + error.message,
+        description: "Failed to create campaign: " + error.message
       });
     } else {
       toast({
         title: "Success",
-        description: "Campaign created successfully",
+        description: "Campaign created successfully"
       });
-      setCampaignForm({ code: "", title: "", description: "" });
+      setCampaignForm({
+        code: "",
+        title: "",
+        description: ""
+      });
       setCampaignDialogOpen(false);
       fetchCampaigns();
       fetchEoas();
     }
   };
-
   const updateCampaign = async () => {
     if (!editingCampaign) return;
-    
     if (!campaignForm.code || !campaignForm.title) {
       toast({
         variant: "destructive",
         title: "Missing fields",
-        description: "Code and title are required",
+        description: "Code and title are required"
       });
       return;
     }
-
     const codeValidation = codeSchema.safeParse(campaignForm.code);
     if (!codeValidation.success) {
       toast({
         variant: "destructive",
         title: "Invalid code",
-        description: codeValidation.error.errors[0].message,
+        description: codeValidation.error.errors[0].message
       });
       return;
     }
-
-    const { error } = await supabase
-      .from("campaigns")
-      .update(campaignForm)
-      .eq("id", editingCampaign.id);
-
+    const {
+      error
+    } = await supabase.from("campaigns").update(campaignForm).eq("id", editingCampaign.id);
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update campaign: " + error.message,
+        description: "Failed to update campaign: " + error.message
       });
     } else {
       toast({
         title: "Success",
-        description: "Campaign updated successfully",
+        description: "Campaign updated successfully"
       });
-      setCampaignForm({ code: "", title: "", description: "" });
+      setCampaignForm({
+        code: "",
+        title: "",
+        description: ""
+      });
       setEditingCampaign(null);
       setCampaignDialogOpen(false);
       fetchCampaigns();
       fetchEoas();
     }
   };
-
   const handleEditCampaign = (campaign: Campaign) => {
     setEditingCampaign(campaign);
     setCampaignForm({
       code: campaign.code,
       title: campaign.title,
-      description: campaign.description || "",
+      description: campaign.description || ""
     });
     setCampaignDialogOpen(true);
   };
-
   const handleDialogClose = (open: boolean) => {
     setCampaignDialogOpen(open);
     if (!open) {
       setEditingCampaign(null);
-      setCampaignForm({ code: "", title: "", description: "" });
+      setCampaignForm({
+        code: "",
+        title: "",
+        description: ""
+      });
       setCodeError("");
     }
   };
-
   const handleCodeChange = (value: string) => {
-    setCampaignForm({ ...campaignForm, code: value });
+    setCampaignForm({
+      ...campaignForm,
+      code: value
+    });
     const validation = codeSchema.safeParse(value);
     if (!validation.success && value) {
       setCodeError(validation.error.errors[0].message);
@@ -280,65 +250,53 @@ export default function CampaignManager() {
       setCodeError("");
     }
   };
-
-
   const handleDeleteClick = (campaign: Campaign) => {
     setCampaignToDelete(campaign);
     setDeleteStep(1);
   };
-
   const handleFirstConfirm = () => {
     setDeleteStep(2);
   };
-
   const handleSecondConfirm = async () => {
     if (!campaignToDelete) return;
-
-    const { error } = await supabase.from("campaigns").delete().eq("id", campaignToDelete.id);
-
+    const {
+      error
+    } = await supabase.from("campaigns").delete().eq("id", campaignToDelete.id);
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete campaign: " + error.message,
+        description: "Failed to delete campaign: " + error.message
       });
     } else {
       toast({
         title: "Success",
-        description: "Campaign deleted",
+        description: "Campaign deleted"
       });
       fetchCampaigns();
       fetchEoas();
     }
-    
     setCampaignToDelete(null);
     setDeleteStep(1);
   };
-
   const handleDeleteCancel = () => {
     setCampaignToDelete(null);
     setDeleteStep(1);
   };
-
   const formatDate = (date: string | null) => {
     if (!date) return "N/A";
     return new Date(date).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
+      year: "numeric"
     });
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
@@ -349,7 +307,7 @@ export default function CampaignManager() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Campaign Manager</h1>
+              <h1 className="text-3xl font-bold">Campaign Orchestration</h1>
               <p className="text-muted-foreground">
                 Manage campaigns, events, and actions
               </p>
@@ -378,51 +336,33 @@ export default function CampaignManager() {
                   <DialogHeader>
                     <DialogTitle>{editingCampaign ? "Edit Campaign" : "Create Campaign"}</DialogTitle>
                     <DialogDescription>
-                      {editingCampaign 
-                        ? "Update the campaign details." 
-                        : "Add a new campaign to organize your events and actions."}
+                      {editingCampaign ? "Update the campaign details." : "Add a new campaign to organize your events and actions."}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
                       <Label>Title *</Label>
-                      <Input
-                        value={campaignForm.title}
-                        onChange={(e) =>
-                          setCampaignForm({ ...campaignForm, title: e.target.value })
-                        }
-                        placeholder="e.g., 'No Kings Nationwide Protests', 'Citizens Bank Events and Actions'"
-                      />
+                      <Input value={campaignForm.title} onChange={e => setCampaignForm({
+                      ...campaignForm,
+                      title: e.target.value
+                    })} placeholder="e.g., 'No Kings Nationwide Protests', 'Citizens Bank Events and Actions'" />
                     </div>
                     <div>
                       <Label>Code *</Label>
-                      <Input
-                        value={campaignForm.code}
-                        onChange={(e) => handleCodeChange(e.target.value)}
-                        placeholder="e.g. 'no-kings', 'citizens-bank'"
-                        className={codeError ? "border-destructive" : ""}
-                      />
-                      {codeError && (
-                        <p className="text-sm text-destructive mt-1">{codeError}</p>
-                      )}
+                      <Input value={campaignForm.code} onChange={e => handleCodeChange(e.target.value)} placeholder="e.g. 'no-kings', 'citizens-bank'" className={codeError ? "border-destructive" : ""} />
+                      {codeError && <p className="text-sm text-destructive mt-1">{codeError}</p>}
                       <p className="text-xs text-muted-foreground mt-1">
                         Only lowercase a-z, 0-9, "-", "_"
                       </p>
                     </div>
                     <div>
                       <Label>Description</Label>
-                      <Textarea
-                        value={campaignForm.description}
-                        onChange={(e) =>
-                          setCampaignForm({ ...campaignForm, description: e.target.value })
-                        }
-                        placeholder="Optional description..."
-                      />
+                      <Textarea value={campaignForm.description} onChange={e => setCampaignForm({
+                      ...campaignForm,
+                      description: e.target.value
+                    })} placeholder="Optional description..." />
                     </div>
-                    <Button 
-                      onClick={editingCampaign ? updateCampaign : createCampaign} 
-                      className="w-full"
-                    >
+                    <Button onClick={editingCampaign ? updateCampaign : createCampaign} className="w-full">
                       {editingCampaign ? "Update Campaign" : "Create Campaign"}
                     </Button>
                   </div>
@@ -431,15 +371,9 @@ export default function CampaignManager() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {campaigns.map((campaign) => {
-                const stats = campaignStats.get(campaign.id);
-
-                return (
-                  <Card
-                    key={campaign.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow"
-                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                  >
+              {campaigns.map(campaign => {
+              const stats = campaignStats.get(campaign.id);
+              return <Card key={campaign.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/campaigns/${campaign.id}`)}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -447,33 +381,23 @@ export default function CampaignManager() {
                           <CardDescription>utm_campaign: {campaign.code}</CardDescription>
                         </div>
                         <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditCampaign(campaign);
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" onClick={e => {
+                        e.stopPropagation();
+                        handleEditCampaign(campaign);
+                      }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(campaign);
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" onClick={e => {
+                        e.stopPropagation();
+                        handleDeleteClick(campaign);
+                      }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      {campaign.description && (
-                        <p className="text-sm text-muted-foreground mt-2">
+                      {campaign.description && <p className="text-sm text-muted-foreground mt-2">
                           {campaign.description}
-                        </p>
-                      )}
+                        </p>}
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -505,9 +429,8 @@ export default function CampaignManager() {
                         </div>
                       </div>
                     </CardContent>
-                  </Card>
-                );
-              })}
+                  </Card>;
+            })}
             </div>
           </TabsContent>
         </Tabs>
@@ -528,7 +451,7 @@ export default function CampaignManager() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={campaignToDelete !== null && deleteStep === 2} onOpenChange={(open) => !open && handleDeleteCancel()}>
+      <AlertDialog open={campaignToDelete !== null && deleteStep === 2} onOpenChange={open => !open && handleDeleteCancel()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
@@ -544,6 +467,5 @@ export default function CampaignManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
+    </div>;
 }
