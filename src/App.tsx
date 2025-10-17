@@ -35,7 +35,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-          <Route path="/" element={<Navigate to="/campaign-dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/campaign-config" replace />} />
           <Route path="/deck-management" element={<DeckManagement />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/deck/:slug" element={<DeckViewer />} />
@@ -51,7 +51,7 @@ const App = () => (
                 <CampaignAnalytics />
               </ProtectedRoute>
             } />
-            <Route path="/campaign-dashboard" element={
+            <Route path="/campaign-config" element={
               <ProtectedRoute requiredRole="admin">
                 <CampaignDashboard />
               </ProtectedRoute>
