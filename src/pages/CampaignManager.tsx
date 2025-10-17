@@ -306,12 +306,15 @@ export default function CampaignManager() {
                 Back
               </Button>
             </Link>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold">Campaign Orchestration</h1>
               <p className="text-muted-foreground">
                 Manage campaigns, events, and actions
               </p>
             </div>
+            <Link to="/campaign-config">
+              <Button>Campaign Configuration</Button>
+            </Link>
           </div>
         </div>
       </header>
