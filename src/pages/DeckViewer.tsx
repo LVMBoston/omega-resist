@@ -260,19 +260,19 @@ export default function DeckViewer() {
           </Card>
         ) : (
           <Carousel className={effectiveFullscreen ? "w-full h-full" : "max-w-5xl mx-auto"}>
-            <CarouselContent>
+            <CarouselContent className={effectiveFullscreen ? "h-full" : ""}>
               {slides.map((slide, index) => (
-                <CarouselItem key={slide.id}>
-                  <Card>
-                    <CardContent className="p-0">
-                      <div className="relative aspect-video bg-muted">
+                <CarouselItem key={slide.id} className={effectiveFullscreen ? "h-full" : ""}>
+                  <Card className={effectiveFullscreen ? "h-full border-0 rounded-none" : ""}>
+                    <CardContent className={effectiveFullscreen ? "p-0 h-full" : "p-0"}>
+                      <div className={`relative bg-muted ${effectiveFullscreen ? 'h-full w-full' : 'aspect-video'}`}>
                         {slide.type === "spread-word" ? (
                           <ViralSlide slideId={slide.id} deckSlug={slug || ""} viralToken={viralToken} />
                         ) : (
                           <img
                             src={slide.content_url}
                             alt={`Slide ${index + 1}`}
-                            className="w-full h-full object-contain"
+                            className={`w-full h-full ${effectiveFullscreen ? 'object-contain' : 'object-contain'}`}
                             loading="lazy"
                           />
                         )}
