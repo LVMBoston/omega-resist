@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -431,10 +432,15 @@ export default function CampaignDashboard() {
   return <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <TrendingUp className="w-8 h-8" />
-            Campaign Configuration
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <TrendingUp className="w-8 h-8" />
+              Campaign Configuration
+            </h1>
+            <Link to="/campaigns">
+              <Button>Back to Campaign Orchestration</Button>
+            </Link>
+          </div>
           <p className="text-muted-foreground mt-1">
             Comprehensive view of events, analytics, and geographic data
           </p>
