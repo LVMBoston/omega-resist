@@ -75,6 +75,8 @@ export default function CampaignEoaManager() {
   } | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [bulkDeckDialogOpen, setBulkDeckDialogOpen] = useState(false);
+  const [bulkDeckInput, setBulkDeckInput] = useState("");
   useEffect(() => {
     if (campaignId) {
       fetchData();
@@ -658,6 +660,44 @@ export default function CampaignEoaManager() {
     }
   };
 
+  const handleBulkDeckAssignment = async () => {
+    if (!bulkDeckInput.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Missing Deck Name",
+        description: "Please enter a deck name"
+      });
+      return;
+    }
+
+    try {
+      const updates = Array.from(selectedRows).map(id => 
+        supabase
+          .from("events_actions")
+          .update({ assigned_deck_slug: bulkDeckInput.trim() })
+          .eq("id", id)
+      );
+
+      await Promise.all(updates);
+
+      toast({
+        title: "Success",
+        description: `Assigned deck "${bulkDeckInput}" to ${selectedRows.size} EoA(s)`
+      });
+
+      setBulkDeckDialogOpen(false);
+      setBulkDeckInput("");
+      clearSelection();
+      fetchEoas();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to assign deck: " + error.message
+      });
+    }
+  };
+
   const formatTimezone = (timezone: string | null) => {
     if (!timezone || timezone === "TBD") return "TBD";
     
@@ -762,12 +802,21 @@ export default function CampaignEoaManager() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="bulk-deck">Assign Deck Slug</Label>
-                      <Input
-                        id="bulk-deck"
-                        placeholder="e.g., deck-2024-q4"
-                        value={bulkDeckSlug}
-                        onChange={(e) => setBulkDeckSlug(e.target.value)}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="bulk-deck"
+                          placeholder="e.g., deck-2024-q4"
+                          value={bulkDeckSlug}
+                          onChange={(e) => setBulkDeckSlug(e.target.value)}
+                        />
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setBulkDeckDialogOpen(true)}
+                          title="Assign deck via dialog"
+                        >
+                          <Package className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="bulk-utm">Set UTM ID</Label>
@@ -1346,6 +1395,41 @@ export default function CampaignEoaManager() {
               </TableRow>
             </TableBody>
           </Table>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDeckDialogOpen} onOpenChange={setBulkDeckDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Assign Deck</DialogTitle>
+            <DialogDescription>
+              Assign a deck to all {selectedRows.size} selected EoA{selectedRows.size !== 1 ? 's' : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-deck-name">Deck Name/Slug</Label>
+              <Input
+                id="bulk-deck-name"
+                placeholder="e.g., deck-2024-q4"
+                value={bulkDeckInput}
+                onChange={(e) => setBulkDeckInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleBulkDeckAssignment();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setBulkDeckDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkDeckAssignment}>
+              Assign to {selectedRows.size} EoA{selectedRows.size !== 1 ? 's' : ''}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
