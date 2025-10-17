@@ -77,6 +77,7 @@ export default function CampaignDashboard() {
   const [showFirstWarning, setShowFirstWarning] = useState(false);
   const [showSecondWarning, setShowSecondWarning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -276,8 +277,33 @@ export default function CampaignDashboard() {
   const handleRefreshEventsV2 = async () => {
     setIsRefreshing(true);
     try {
+      // Capture current event IDs before refresh
+      const currentEventIds = new Set(eventsV2Data?.map((e: any) => e.id) || []);
+      
       await queryClient.invalidateQueries({ queryKey: ["eventsV2"] });
       await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
+      
+      // Wait a bit for the new data to be fetched
+      setTimeout(() => {
+        const newData = queryClient.getQueryData(["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter]) as any[];
+        if (newData) {
+          const newEventIds = new Set<string>();
+          newData.forEach((event: any) => {
+            if (!currentEventIds.has(event.id)) {
+              newEventIds.add(event.id);
+            }
+          });
+          
+          if (newEventIds.size > 0) {
+            setHighlightedRowIds(newEventIds);
+            // Clear highlights after 3 seconds
+            setTimeout(() => {
+              setHighlightedRowIds(new Set());
+            }, 3000);
+          }
+        }
+      }, 500);
+      
       toast({
         title: "Data Refreshed",
         description: "EventsV2 data has been updated successfully.",
@@ -984,7 +1010,10 @@ export default function CampaignDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedEventsV2.map((event: any, index: number) => <TableRow key={event.id}>
+                          {sortedEventsV2.map((event: any, index: number) => <TableRow 
+                              key={event.id}
+                              className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}
+                            >
                               <TableCell>{index + 1}</TableCell>
                               <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
                               <TableCell>{event.tokens.events_actions.mobilize_code || 'N/A'}</TableCell>
