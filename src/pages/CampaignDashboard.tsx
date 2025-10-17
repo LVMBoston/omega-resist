@@ -442,7 +442,7 @@ export default function CampaignDashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <TrendingUp className="w-8 h-8" />
-            Campaign Dashboard
+            Campaign Configuration
           </h1>
           <p className="text-muted-foreground mt-1">
             Comprehensive view of events, analytics, and geographic data
