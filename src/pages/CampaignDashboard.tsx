@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,19 @@ import { ContentPerformanceTable } from "@/components/virality/ContentPerformanc
 import SharedDashboardMap from "@/components/SharedDashboardMap";
 import { SimulatorControls } from "@/components/SimulatorControls";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 interface UrlEvent {
   id: string;
   token: string;
@@ -61,6 +74,10 @@ export default function CampaignDashboard() {
     column: 'timestamp',
     direction: 'desc'
   });
+  const [showFirstWarning, setShowFirstWarning] = useState(false);
+  const [showSecondWarning, setShowSecondWarning] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Get filter values from URL params
   const selectedCampaign = searchParams.get("campaign") || "";
@@ -424,6 +441,107 @@ export default function CampaignDashboard() {
 
   // Get campaign title for EventsV2
   const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || "N/A";
+
+  const clearRealData = async () => {
+    try {
+      console.log("Starting REAL data cleanup...");
+      
+      // Count before deletion
+      const { count: eventsBefore, error: eventsCountError } = await supabase
+        .from("url_events")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      if (eventsCountError) {
+        console.error("Error counting events:", eventsCountError);
+        throw eventsCountError;
+      }
+      
+      const { count: tokensBefore, error: tokensCountError } = await supabase
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      if (tokensCountError) {
+        console.error("Error counting tokens:", tokensCountError);
+        throw tokensCountError;
+      }
+      
+      console.log(`Found ${eventsBefore} real events and ${tokensBefore} real tokens to delete`);
+
+      // Delete real URL events FIRST (before tokens, to avoid FK constraint issues)
+      console.log("Attempting to delete real events...");
+      const { error: eventsError, count: eventsDeleted } = await supabase
+        .from("url_events")
+        .delete({ count: "exact" })
+        .eq("is_simulated", false);
+
+      if (eventsError) {
+        console.error("Failed to delete events:", eventsError);
+        toast({
+          title: "Error deleting events",
+          description: `${eventsError.message}`,
+          variant: "destructive"
+        });
+        throw eventsError;
+      }
+      console.log(`Successfully deleted ${eventsDeleted} real events`);
+
+      // Delete real tokens SECOND (after events are gone)
+      console.log("Attempting to delete real tokens...");
+      const { error: tokensError, count: tokensDeleted } = await supabase
+        .from("tokens")
+        .delete({ count: "exact" })
+        .eq("is_simulated", false);
+
+      if (tokensError) {
+        console.error("Failed to delete tokens:", tokensError);
+        toast({
+          title: "Error deleting tokens",
+          description: `${tokensError.message}`,
+          variant: "destructive"
+        });
+        throw tokensError;
+      }
+      console.log(`Successfully deleted ${tokensDeleted} real tokens`);
+
+      // Verify deletion
+      const { count: eventsAfter } = await supabase
+        .from("url_events")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      const { count: tokensAfter } = await supabase
+        .from("tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("is_simulated", false);
+      
+      console.log(`After deletion: ${eventsAfter} events and ${tokensAfter} tokens remaining`);
+
+      // Force refresh all relevant queries
+      await queryClient.invalidateQueries({ queryKey: ["url_events"] });
+      await queryClient.invalidateQueries({ queryKey: ["tokens"] });
+      await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["viralityMetrics"] });
+      await queryClient.refetchQueries();
+
+      toast({ 
+        title: "Real data cleared successfully", 
+        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens from production data.`,
+        variant: "destructive"
+      });
+      
+      // Close dialogs
+      setShowFirstWarning(false);
+      setShowSecondWarning(false);
+      
+      // Refresh events
+      fetchEvents();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to clear real data.", variant: "destructive", duration: Infinity });
+    }
+  };
+
   if (campaignsLoading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -550,6 +668,78 @@ export default function CampaignDashboard() {
                   })}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Danger Zone - Erase All Real Data */}
+            <Card className="border-destructive/50 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone: Delete Real Data</CardTitle>
+                <CardDescription>Permanently delete all real (non-simulated) campaign data</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog open={showFirstWarning} onOpenChange={setShowFirstWarning}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Erase All Real Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete All Real Data?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will delete all real (non-simulated) tokens and events from your database. 
+                        This action cannot be undone. Are you sure you want to continue?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setShowFirstWarning(false);
+                          setShowSecondWarning(true);
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={showSecondWarning} onOpenChange={setShowSecondWarning}>
+                  <AlertDialogContent className="border-destructive">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-destructive text-xl font-bold">
+                        ⚠️ FINAL WARNING ⚠️
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-3">
+                        <p className="font-bold text-foreground">
+                          You are about to PERMANENTLY DELETE all real production data!
+                        </p>
+                        <p className="text-destructive font-semibold">
+                          This will erase ALL real tokens, events, and analytics from your campaigns.
+                        </p>
+                        <p className="font-medium">
+                          This action is IRREVERSIBLE and CANNOT BE UNDONE.
+                        </p>
+                        <p className="text-sm">
+                          Only simulated data will remain. Are you absolutely certain you want to proceed?
+                        </p>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel - Keep My Data</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={clearRealData}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
+                      >
+                        YES, DELETE EVERYTHING
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
 
