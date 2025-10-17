@@ -96,17 +96,47 @@ export default function DeckBuilder() {
 
     setProgress(`Found ${imageFiles.length} images. Creating deck...`);
 
+    // Check if deck exists and delete it if so
+    const { data: existingDeck } = await supabase
+      .from("decks")
+      .select("slug")
+      .eq("slug", slug)
+      .single();
+
+    if (existingDeck) {
+      setProgress("Deleting existing deck...");
+      
+      // Delete old slides from storage
+      const { data: existingSlides } = await supabase
+        .from("slide_items")
+        .select("content_url")
+        .eq("deck_slug", slug);
+
+      if (existingSlides && existingSlides.length > 0) {
+        const filePaths = existingSlides.map(slide => {
+          const url = new URL(slide.content_url);
+          return url.pathname.split('/slides/')[1];
+        });
+        
+        await supabase.storage
+          .from("slides")
+          .remove(filePaths);
+      }
+
+      // Delete deck record (this will cascade delete slide_items)
+      await supabase
+        .from("decks")
+        .delete()
+        .eq("slug", slug);
+    }
+
     // Create deck record
     const { error: deckError } = await supabase
       .from("decks")
       .insert({ slug });
 
     if (deckError) {
-      if (deckError.code === "23505") {
-        throw new Error("A deck with this slug already exists");
-      } else {
-        throw new Error(`Failed to create deck: ${deckError.message}`);
-      }
+      throw new Error(`Failed to create deck: ${deckError.message}`);
     }
 
     // Upload slides
