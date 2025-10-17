@@ -280,35 +280,39 @@ export default function CampaignDashboard() {
       // Capture current event IDs before refresh
       const currentEventIds = new Set(eventsV2Data?.map((e: any) => e.id) || []);
       
+      // Invalidate and refetch
       await queryClient.invalidateQueries({ queryKey: ["eventsV2"] });
       await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
       
-      // Wait a bit for the new data to be fetched
-      setTimeout(() => {
-        const newData = queryClient.getQueryData(["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter]) as any[];
-        if (newData) {
-          const newEventIds = new Set<string>();
-          newData.forEach((event: any) => {
-            if (!currentEventIds.has(event.id)) {
-              newEventIds.add(event.id);
-            }
-          });
-          
-          if (newEventIds.size > 0) {
-            setHighlightedRowIds(newEventIds);
-            // Clear highlights after 3 seconds
-            setTimeout(() => {
-              setHighlightedRowIds(new Set());
-            }, 3000);
+      // Wait for refetch to complete
+      const result = await queryClient.fetchQuery({
+        queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter],
+      });
+      
+      // Compare and highlight new events
+      if (result && Array.isArray(result)) {
+        const newEventIds = new Set<string>();
+        result.forEach((event: any) => {
+          if (!currentEventIds.has(event.id)) {
+            newEventIds.add(event.id);
           }
+        });
+        
+        if (newEventIds.size > 0) {
+          setHighlightedRowIds(newEventIds);
+          // Clear highlights after 3 seconds
+          setTimeout(() => {
+            setHighlightedRowIds(new Set());
+          }, 3000);
         }
-      }, 500);
+      }
       
       toast({
         title: "Data Refreshed",
         description: "EventsV2 data has been updated successfully.",
       });
     } catch (error) {
+      console.error("Refresh error:", error);
       toast({
         variant: "destructive",
         title: "Refresh Failed",
@@ -375,7 +379,7 @@ export default function CampaignDashboard() {
             utm_campaign,
             eoa_id,
             full_url,
-            events_actions!inner(
+            events_actions(
               mobilize_code,
               utm_id,
               city,
@@ -401,9 +405,9 @@ export default function CampaignDashboard() {
       } = await query;
       if (error) throw error;
 
-      // Fetch shortened URLs for all unique full URLs
+      // Transform data to clean, serializable objects and fetch shortened URLs
       if (data && data.length > 0) {
-        const uniqueFullUrls = [...new Set(data.map((e: any) => e.tokens.full_url))];
+        const uniqueFullUrls = [...new Set(data.map((e: any) => e.tokens?.full_url).filter(Boolean))];
         const { data: shortUrls } = await supabase
           .from("shortened_urls")
           .select("full_url, short_code")
@@ -415,14 +419,35 @@ export default function CampaignDashboard() {
           shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
         });
 
-        // Add short_url to each event
-        return data.map((event: any) => ({
-          ...event,
-          short_url: shortUrlMap.get(event.tokens.full_url)
-        }));
+        // Transform to clean objects with null-safety
+        return data.map((event: any) => JSON.parse(JSON.stringify({
+          id: event.id,
+          occurred_at: event.occurred_at,
+          event_type: event.event_type,
+          city: event.city,
+          region: event.region,
+          zip_code: event.zip_code,
+          token: event.token,
+          tokens: {
+            level: event.tokens?.level,
+            utm_content: event.tokens?.utm_content,
+            utm_campaign: event.tokens?.utm_campaign,
+            eoa_id: event.tokens?.eoa_id,
+            full_url: event.tokens?.full_url,
+            events_actions: event.tokens?.events_actions ? {
+              mobilize_code: event.tokens.events_actions.mobilize_code,
+              utm_id: event.tokens.events_actions.utm_id,
+              city: event.tokens.events_actions.city,
+              state: event.tokens.events_actions.state,
+              zip_code: event.tokens.events_actions.zip_code,
+              id: event.tokens.events_actions.id
+            } : null
+          },
+          short_url: event.tokens?.full_url ? shortUrlMap.get(event.tokens.full_url) : null
+        })));
       }
 
-      return data;
+      return [];
     },
     enabled: !!selectedCampaign
   });
@@ -447,7 +472,7 @@ export default function CampaignDashboard() {
 
   // Calculate metrics for EventsV2
   const eventsV2Metrics = eventsV2Data ? {
-    uniqueMobilizeCodes: new Set(eventsV2Data.map((e: any) => e.tokens.events_actions.mobilize_code)).size,
+    uniqueMobilizeCodes: new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean)).size,
     scansCount: eventsV2Data.filter((e: any) => e.event_type === 'scan').length,
     viewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view').length,
     sharesCount: eventsV2Data.filter((e: any) => e.event_type === 'share').length,
@@ -475,28 +500,28 @@ export default function CampaignDashboard() {
         bVal = new Date(b.occurred_at).getTime();
         break;
       case 'mobilize_code':
-        aVal = a.tokens.events_actions.mobilize_code || '';
-        bVal = b.tokens.events_actions.mobilize_code || '';
+        aVal = a.tokens?.events_actions?.mobilize_code || '';
+        bVal = b.tokens?.events_actions?.mobilize_code || '';
         break;
       case 'location':
-        aVal = `${a.tokens.events_actions.city || ''}, ${a.tokens.events_actions.state || ''}`;
-        bVal = `${b.tokens.events_actions.city || ''}, ${b.tokens.events_actions.state || ''}`;
+        aVal = `${a.tokens?.events_actions?.city || ''}, ${a.tokens?.events_actions?.state || ''}`;
+        bVal = `${b.tokens?.events_actions?.city || ''}, ${b.tokens?.events_actions?.state || ''}`;
         break;
       case 'zip':
         aVal = a.zip_code || '';
         bVal = b.zip_code || '';
         break;
       case 'event_zip':
-        aVal = a.tokens.events_actions.zip_code || '';
-        bVal = b.tokens.events_actions.zip_code || '';
+        aVal = a.tokens?.events_actions?.zip_code || '';
+        bVal = b.tokens?.events_actions?.zip_code || '';
         break;
       case 'level':
-        aVal = a.tokens.level;
-        bVal = b.tokens.level;
+        aVal = a.tokens?.level || 0;
+        bVal = b.tokens?.level || 0;
         break;
       case 'utm_content':
-        aVal = a.tokens.events_actions.mobilize_code && a.tokens.events_actions.utm_id ? `${a.tokens.events_actions.mobilize_code}-${a.tokens.events_actions.utm_id}` : '';
-        bVal = b.tokens.events_actions.mobilize_code && b.tokens.events_actions.utm_id ? `${b.tokens.events_actions.mobilize_code}-${b.tokens.events_actions.utm_id}` : '';
+        aVal = a.tokens?.events_actions?.mobilize_code && a.tokens?.events_actions?.utm_id ? `${a.tokens.events_actions.mobilize_code}-${a.tokens.events_actions.utm_id}` : '';
+        bVal = b.tokens?.events_actions?.mobilize_code && b.tokens?.events_actions?.utm_id ? `${b.tokens.events_actions.mobilize_code}-${b.tokens.events_actions.utm_id}` : '';
         break;
       case 'event_type':
         aVal = a.event_type;
@@ -1014,20 +1039,20 @@ export default function CampaignDashboard() {
                               key={event.id}
                               className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}
                             >
-                              <TableCell>{index + 1}</TableCell>
-                              <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
-                              <TableCell>{event.tokens.events_actions.mobilize_code || 'N/A'}</TableCell>
-                              <TableCell>
-                                {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
-                              </TableCell>
-                              <TableCell>{formatZipCode(event.zip_code)}</TableCell>
-                              <TableCell>{formatZipCode(event.tokens.events_actions.zip_code)}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{formatLevel(event.tokens.level)}</Badge>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {event.tokens.events_actions.mobilize_code && event.tokens.events_actions.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
-                              </TableCell>
+              <TableCell>{index + 1}</TableCell>
+              <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
+              <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
+              <TableCell>
+                {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
+              </TableCell>
+              <TableCell>{formatZipCode(event.zip_code)}</TableCell>
+              <TableCell>{formatZipCode(event.tokens?.events_actions?.zip_code)}</TableCell>
+              <TableCell>
+                <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
+              </TableCell>
+              <TableCell className="font-mono text-xs">
+                {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
+              </TableCell>
                               <TableCell>
                                 <Badge className={getEventBadgeColor(event.event_type)}>
                                   {event.event_type.toUpperCase()}
