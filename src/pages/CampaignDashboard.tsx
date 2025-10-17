@@ -862,6 +862,11 @@ export default function CampaignDashboard() {
           </TabsContent>
 
           <TabsContent value="map" className="mt-6 animate-fade-in space-y-4">
+            <Card className="mb-4">
+              <CardContent className="pt-6">
+                <span className="text-sm font-medium">Campaign: {campaignTitle}</span>
+              </CardContent>
+            </Card>
             <SharedDashboardMap geoData={geoData || []} levelFilter={levelFilter} />
             
             {/* Level Filter Controls */}
@@ -908,6 +913,11 @@ export default function CampaignDashboard() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6 mt-6">
+            <Card className="mb-4">
+              <CardContent className="pt-6">
+                <span className="text-sm font-medium">Campaign: {campaignTitle}</span>
+              </CardContent>
+            </Card>
             {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
               <MetricCard
