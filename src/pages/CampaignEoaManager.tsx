@@ -972,7 +972,7 @@ export default function CampaignEoaManager() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedEoas.map(eoa => <TableRow key={eoa.id} className={selectedRows.has(eoa.id) ? "bg-muted/50" : ""}>
+                  {sortedEoas.map(eoa => <TableRow key={eoa.id} className={selectedRows.has(eoa.id) ? "bg-muted/70" : ""}>
                       <TableCell>
                         <Checkbox
                           checked={selectedRows.has(eoa.id)}
