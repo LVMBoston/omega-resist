@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
@@ -77,15 +78,33 @@ export default function CampaignEoaManager() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [bulkDeckDialogOpen, setBulkDeckDialogOpen] = useState(false);
   const [bulkDeckInput, setBulkDeckInput] = useState("");
+  const [availableDecks, setAvailableDecks] = useState<string[]>([]);
   useEffect(() => {
     if (campaignId) {
       fetchData();
     }
   }, [campaignId]);
+
+  useEffect(() => {
+    fetchAvailableDecks();
+  }, []);
   const fetchData = async () => {
     setLoading(true);
     await Promise.all([fetchCampaign(), fetchEoas(), fetchExistingTokens()]);
     setLoading(false);
+  };
+
+  const fetchAvailableDecks = async () => {
+    const { data, error } = await supabase
+      .from("decks")
+      .select("slug")
+      .order("slug", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch decks:", error);
+    } else if (data) {
+      setAvailableDecks(data.map(d => d.slug));
+    }
   };
 
   const fetchExistingTokens = async () => {
@@ -1408,25 +1427,30 @@ export default function CampaignEoaManager() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="bulk-deck-name">Deck Name/Slug</Label>
-              <Input
-                id="bulk-deck-name"
-                placeholder="e.g., deck-2024-q4"
-                value={bulkDeckInput}
-                onChange={(e) => setBulkDeckInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleBulkDeckAssignment();
-                  }
-                }}
-              />
+              <Label htmlFor="bulk-deck-select">Select Deck</Label>
+              <Select value={bulkDeckInput} onValueChange={setBulkDeckInput}>
+                <SelectTrigger id="bulk-deck-select" className="w-full">
+                  <SelectValue placeholder="Choose a deck..." />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {availableDecks.length === 0 ? (
+                    <SelectItem value="no-decks" disabled>No decks available</SelectItem>
+                  ) : (
+                    availableDecks.map(deck => (
+                      <SelectItem key={deck} value={deck}>
+                        {deck}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setBulkDeckDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleBulkDeckAssignment}>
+            <Button onClick={handleBulkDeckAssignment} disabled={!bulkDeckInput}>
               Assign to {selectedRows.size} EoA{selectedRows.size !== 1 ? 's' : ''}
             </Button>
           </div>
