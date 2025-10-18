@@ -74,7 +74,15 @@ const Index = () => {
     }
 
     try {
-      // Delete slide items first
+      // Delete viral slide configs first (they reference slide_items)
+      const { error: viralConfigsError } = await supabase
+        .from("viral_slide_configs")
+        .delete()
+        .eq("deck_slug", slug);
+
+      if (viralConfigsError) throw viralConfigsError;
+
+      // Delete slide items
       const { error: slidesError } = await supabase
         .from("slide_items")
         .delete()
