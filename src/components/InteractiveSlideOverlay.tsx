@@ -308,6 +308,12 @@ export const InteractiveSlideOverlay = ({
     }
   };
 
+  console.log("🎯 InteractiveSlideOverlay render:", {
+    hotspotsCount: hotspots.length,
+    imageDimensions,
+    hotspots: hotspots.map(h => ({ id: h.id, type: h.type, x: h.x, y: h.y }))
+  });
+
   return (
     <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
       {hotspots.map((hotspot) => {
@@ -316,6 +322,8 @@ export const InteractiveSlideOverlay = ({
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
         const height = (hotspot.height / 100) * imageDimensions.height;
+        
+        console.log(`🎯 Hotspot ${hotspot.id} position:`, { left, top, width, height });
         
         return (
           <button

@@ -37,12 +37,21 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching viral config:", error);
+        console.error("❌ Error fetching viral config:", error);
       } else if (data) {
+        console.log("✅ Viral config loaded:", {
+          slideId,
+          image_url: data.image_url,
+          hotspotsRaw: data.hotspots,
+          hotspotsIsArray: Array.isArray(data.hotspots),
+          hotspotsLength: Array.isArray(data.hotspots) ? data.hotspots.length : 0
+        });
         setConfig({
           image_url: data.image_url,
           hotspots: Array.isArray(data.hotspots) ? (data.hotspots as unknown as Hotspot[]) : [],
         });
+      } else {
+        console.log("⚠️ No viral config found for slideId:", slideId);
       }
       setLoading(false);
     };
