@@ -67,6 +67,7 @@ export const InteractiveSlideOverlay = ({
     let retryCount = 0;
     const maxRetries = 50;
     let retryTimer: number | undefined;
+    let resizeObserver: ResizeObserver | undefined;
     
     // Reset dimensions on mount
     setImageDimensions({ offsetX: 0, offsetY: 0, width: 0, height: 0 });
@@ -150,6 +151,22 @@ export const InteractiveSlideOverlay = ({
       img.src = imageUrl;
     };
 
+    // Set up ResizeObserver to detect when container gets dimensions
+    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            console.log("📏 ResizeObserver detected dimensions:", {
+              width: entry.contentRect.width,
+              height: entry.contentRect.height
+            });
+            updateImageDimensions();
+          }
+        }
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
     const timer = window.setTimeout(updateImageDimensions, 100);
     
     window.addEventListener('resize', updateImageDimensions);
@@ -164,6 +181,7 @@ export const InteractiveSlideOverlay = ({
     return () => {
       window.clearTimeout(timer);
       if (retryTimer) window.clearTimeout(retryTimer);
+      if (resizeObserver) resizeObserver.disconnect();
       window.removeEventListener('resize', updateImageDimensions);
       document.removeEventListener('fullscreenchange', updateImageDimensions);
     };
