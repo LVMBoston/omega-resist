@@ -28,6 +28,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [mountKey, setMountKey] = useState(0);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -96,10 +97,15 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         onLoad={() => {
           console.log("🖼️ ViralSlide image loaded");
           setImageLoaded(true);
+          // Force fresh mount after layout completes
+          requestAnimationFrame(() => {
+            setMountKey(Date.now());
+          });
         }}
       />
       {imageLoaded && config.hotspots.length > 0 && (
         <InteractiveSlideOverlay
+          key={mountKey}
           hotspots={config.hotspots}
           deckSlug={deckSlug}
           imageUrl={config.image_url}
