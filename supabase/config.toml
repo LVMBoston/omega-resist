@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.get-mapbox-token]
 verify_jwt = false
+
+[functions.import-zip-codes]
+verify_jwt = false
+
+[functions.import-google-slides]
+verify_jwt = true

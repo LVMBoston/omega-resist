@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut } from "lucide-react";
+import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface DeckWithSlides {
   slug: string;
@@ -19,6 +22,10 @@ interface DeckWithSlides {
 const Index = () => {
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [googleSlidesUrl, setGoogleSlidesUrl] = useState("");
+  const [deckSlug, setDeckSlug] = useState("");
+  const [importing, setImporting] = useState(false);
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
 
@@ -158,6 +165,51 @@ const Index = () => {
     }
   };
 
+  const handleImportSlides = async () => {
+    if (!googleSlidesUrl || !deckSlug) {
+      toast.error("Please provide both Google Slides URL and deck name");
+      return;
+    }
+
+    // Extract presentation ID from URL
+    const urlMatch = googleSlidesUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    const presentationId = urlMatch ? urlMatch[1] : googleSlidesUrl;
+
+    if (!presentationId) {
+      toast.error("Invalid Google Slides URL");
+      return;
+    }
+
+    setImporting(true);
+
+    try {
+      // Create deck first
+      const { error: deckError } = await supabase
+        .from("decks")
+        .insert({ slug: deckSlug });
+
+      if (deckError) throw deckError;
+
+      // Call edge function to import slides
+      const { data, error } = await supabase.functions.invoke("import-google-slides", {
+        body: { presentationId, deckSlug }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Successfully imported ${data.slidesCount} slides`);
+      setImportDialogOpen(false);
+      setGoogleSlidesUrl("");
+      setDeckSlug("");
+      fetchDecks();
+    } catch (error: any) {
+      console.error("Error importing slides:", error);
+      toast.error(error.message || "Failed to import slides");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -195,6 +247,49 @@ const Index = () => {
                 <Button onClick={() => navigate("/manage")} variant="outline">
                   Manage Decks
                 </Button>
+                <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Import from Google Slides
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Import Google Slides</DialogTitle>
+                      <DialogDescription>
+                        Enter a Google Slides URL or presentation ID and choose a name for your deck.
+                        <br />
+                        <strong>Note:</strong> The presentation must be publicly accessible (Anyone with link can view).
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="slides-url">Google Slides URL</Label>
+                        <Input
+                          id="slides-url"
+                          placeholder="https://docs.google.com/presentation/d/..."
+                          value={googleSlidesUrl}
+                          onChange={(e) => setGoogleSlidesUrl(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="deck-slug">Deck Name</Label>
+                        <Input
+                          id="deck-slug"
+                          placeholder="my-deck"
+                          value={deckSlug}
+                          onChange={(e) => setDeckSlug(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleImportSlides} disabled={importing}>
+                        {importing ? "Importing..." : "Import"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
                 <Button onClick={() => navigate("/build")}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Deck
