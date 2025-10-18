@@ -362,24 +362,45 @@ export const InteractiveSlideOverlay = ({
         const width = (hotspot.width / 100) * imageDimensions.width;
         const height = (hotspot.height / 100) * imageDimensions.height;
         
-        console.log(`🎯 Hotspot ${hotspot.id} position:`, { left, top, width, height });
+        const minTouchSize = 44; // Apple's minimum touch target size in pixels
+        const buttonWidth = Math.max(width, minTouchSize);
+        const buttonHeight = Math.max(height, minTouchSize);
+        
+        // Center the larger touch target over the original hotspot position
+        const adjustedLeft = left - (buttonWidth - width) / 2;
+        const adjustedTop = top - (buttonHeight - height) / 2;
+        
+        console.log(`🎯 Hotspot ${hotspot.id} position:`, { 
+          left: adjustedLeft, 
+          top: adjustedTop, 
+          width: buttonWidth, 
+          height: buttonHeight,
+          originalWidth: width,
+          originalHeight: height
+        });
+        
+        const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log(`📱 Hotspot ${hotspot.type} clicked/touched on ${navigator.userAgent}`);
+          getHotspotAction(hotspot.type)();
+        };
         
         return (
           <button
             key={hotspot.id}
-            onClick={getHotspotAction(hotspot.type)}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              getHotspotAction(hotspot.type)();
-            }}
-            className="absolute pointer-events-auto bg-transparent border-2 border-yellow-400 hover:bg-yellow-400/10 active:bg-yellow-400/20 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium touch-manipulation"
+            onClick={handleInteraction}
+            onTouchStart={handleInteraction}
+            className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium touch-manipulation cursor-pointer"
             style={{
-              left: `${left}px`,
-              top: `${top}px`,
-              width: `${width}px`,
-              height: `${height}px`,
-              WebkitTapHighlightColor: 'transparent',
+              left: `${adjustedLeft}px`,
+              top: `${adjustedTop}px`,
+              width: `${buttonWidth}px`,
+              height: `${buttonHeight}px`,
+              WebkitTapHighlightColor: 'rgba(250, 204, 21, 0.2)',
               touchAction: 'manipulation',
+              minWidth: '44px',
+              minHeight: '44px',
             }}
           >
             {getHotspotIcon(hotspot.type)}
