@@ -6,6 +6,92 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to get Google OAuth2 access token using service account
+async function getAccessToken(): Promise<string> {
+  const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+  if (!serviceAccountKey) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not configured');
+  }
+
+  const credentials = JSON.parse(serviceAccountKey);
+  
+  // Create JWT for service account
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const claim = {
+    iss: credentials.client_email,
+    scope: 'https://www.googleapis.com/auth/presentations.readonly',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+
+  // Encode header and claim
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const encodedClaim = btoa(JSON.stringify(claim)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  
+  const signatureInput = `${encodedHeader}.${encodedClaim}`;
+
+  // Import private key
+  const privateKey = credentials.private_key;
+  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemFooter = '-----END PRIVATE KEY-----';
+  const pemContents = privateKey.substring(
+    pemHeader.length,
+    privateKey.length - pemFooter.length - 1
+  ).replace(/\s/g, '');
+
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  );
+
+  // Sign the JWT
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(signatureInput)
+  );
+
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  const jwt = `${signatureInput}.${encodedSignature}`;
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text();
+    console.error('Token exchange error:', error);
+    throw new Error('Failed to get access token');
+  }
+
+  const tokenData = await tokenResponse.json();
+  return tokenData.access_token;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -18,21 +104,24 @@ serve(async (req) => {
       throw new Error('presentationId and deckSlug are required');
     }
 
-    const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-    if (!GOOGLE_API_KEY) {
-      throw new Error('GOOGLE_API_KEY not configured');
-    }
-
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log('Getting access token...');
+    const accessToken = await getAccessToken();
+
     console.log('Fetching presentation:', presentationId);
 
-    // Fetch presentation metadata
+    // Fetch presentation metadata using OAuth2 token
     const presentationResponse = await fetch(
-      `https://slides.googleapis.com/v1/presentations/${presentationId}?key=${GOOGLE_API_KEY}`
+      `https://slides.googleapis.com/v1/presentations/${presentationId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }
     );
 
     if (!presentationResponse.ok) {
@@ -56,9 +145,13 @@ serve(async (req) => {
       console.log(`Processing slide ${i + 1}/${slides.length}: ${slideId}`);
 
       // Get slide thumbnail (largest available size)
-      const thumbnailUrl = `https://slides.googleapis.com/v1/presentations/${presentationId}/pages/${slideId}/thumbnail?thumbnailProperties.thumbnailSize=LARGE&key=${GOOGLE_API_KEY}`;
+      const thumbnailUrl = `https://slides.googleapis.com/v1/presentations/${presentationId}/pages/${slideId}/thumbnail?thumbnailProperties.thumbnailSize=LARGE`;
       
-      const thumbnailResponse = await fetch(thumbnailUrl);
+      const thumbnailResponse = await fetch(thumbnailUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
       
       if (!thumbnailResponse.ok) {
         console.error(`Failed to fetch thumbnail for slide ${slideId}`);

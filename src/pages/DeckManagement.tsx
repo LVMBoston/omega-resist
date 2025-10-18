@@ -267,8 +267,10 @@ const Index = () => {
                       <DialogTitle>Import Google Slides</DialogTitle>
                       <DialogDescription>
                         Enter a Google Slides URL or presentation ID and choose a name for your deck.
+                        <br /><br />
+                        <strong>Important:</strong> You must share the presentation with your service account email.
                         <br />
-                        <strong>Note:</strong> The presentation must be publicly accessible (Anyone with link can view).
+                        Find the service account email in your Google Cloud Console under "Service Accounts".
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
