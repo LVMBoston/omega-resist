@@ -278,7 +278,7 @@ const Index = () => {
                         <Label htmlFor="slides-url">Google Slides URL</Label>
                         <Input
                           id="slides-url"
-                          placeholder="https://docs.google.com/presentation/d/..."
+                          placeholder="https://docs.google.com/presentation/d/1fDM9jDqB8G.../edit"
                           value={googleSlidesUrl}
                           onChange={(e) => setGoogleSlidesUrl(e.target.value)}
                         />
