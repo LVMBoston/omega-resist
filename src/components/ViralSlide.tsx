@@ -27,6 +27,7 @@ interface ViralConfig {
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -92,9 +93,12 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         src={config.image_url}
         alt="Viral slide"
         className="max-w-full max-h-full object-contain"
-        onLoad={() => console.log("🖼️ ViralSlide image loaded")}
+        onLoad={() => {
+          console.log("🖼️ ViralSlide image loaded");
+          setImageLoaded(true);
+        }}
       />
-      {config.hotspots.length > 0 && (
+      {imageLoaded && config.hotspots.length > 0 && (
         <InteractiveSlideOverlay
           hotspots={config.hotspots}
           deckSlug={deckSlug}
