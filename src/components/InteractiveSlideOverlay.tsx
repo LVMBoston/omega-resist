@@ -64,25 +64,39 @@ export const InteractiveSlideOverlay = ({
 
   useEffect(() => {
     console.log("🔧 InteractiveSlideOverlay effect running, ref:", !!containerRef.current);
+    let retryCount = 0;
+    const maxRetries = 50; // 5 seconds of retries
     
     const updateImageDimensions = () => {
+      retryCount++;
+      
       if (!containerRef.current) {
-        console.log("⚠️ No container ref available, retrying...");
-        setTimeout(updateImageDimensions, 50);
+        console.log(`⚠️ No container ref available (attempt ${retryCount}/${maxRetries})`);
+        if (retryCount < maxRetries) {
+          setTimeout(updateImageDimensions, 100);
+        } else {
+          console.error("❌ Failed to get container ref after max retries");
+        }
         return;
       }
 
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
       
-      console.log("📐 Container dimensions:", {
+      console.log(`📐 Container dimensions (attempt ${retryCount}):`, {
         width: containerRect.width,
-        height: containerRect.height
+        height: containerRect.height,
+        device: navigator.userAgent.includes('iPhone') ? 'iPhone' : 
+                navigator.userAgent.includes('iPad') ? 'iPad' : 'Other'
       });
 
       if (containerRect.width === 0 || containerRect.height === 0) {
-        console.log("⚠️ Container has zero dimensions, retrying in 100ms...");
-        setTimeout(updateImageDimensions, 100);
+        console.log(`⚠️ Container has zero dimensions (attempt ${retryCount}/${maxRetries}), retrying...`);
+        if (retryCount < maxRetries) {
+          setTimeout(updateImageDimensions, 100);
+        } else {
+          console.error("❌ Container dimensions never became available");
+        }
         return;
       }
       

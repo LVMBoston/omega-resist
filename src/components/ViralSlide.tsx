@@ -76,13 +76,22 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   }
 
   console.log("🎨 ViralSlide rendering with hotspots:", config.hotspots.length);
+  console.log("📱 Device info:", {
+    userAgent: navigator.userAgent,
+    isIPhone: navigator.userAgent.includes('iPhone'),
+    isIPad: navigator.userAgent.includes('iPad'),
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight
+    }
+  });
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full bg-black flex items-center justify-center">
       <img
         src={config.image_url}
         alt="Viral slide"
-        className="w-full h-full object-contain"
+        className="max-w-full max-h-full object-contain"
         onLoad={() => console.log("🖼️ ViralSlide image loaded")}
       />
       {config.hotspots.length > 0 && (
