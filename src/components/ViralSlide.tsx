@@ -28,7 +28,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [mountKey, setMountKey] = useState(0);
+  const [overlayReady, setOverlayReady] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -60,6 +60,16 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
 
     fetchConfig();
   }, [slideId]);
+
+  // Delay overlay mount to allow layout to complete on iPhone
+  useEffect(() => {
+    if (imageLoaded) {
+      const timer = setTimeout(() => {
+        setOverlayReady(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [imageLoaded]);
 
   if (loading) {
     return (
@@ -97,15 +107,10 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         onLoad={() => {
           console.log("🖼️ ViralSlide image loaded");
           setImageLoaded(true);
-          // Force fresh mount after layout completes
-          requestAnimationFrame(() => {
-            setMountKey(Date.now());
-          });
         }}
       />
-      {imageLoaded && config.hotspots.length > 0 && (
+      {overlayReady && config.hotspots.length > 0 && (
         <InteractiveSlideOverlay
-          key={mountKey}
           hotspots={config.hotspots}
           deckSlug={deckSlug}
           imageUrl={config.image_url}
