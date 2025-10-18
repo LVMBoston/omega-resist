@@ -116,11 +116,17 @@ export default function DeckBuilder() {
         const filePaths = existingSlides.map(slide => {
           const url = new URL(slide.content_url);
           return url.pathname.split('/slides/')[1];
-        });
+        }).filter(path => path); // Remove any undefined/empty paths
         
-        await supabase.storage
-          .from("slides")
-          .remove(filePaths);
+        if (filePaths.length > 0) {
+          const { error: removeError } = await supabase.storage
+            .from("slides")
+            .remove(filePaths);
+          
+          if (removeError) {
+            console.warn("Failed to remove some files:", removeError);
+          }
+        }
       }
 
       // Delete deck record (this will cascade delete slide_items)
@@ -157,12 +163,12 @@ export default function DeckBuilder() {
 
       const fileName = `${slug}/${i.toString().padStart(3, "0")}-${name}`;
       
-      // Upload to storage with correct mime type
+      // Upload to storage with correct mime type (upsert to overwrite if exists)
       const { error: uploadError } = await supabase.storage
         .from("slides")
         .upload(fileName, uploadBlob, {
           contentType: mimeType,
-          upsert: false,
+          upsert: true,
         });
 
       if (uploadError) {
