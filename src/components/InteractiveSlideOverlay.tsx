@@ -64,15 +64,36 @@ export const InteractiveSlideOverlay = ({
 
   useEffect(() => {
     const updateImageDimensions = () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current) {
+        console.log("⚠️ No container ref available");
+        return;
+      }
 
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
+      
+      console.log("📐 Container dimensions:", {
+        width: containerRect.width,
+        height: containerRect.height
+      });
+
+      if (containerRect.width === 0 || containerRect.height === 0) {
+        console.log("⚠️ Container has zero dimensions, retrying in 100ms...");
+        setTimeout(updateImageDimensions, 100);
+        return;
+      }
       
       const img = new Image();
       img.onload = () => {
         const containerAspect = containerRect.width / containerRect.height;
         const imageAspect = img.naturalWidth / img.naturalHeight;
+        
+        console.log("🖼️ Image loaded:", {
+          naturalWidth: img.naturalWidth,
+          naturalHeight: img.naturalHeight,
+          containerAspect,
+          imageAspect
+        });
         
         let renderedWidth, renderedHeight, offsetX = 0, offsetY = 0;
         
@@ -88,6 +109,13 @@ export const InteractiveSlideOverlay = ({
           offsetY = (containerRect.height - renderedHeight) / 2;
         }
         
+        console.log("✅ Setting image dimensions:", {
+          offsetX,
+          offsetY,
+          width: renderedWidth,
+          height: renderedHeight
+        });
+        
         setImageDimensions({
           offsetX,
           offsetY,
@@ -95,14 +123,22 @@ export const InteractiveSlideOverlay = ({
           height: renderedHeight,
         });
       };
+      
+      img.onerror = () => {
+        console.error("❌ Failed to load image:", imageUrl);
+      };
+      
       img.src = imageUrl;
     };
 
-    updateImageDimensions();
+    // Initial load with delay to ensure container is rendered
+    const timer = setTimeout(updateImageDimensions, 100);
+    
     window.addEventListener('resize', updateImageDimensions);
     document.addEventListener('fullscreenchange', updateImageDimensions);
     
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', updateImageDimensions);
       document.removeEventListener('fullscreenchange', updateImageDimensions);
     };
@@ -313,6 +349,12 @@ export const InteractiveSlideOverlay = ({
     imageDimensions,
     hotspots: hotspots.map(h => ({ id: h.id, type: h.type, x: h.x, y: h.y }))
   });
+
+  // Don't render hotspots until we have valid dimensions
+  if (imageDimensions.width === 0 || imageDimensions.height === 0) {
+    console.log("⏳ Waiting for valid image dimensions...");
+    return null;
+  }
 
   return (
     <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
