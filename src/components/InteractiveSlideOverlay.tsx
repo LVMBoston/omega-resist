@@ -368,12 +368,18 @@ export const InteractiveSlideOverlay = ({
           <button
             key={hotspot.id}
             onClick={getHotspotAction(hotspot.type)}
-            className="absolute pointer-events-auto bg-transparent border-2 border-yellow-400 hover:bg-yellow-400/10 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium"
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              getHotspotAction(hotspot.type)();
+            }}
+            className="absolute pointer-events-auto bg-transparent border-2 border-yellow-400 hover:bg-yellow-400/10 active:bg-yellow-400/20 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium touch-manipulation"
             style={{
               left: `${left}px`,
               top: `${top}px`,
               width: `${width}px`,
               height: `${height}px`,
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
             }}
           >
             {getHotspotIcon(hotspot.type)}
