@@ -173,63 +173,42 @@ async function getRandomUSLocation(): Promise<LocationData> {
 }
 
 /**
- * Generate L01 location - 70% local (within 10 miles), 30% anywhere in US
- * First level of sharing typically stays local
+ * Generate L01 location - stays within 50 miles for concentrated virality
+ * First level of sharing stays local
  */
 export async function getL01Location(parentLocation: LocationData): Promise<LocationData> {
-  const isViralJump = Math.random() < 0.30; // 30% chance of viral jump
-  
-  if (isViralJump) {
-    // Viral jump to anywhere in US
-    return await getRandomUSLocation();
-  } else {
-    // Local share within ~10 miles
-    return await selectRandomNearbyLocation(
-      parentLocation.latitude,
-      parentLocation.longitude,
-      0.15 // ±0.15° ≈ ±10 miles
-    );
-  }
+  // Local share within ~50 miles (no viral jumps)
+  return await selectRandomNearbyLocation(
+    parentLocation.latitude,
+    parentLocation.longitude,
+    0.75 // ±0.75° ≈ ±50 miles
+  );
 }
 
 /**
- * Generate L02 location - 50% regional (within 50 miles), 50% anywhere in US
- * Second level shows increased geographic spread
+ * Generate L02 location - stays within 50 miles for concentrated virality
+ * Second level stays within region
  */
 export async function getL02Location(parentLocation: LocationData): Promise<LocationData> {
-  const isViralJump = Math.random() < 0.50; // 50% chance of viral jump
-  
-  if (isViralJump) {
-    // Viral jump to anywhere in US
-    return await getRandomUSLocation();
-  } else {
-    // Regional share within ~50 miles
-    return await selectRandomNearbyLocation(
-      parentLocation.latitude,
-      parentLocation.longitude,
-      0.75 // ±0.75° ≈ ±50 miles
-    );
-  }
+  // Regional share within ~50 miles (no viral jumps)
+  return await selectRandomNearbyLocation(
+    parentLocation.latitude,
+    parentLocation.longitude,
+    0.75 // ±0.75° ≈ ±50 miles
+  );
 }
 
 /**
- * Generate L03 location - 20% regional (within 100 miles), 80% anywhere in US
- * Third level is predominantly viral jumps to distant locations
+ * Generate L03 location - stays within 50 miles for concentrated virality
+ * Third level stays within region for better visualization
  */
 export async function getL03Location(parentLocation: LocationData): Promise<LocationData> {
-  const isViralJump = Math.random() < 0.80; // 80% chance of viral jump
-  
-  if (isViralJump) {
-    // Viral jump to anywhere in US
-    return await getRandomUSLocation();
-  } else {
-    // Regional share within ~100 miles
-    return await selectRandomNearbyLocation(
-      parentLocation.latitude,
-      parentLocation.longitude,
-      1.5 // ±1.5° ≈ ±100 miles
-    );
-  }
+  // Regional share within ~50 miles (no viral jumps)
+  return await selectRandomNearbyLocation(
+    parentLocation.latitude,
+    parentLocation.longitude,
+    0.75 // ±0.75° ≈ ±50 miles
+  );
 }
 
 /**
