@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlide";
 import { logEvent } from "@/lib/virality/mint";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SlideItem {
   id: string;
@@ -23,6 +24,7 @@ export default function DeckViewer() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const viralToken = searchParams.get("t");
+  const { userRole } = useAuth();
   
   console.log("🎯 Component initialization:", { slug, viralToken, allParams: Object.fromEntries(searchParams) });
   
@@ -31,6 +33,7 @@ export default function DeckViewer() {
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iOSFullscreen, setIOSFullscreen] = useState(false);
+  const [deletingSlide, setDeletingSlide] = useState<string | null>(null);
   
   // Detect iOS immediately
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -199,6 +202,49 @@ export default function DeckViewer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const handleDeleteInteractive = async (slideId: string) => {
+    if (!confirm("Delete this interactive page? The slide will be converted back to a regular image slide.")) {
+      return;
+    }
+
+    setDeletingSlide(slideId);
+    try {
+      // Delete viral_slide_configs for this slide
+      const { error: deleteError } = await supabase
+        .from("viral_slide_configs")
+        .delete()
+        .eq("slide_id", slideId);
+
+      if (deleteError) throw deleteError;
+
+      // Update slide type back to image
+      const { error: updateError } = await supabase
+        .from("slide_items")
+        .update({ type: "image" })
+        .eq("id", slideId);
+
+      if (updateError) throw updateError;
+
+      toast.success("Interactive page deleted successfully");
+      
+      // Refresh slides
+      if (slug) {
+        const { data: slideData } = await supabase
+          .from("slide_items")
+          .select("*")
+          .eq("deck_slug", slug)
+          .order("position", { ascending: true });
+
+        setSlides(slideData || []);
+      }
+    } catch (error) {
+      console.error("Error deleting interactive page:", error);
+      toast.error("Failed to delete interactive page");
+    } finally {
+      setDeletingSlide(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -275,6 +321,22 @@ export default function DeckViewer() {
                             className={`w-full h-full ${effectiveFullscreen ? 'object-contain' : 'object-contain'}`}
                             loading="lazy"
                           />
+                        )}
+                        {(userRole === "admin" || userRole === "manager") && slide.type === "spread-word" && (
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-4 right-4"
+                            onClick={() => handleDeleteInteractive(slide.id)}
+                            disabled={deletingSlide === slide.id}
+                            title="Delete interactive page"
+                          >
+                            {deletingSlide === slide.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
                         )}
                         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
                           {index + 1} / {slides.length}
