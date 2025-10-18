@@ -154,6 +154,32 @@ export default function CampaignDashboard() {
     }
   }, [campaigns, selectedCampaign, searchParams, setSearchParams]);
 
+  // Real-time subscription for EventsV2
+  useEffect(() => {
+    if (!selectedCampaign) return;
+
+    const channel = supabase
+      .channel('url_events_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'url_events'
+        },
+        () => {
+          // Auto-refresh eventsV2 and counts when new events arrive
+          queryClient.invalidateQueries({ queryKey: ["eventsV2"] });
+          queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedCampaign, queryClient]);
+
   // Fetch events when filters change
   useEffect(() => {
     if (selectedCampaign) {
