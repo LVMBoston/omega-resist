@@ -183,12 +183,20 @@ const Index = () => {
     setImporting(true);
 
     try {
-      // Create deck first
-      const { error: deckError } = await supabase
+      // Check if deck exists, create only if it doesn't
+      const { data: existingDeck } = await supabase
         .from("decks")
-        .insert({ slug: deckSlug });
+        .select("slug")
+        .eq("slug", deckSlug)
+        .maybeSingle();
 
-      if (deckError) throw deckError;
+      if (!existingDeck) {
+        const { error: deckError } = await supabase
+          .from("decks")
+          .insert({ slug: deckSlug });
+
+        if (deckError) throw deckError;
+      }
 
       // Call edge function to import slides
       const { data, error } = await supabase.functions.invoke("import-google-slides", {
