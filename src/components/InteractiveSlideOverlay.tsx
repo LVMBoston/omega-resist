@@ -65,7 +65,11 @@ export const InteractiveSlideOverlay = ({
   useEffect(() => {
     console.log("🔧 InteractiveSlideOverlay effect running, ref:", !!containerRef.current);
     let retryCount = 0;
-    const maxRetries = 50; // 5 seconds of retries
+    const maxRetries = 50;
+    let retryTimer: number | undefined;
+    
+    // Reset dimensions on mount
+    setImageDimensions({ offsetX: 0, offsetY: 0, width: 0, height: 0 });
     
     const updateImageDimensions = () => {
       retryCount++;
@@ -73,7 +77,7 @@ export const InteractiveSlideOverlay = ({
       if (!containerRef.current) {
         console.log(`⚠️ No container ref available (attempt ${retryCount}/${maxRetries})`);
         if (retryCount < maxRetries) {
-          setTimeout(updateImageDimensions, 100);
+          retryTimer = window.setTimeout(updateImageDimensions, 100);
         } else {
           console.error("❌ Failed to get container ref after max retries");
         }
@@ -93,7 +97,7 @@ export const InteractiveSlideOverlay = ({
       if (containerRect.width === 0 || containerRect.height === 0) {
         console.log(`⚠️ Container has zero dimensions (attempt ${retryCount}/${maxRetries}), retrying...`);
         if (retryCount < maxRetries) {
-          setTimeout(updateImageDimensions, 100);
+          retryTimer = window.setTimeout(updateImageDimensions, 100);
         } else {
           console.error("❌ Container dimensions never became available");
         }
@@ -115,12 +119,10 @@ export const InteractiveSlideOverlay = ({
         let renderedWidth, renderedHeight, offsetX = 0, offsetY = 0;
         
         if (containerAspect > imageAspect) {
-          // Container is wider - image height fills container
           renderedHeight = containerRect.height;
           renderedWidth = renderedHeight * imageAspect;
           offsetX = (containerRect.width - renderedWidth) / 2;
         } else {
-          // Container is taller - image width fills container
           renderedWidth = containerRect.width;
           renderedHeight = renderedWidth / imageAspect;
           offsetY = (containerRect.height - renderedHeight) / 2;
@@ -148,14 +150,20 @@ export const InteractiveSlideOverlay = ({
       img.src = imageUrl;
     };
 
-    // Initial load with delay to ensure container is rendered
-    const timer = setTimeout(updateImageDimensions, 100);
+    const timer = window.setTimeout(updateImageDimensions, 100);
     
     window.addEventListener('resize', updateImageDimensions);
     document.addEventListener('fullscreenchange', updateImageDimensions);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        console.log("🔄 Page became visible, recalculating dimensions");
+        updateImageDimensions();
+      }
+    });
     
     return () => {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
+      if (retryTimer) window.clearTimeout(retryTimer);
       window.removeEventListener('resize', updateImageDimensions);
       document.removeEventListener('fullscreenchange', updateImageDimensions);
     };
