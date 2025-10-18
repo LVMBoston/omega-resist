@@ -350,15 +350,9 @@ export const InteractiveSlideOverlay = ({
     hotspots: hotspots.map(h => ({ id: h.id, type: h.type, x: h.x, y: h.y }))
   });
 
-  // Don't render hotspots until we have valid dimensions
-  if (imageDimensions.width === 0 || imageDimensions.height === 0) {
-    console.log("⏳ Waiting for valid image dimensions...");
-    return null;
-  }
-
   return (
     <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
-      {hotspots.map((hotspot) => {
+      {imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
         // Calculate hotspot position relative to rendered image
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
