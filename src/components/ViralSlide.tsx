@@ -75,19 +75,24 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
     );
   }
 
+  console.log("🎨 ViralSlide rendering with hotspots:", config.hotspots.length);
+
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full bg-black">
       <img
         src={config.image_url}
         alt="Viral slide"
         className="w-full h-full object-contain"
+        onLoad={() => console.log("🖼️ ViralSlide image loaded")}
       />
-      <InteractiveSlideOverlay
-        hotspots={config.hotspots}
-        deckSlug={deckSlug}
-        imageUrl={config.image_url}
-        viralToken={viralToken}
-      />
+      {config.hotspots.length > 0 && (
+        <InteractiveSlideOverlay
+          hotspots={config.hotspots}
+          deckSlug={deckSlug}
+          imageUrl={config.image_url}
+          viralToken={viralToken}
+        />
+      )}
     </div>
   );
 };

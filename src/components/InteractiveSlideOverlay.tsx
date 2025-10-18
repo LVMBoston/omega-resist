@@ -63,9 +63,12 @@ export const InteractiveSlideOverlay = ({
   }, []);
 
   useEffect(() => {
+    console.log("🔧 InteractiveSlideOverlay effect running, ref:", !!containerRef.current);
+    
     const updateImageDimensions = () => {
       if (!containerRef.current) {
-        console.log("⚠️ No container ref available");
+        console.log("⚠️ No container ref available, retrying...");
+        setTimeout(updateImageDimensions, 50);
         return;
       }
 
