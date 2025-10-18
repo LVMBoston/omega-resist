@@ -34,6 +34,7 @@ export default function DeckViewer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iOSFullscreen, setIOSFullscreen] = useState(false);
   const [deletingSlide, setDeletingSlide] = useState<string | null>(null);
+  const [generatingToken, setGeneratingToken] = useState(false);
   
   // Detect iOS immediately
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -202,6 +203,54 @@ export default function DeckViewer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const handleGenerateTestToken = async () => {
+    if (!slug) return;
+    
+    setGeneratingToken(true);
+    try {
+      // Get the first EOA for this deck (you may want to make this selectable)
+      const { data: eoaData } = await supabase
+        .from("deck_eoa_assignments")
+        .select("eoa_id")
+        .eq("deck_slug", slug)
+        .limit(1)
+        .single();
+
+      if (!eoaData) {
+        toast.error("No EOA assigned to this deck. Please assign one first.");
+        return;
+      }
+
+      // Generate a test token
+      const testToken = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const { error: tokenError } = await supabase
+        .from("tokens")
+        .insert({
+          token: testToken,
+          eoa_id: eoaData.eoa_id,
+          deck_slug: slug,
+          level: 0,
+          full_url: `${window.location.origin}/deck/${slug}?t=${testToken}`,
+        });
+
+      if (tokenError) {
+        toast.error("Failed to generate test token");
+        console.error(tokenError);
+        return;
+      }
+
+      // Redirect to the deck with the new token
+      window.location.href = `/deck/${slug}?t=${testToken}`;
+      toast.success("Test token generated! You can now test sharing.");
+    } catch (error) {
+      console.error("Error generating test token:", error);
+      toast.error("Failed to generate test token");
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
   const handleDeleteInteractive = async (slideId: string) => {
     if (!confirm("Delete this interactive page? The slide will be converted back to a regular image slide.")) {
       return;
@@ -293,6 +342,23 @@ export default function DeckViewer() {
                 <p className="text-sm text-muted-foreground">{slides.length} slides</p>
               </div>
             </div>
+            {(userRole === "admin" || userRole === "manager") && !viralToken && (
+              <Button 
+                onClick={handleGenerateTestToken}
+                disabled={generatingToken}
+                size="sm"
+                variant="outline"
+              >
+                {generatingToken ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Test Token"
+                )}
+              </Button>
+            )}
           </div>
         </header>
       )}
