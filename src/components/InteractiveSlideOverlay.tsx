@@ -366,23 +366,18 @@ export const InteractiveSlideOverlay = ({
         const buttonWidth = Math.max(width, minTouchSize);
         const buttonHeight = Math.max(height, minTouchSize);
         
-        // Center the larger touch target over the original hotspot position
-        const adjustedLeft = left - (buttonWidth - width) / 2;
-        const adjustedTop = top - (buttonHeight - height) / 2;
-        
         console.log(`🎯 Hotspot ${hotspot.id} position:`, { 
-          left: adjustedLeft, 
-          top: adjustedTop, 
+          left, 
+          top, 
           width: buttonWidth, 
           height: buttonHeight,
-          originalWidth: width,
-          originalHeight: height
+          imageDimensions
         });
         
         const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log(`📱 Hotspot ${hotspot.type} clicked/touched on ${navigator.userAgent}`);
+          console.log(`📱 Hotspot ${hotspot.type} clicked/touched`);
           getHotspotAction(hotspot.type)();
         };
         
@@ -393,14 +388,12 @@ export const InteractiveSlideOverlay = ({
             onTouchStart={handleInteraction}
             className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium touch-manipulation cursor-pointer"
             style={{
-              left: `${adjustedLeft}px`,
-              top: `${adjustedTop}px`,
+              left: `${left}px`,
+              top: `${top}px`,
               width: `${buttonWidth}px`,
               height: `${buttonHeight}px`,
               WebkitTapHighlightColor: 'rgba(250, 204, 21, 0.2)',
               touchAction: 'manipulation',
-              minWidth: '44px',
-              minHeight: '44px',
             }}
           >
             {getHotspotIcon(hotspot.type)}
