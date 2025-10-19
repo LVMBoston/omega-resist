@@ -51,7 +51,6 @@ const navigation = [
     title: "Campaigns",
     items: [
       { title: "Campaign Manager", url: "/campaign-config", icon: Megaphone },
-      { title: "Campaign EoAs", url: "/campaign-eoa-manager", icon: Calendar },
     ],
   },
   {
