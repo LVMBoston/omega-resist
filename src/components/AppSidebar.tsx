@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom"
+import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import {
   LayoutDashboard,
   Presentation,
@@ -17,7 +17,10 @@ import {
   MapPin,
   QrCode,
   FlaskConical,
+  Users,
+  Cog,
 } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +54,8 @@ const navigation = [
     title: "Campaigns",
     items: [
       { title: "Campaign Orchestration", url: "/campaign-config", icon: Megaphone },
+      { title: "Event Manager", url: "/campaign-config", icon: Calendar, infoOnly: true },
+      { title: "Campaign Config", url: "/campaign-config", icon: Cog, infoOnly: true },
     ],
   },
   {
@@ -77,7 +82,17 @@ const navigation = [
 export function AppSidebar() {
   const { state } = useSidebar()
   const location = useLocation()
+  const navigate = useNavigate()
   const isCollapsed = state === "collapsed"
+  
+  const handleInfoOnlyClick = (e: React.MouseEvent, url: string) => {
+    e.preventDefault()
+    toast({
+      title: "Select an active campaign first",
+      description: "Please choose a campaign from Campaign Orchestration",
+    })
+    navigate(url)
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -96,17 +111,24 @@ export function AppSidebar() {
             <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.items.map((item) => {
+                {section.items.map((item: any) => {
                   const isActive = location.pathname === item.url || 
                     (item.url === "/deck" && location.pathname.startsWith("/deck/"))
                   
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild isActive={isActive}>
-                        <NavLink to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </NavLink>
+                        {item.infoOnly ? (
+                          <a href="#" onClick={(e) => handleInfoOnlyClick(e, item.url)}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </a>
+                        ) : (
+                          <NavLink to={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
