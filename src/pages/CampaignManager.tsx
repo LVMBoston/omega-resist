@@ -394,24 +394,18 @@ export default function CampaignManager() {
                         </p>}
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Active Events</p>
-                          <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+                      <div className="space-y-4 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <div>
+                            <p className="text-muted-foreground">Active Events</p>
+                            <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Active Actions</p>
+                            <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">UTM ID</p>
-                          <p className="font-semibold text-lg">{campaign.code}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Active Actions</p>
-                          <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground"># of Events/Actions</p>
-                          <p className="font-semibold text-lg">{stats?.totalEventsActions || 0}</p>
-                        </div>
-                        <div className="col-span-2 flex justify-between gap-4">
+                        <div className="flex justify-between gap-4">
                           <div>
                             <p className="text-muted-foreground">Earliest Active</p>
                             <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
