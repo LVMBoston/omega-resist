@@ -312,9 +312,6 @@ export default function CampaignManager() {
                 Manage campaigns, events, and actions
               </p>
             </div>
-            <Link to="/campaign-config">
-              <Button>Campaign Configuration</Button>
-            </Link>
           </div>
         </div>
       </header>
