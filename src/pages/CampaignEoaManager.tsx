@@ -847,9 +847,19 @@ export default function CampaignEoaManager() {
                       />
                     </div>
                   </div>
-                  <Button onClick={applyBulkUpdate} className="w-full">
-                    Apply to {selectedRows.size} Selected
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={applyBulkUpdate} className="flex-1">
+                      Apply to {selectedRows.size} Selected
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleBulkGenerateL00}
+                      className="flex-1"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Generate Selected ({selectedRows.size})
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -1023,17 +1033,6 @@ export default function CampaignEoaManager() {
                           <QrCode className="h-3 w-3 mr-1" />
                           Generate All
                         </Button>
-                        {selectedRows.size > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleBulkGenerateL00}
-                            className="h-7 text-xs"
-                          >
-                            <QrCode className="h-3 w-3 mr-1" />
-                            Generate Selected ({selectedRows.size})
-                          </Button>
-                        )}
                       </div>
                     </TableHead>
                     <TableHead>Actions</TableHead>
