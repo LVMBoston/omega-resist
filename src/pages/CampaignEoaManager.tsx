@@ -820,7 +820,7 @@ export default function CampaignEoaManager() {
                 <div className="space-y-4 border-t pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="bulk-deck">Assign Deck Slug</Label>
+                      <Label htmlFor="bulk-deck">Assign Deck name to selected rows</Label>
                       <div className="flex gap-2">
                         <Input
                           id="bulk-deck"
