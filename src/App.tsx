@@ -54,7 +54,14 @@ const App = () => (
                     <Route path="/deck/:slug?" element={<DeckViewer />} />
                     <Route path="/deck-builder/:slug?" element={<DeckBuilder />} />
                     <Route path="/deck-manager" element={<DeckManager />} />
-                    <Route path="/campaign-eoa-manager/:campaignId?" element={<CampaignEoaManager />} />
+                    <Route 
+                      path="/campaign-eoa-manager/:campaignId?" 
+                      element={
+                        <ProtectedRoute requiredRole="admin">
+                          <CampaignEoaManager />
+                        </ProtectedRoute>
+                      } 
+                    />
                     <Route path="/qr-debug" element={<QrDebugTool />} />
                     <Route path="/s/:code" element={<ShortUrlRedirect />} />
                     <Route path="/activity-monitor" element={<ActivityMonitor />} />
