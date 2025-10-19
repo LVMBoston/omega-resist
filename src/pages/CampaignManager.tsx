@@ -300,12 +300,6 @@ export default function CampaignManager() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-            </Link>
             <div className="flex-1">
               <h1 className="text-3xl font-bold">Campaign Orchestration</h1>
               <p className="text-muted-foreground">
