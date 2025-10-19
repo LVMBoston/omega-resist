@@ -18,26 +18,23 @@ export default function CampaignDetail() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/campaign-config">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Campaigns
-              </Button>
-            </Link>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold">Campaign Details</h1>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold">Campaign Details</h1>
         </div>
       </header>
 
       <main className="container mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList>
-            <TabsTrigger value="events">Event Manager</TabsTrigger>
-            <TabsTrigger value="config">Campaign Config</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            <Link to="/campaign-config">
+              <Button variant="outline" size="default">
+                Campaign Orchestration
+              </Button>
+            </Link>
+            <TabsList>
+              <TabsTrigger value="events">Event Manager</TabsTrigger>
+              <TabsTrigger value="config">Campaign Config</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="events" className="mt-6">
             <CampaignEoaManager />
