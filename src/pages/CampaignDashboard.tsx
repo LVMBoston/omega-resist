@@ -63,7 +63,11 @@ interface UrlEvent {
     };
   };
 }
-export default function CampaignDashboard() {
+interface CampaignDashboardProps {
+  campaignId?: string;
+}
+
+export default function CampaignDashboard({ campaignId: propCampaignId }: CampaignDashboardProps = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -81,9 +85,9 @@ export default function CampaignDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get filter values from URL params
+  // Get filter values from URL params or use prop
+  const selectedCampaignId = propCampaignId || searchParams.get("campaignId") || "";
   const selectedCampaign = searchParams.get("campaign") || "";
-  const selectedCampaignId = searchParams.get("campaignId") || "";
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
@@ -140,9 +144,22 @@ export default function CampaignDashboard() {
     }
   });
 
-  // Set initial campaign from URL or default to first campaign
+  // Set initial campaign from URL or default to first campaign, or use prop
   useEffect(() => {
-    if (!selectedCampaign && campaigns && campaigns.length > 0) {
+    if (propCampaignId && campaigns && campaigns.length > 0) {
+      // If campaignId prop is provided, find and set the campaign code
+      const campaign = campaigns.find(c => c.id === propCampaignId);
+      if (campaign) {
+        const params = new URLSearchParams(searchParams);
+        params.set("campaign", campaign.code);
+        params.set("campaignId", campaign.id);
+        if (!params.has("eventType")) params.set("eventType", "all");
+        if (!params.has("dataSource")) params.set("dataSource", "real");
+        setSearchParams(params, {
+          replace: true
+        });
+      }
+    } else if (!selectedCampaign && campaigns && campaigns.length > 0 && !propCampaignId) {
       const params = new URLSearchParams(searchParams);
       params.set("campaign", campaigns[0].code);
       params.set("campaignId", campaigns[0].id);
@@ -152,7 +169,7 @@ export default function CampaignDashboard() {
         replace: true
       });
     }
-  }, [campaigns, selectedCampaign, searchParams, setSearchParams]);
+  }, [campaigns, selectedCampaign, searchParams, setSearchParams, propCampaignId]);
 
   // Real-time subscription for EventsV2
   useEffect(() => {
@@ -707,28 +724,6 @@ export default function CampaignDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Select Current Campaign</label>
-                  <Select value={selectedCampaign} onValueChange={code => {
-                  const campaign = campaigns?.find(c => c.code === code);
-                  if (campaign) {
-                    const params = new URLSearchParams(searchParams);
-                    params.set("campaign", code);
-                    params.set("campaignId", campaign.id);
-                    setSearchParams(params);
-                  }
-                }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select campaign" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campaigns?.map(campaign => <SelectItem key={campaign.id} value={campaign.code}>
-                          {campaign.title}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
                 <div>
                   <label className="text-sm font-medium mb-2 block">Event Type</label>
                   <Select value={eventTypeFilter} onValueChange={value => {

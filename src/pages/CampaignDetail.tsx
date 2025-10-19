@@ -44,7 +44,7 @@ export default function CampaignDetail() {
           </TabsContent>
 
           <TabsContent value="config" className="mt-6">
-            <CampaignDashboard />
+            <CampaignDashboard campaignId={campaignId} />
           </TabsContent>
         </Tabs>
       </main>
