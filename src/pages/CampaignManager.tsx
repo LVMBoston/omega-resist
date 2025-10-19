@@ -448,15 +448,10 @@ export default function CampaignManager() {
       </header>
 
       <main className="container mx-auto px-6 py-4">
-        <Tabs defaultValue="campaigns" className="w-full">
-          <TabsList>
-            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="campaigns" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Campaigns</h2>
-              <Dialog open={campaignDialogOpen} onOpenChange={handleDialogClose}>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Campaigns</h2>
+            <Dialog open={campaignDialogOpen} onOpenChange={handleDialogClose}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
@@ -518,9 +513,8 @@ export default function CampaignManager() {
                 </div>
               </SortableContext>
             </DndContext>
-          </TabsContent>
-        </Tabs>
-      </main>
+          </div>
+        </main>
 
       <AlertDialog open={campaignToDelete !== null && deleteStep === 1}>
         <AlertDialogContent>
