@@ -310,7 +310,7 @@ export default function CampaignManager() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-4">
         <Tabs defaultValue="campaigns" className="w-full">
           <TabsList>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
