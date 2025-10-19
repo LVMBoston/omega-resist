@@ -329,6 +329,17 @@ export default function CampaignManager() {
     });
   };
   
+  const formatDateWithTime = (date: string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  };
+  
   interface SortableCardProps {
     campaign: Campaign;
     stats: CampaignStats | undefined;
@@ -409,7 +420,7 @@ export default function CampaignManager() {
               </div>
               <div>
                 <p className="text-muted-foreground">Latest Active</p>
-                <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
+                <p className="font-medium">{formatDateWithTime(stats?.latestActive || null)}</p>
               </div>
             </div>
           </div>
