@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -76,8 +79,8 @@ export default function CampaignManager() {
     const {
       data,
       error
-    } = await supabase.from("campaigns").select("*").order("created_at", {
-      ascending: false
+    } = await supabase.from("campaigns").select("*").order("display_order", {
+      ascending: true
     });
     if (error) {
       toast({
@@ -283,6 +286,40 @@ export default function CampaignManager() {
     setCampaignToDelete(null);
     setDeleteStep(1);
   };
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      return;
+    }
+    
+    const oldIndex = campaigns.findIndex((c) => c.id === active.id);
+    const newIndex = campaigns.findIndex((c) => c.id === over.id);
+    
+    const reorderedCampaigns = arrayMove(campaigns, oldIndex, newIndex);
+    setCampaigns(reorderedCampaigns);
+    
+    // Update display_order in database
+    const updates = reorderedCampaigns.map((campaign, index) => ({
+      id: campaign.id,
+      display_order: index
+    }));
+    
+    for (const update of updates) {
+      await supabase
+        .from('campaigns')
+        .update({ display_order: update.display_order })
+        .eq('id', update.id);
+    }
+  };
   const formatDate = (date: string | null) => {
     if (!date) return "N/A";
     return new Date(date).toLocaleDateString("en-US", {
@@ -290,6 +327,95 @@ export default function CampaignManager() {
       day: "numeric",
       year: "numeric"
     });
+  };
+  
+  interface SortableCardProps {
+    campaign: Campaign;
+    stats: CampaignStats | undefined;
+  }
+  
+  const SortableCard = ({ campaign, stats }: SortableCardProps) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: campaign.id });
+    
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+    
+    return (
+      <Card 
+        ref={setNodeRef} 
+        style={style}
+        className="cursor-pointer hover:shadow-lg transition-shadow" 
+        onClick={() => navigate(`/campaign/${campaign.id}`)}
+      >
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <div 
+              className="cursor-grab active:cursor-grabbing mr-2 touch-none" 
+              {...attributes} 
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+              <CardTitle>{campaign.title}</CardTitle>
+              <CardDescription>utm_campaign: {campaign.code}</CardDescription>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={e => {
+                e.stopPropagation();
+                handleEditCampaign(campaign);
+              }}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={e => {
+                e.stopPropagation();
+                handleDeleteClick(campaign);
+              }}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {campaign.description && <p className="text-sm text-muted-foreground mt-2">
+            {campaign.description}
+          </p>}
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 text-sm">
+            <div className="flex justify-between gap-4">
+              <div>
+                <p className="text-muted-foreground">Active Events</p>
+                <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Active Actions</p>
+                <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
+              </div>
+            </div>
+            <div className="flex justify-between gap-4">
+              <div>
+                <p className="text-muted-foreground">Earliest Active</p>
+                <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Latest Active</p>
+                <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
@@ -364,62 +490,23 @@ export default function CampaignManager() {
               </Dialog>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {campaigns.map(campaign => {
-              const stats = campaignStats.get(campaign.id);
-              return <Card key={campaign.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/campaign/${campaign.id}`)}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <CardTitle>{campaign.title}</CardTitle>
-                          <CardDescription>utm_campaign: {campaign.code}</CardDescription>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={e => {
-                        e.stopPropagation();
-                        handleEditCampaign(campaign);
-                      }}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={e => {
-                        e.stopPropagation();
-                        handleDeleteClick(campaign);
-                      }}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      {campaign.description && <p className="text-sm text-muted-foreground mt-2">
-                          {campaign.description}
-                        </p>}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4 text-sm">
-                        <div className="flex justify-between gap-4">
-                          <div>
-                            <p className="text-muted-foreground">Active Events</p>
-                            <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Active Actions</p>
-                            <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
-                          </div>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <div>
-                            <p className="text-muted-foreground">Earliest Active</p>
-                            <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Latest Active</p>
-                            <p className="font-medium">{formatDate(stats?.latestActive || null)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>;
-            })}
-            </div>
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext 
+                items={campaigns.map(c => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {campaigns.map(campaign => {
+                    const stats = campaignStats.get(campaign.id);
+                    return <SortableCard key={campaign.id} campaign={campaign} stats={stats} />;
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
           </TabsContent>
         </Tabs>
       </main>

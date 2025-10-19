@@ -19,6 +19,7 @@ export type Database = {
           code: string
           created_at: string
           description: string | null
+          display_order: number
           id: string
           title: string
           updated_at: string
@@ -27,6 +28,7 @@ export type Database = {
           code: string
           created_at?: string
           description?: string | null
+          display_order?: number
           id?: string
           title: string
           updated_at?: string
@@ -35,6 +37,7 @@ export type Database = {
           code?: string
           created_at?: string
           description?: string | null
+          display_order?: number
           id?: string
           title?: string
           updated_at?: string
