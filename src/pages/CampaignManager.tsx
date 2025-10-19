@@ -376,7 +376,7 @@ export default function CampaignManager() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {campaigns.map(campaign => {
               const stats = campaignStats.get(campaign.id);
-              return <Card key={campaign.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/campaigns/${campaign.id}`)}>
+              return <Card key={campaign.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/campaign-eoa-manager/${campaign.id}`)}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
