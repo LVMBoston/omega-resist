@@ -19,6 +19,7 @@ import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
 import CampaignAnalytics from "./pages/CampaignAnalytics";
 import CampaignDashboard from "./pages/CampaignDashboard";
+import CampaignDetail from "./pages/CampaignDetail";
 import SharedDashboard from "./pages/SharedDashboard";
 import QrDebugTool from "./pages/QrDebugTool";
 import ShortUrlRedirect from "./pages/ShortUrlRedirect";
@@ -55,10 +56,10 @@ const App = () => (
                     <Route path="/deck-builder/:slug?" element={<DeckBuilder />} />
                     <Route path="/deck-manager" element={<DeckManager />} />
                     <Route 
-                      path="/campaign-eoa-manager/:campaignId?" 
+                      path="/campaign/:campaignId" 
                       element={
                         <ProtectedRoute requiredRole="admin">
-                          <CampaignEoaManager />
+                          <CampaignDetail />
                         </ProtectedRoute>
                       } 
                     />
