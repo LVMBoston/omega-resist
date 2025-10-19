@@ -50,7 +50,7 @@ const navigation = [
   {
     title: "Campaigns",
     items: [
-      { title: "Campaign Manager", url: "/campaign-config", icon: Megaphone },
+      { title: "Campaign Orchestration", url: "/campaign-config", icon: Megaphone },
     ],
   },
   {
