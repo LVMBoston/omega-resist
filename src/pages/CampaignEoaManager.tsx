@@ -838,7 +838,7 @@ export default function CampaignEoaManager() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bulk-utm">Set UTM ID</Label>
+                      <Label htmlFor="bulk-utm">Assign utm_id to selected rows</Label>
                       <Input
                         id="bulk-utm"
                         placeholder="e.g., event-123"
