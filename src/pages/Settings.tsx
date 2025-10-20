@@ -366,7 +366,7 @@ export default function Settings() {
                   if (setting.key.includes("color")) {
                     return (
                       <div key={setting.id} className="space-y-2">
-                        <Label htmlFor={setting.id}>{setting.description}</Label>
+                        <Label htmlFor={setting.id}>{setting.description} - some colors may not scan reliably</Label>
                         <div className="flex gap-2">
                           <Input
                             type="color"
