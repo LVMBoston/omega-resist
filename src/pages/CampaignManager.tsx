@@ -37,18 +37,12 @@ interface CampaignStats {
   latestActive: string | null;
   totalEventsActions: number;
 }
-interface GlobalStats {
-  totalCampaigns: number;
-  totalEventsActions: number;
-  latestEventTimestamp: string | null;
-}
 const codeSchema = z.string().min(1, "Code is required").regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
 export default function CampaignManager() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [eoas, setEoas] = useState<EventAction[]>([]);
   const [campaignStats, setCampaignStats] = useState<Map<string, CampaignStats>>(new Map());
-  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
   const [loading, setLoading] = useState(true);
   const {
     userRole
@@ -74,7 +68,6 @@ export default function CampaignManager() {
   useEffect(() => {
     if (campaigns.length > 0 || eoas.length > 0) {
       calculateCampaignStats();
-      fetchGlobalStats();
     }
   }, [campaigns, eoas]);
   const fetchData = async () => {
@@ -116,35 +109,11 @@ export default function CampaignManager() {
       setEoas(data || []);
     }
   };
-  const fetchGlobalStats = async () => {
-    try {
-      // Get latest event across all campaigns
-      const { data: latestEvent, error } = await supabase
-        .from("url_events")
-        .select("occurred_at")
-        .eq("is_simulated", false)
-        .order("occurred_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error fetching latest event:", error);
-      }
-
-      setGlobalStats({
-        totalCampaigns: campaigns.length,
-        totalEventsActions: eoas.length,
-        latestEventTimestamp: latestEvent?.occurred_at || null
-      });
-    } catch (error) {
-      console.error("Error in fetchGlobalStats:", error);
-    }
-  };
-
-  const calculateCampaignStats = () => {
+  const calculateCampaignStats = async () => {
     const stats = new Map<string, CampaignStats>();
     const now = new Date();
-    campaigns.forEach(campaign => {
+    
+    for (const campaign of campaigns) {
       const campaignEoas = eoas.filter(e => e.campaign_id === campaign.id);
       const activeEoas = campaignEoas.filter(eoa => {
         if (!eoa.end_date) return true;
@@ -156,14 +125,37 @@ export default function CampaignManager() {
       const activeEvents = activeEoas.filter(e => e.type === "event").length;
       const activeActions = activeEoas.filter(e => e.type === "action").length;
       const activeDates = activeEoas.map(e => e.start_date).filter((d): d is string => d !== null).sort();
+      
+      // Get latest url_event for this campaign
+      // First, get all tokens for this campaign
+      const { data: campaignTokens } = await supabase
+        .from("tokens")
+        .select("token")
+        .eq("utm_campaign", campaign.code);
+      
+      const tokenList = campaignTokens?.map(t => t.token) || [];
+      
+      let latestEvent = null;
+      if (tokenList.length > 0) {
+        const { data } = await supabase
+          .from("url_events")
+          .select("occurred_at")
+          .eq("is_simulated", false)
+          .in("token", tokenList)
+          .order("occurred_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        latestEvent = data;
+      }
+      
       stats.set(campaign.id, {
         activeEvents,
         activeActions,
         earliestActive: activeDates[0] || null,
-        latestActive: activeDates[activeDates.length - 1] || null,
+        latestActive: latestEvent?.occurred_at || null,
         totalEventsActions: campaignEoas.length
       });
-    });
+    }
     setCampaignStats(stats);
   };
   const createCampaign = async () => {
@@ -481,32 +473,6 @@ export default function CampaignManager() {
 
       <main className="container mx-auto px-6 py-4">
         <div className="space-y-4">
-          {/* Global Stats Card */}
-          {globalStats && (
-            <Card className="bg-primary/5">
-              <CardHeader>
-                <CardTitle>Global Overview</CardTitle>
-                <CardDescription>Across all campaigns</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Total Campaigns</p>
-                    <p className="font-semibold text-2xl">{globalStats.totalCampaigns}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Total Events/Actions</p>
-                    <p className="font-semibold text-2xl">{globalStats.totalEventsActions}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Latest Active Scan</p>
-                    <p className="font-medium">{formatDateWithTime(globalStats.latestEventTimestamp)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Campaigns</h2>
             <Dialog open={campaignDialogOpen} onOpenChange={handleDialogClose}>
