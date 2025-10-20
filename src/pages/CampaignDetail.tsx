@@ -34,13 +34,6 @@ export default function CampaignDetail() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-6 py-8">
-        <Link to="/campaign-config">
-          <Button variant="ghost" size="sm" className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Campaigns
-          </Button>
-        </Link>
-
         <div className="mb-6">
           <h1 className="text-4xl font-bold mb-2">
             Manage events/actions for: {campaign?.title || "Campaign"}
