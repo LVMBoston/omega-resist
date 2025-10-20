@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function CampaignDetail() {
   const { campaignId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "events";
+  const activeTab = searchParams.get("tab") || "manage-events";
 
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
@@ -48,13 +48,20 @@ export default function CampaignDetail() {
               </Button>
             </Link>
             <TabsList>
-              <TabsTrigger value="events">Event Manager</TabsTrigger>
+              <TabsTrigger value="manage-events">Manage events</TabsTrigger>
+              <TabsTrigger value="manage-actions">Manage actions</TabsTrigger>
               <TabsTrigger value="config">Campaign Config</TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="events" className="mt-6">
+          <TabsContent value="manage-events" className="mt-6">
             <CampaignEoaManager />
+          </TabsContent>
+
+          <TabsContent value="manage-actions" className="mt-6">
+            <div className="text-center py-8 text-muted-foreground">
+              Manage actions content coming soon
+            </div>
           </TabsContent>
 
           <TabsContent value="config" className="mt-6">
