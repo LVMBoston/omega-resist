@@ -68,7 +68,7 @@ export default function Settings() {
             <TabsTrigger value="utm">UTM Vocabularies</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="branding">QR Logo Branding</TabsTrigger>
-            <TabsTrigger value="qr_defaults">QR Defaults</TabsTrigger>
+            <TabsTrigger value="qr_defaults">QR Defaults (advanced)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="email" className="space-y-4">
