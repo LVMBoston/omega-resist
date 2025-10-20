@@ -46,13 +46,15 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
       }
     });
     
-    // Get default logo
+    // Get default logo - handle both number (1,2,3) and string ("logo_1", "logo_2", "logo_3") formats
     const defaultLogoSetting = getSetting?.("branding", "default_logo");
     const selectedLogo = defaultLogoSetting?.value?.selected;
     let logoUrl = null;
     
     if (selectedLogo) {
-      const logoSetting = getSetting?.("branding", selectedLogo);
+      // Convert number to string format if needed
+      const logoKey = typeof selectedLogo === 'number' ? `logo_${selectedLogo}` : selectedLogo;
+      const logoSetting = getSetting?.("branding", logoKey);
       logoUrl = logoSetting?.value?.url;
     }
     

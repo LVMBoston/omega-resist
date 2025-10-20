@@ -236,7 +236,8 @@ export default function Settings() {
 
                 const logoValue = getValue(logoSetting);
                 const defaultValue = getValue(defaultSetting);
-                const isDefault = defaultValue?.selected === `logo_${num}`;
+                // Handle both number and string formats
+                const isDefault = defaultValue?.selected === num || defaultValue?.selected === `logo_${num}`;
 
                 return (
                   <LogoUpload
@@ -245,8 +246,10 @@ export default function Settings() {
                     currentUrl={logoValue?.url || null}
                     isDefault={isDefault}
                     onUpload={(url) => {
-                      setValue(logoSetting.id, { ...logoValue, url });
-                      handleSave(logoSetting.id);
+                      const newValue = { ...logoValue, url };
+                      setValue(logoSetting.id, newValue);
+                      // Force immediate save
+                      updateSetting({ id: logoSetting.id, value: newValue });
                     }}
                     onDelete={() => {
                       setValue(logoSetting.id, { ...logoValue, url: null });
