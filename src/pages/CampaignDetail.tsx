@@ -4,11 +4,28 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import CampaignEoaManager from "./CampaignEoaManager";
 import CampaignDashboard from "./CampaignDashboard";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CampaignDetail() {
   const { campaignId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "events";
+
+  const { data: campaign } = useQuery({
+    queryKey: ["campaign", campaignId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("title")
+        .eq("id", campaignId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!campaignId,
+  });
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
@@ -25,8 +42,9 @@ export default function CampaignDetail() {
         </Link>
 
         <div className="mb-6">
-          <h1 className="text-4xl font-bold mb-2">Campaign Details</h1>
-          <p className="text-xl text-muted-foreground">Manage Events or Actions for: Campaign</p>
+          <h1 className="text-4xl font-bold mb-2">
+            Manage events/actions for: {campaign?.title || "Campaign"}
+          </h1>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
