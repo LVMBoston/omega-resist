@@ -236,7 +236,7 @@ export default function Settings() {
 
                 const logoValue = getValue(logoSetting);
                 const defaultValue = getValue(defaultSetting);
-                const isDefault = defaultValue?.selected === num;
+                const isDefault = defaultValue?.selected === `logo_${num}`;
 
                 return (
                   <LogoUpload
@@ -260,7 +260,7 @@ export default function Settings() {
                     }}
                     onSelectDefault={() => {
                       if (defaultSetting) {
-                        setValue(defaultSetting.id, { selected: num });
+                        setValue(defaultSetting.id, { selected: `logo_${num}` });
                         handleSave(defaultSetting.id);
                       }
                     }}
