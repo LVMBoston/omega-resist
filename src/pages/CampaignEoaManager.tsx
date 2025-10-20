@@ -846,19 +846,19 @@ export default function CampaignEoaManager() {
                       Max 8 chars, lowercase only, use '-' or '_'
                     </p>
                   </div>
-                  <Button onClick={applyBulkUpdate} className="flex-1">
-                    Apply to {selectedRows.size} Selected
+                  <Button
+                    variant="outline"
+                    onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
+                    className="flex-1"
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    {selectedRows.size > 0 
+                      ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
+                      : "Generate short URLs and Mint L00 tokens for ALL rows"}
                   </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
-                  className="w-full"
-                >
-                  <QrCode className="h-4 w-4 mr-2" />
-                  {selectedRows.size > 0 
-                    ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
-                    : "Generate short URLs and Mint L00 tokens for ALL rows"}
+                <Button onClick={applyBulkUpdate} className="w-full">
+                  Apply to {selectedRows.size} Selected
                 </Button>
               </div>
             )}
