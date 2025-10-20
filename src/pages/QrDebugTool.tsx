@@ -43,17 +43,32 @@ export default function QrDebugTool() {
         if (ctx) {
           const logoImg = new Image();
           logoImg.onload = () => {
-            const logoSize = size * 0.2; // 20% of QR size
-            const x = (size - logoSize) / 2;
-            const y = (size - logoSize) / 2;
+            const maxLogoSize = size * 0.2; // 20% of QR size
+            
+            // Calculate dimensions while maintaining aspect ratio
+            let logoWidth = logoImg.width;
+            let logoHeight = logoImg.height;
+            const aspectRatio = logoWidth / logoHeight;
+            
+            if (logoWidth > logoHeight) {
+              logoWidth = maxLogoSize;
+              logoHeight = maxLogoSize / aspectRatio;
+            } else {
+              logoHeight = maxLogoSize;
+              logoWidth = maxLogoSize * aspectRatio;
+            }
+            
+            const x = (size - logoWidth) / 2;
+            const y = (size - logoHeight) / 2;
             
             // Draw white background circle for logo
+            const maxDimension = Math.max(logoWidth, logoHeight);
             ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
-            ctx.arc(size / 2, size / 2, logoSize / 2 + 5, 0, 2 * Math.PI);
+            ctx.arc(size / 2, size / 2, maxDimension / 2 + 5, 0, 2 * Math.PI);
             ctx.fill();
             
-            ctx.drawImage(logoImg, x, y, logoSize, logoSize);
+            ctx.drawImage(logoImg, x, y, logoWidth, logoHeight);
             setQrDataUrl(canvas.toDataURL('image/png'));
           };
           logoImg.src = logo;
