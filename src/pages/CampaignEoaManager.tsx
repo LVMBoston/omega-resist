@@ -781,18 +781,6 @@ export default function CampaignEoaManager() {
   return <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="w-full px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/campaigns">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Campaigns
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold">{campaign.title}</h1>
-              <p className="text-muted-foreground">Campaign Code: {campaign.code}</p>
-            </div>
-          </div>
         </div>
       </header>
 
