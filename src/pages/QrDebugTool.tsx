@@ -45,15 +45,20 @@ export default function QrDebugTool() {
           logoImg.onload = () => {
             const maxLogoSize = size * 0.2; // 20% of QR size
             
-            // Calculate dimensions while maintaining aspect ratio
-            let logoWidth = logoImg.width;
-            let logoHeight = logoImg.height;
-            const aspectRatio = logoWidth / logoHeight;
+            // Use natural dimensions for accurate aspect ratio
+            const originalWidth = logoImg.naturalWidth || logoImg.width;
+            const originalHeight = logoImg.naturalHeight || logoImg.height;
+            const aspectRatio = originalWidth / originalHeight;
             
-            if (logoWidth > logoHeight) {
+            // Calculate scaled dimensions while maintaining aspect ratio
+            let logoWidth, logoHeight;
+            
+            if (aspectRatio > 1) {
+              // Wider than tall
               logoWidth = maxLogoSize;
               logoHeight = maxLogoSize / aspectRatio;
             } else {
+              // Taller than wide or square
               logoHeight = maxLogoSize;
               logoWidth = maxLogoSize * aspectRatio;
             }
@@ -61,13 +66,19 @@ export default function QrDebugTool() {
             const x = (size - logoWidth) / 2;
             const y = (size - logoHeight) / 2;
             
-            // Draw white background circle for logo
-            const maxDimension = Math.max(logoWidth, logoHeight);
+            // Draw white background (slightly larger than logo)
+            const padding = 10;
+            const bgWidth = logoWidth + padding * 2;
+            const bgHeight = logoHeight + padding * 2;
             ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, maxDimension / 2 + 5, 0, 2 * Math.PI);
-            ctx.fill();
+            ctx.fillRect(
+              (size - bgWidth) / 2,
+              (size - bgHeight) / 2,
+              bgWidth,
+              bgHeight
+            );
             
+            // Draw logo maintaining aspect ratio
             ctx.drawImage(logoImg, x, y, logoWidth, logoHeight);
             setQrDataUrl(canvas.toDataURL('image/png'));
           };
