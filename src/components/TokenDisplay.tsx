@@ -30,7 +30,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     const borderWidth = 20;
     const fontSize = 48;
     const lineHeight = 60;
-    const maxTextWidth = qrSize - 40; // Leave some margin
+    const maxTextWidth = qrSize * 0.8; // 80% of QR width for better wrapping
     
     // Create QR code canvas
     const qrCanvas = document.createElement('canvas');
