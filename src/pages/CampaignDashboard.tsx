@@ -73,12 +73,6 @@ export default function CampaignDashboard({
   const [showSecondWarning, setShowSecondWarning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
-  
-  // Bulk operations state
-  const [selectedEoaIds, setSelectedEoaIds] = useState<Set<string>>(new Set());
-  const [bulkUtmId, setBulkUtmId] = useState("");
-  const [bulkDeckSlug, setBulkDeckSlug] = useState("");
-  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const {
     toast
   } = useToast();
@@ -361,96 +355,6 @@ export default function CampaignDashboard({
     }
   };
 
-  // Bulk operations handlers
-  const toggleEoaSelection = (eoaId: string) => {
-    const newSelection = new Set(selectedEoaIds);
-    if (newSelection.has(eoaId)) {
-      newSelection.delete(eoaId);
-    } else {
-      newSelection.add(eoaId);
-    }
-    setSelectedEoaIds(newSelection);
-  };
-  
-  const toggleAllEoas = () => {
-    const uniqueEoas = uniqueEoaIds;
-    if (selectedEoaIds.size === uniqueEoas.length) {
-      setSelectedEoaIds(new Set());
-    } else {
-      setSelectedEoaIds(new Set(uniqueEoas));
-    }
-  };
-  
-  const clearSelection = () => {
-    setSelectedEoaIds(new Set());
-    setBulkUtmId("");
-    setBulkDeckSlug("");
-  };
-  
-  const handleBulkUpdate = async () => {
-    if (selectedEoaIds.size === 0) {
-      toast({
-        title: "No rows selected",
-        description: "Please select at least one row to update.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!bulkUtmId && !bulkDeckSlug) {
-      toast({
-        title: "No changes specified",
-        description: "Please enter a utm_id or select a deck to update.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsBulkUpdating(true);
-    try {
-      const updates: any = {};
-      if (bulkUtmId) updates.utm_id = bulkUtmId;
-      if (bulkDeckSlug) updates.assigned_deck_slug = bulkDeckSlug;
-      
-      const { error } = await supabase
-        .from('events_actions')
-        .update(updates)
-        .in('id', Array.from(selectedEoaIds));
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Bulk update successful",
-        description: `Updated ${selectedEoaIds.size} event(s).`
-      });
-      
-      clearSelection();
-      await handleRefreshEventsV2();
-    } catch (error: any) {
-      console.error('Bulk update error:', error);
-      toast({
-        title: "Bulk update failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsBulkUpdating(false);
-    }
-  };
-
-  // Fetch deck slugs for bulk operations
-  const { data: deckSlugs = [] } = useQuery({
-    queryKey: ["deckSlugs"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("decks")
-        .select("slug")
-        .order("slug");
-      if (error) throw error;
-      return data.map(d => d.slug);
-    }
-  });
-
   // Fetch total event counts (not limited to last 50)
   const {
     data: eventCounts
@@ -606,18 +510,6 @@ export default function CampaignDashboard({
     earliestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[eventsV2Data.length - 1].occurred_at) : 'N/A',
     latestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[0].occurred_at) : 'N/A'
   } : null;
-
-  // Get unique EoA IDs from events for bulk operations
-  const uniqueEoaIds = (() => {
-    if (!eventsV2Data) return [];
-    const ids = new Set<string>();
-    eventsV2Data.forEach((event: any) => {
-      if (event.tokens?.eoa_id) {
-        ids.add(event.tokens.eoa_id);
-      }
-    });
-    return Array.from(ids);
-  })();
 
   // Sorting logic for EventsV2
   const handleSort = (column: string) => {
@@ -1001,67 +893,12 @@ export default function CampaignDashboard({
                       <span># Shares: <strong>{eventsV2Metrics?.sharesCount}</strong></span>
                       <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong></span>
                     </div>
-                    
-                    {/* Bulk Operations Card */}
-                    {selectedEoaIds.size > 0 && (
-                      <Card className="mb-4 bg-primary/5 border-primary/20 animate-fade-in">
-                        <CardContent className="pt-4">
-                          <div className="flex items-center justify-between gap-4 flex-wrap">
-                            <div className="flex items-center gap-4">
-                              <span className="font-semibold">{selectedEoaIds.size} Event(s) Selected</span>
-                              <Button variant="ghost" size="sm" onClick={clearSelection}>
-                                Clear Selection
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <input
-                                type="text"
-                                placeholder="New utm_id"
-                                value={bulkUtmId}
-                                onChange={(e) => setBulkUtmId(e.target.value)}
-                                className="px-3 py-1.5 text-sm border rounded-md"
-                              />
-                              <select
-                                value={bulkDeckSlug}
-                                onChange={(e) => setBulkDeckSlug(e.target.value)}
-                                className="px-3 py-1.5 text-sm border rounded-md"
-                              >
-                                <option value="">Select Deck (Optional)</option>
-                                {deckSlugs.map((slug) => (
-                                  <option key={slug} value={slug}>{slug}</option>
-                                ))}
-                              </select>
-                              <Button 
-                                onClick={handleBulkUpdate} 
-                                disabled={isBulkUpdating || (!bulkUtmId && !bulkDeckSlug)}
-                                size="sm"
-                              >
-                                {isBulkUpdating ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Updating...
-                                  </>
-                                ) : (
-                                  "Apply Changes"
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
 
                     {/* Table */}
                     <ScrollArea className="h-[calc(100vh-300px)] min-h-[600px]">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-[50px]">
-                              <Checkbox
-                                checked={selectedEoaIds.size === uniqueEoaIds.length && uniqueEoaIds.length > 0}
-                                onCheckedChange={toggleAllEoas}
-                              />
-                            </TableHead>
                             <TableHead className="w-[80px]">Row #</TableHead>
                             <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('timestamp')}>
                               <div className="flex items-center gap-1">
@@ -1115,18 +952,8 @@ export default function CampaignDashboard({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedEventsV2.map((event: any, index: number) => {
-                            const eoaId = event.tokens?.eoa_id;
-                            return (
-                              <TableRow key={event.id} className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={eoaId && selectedEoaIds.has(eoaId)}
-                                    onCheckedChange={() => eoaId && toggleEoaSelection(eoaId)}
-                                    disabled={!eoaId}
-                                  />
-                                </TableCell>
-                                <TableCell>{index + 1}</TableCell>
+                          {sortedEventsV2.map((event: any, index: number) => <TableRow key={event.id} className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}>
+              <TableCell>{index + 1}</TableCell>
               <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
               <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
               <TableCell>
@@ -1158,9 +985,7 @@ export default function CampaignDashboard({
                                     </Button>
                                   </div> : <span className="text-muted-foreground text-xs">No short URL</span>}
                               </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                            </TableRow>)}
                         </TableBody>
                       </Table>
                     </ScrollArea>
