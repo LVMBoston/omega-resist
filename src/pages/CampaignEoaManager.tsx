@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
@@ -791,10 +792,10 @@ export default function CampaignEoaManager() {
       </header>
 
       <main className="w-full px-6 py-8">
-        <Card className="mb-4 border-primary">
-          <CardContent className="pt-6">
+        <Card className={cn("border-primary", selectedRows.size === 0 ? "mb-2" : "mb-4")}>
+          <CardContent className="pt-4">
             <div className="flex items-start gap-4">
-              <div className="flex flex-col gap-2 items-start">
+              <div className="flex flex-col gap-1 items-start">
                 <Button 
                   variant="outline" 
                   onClick={() => setShowBulkActions(!showBulkActions)}
