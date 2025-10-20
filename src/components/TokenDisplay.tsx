@@ -29,8 +29,8 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     const padding = 100;
     const borderWidth = 20;
     const fontSize = 48;
-    const textHeight = 120;
-    const totalSize = qrSize + (padding * 2) + textHeight;
+    const lineHeight = 60;
+    const maxTextWidth = qrSize - 40; // Leave some margin
     
     // Create QR code canvas
     const qrCanvas = document.createElement('canvas');
@@ -43,6 +43,35 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
         light: '#FFFFFF'
       }
     });
+    
+    // Create temporary canvas to measure text
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d')!;
+    tempCtx.font = `bold ${fontSize}px Arial, sans-serif`;
+    
+    // Word wrap function
+    const wrapText = (text: string, maxWidth: number): string[] => {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = words[0];
+
+      for (let i = 1; i < words.length; i++) {
+        const testLine = currentLine + ' ' + words[i];
+        const metrics = tempCtx.measureText(testLine);
+        if (metrics.width > maxWidth) {
+          lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      lines.push(currentLine);
+      return lines;
+    };
+    
+    const textLines = wrapText(eoaTitle, maxTextWidth);
+    const textHeight = textLines.length * lineHeight + 40; // 40px extra padding
+    const totalSize = qrSize + (padding * 2) + textHeight;
     
     // Create final canvas with border and text
     const finalCanvas = document.createElement('canvas');
@@ -62,13 +91,17 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     // Draw QR code
     ctx.drawImage(qrCanvas, padding, padding, qrSize, qrSize);
     
-    // Draw text at bottom (single line, no wrapping)
+    // Draw wrapped text at bottom
     ctx.fillStyle = '#000000';
     ctx.font = `bold ${fontSize}px Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const textY = padding + qrSize + (textHeight / 2);
-    ctx.fillText(eoaTitle, totalSize / 2, textY);
+    
+    const textStartY = padding + qrSize + 20; // Start 20px below QR code
+    textLines.forEach((line, index) => {
+      const y = textStartY + (index * lineHeight) + (lineHeight / 2);
+      ctx.fillText(line, totalSize / 2, y);
+    });
     
     return finalCanvas;
   };
