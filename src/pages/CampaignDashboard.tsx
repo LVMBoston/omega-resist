@@ -701,9 +701,7 @@ export default function CampaignDashboard({
               <Button>Back to Campaign Orchestration</Button>
             </Link>
           </div>
-          <p className="text-muted-foreground mt-1">
-            Comprehensive view of events, analytics, and geographic data
-          </p>
+          
         </div>
 
         {/* Tabbed Content */}
