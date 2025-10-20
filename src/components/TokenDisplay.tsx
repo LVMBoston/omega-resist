@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useState } from "react";
 import QRCode from 'qrcode';
+import { useSettings } from "@/hooks/useSettings";
 
 interface TokenDisplayProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface TokenDisplayProps {
 
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(true);
+  const { getSetting } = useSettings("branding");
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -30,7 +32,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     const borderWidth = 20;
     const fontSize = 48;
     const lineHeight = 60;
-    const maxTextWidth = qrSize * 0.8; // 80% of QR width for better wrapping
+    const maxTextWidth = qrSize * 0.8;
     
     // Create QR code canvas
     const qrCanvas = document.createElement('canvas');
@@ -43,6 +45,16 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
         light: '#FFFFFF'
       }
     });
+    
+    // Get default logo
+    const defaultLogoSetting = getSetting?.("branding", "default_logo");
+    const selectedLogo = defaultLogoSetting?.value?.selected;
+    let logoUrl = null;
+    
+    if (selectedLogo) {
+      const logoSetting = getSetting?.("branding", selectedLogo);
+      logoUrl = logoSetting?.value?.url;
+    }
     
     // Create temporary canvas to measure text
     const tempCanvas = document.createElement('canvas');
@@ -90,6 +102,34 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     
     // Draw QR code
     ctx.drawImage(qrCanvas, padding, padding, qrSize, qrSize);
+    
+    // Draw logo in center if available
+    if (logoUrl) {
+      try {
+        const logoImg = new Image();
+        logoImg.crossOrigin = "anonymous";
+        await new Promise((resolve, reject) => {
+          logoImg.onload = resolve;
+          logoImg.onerror = reject;
+          logoImg.src = logoUrl;
+        });
+        
+        // Logo size - 20% of QR code size with white background
+        const logoSize = qrSize * 0.2;
+        const logoX = padding + (qrSize - logoSize) / 2;
+        const logoY = padding + (qrSize - logoSize) / 2;
+        const logoPadding = 10;
+        
+        // Draw white background for logo
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(logoX - logoPadding, logoY - logoPadding, logoSize + logoPadding * 2, logoSize + logoPadding * 2);
+        
+        // Draw logo
+        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+      } catch (error) {
+        console.warn('Failed to load logo for QR code:', error);
+      }
+    }
     
     // Draw wrapped text at bottom
     ctx.fillStyle = '#000000';
