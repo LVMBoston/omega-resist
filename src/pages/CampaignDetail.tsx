@@ -16,13 +16,19 @@ export default function CampaignDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
-          <h1 className="text-3xl font-bold">Campaign Details</h1>
-        </div>
-      </header>
-
       <main className="container mx-auto px-6 py-8">
+        <Link to="/campaign-config">
+          <Button variant="ghost" size="sm" className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Campaigns
+          </Button>
+        </Link>
+
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold mb-2">Campaign Details</h1>
+          <p className="text-xl text-muted-foreground">Manage Events or Actions for: Campaign</p>
+        </div>
+
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <div className="flex items-center gap-2">
             <Link to="/campaign-config">
