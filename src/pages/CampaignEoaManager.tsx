@@ -785,76 +785,82 @@ export default function CampaignEoaManager() {
       </header>
 
       <main className="w-full px-6 py-8">
-        {selectedRows.size > 0 && (
-          <Card className="mb-4 border-primary">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{selectedRows.size} selected</span>
-                  <Button variant="ghost" size="sm" onClick={clearSelection}>
-                    <X className="h-4 w-4 mr-1" />
-                    Clear
-                  </Button>
-                </div>
+        <Card className="mb-4 border-primary">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className="flex flex-col gap-2">
                 <Button 
                   variant="outline" 
                   onClick={() => setShowBulkActions(!showBulkActions)}
+                  disabled={selectedRows.size === 0}
                 >
                   {showBulkActions ? "Hide" : "Show"} Bulk Actions
                 </Button>
+                <span className="text-sm text-muted-foreground">
+                  # Selected: {selectedRows.size}
+                </span>
               </div>
 
-              {showBulkActions && (
-                <div className="space-y-4 border-t pt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bulk-deck">Assign Deck name to selected rows</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="bulk-deck"
-                          placeholder="e.g., deck-2024-q4"
-                          value={bulkDeckSlug}
-                          onChange={(e) => setBulkDeckSlug(e.target.value)}
-                        />
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setBulkDeckDialogOpen(true)}
-                          title="Assign deck via dialog"
-                        >
-                          <Package className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bulk-utm">Assign utm_id to selected rows</Label>
-                      <Input
-                        id="bulk-utm"
-                        placeholder="e.g., event-123"
-                        value={bulkUtmId}
-                        onChange={(e) => setBulkUtmId(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={applyBulkUpdate} className="flex-1">
-                      Apply to {selectedRows.size} Selected
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
-                      className="flex-1"
-                    >
-                      <QrCode className="h-4 w-4 mr-2" />
-                      {selectedRows.size > 0 
-                        ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
-                        : "Generate short URLs and Mint L00 tokens for ALL rows"}
-                    </Button>
-                  </div>
+              {selectedRows.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear Selection
+                  </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {showBulkActions && selectedRows.size > 0 && (
+              <div className="space-y-4 border-t pt-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bulk-deck">Assign Deck name to selected rows</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="bulk-deck"
+                        placeholder="e.g., deck-2024-q4"
+                        value={bulkDeckSlug}
+                        onChange={(e) => setBulkDeckSlug(e.target.value)}
+                      />
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setBulkDeckDialogOpen(true)}
+                        title="Assign deck via dialog"
+                      >
+                        <Package className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bulk-utm">Assign utm_id to selected rows</Label>
+                    <Input
+                      id="bulk-utm"
+                      placeholder="e.g., event-123"
+                      value={bulkUtmId}
+                      onChange={(e) => setBulkUtmId(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={applyBulkUpdate} className="flex-1">
+                    Apply to {selectedRows.size} Selected
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
+                    className="flex-1"
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    {selectedRows.size > 0 
+                      ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
+                      : "Generate short URLs and Mint L00 tokens for ALL rows"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
