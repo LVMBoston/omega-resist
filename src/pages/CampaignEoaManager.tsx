@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1089,20 +1090,29 @@ export default function CampaignEoaManager() {
                                   <Copy className="h-4 w-4 mr-1" />
                                   {l00Tokens[eoa.id].shortUrl ? "Short URL" : "URL"}
                                 </Button>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSelectedTokenForDisplay({ 
+                                          token: l00Tokens[eoa.id].token, 
+                                          url: l00Tokens[eoa.id].url,
+                                          shortUrl: l00Tokens[eoa.id].shortUrl,
+                                          eoaTitle: eoa.title 
+                                        })}
+                                      >
+                                        <QrCode className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Display and copy QR code</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedTokenForDisplay({ 
-                                token: l00Tokens[eoa.id].token, 
-                                url: l00Tokens[eoa.id].url,
-                                shortUrl: l00Tokens[eoa.id].shortUrl,
-                                eoaTitle: eoa.title 
-                              })}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
                           </div>
                         ) : (
                           <Button
