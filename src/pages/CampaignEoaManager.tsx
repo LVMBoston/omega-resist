@@ -853,11 +853,13 @@ export default function CampaignEoaManager() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={handleBulkGenerateL00}
+                      onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
                       className="flex-1"
                     >
                       <QrCode className="h-4 w-4 mr-2" />
-                      Generate Selected ({selectedRows.size})
+                      {selectedRows.size > 0 
+                        ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
+                        : "Generate short URLs and Mint L00 tokens for ALL rows"}
                     </Button>
                   </div>
                 </div>
@@ -1021,20 +1023,7 @@ export default function CampaignEoaManager() {
                       </Button>
                     </TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <span>L00 Token</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleGenerateAllL00}
-                          className="h-7 text-xs"
-                        >
-                          <QrCode className="h-3 w-3 mr-1" />
-                          Generate All
-                        </Button>
-                      </div>
-                    </TableHead>
+                    <TableHead>L00 Token</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
