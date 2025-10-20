@@ -1115,15 +1115,28 @@ export default function CampaignEoaManager() {
                             )}
                           </div>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleGenerateL00(eoa)}
-                            disabled={generatingL00 === eoa.id || !eoa.assigned_deck_slug}
-                          >
-                            <QrCode className="h-4 w-4 mr-2" />
-                            {generatingL00 === eoa.id ? "Generating..." : "Generate L00"}
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleGenerateL00(eoa)}
+                                    disabled={generatingL00 === eoa.id || !eoa.assigned_deck_slug || !eoa.mobilize_code}
+                                  >
+                                    <QrCode className="h-4 w-4 mr-2" />
+                                    {generatingL00 === eoa.id ? "Generating..." : "Generate L00 Token"}
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {!eoa.assigned_deck_slug || !eoa.mobilize_code 
+                                  ? `Missing: ${[!eoa.mobilize_code && "Mobilize Code", !eoa.assigned_deck_slug && "Deck"].filter(Boolean).join(", ")}`
+                                  : "Generate L00 token with QR code and shortened URL"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </TableCell>
                       <TableCell>
