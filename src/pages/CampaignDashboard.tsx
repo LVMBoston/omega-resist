@@ -144,6 +144,9 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
     }
   });
 
+  // Find current campaign object
+  const currentCampaign = campaigns?.find(c => c.id === selectedCampaignId);
+
   // Set initial campaign from URL or default to first campaign, or use prop
   useEffect(() => {
     if (propCampaignId && campaigns && campaigns.length > 0) {
@@ -692,7 +695,7 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <TrendingUp className="w-8 h-8" />
-              Configure campaign: {selectedCampaign || "No campaign selected"}
+              Configure campaign: {currentCampaign?.title || "No campaign selected"}
             </h1>
             <Link to="/campaigns">
               <Button>Back to Campaign Orchestration</Button>
