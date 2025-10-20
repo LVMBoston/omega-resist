@@ -794,7 +794,7 @@ export default function CampaignEoaManager() {
                   onClick={() => setShowBulkActions(!showBulkActions)}
                   disabled={selectedRows.size === 0}
                 >
-                  {showBulkActions ? "Hide" : "Show"} Bulk Actions
+                  {showBulkActions ? "Hide" : "Select rows to show"} bulk actions
                 </Button>
                 <span className="text-sm text-muted-foreground">
                   # Selected: {selectedRows.size}
