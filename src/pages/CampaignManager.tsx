@@ -373,7 +373,7 @@ export default function CampaignManager() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false
+      hour12: true
     });
   };
   
@@ -453,7 +453,7 @@ export default function CampaignManager() {
             <div className="flex justify-between gap-4">
               <div>
                 <p className="text-muted-foreground">Earliest Active</p>
-                <p className="font-medium">{formatDate(stats?.earliestActive || null)}</p>
+                <p className="font-medium">{formatDateWithTime(stats?.earliestActive || null)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Latest Active</p>
