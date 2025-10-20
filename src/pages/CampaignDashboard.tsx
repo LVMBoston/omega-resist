@@ -703,9 +703,8 @@ export default function CampaignDashboard({
 
         {/* Tabbed Content */}
         <Tabs defaultValue="filters" className="w-full">
-          <TabsList className="grid w-full max-w-4xl grid-cols-6">
+          <TabsList className="grid w-full max-w-4xl grid-cols-5">
             <TabsTrigger value="filters">Filters</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="eventsv2">EventsV2</TabsTrigger>
             <TabsTrigger value="map">Map</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -861,73 +860,6 @@ export default function CampaignDashboard({
             </Card>
           </TabsContent>
 
-          <TabsContent value="events" className="space-y-4 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 animate-fade-in">
-              <MetricCard title="Scans" value={scansCount} format="number" status="good" />
-              <MetricCard title="Views" value={viewsCount} format="number" status="neutral" />
-              <MetricCard title="Shares" value={sharesCount} format="number" status="warning" />
-            </div>
-
-            {eventsLoading ? <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin" />
-              </div> : events.length === 0 ? <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  No events found for the selected filters.
-                </CardContent>
-              </Card> : events.map(event => <Card key={event.id} className="hover:border-primary/50 transition-colors animate-fade-in">
-                  <CardContent className="pt-3 pb-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-1.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge className={getEventBadgeColor(event.event_type)}>
-                            {event.event_type.toUpperCase()}
-                          </Badge>
-                          <Badge variant="outline">
-                            {getLevelBadge(event.tokens?.level || 0)}
-                          </Badge>
-                          {event.is_simulated && <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
-                              SIMULATED
-                            </Badge>}
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(event.occurred_at), "PPp")}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <span className="font-medium text-sm">
-                              {event.tokens?.events_actions?.title || "Unknown Event"}
-                            </span>
-                            {event.tokens?.events_actions?.city && <span className="text-xs text-muted-foreground">
-                                • {event.tokens.events_actions.city}, {event.tokens.events_actions.state}
-                              </span>}
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <Smartphone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <span className="text-xs">
-                              {parseUserAgent(event.user_agent)}
-                            </span>
-                          </div>
-
-                          {(event.city || event.region || event.country) && <div className="flex items-center gap-1.5 text-xs">
-                              <MapPin className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
-                              <span>
-                                {[event.city, event.region, event.country].filter(Boolean).join(', ')}
-                              </span>
-                            </div>}
-
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-                            <span>Token: <code className="font-mono">{event.token}</code></span>
-                            <span>Deck: <code className="font-mono">{event.tokens?.deck_slug}</code></span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>)}
-          </TabsContent>
 
           {/* EventsV2 Tab */}
           <TabsContent value="eventsv2" className="mt-6 animate-fade-in">
