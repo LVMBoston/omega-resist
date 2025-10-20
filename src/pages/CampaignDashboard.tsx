@@ -697,9 +697,6 @@ export default function CampaignDashboard({
               <TrendingUp className="w-8 h-8" />
               Campaign Configuration
             </h1>
-            <Link to="/campaigns">
-              <Button>Back to Campaign Orchestration</Button>
-            </Link>
           </div>
           
         </div>
