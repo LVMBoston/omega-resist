@@ -67,7 +67,7 @@ export default function Settings() {
             <TabsTrigger value="sms">SMS Templates</TabsTrigger>
             <TabsTrigger value="utm">UTM Vocabularies</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="branding">QR-code Branding</TabsTrigger>
+            <TabsTrigger value="branding">QR Logo Branding</TabsTrigger>
             <TabsTrigger value="qr_defaults">QR Defaults</TabsTrigger>
           </TabsList>
 
