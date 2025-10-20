@@ -811,7 +811,7 @@ export default function CampaignEoaManager() {
               )}
             </div>
 
-            {showBulkActions && selectedRows.size > 0 && (
+            {selectedRows.size > 0 && (
               <div className="space-y-4 border-t pt-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
