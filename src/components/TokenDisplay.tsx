@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Download, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import QRCode from 'qrcode';
 import { useSettings } from "@/hooks/useSettings";
 
@@ -20,6 +20,24 @@ interface TokenDisplayProps {
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(true);
   const { getSetting } = useSettings("branding");
+  const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Generate display QR code when dialog opens
+  useEffect(() => {
+    if (showQRDialog && displayCanvasRef.current) {
+      const urlForQr = shortUrl || fullUrl;
+      generateDecoratedQRCanvas(urlForQr).then(canvas => {
+        if (displayCanvasRef.current && canvas) {
+          const ctx = displayCanvasRef.current.getContext('2d');
+          displayCanvasRef.current.width = canvas.width;
+          displayCanvasRef.current.height = canvas.height;
+          if (ctx) {
+            ctx.drawImage(canvas, 0, 0);
+          }
+        }
+      });
+    }
+  }, [showQRDialog, shortUrl, fullUrl]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -326,18 +344,10 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                   </p>
                 )}
                 <div className="flex justify-center p-8 bg-white dark:bg-muted rounded">
-                  <div className="inline-block p-4 border-4 border-black bg-white max-w-[350px]">
-                    <QRCodeSVG
-                      id="qr-code-svg"
-                      value={shortUrl || fullUrl}
-                      size={300}
-                      level="H"
-                      includeMargin={true}
-                    />
-                    <div className="text-center mt-3 font-bold text-sm text-black break-words px-2">
-                      {eoaTitle}
-                    </div>
-                  </div>
+                  <canvas 
+                    ref={displayCanvasRef}
+                    className="max-w-full h-auto"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
