@@ -51,9 +51,14 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     const selectedLogo = defaultLogoSetting?.value?.selected;
     let logoUrl = null;
     
+    console.log('QR Generation - Default logo setting:', defaultLogoSetting);
+    console.log('QR Generation - Selected logo:', selectedLogo);
+    
     if (selectedLogo) {
       const logoSetting = getSetting?.("branding", selectedLogo);
+      console.log('QR Generation - Logo setting:', logoSetting);
       logoUrl = logoSetting?.value?.url;
+      console.log('QR Generation - Logo URL:', logoUrl);
     }
     
     // Create temporary canvas to measure text
