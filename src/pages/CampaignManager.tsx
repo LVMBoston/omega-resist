@@ -124,10 +124,8 @@ export default function CampaignManager() {
       });
       const activeEvents = activeEoas.filter(e => e.type === "event").length;
       const activeActions = activeEoas.filter(e => e.type === "action").length;
-      const activeDates = activeEoas.map(e => e.start_date).filter((d): d is string => d !== null).sort();
       
-      // Get latest url_event for this campaign
-      // First, get all tokens for this campaign
+      // Get all tokens for this campaign
       const { data: campaignTokens } = await supabase
         .from("tokens")
         .select("token")
@@ -135,9 +133,23 @@ export default function CampaignManager() {
       
       const tokenList = campaignTokens?.map(t => t.token) || [];
       
+      let earliestEvent = null;
       let latestEvent = null;
+      
       if (tokenList.length > 0) {
-        const { data } = await supabase
+        // Get earliest event
+        const { data: earliest } = await supabase
+          .from("url_events")
+          .select("occurred_at")
+          .eq("is_simulated", false)
+          .in("token", tokenList)
+          .order("occurred_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        earliestEvent = earliest;
+        
+        // Get latest event
+        const { data: latest } = await supabase
           .from("url_events")
           .select("occurred_at")
           .eq("is_simulated", false)
@@ -145,13 +157,13 @@ export default function CampaignManager() {
           .order("occurred_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        latestEvent = data;
+        latestEvent = latest;
       }
       
       stats.set(campaign.id, {
         activeEvents,
         activeActions,
-        earliestActive: activeDates[0] || null,
+        earliestActive: earliestEvent?.occurred_at || null,
         latestActive: latestEvent?.occurred_at || null,
         totalEventsActions: campaignEoas.length
       });
