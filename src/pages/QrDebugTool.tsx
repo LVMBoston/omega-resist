@@ -89,8 +89,8 @@ export default function QrDebugTool() {
 
     // Create final canvas with labels
     const finalCanvas = document.createElement('canvas');
-    const padding = 40;
-    const labelHeight = 60;
+    const padding = 20;
+    const labelHeight = 40;
     const hasLabelAbove = labelAbove.trim() !== "";
     const hasLabelBelow = labelBelow.trim() !== "";
     
