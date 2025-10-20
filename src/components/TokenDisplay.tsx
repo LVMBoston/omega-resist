@@ -279,7 +279,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                   </p>
                 )}
                 <div className="flex justify-center p-8 bg-white dark:bg-muted rounded">
-                  <div className="inline-block p-4 border-4 border-black bg-white">
+                  <div className="inline-block p-4 border-4 border-black bg-white max-w-[350px]">
                     <QRCodeSVG
                       id="qr-code-svg"
                       value={shortUrl || fullUrl}
@@ -287,7 +287,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                       level="H"
                       includeMargin={true}
                     />
-                    <div className="text-center mt-3 font-bold text-sm text-black">
+                    <div className="text-center mt-3 font-bold text-sm text-black break-words px-2">
                       {eoaTitle}
                     </div>
                   </div>
