@@ -632,6 +632,12 @@ export default function CampaignEoaManager() {
   });
 
   const applyBulkUpdate = async () => {
+    // If both fields are empty, mint L00 tokens instead
+    if (!bulkDeckSlug && !bulkUtmId) {
+      await handleBulkGenerateL00();
+      return;
+    }
+
     const updates: { id: string; data: Partial<EventAction> }[] = [];
     
     selectedRows.forEach(id => {
@@ -858,7 +864,9 @@ export default function CampaignEoaManager() {
                   </Button>
                 </div>
                 <Button onClick={applyBulkUpdate} className="w-full">
-                  Apply to {selectedRows.size} Selected
+                  {!bulkDeckSlug && !bulkUtmId 
+                    ? `Mint L00 for ${selectedRows.size} Selected`
+                    : `Apply to ${selectedRows.size} Selected`}
                 </Button>
               </div>
             )}
