@@ -90,7 +90,8 @@ export default function QrDebugTool() {
     // Create final canvas with labels
     const finalCanvas = document.createElement('canvas');
     const padding = 20;
-    const labelHeight = 40;
+    const fontSize = Math.max(24, Math.floor(size * 0.06)); // Scale font with QR size, min 24px
+    const labelHeight = fontSize * 1.5; // Height scales with font size
     const hasLabelAbove = labelAbove.trim() !== "";
     const hasLabelBelow = labelBelow.trim() !== "";
     
@@ -113,9 +114,9 @@ export default function QrDebugTool() {
     // Draw label above
     if (hasLabelAbove) {
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 32px Arial';
+      ctx.font = `bold ${fontSize}px Arial`;
       ctx.textAlign = 'center';
-      ctx.fillText(labelAbove, finalCanvas.width / 2, labelHeight / 2 + 10);
+      ctx.fillText(labelAbove, finalCanvas.width / 2, labelHeight / 2 + fontSize / 3);
     }
 
     // Draw QR code
@@ -126,7 +127,7 @@ export default function QrDebugTool() {
       // Draw label below
       if (hasLabelBelow) {
         ctx.fillStyle = '#000000';
-        ctx.font = 'bold 32px Arial';
+        ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText(labelBelow, finalCanvas.width / 2, finalCanvas.height - bottomPadding + labelHeight / 2);
       }
