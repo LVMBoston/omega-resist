@@ -49,12 +49,18 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     // Get default logo - handle number format (1,2,3)
     const defaultLogoSetting = getSetting?.("branding", "default_logo");
     const selectedLogoNum = defaultLogoSetting?.value?.selected;
+    
+    console.log('QR Logo Debug - Default setting:', defaultLogoSetting);
+    console.log('QR Logo Debug - Selected number:', selectedLogoNum);
+    
     let logoUrl = null;
     
     if (selectedLogoNum) {
       const logoKey = `logo_${selectedLogoNum}`;
       const logoSetting = getSetting?.("branding", logoKey);
+      console.log('QR Logo Debug - Logo setting for', logoKey, ':', logoSetting);
       logoUrl = logoSetting?.value?.url;
+      console.log('QR Logo Debug - Final logo URL:', logoUrl);
     }
     
     // Create temporary canvas to measure text
