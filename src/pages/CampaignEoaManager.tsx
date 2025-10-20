@@ -794,11 +794,12 @@ export default function CampaignEoaManager() {
         <Card className="mb-4 border-primary">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 items-start">
                 <Button 
                   variant="outline" 
                   onClick={() => setShowBulkActions(!showBulkActions)}
                   disabled={selectedRows.size === 0}
+                  className="justify-start"
                 >
                   {showBulkActions ? "Hide" : "Select rows to show"} bulk actions
                 </Button>
