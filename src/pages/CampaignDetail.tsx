@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function CampaignDetail() {
   const { campaignId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "manage-events";
+  const activeTab = searchParams.get("tab") || "events";
 
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
@@ -40,39 +40,27 @@ export default function CampaignDetail() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Link to="/campaign-config">
-            <Button variant="outline" size="default">
-              Campaign Orchestration
-            </Button>
-          </Link>
-          
-          <div className="flex-1">
-            <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <div className="flex flex-col gap-2">
-                <span className="text-lg font-semibold text-destructive">Manage Events/Actions</span>
-                <TabsList className="w-fit">
-                  <TabsTrigger value="manage-events">Manage events</TabsTrigger>
-                  <TabsTrigger value="manage-actions">Manage actions</TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent value="manage-events" className="mt-6">
-                <CampaignEoaManager />
-              </TabsContent>
-
-              <TabsContent value="manage-actions" className="mt-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Manage actions content coming soon
-                </div>
-              </TabsContent>
-            </Tabs>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <div className="flex items-center gap-2">
+            <Link to="/campaign-config">
+              <Button variant="outline" size="default">
+                Campaign Orchestration
+              </Button>
+            </Link>
+            <TabsList>
+              <TabsTrigger value="events">Event Manager</TabsTrigger>
+              <TabsTrigger value="config">Campaign Config</TabsTrigger>
+            </TabsList>
           </div>
 
-          <Button variant="outline" size="default" className="text-muted-foreground">
-            Campaign Config
-          </Button>
-        </div>
+          <TabsContent value="events" className="mt-6">
+            <CampaignEoaManager />
+          </TabsContent>
+
+          <TabsContent value="config" className="mt-6">
+            <CampaignDashboard campaignId={campaignId} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
