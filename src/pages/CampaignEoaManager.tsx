@@ -14,12 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
 import { shortenUrlsBatch } from "@/lib/virality/shortener";
 import { TokenDisplay } from "@/components/TokenDisplay";
+import { QrDefaultsDialog } from "@/components/QrDefaultsDialog";
 interface Campaign {
   id: string;
   code: string;
@@ -62,6 +63,7 @@ export default function CampaignEoaManager() {
   const [editingEoa, setEditingEoa] = useState<EventAction | null>(null);
   const [payloadDialogOpen, setPayloadDialogOpen] = useState(false);
   const [visualizePayloadDialogOpen, setVisualizePayloadDialogOpen] = useState(false);
+  const [qrDefaultsDialogOpen, setQrDefaultsDialogOpen] = useState(false);
   const [selectedEoa, setSelectedEoa] = useState<EventAction | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [bulkDeckSlug, setBulkDeckSlug] = useState("");
@@ -882,10 +884,16 @@ export default function CampaignEoaManager() {
               <CardTitle>
                 Event/Actions for {campaign.title}
               </CardTitle>
-              <Button variant="outline" onClick={() => setVisualizePayloadDialogOpen(true)}>
-                <FileJson className="mr-2 h-4 w-4" />
-                Visualize Generic Payload
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setQrDefaultsDialogOpen(true)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  QR Code Defaults
+                </Button>
+                <Button variant="outline" onClick={() => setVisualizePayloadDialogOpen(true)}>
+                  <FileJson className="mr-2 h-4 w-4" />
+                  Visualize Generic Payload
+                </Button>
+              </div>
             </div>
             <div>
               <Button onClick={() => {
@@ -1482,6 +1490,11 @@ export default function CampaignEoaManager() {
         fullUrl={selectedTokenForDisplay?.url || ""}
         shortUrl={selectedTokenForDisplay?.shortUrl}
         eoaTitle={selectedTokenForDisplay?.eoaTitle || ""}
+      />
+
+      <QrDefaultsDialog
+        open={qrDefaultsDialogOpen}
+        onOpenChange={setQrDefaultsDialogOpen}
       />
     </div>;
 }

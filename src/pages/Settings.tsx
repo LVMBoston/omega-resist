@@ -26,6 +26,7 @@ export default function Settings() {
   const utmSettings = settings?.filter((s) => s.category === "utm") || [];
   const generalSettings = settings?.filter((s) => s.category === "general") || [];
   const brandingSettings = settings?.filter((s) => s.category === "branding") || [];
+  const qrDefaultsSettings = settings?.filter((s) => s.category === "qr_defaults") || [];
 
   const handleSave = (id: string) => {
     if (editedValues[id]) {
@@ -61,12 +62,13 @@ export default function Settings() {
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="email" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="email">Email Templates</TabsTrigger>
             <TabsTrigger value="sms">SMS Templates</TabsTrigger>
             <TabsTrigger value="utm">UTM Vocabularies</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="branding">Branding</TabsTrigger>
+            <TabsTrigger value="qr_defaults">QR Defaults</TabsTrigger>
           </TabsList>
 
           <TabsContent value="email" className="space-y-4">
@@ -289,6 +291,131 @@ export default function Settings() {
                 </CardHeader>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="qr_defaults" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>QR Code Generation Defaults</CardTitle>
+                <CardDescription>
+                  Configure default settings for QR code generation. These settings will be applied when generating new L00 tokens.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {qrDefaultsSettings.map((setting) => {
+                  const value = getValue(setting);
+                  
+                  // Size preset selector
+                  if (setting.key === "size_preset") {
+                    return (
+                      <div key={setting.id} className="space-y-2">
+                        <Label>{setting.description}</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { key: "small", label: "Small (255x255)", size: "255px, 12pt font" },
+                            { key: "medium", label: "Medium (512x512)", size: "512px, 24pt font" },
+                            { key: "large", label: "Large (1000x1000)", size: "1000px, 48pt font" },
+                          ].map((preset) => (
+                            <Button
+                              key={preset.key}
+                              variant={value?.selected === preset.key ? "default" : "outline"}
+                              onClick={() => {
+                                setValue(setting.id, { selected: preset.key });
+                                handleSave(setting.id);
+                              }}
+                              className="flex flex-col h-auto py-3"
+                            >
+                              <span className="font-semibold">{preset.label}</span>
+                              <span className="text-xs opacity-70">{preset.size}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Caption fields
+                  if (setting.key === "top_caption" || setting.key === "bottom_caption") {
+                    return (
+                      <div key={setting.id} className="space-y-2">
+                        <Label htmlFor={setting.id}>{setting.description}</Label>
+                        <Input
+                          id={setting.id}
+                          value={value?.text || ""}
+                          onChange={(e) => setValue(setting.id, { ...value, text: e.target.value })}
+                          placeholder={setting.key === "bottom_caption" ? "Use {eoa_title} as placeholder" : "Leave empty for no caption"}
+                        />
+                        {setting.key === "bottom_caption" && (
+                          <p className="text-xs text-muted-foreground">
+                            Use {"{eoa_title}"} to automatically insert the Event/Action title
+                          </p>
+                        )}
+                        <Button
+                          onClick={() => handleSave(setting.id)}
+                          disabled={editedValues[setting.id] === undefined}
+                          size="sm"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          Save
+                        </Button>
+                      </div>
+                    );
+                  }
+                  
+                  // Color fields
+                  if (setting.key.includes("color")) {
+                    return (
+                      <div key={setting.id} className="space-y-2">
+                        <Label htmlFor={setting.id}>{setting.description}</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="color"
+                            value={value?.value || "#000000"}
+                            onChange={(e) => setValue(setting.id, { ...value, value: e.target.value })}
+                            className="w-20 h-10 p-1"
+                          />
+                          <Input
+                            value={value?.value || "#000000"}
+                            onChange={(e) => setValue(setting.id, { ...value, value: e.target.value })}
+                            placeholder="#000000"
+                          />
+                        </div>
+                        <Button
+                          onClick={() => handleSave(setting.id)}
+                          disabled={editedValues[setting.id] === undefined}
+                          size="sm"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          Save
+                        </Button>
+                      </div>
+                    );
+                  }
+                  
+                  // Numeric fields
+                  return (
+                    <div key={setting.id} className="space-y-2">
+                      <Label htmlFor={setting.id}>{setting.description}</Label>
+                      <Input
+                        id={setting.id}
+                        type="number"
+                        value={value?.value || 0}
+                        onChange={(e) => setValue(setting.id, { ...value, value: Number(e.target.value) })}
+                        min={0}
+                      />
+                      <Button
+                        onClick={() => handleSave(setting.id)}
+                        disabled={editedValues[setting.id] === undefined}
+                        size="sm"
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        Save
+                      </Button>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

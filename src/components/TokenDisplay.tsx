@@ -19,7 +19,7 @@ interface TokenDisplayProps {
 
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(true);
-  const { getSetting } = useSettings("branding");
+  const { getSetting } = useSettings();
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Generate display QR code when dialog opens
@@ -45,11 +45,41 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
   };
 
   const generateDecoratedQRCanvas = async (urlForQr: string): Promise<HTMLCanvasElement> => {
-    const qrSize = 1000;
-    const padding = 100;
-    const borderWidth = 20;
-    const fontSize = 48;
-    const lineHeight = 60;
+    // Get QR defaults from settings
+    const sizePresetSetting = getSetting?.("qr_defaults", "size_preset");
+    const topCaptionSetting = getSetting?.("qr_defaults", "top_caption");
+    const bottomCaptionSetting = getSetting?.("qr_defaults", "bottom_caption");
+    const borderWidthSetting = getSetting?.("qr_defaults", "border_width");
+    const borderColorSetting = getSetting?.("qr_defaults", "border_color");
+    const backgroundColorSetting = getSetting?.("qr_defaults", "background_color");
+    const textColorSetting = getSetting?.("qr_defaults", "text_color");
+    const paddingSetting = getSetting?.("qr_defaults", "padding");
+    const logoSizeSetting = getSetting?.("qr_defaults", "logo_size_percent");
+
+    // Size presets
+    const SIZE_PRESETS = {
+      small: { size: 255, fontSize: 12, padding: 25 },
+      medium: { size: 512, fontSize: 24, padding: 50 },
+      large: { size: 1000, fontSize: 48, padding: 100 },
+    };
+
+    const sizePreset = sizePresetSetting?.value?.selected || "medium";
+    const preset = SIZE_PRESETS[sizePreset as keyof typeof SIZE_PRESETS];
+    
+    const qrSize = preset.size;
+    const fontSize = preset.fontSize;
+    const padding = paddingSetting?.value?.value ?? preset.padding;
+    const borderWidth = borderWidthSetting?.value?.value ?? 20;
+    const borderColor = borderColorSetting?.value?.value ?? "#000000";
+    const backgroundColor = backgroundColorSetting?.value?.value ?? "#FFFFFF";
+    const textColor = textColorSetting?.value?.value ?? "#000000";
+    const logoSizePercent = logoSizeSetting?.value?.value ?? 20;
+    
+    const topCaptionText = topCaptionSetting?.value?.text || "";
+    let bottomCaptionText = bottomCaptionSetting?.value?.text || "{eoa_title}";
+    bottomCaptionText = bottomCaptionText.replace("{eoa_title}", eoaTitle);
+    
+    const lineHeight = fontSize * 1.25;
     const maxTextWidth = qrSize * 0.8;
     
     // Create QR code canvas
@@ -64,21 +94,16 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
       }
     });
     
-    // Get default logo - handle number format (1,2,3)
+    // Get default logo
     const defaultLogoSetting = getSetting?.("branding", "default_logo");
     const selectedLogoNum = defaultLogoSetting?.value?.selected;
-    
-    console.log('QR Logo Debug - Default setting:', defaultLogoSetting);
-    console.log('QR Logo Debug - Selected number:', selectedLogoNum);
     
     let logoUrl = null;
     
     if (selectedLogoNum) {
       const logoKey = `logo_${selectedLogoNum}`;
       const logoSetting = getSetting?.("branding", logoKey);
-      console.log('QR Logo Debug - Logo setting for', logoKey, ':', logoSetting);
       logoUrl = logoSetting?.value?.url;
-      console.log('QR Logo Debug - Final logo URL:', logoUrl);
     }
     
     // Create temporary canvas to measure text
@@ -88,6 +113,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     
     // Word wrap function
     const wrapText = (text: string, maxWidth: number): string[] => {
+      if (!text) return [];
       const words = text.split(' ');
       const lines: string[] = [];
       let currentLine = words[0];
@@ -106,9 +132,12 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
       return lines;
     };
     
-    const textLines = wrapText(eoaTitle, maxTextWidth);
-    const textHeight = textLines.length * lineHeight + 40; // 40px extra padding
-    const totalSize = qrSize + (padding * 2) + textHeight;
+    const topCaptionLines = wrapText(topCaptionText, maxTextWidth);
+    const bottomCaptionLines = wrapText(bottomCaptionText, maxTextWidth);
+    
+    const topCaptionHeight = topCaptionLines.length > 0 ? topCaptionLines.length * lineHeight + 20 : 0;
+    const bottomCaptionHeight = bottomCaptionLines.length > 0 ? bottomCaptionLines.length * lineHeight + 20 : 0;
+    const totalSize = qrSize + (padding * 2) + topCaptionHeight + bottomCaptionHeight;
     
     // Create final canvas with border and text
     const finalCanvas = document.createElement('canvas');
@@ -116,17 +145,32 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     finalCanvas.height = totalSize;
     const ctx = finalCanvas.getContext('2d')!;
     
-    // Fill white background
-    ctx.fillStyle = '#FFFFFF';
+    // Fill background
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, totalSize, totalSize);
     
     // Draw border
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = borderColor;
     ctx.lineWidth = borderWidth;
     ctx.strokeRect(borderWidth / 2, borderWidth / 2, totalSize - borderWidth, totalSize - borderWidth);
     
+    // Draw top caption
+    if (topCaptionLines.length > 0) {
+      ctx.fillStyle = textColor;
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const topTextStartY = padding;
+      topCaptionLines.forEach((line, index) => {
+        const y = topTextStartY + (index * lineHeight) + (lineHeight / 2);
+        ctx.fillText(line, totalSize / 2, y);
+      });
+    }
+    
     // Draw QR code
-    ctx.drawImage(qrCanvas, padding, padding, qrSize, qrSize);
+    const qrY = padding + topCaptionHeight;
+    ctx.drawImage(qrCanvas, padding, qrY, qrSize, qrSize);
     
     // Draw logo in center if available
     if (logoUrl) {
@@ -139,10 +183,10 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
           logoImg.src = logoUrl;
         });
         
-        // Logo size - 20% of QR code size with white background
-        const logoSize = qrSize * 0.2;
+        // Logo size as percentage of QR code size with white background
+        const logoSize = qrSize * (logoSizePercent / 100);
         const logoX = padding + (qrSize - logoSize) / 2;
-        const logoY = padding + (qrSize - logoSize) / 2;
+        const logoY = qrY + (qrSize - logoSize) / 2;
         const logoPadding = 10;
         
         // Draw white background for logo
@@ -156,17 +200,19 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
       }
     }
     
-    // Draw wrapped text at bottom
-    ctx.fillStyle = '#000000';
-    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    const textStartY = padding + qrSize + 20; // Start 20px below QR code
-    textLines.forEach((line, index) => {
-      const y = textStartY + (index * lineHeight) + (lineHeight / 2);
-      ctx.fillText(line, totalSize / 2, y);
-    });
+    // Draw bottom caption
+    if (bottomCaptionLines.length > 0) {
+      ctx.fillStyle = textColor;
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const bottomTextStartY = qrY + qrSize + 20;
+      bottomCaptionLines.forEach((line, index) => {
+        const y = bottomTextStartY + (index * lineHeight) + (lineHeight / 2);
+        ctx.fillText(line, totalSize / 2, y);
+      });
+    }
     
     return finalCanvas;
   };
