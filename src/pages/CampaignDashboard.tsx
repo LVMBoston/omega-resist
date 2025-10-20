@@ -24,17 +24,7 @@ import { ContentPerformanceTable } from "@/components/virality/ContentPerformanc
 import SharedDashboardMap from "@/components/SharedDashboardMap";
 import { SimulatorControls } from "@/components/SimulatorControls";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 interface UrlEvent {
@@ -66,8 +56,9 @@ interface UrlEvent {
 interface CampaignDashboardProps {
   campaignId?: string;
 }
-
-export default function CampaignDashboard({ campaignId: propCampaignId }: CampaignDashboardProps = {}) {
+export default function CampaignDashboard({
+  campaignId: propCampaignId
+}: CampaignDashboardProps = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -82,7 +73,9 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
   const [showSecondWarning, setShowSecondWarning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const queryClient = useQueryClient();
 
   // Get filter values from URL params or use prop
@@ -144,9 +137,6 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
     }
   });
 
-  // Find current campaign object
-  const currentCampaign = campaigns?.find(c => c.id === selectedCampaignId);
-
   // Set initial campaign from URL or default to first campaign, or use prop
   useEffect(() => {
     if (propCampaignId && campaigns && campaigns.length > 0) {
@@ -177,24 +167,19 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
   // Real-time subscription for EventsV2
   useEffect(() => {
     if (!selectedCampaign) return;
-
-    const channel = supabase
-      .channel('url_events_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'url_events'
-        },
-        () => {
-          // Auto-refresh eventsV2 and counts when new events arrive
-          queryClient.invalidateQueries({ queryKey: ["eventsV2"] });
-          queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
-        }
-      )
-      .subscribe();
-
+    const channel = supabase.channel('url_events_realtime').on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'url_events'
+    }, () => {
+      // Auto-refresh eventsV2 and counts when new events arrive
+      queryClient.invalidateQueries({
+        queryKey: ["eventsV2"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["eventCounts"]
+      });
+    }).subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
@@ -319,22 +304,25 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
     return "🖥️ Device";
   };
   const avgCycleTime = cycleTimeData && cycleTimeData.length > 0 ? cycleTimeData.reduce((sum, ct) => sum + ct.avg_hours, 0) / cycleTimeData.length : 0;
-
   const handleRefreshEventsV2 = async () => {
     setIsRefreshing(true);
     try {
       // Capture current event IDs before refresh
       const currentEventIds = new Set(eventsV2Data?.map((e: any) => e.id) || []);
-      
+
       // Invalidate and refetch
-      await queryClient.invalidateQueries({ queryKey: ["eventsV2"] });
-      await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
-      
+      await queryClient.invalidateQueries({
+        queryKey: ["eventsV2"]
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["eventCounts"]
+      });
+
       // Wait for refetch to complete
       const result = await queryClient.fetchQuery({
-        queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter],
+        queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter]
       });
-      
+
       // Compare and highlight new events
       if (result && Array.isArray(result)) {
         const newEventIds = new Set<string>();
@@ -343,7 +331,6 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
             newEventIds.add(event.id);
           }
         });
-        
         if (newEventIds.size > 0) {
           setHighlightedRowIds(newEventIds);
           // Clear highlights after 3 seconds
@@ -352,17 +339,16 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
           }, 3000);
         }
       }
-      
       toast({
         title: "Data Refreshed",
-        description: "EventsV2 data has been updated successfully.",
+        description: "EventsV2 data has been updated successfully."
       });
     } catch (error) {
       console.error("Refresh error:", error);
       toast({
         variant: "destructive",
         title: "Refresh Failed",
-        description: "Failed to refresh data. Please try again.",
+        description: "Failed to refresh data. Please try again."
       });
     } finally {
       setIsRefreshing(false);
@@ -454,10 +440,9 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
       // Transform data to clean, serializable objects and fetch shortened URLs
       if (data && data.length > 0) {
         const uniqueFullUrls = [...new Set(data.map((e: any) => e.tokens?.full_url).filter(Boolean))];
-        const { data: shortUrls } = await supabase
-          .from("shortened_urls")
-          .select("full_url, short_code")
-          .in("full_url", uniqueFullUrls);
+        const {
+          data: shortUrls
+        } = await supabase.from("shortened_urls").select("full_url, short_code").in("full_url", uniqueFullUrls);
 
         // Map full URLs to short URLs
         const shortUrlMap = new Map<string, string>();
@@ -492,7 +477,6 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
           short_url: event.tokens?.full_url ? shortUrlMap.get(event.tokens.full_url) : null
         })));
       }
-
       return [];
     },
     enabled: !!selectedCampaign
@@ -583,41 +567,43 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
 
   // Get campaign title for EventsV2
   const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || "N/A";
-
   const clearRealData = async () => {
     try {
       console.log("Starting REAL data cleanup...");
-      
+
       // Count before deletion
-      const { count: eventsBefore, error: eventsCountError } = await supabase
-        .from("url_events")
-        .select("*", { count: "exact", head: true })
-        .eq("is_simulated", false);
-      
+      const {
+        count: eventsBefore,
+        error: eventsCountError
+      } = await supabase.from("url_events").select("*", {
+        count: "exact",
+        head: true
+      }).eq("is_simulated", false);
       if (eventsCountError) {
         console.error("Error counting events:", eventsCountError);
         throw eventsCountError;
       }
-      
-      const { count: tokensBefore, error: tokensCountError } = await supabase
-        .from("tokens")
-        .select("*", { count: "exact", head: true })
-        .eq("is_simulated", false);
-      
+      const {
+        count: tokensBefore,
+        error: tokensCountError
+      } = await supabase.from("tokens").select("*", {
+        count: "exact",
+        head: true
+      }).eq("is_simulated", false);
       if (tokensCountError) {
         console.error("Error counting tokens:", tokensCountError);
         throw tokensCountError;
       }
-      
       console.log(`Found ${eventsBefore} real events and ${tokensBefore} real tokens to delete`);
 
       // Delete real URL events FIRST (before tokens, to avoid FK constraint issues)
       console.log("Attempting to delete real events...");
-      const { error: eventsError, count: eventsDeleted } = await supabase
-        .from("url_events")
-        .delete({ count: "exact" })
-        .eq("is_simulated", false);
-
+      const {
+        error: eventsError,
+        count: eventsDeleted
+      } = await supabase.from("url_events").delete({
+        count: "exact"
+      }).eq("is_simulated", false);
       if (eventsError) {
         console.error("Failed to delete events:", eventsError);
         toast({
@@ -631,11 +617,12 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
 
       // Delete real tokens SECOND (after events are gone)
       console.log("Attempting to delete real tokens...");
-      const { error: tokensError, count: tokensDeleted } = await supabase
-        .from("tokens")
-        .delete({ count: "exact" })
-        .eq("is_simulated", false);
-
+      const {
+        error: tokensError,
+        count: tokensDeleted
+      } = await supabase.from("tokens").delete({
+        count: "exact"
+      }).eq("is_simulated", false);
       if (tokensError) {
         console.error("Failed to delete tokens:", tokensError);
         toast({
@@ -648,42 +635,55 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
       console.log(`Successfully deleted ${tokensDeleted} real tokens`);
 
       // Verify deletion
-      const { count: eventsAfter } = await supabase
-        .from("url_events")
-        .select("*", { count: "exact", head: true })
-        .eq("is_simulated", false);
-      
-      const { count: tokensAfter } = await supabase
-        .from("tokens")
-        .select("*", { count: "exact", head: true })
-        .eq("is_simulated", false);
-      
+      const {
+        count: eventsAfter
+      } = await supabase.from("url_events").select("*", {
+        count: "exact",
+        head: true
+      }).eq("is_simulated", false);
+      const {
+        count: tokensAfter
+      } = await supabase.from("tokens").select("*", {
+        count: "exact",
+        head: true
+      }).eq("is_simulated", false);
       console.log(`After deletion: ${eventsAfter} events and ${tokensAfter} tokens remaining`);
 
       // Force refresh all relevant queries
-      await queryClient.invalidateQueries({ queryKey: ["url_events"] });
-      await queryClient.invalidateQueries({ queryKey: ["tokens"] });
-      await queryClient.invalidateQueries({ queryKey: ["eventCounts"] });
-      await queryClient.invalidateQueries({ queryKey: ["viralityMetrics"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["url_events"]
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["tokens"]
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["eventCounts"]
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["viralityMetrics"]
+      });
       await queryClient.refetchQueries();
-
-      toast({ 
-        title: "Real data cleared successfully", 
+      toast({
+        title: "Real data cleared successfully",
         description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens from production data.`,
         variant: "destructive"
       });
-      
+
       // Close dialogs
       setShowFirstWarning(false);
       setShowSecondWarning(false);
-      
+
       // Refresh events
       fetchEvents();
     } catch (error) {
-      toast({ title: "Error", description: "Failed to clear real data.", variant: "destructive", duration: Infinity });
+      toast({
+        title: "Error",
+        description: "Failed to clear real data.",
+        variant: "destructive",
+        duration: Infinity
+      });
     }
   };
-
   if (campaignsLoading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -695,7 +695,7 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <TrendingUp className="w-8 h-8" />
-              Configure campaign: {currentCampaign?.title || "No campaign selected"}
+              Campaign Configuration
             </h1>
             <Link to="/campaigns">
               <Button>Back to Campaign Orchestration</Button>
@@ -815,13 +815,10 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          setShowFirstWarning(false);
-                          setShowSecondWarning(true);
-                        }}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
+                      <AlertDialogAction onClick={() => {
+                      setShowFirstWarning(false);
+                      setShowSecondWarning(true);
+                    }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Continue
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -851,10 +848,7 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel - Keep My Data</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={clearRealData}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
-                      >
+                      <AlertDialogAction onClick={clearRealData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold">
                         YES, DELETE EVERYTHING
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -868,30 +862,7 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
               <CardHeader>
                 <CardTitle>Current Selection</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="text-sm">
-                  <span className="font-medium">Campaign:</span>{" "}
-                  <span className="text-muted-foreground">
-                    {campaigns?.find(c => c.code === selectedCampaign)?.title || "None"}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <span className="font-medium">Event Type:</span>{" "}
-                  <span className="text-muted-foreground">{eventTypeFilter === "all" ? "All Events" : eventTypeFilter}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="font-medium">Data Source:</span>{" "}
-                  <span className="text-muted-foreground">
-                    {dataSourceFilter === "real" ? "Real Data Only" : dataSourceFilter === "simulated" ? "Simulated Data Only" : "Both Combined"}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <span className="font-medium">Viral Levels:</span>{" "}
-                  <span className="text-muted-foreground">
-                    {levelFilter.split(',').map(l => `L${l.padStart(2, '0')}`).join(', ')}
-                  </span>
-                </div>
-              </CardContent>
+              
             </Card>
           </TabsContent>
 
@@ -980,12 +951,7 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
                           <span className="text-muted-foreground">Earliest: {eventsV2Metrics?.earliestTimestamp}</span>
                           <span className="text-muted-foreground">Latest: {eventsV2Metrics?.latestTimestamp}</span>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRefreshEventsV2}
-                          disabled={isRefreshing}
-                        >
+                        <Button variant="outline" size="sm" onClick={handleRefreshEventsV2} disabled={isRefreshing}>
                           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                           Refresh
                         </Button>
@@ -1059,10 +1025,7 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedEventsV2.map((event: any, index: number) => <TableRow 
-                              key={event.id}
-                              className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}
-                            >
+                          {sortedEventsV2.map((event: any, index: number) => <TableRow key={event.id} className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}>
               <TableCell>{index + 1}</TableCell>
               <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
               <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
@@ -1083,26 +1046,17 @@ export default function CampaignDashboard({ campaignId: propCampaignId }: Campai
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                {event.short_url ? (
-                                  <div className="flex items-center gap-2">
+                                {event.short_url ? <div className="flex items-center gap-2">
                                     <span className="font-mono text-xs truncate max-w-[200px]">{event.short_url}</span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(event.short_url);
-                                        toast({
-                                          title: "Short URL copied!",
-                                        });
-                                      }}
-                                    >
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+                              navigator.clipboard.writeText(event.short_url);
+                              toast({
+                                title: "Short URL copied!"
+                              });
+                            }}>
                                       <Copy className="h-3 w-3" />
                                     </Button>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">No short URL</span>
-                                )}
+                                  </div> : <span className="text-muted-foreground text-xs">No short URL</span>}
                               </TableCell>
                             </TableRow>)}
                         </TableBody>
