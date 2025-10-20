@@ -236,8 +236,8 @@ export default function Settings() {
 
                 const logoValue = getValue(logoSetting);
                 const defaultValue = getValue(defaultSetting);
-                // Handle both number and string formats
-                const isDefault = defaultValue?.selected === num || defaultValue?.selected === `logo_${num}`;
+                // Check if this logo is the default (number format)
+                const isDefault = defaultValue?.selected === num;
 
                 return (
                   <LogoUpload
@@ -263,8 +263,10 @@ export default function Settings() {
                     }}
                     onSelectDefault={() => {
                       if (defaultSetting) {
-                        setValue(defaultSetting.id, { selected: `logo_${num}` });
-                        handleSave(defaultSetting.id);
+                        const newValue = { selected: num };
+                        setValue(defaultSetting.id, newValue);
+                        // Force immediate save
+                        updateSetting({ id: defaultSetting.id, value: newValue });
                       }
                     }}
                   />
