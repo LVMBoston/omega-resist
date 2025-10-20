@@ -223,17 +223,18 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
           <Input
             value={formData.utm_id}
             onChange={(e) => {
-              const value = e.target.value;
+              const value = e.target.value.toLowerCase();
               setFormData({ ...formData, utm_id: value });
               // Save to localStorage for this campaign
               if (value.trim()) {
                 localStorage.setItem(`eoa_last_utm_${campaignId}`, value);
               }
             }}
-            placeholder="e.g., rally-001"
+            placeholder="e.g., rally-a1"
+            maxLength={8}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            utm_content will be auto-generated as: {formData.mobilize_code || "{code}"}-{formData.utm_id || "{utm_id}"}
+            Max 8 chars, lowercase, use '-' or '_'. utm_content: {formData.mobilize_code || "{code}"}-{formData.utm_id || "{utm_id}"}
           </p>
         </div>
       </div>

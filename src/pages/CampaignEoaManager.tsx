@@ -813,15 +813,16 @@ export default function CampaignEoaManager() {
 
             {selectedRows.size > 0 && (
               <div className="space-y-4 border-t pt-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="bulk-deck">Assign Deck name to selected rows</Label>
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="bulk-deck">Assign Deck</Label>
                     <div className="flex gap-2">
                       <Input
                         id="bulk-deck"
                         placeholder="e.g., deck-2024-q4"
                         value={bulkDeckSlug}
                         onChange={(e) => setBulkDeckSlug(e.target.value)}
+                        className="flex-1"
                       />
                       <Button 
                         variant="outline" 
@@ -832,31 +833,33 @@ export default function CampaignEoaManager() {
                       </Button>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bulk-utm">Assign utm_id to selected rows</Label>
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="bulk-utm">Assign utm_id</Label>
                     <Input
                       id="bulk-utm"
-                      placeholder="e.g., event-123"
+                      placeholder="e.g., event-a1"
                       value={bulkUtmId}
-                      onChange={(e) => setBulkUtmId(e.target.value)}
+                      onChange={(e) => setBulkUtmId(e.target.value.toLowerCase())}
+                      maxLength={8}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Max 8 chars, lowercase only, use '-' or '_'
+                    </p>
                   </div>
-                </div>
-                <div className="flex gap-2">
                   <Button onClick={applyBulkUpdate} className="flex-1">
                     Apply to {selectedRows.size} Selected
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
-                    className="flex-1"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    {selectedRows.size > 0 
-                      ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
-                      : "Generate short URLs and Mint L00 tokens for ALL rows"}
-                  </Button>
                 </div>
+                <Button
+                  variant="outline"
+                  onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
+                  className="w-full"
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  {selectedRows.size > 0 
+                    ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
+                    : "Generate short URLs and Mint L00 tokens for ALL rows"}
+                </Button>
               </div>
             )}
           </CardContent>
