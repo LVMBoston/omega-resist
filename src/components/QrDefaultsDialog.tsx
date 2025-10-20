@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSettings } from "@/hooks/useSettings";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { ExternalLink, ImageIcon } from "lucide-react";
 
 interface QrDefaultsDialogProps {
   open: boolean;
@@ -20,14 +23,11 @@ const SIZE_PRESETS = {
 
 export function QrDefaultsDialog({ open, onOpenChange }: QrDefaultsDialogProps) {
   const { settings, isLoading, updateSetting, getSetting } = useSettings("qr_defaults");
+  const navigate = useNavigate();
   
   const [sizePreset, setSizePreset] = useState<"small" | "medium" | "large">("medium");
   const [topCaption, setTopCaption] = useState("");
   const [bottomCaption, setBottomCaption] = useState("{eoa_title}");
-  const [borderWidth, setBorderWidth] = useState(20);
-  const [borderColor, setBorderColor] = useState("#000000");
-  const [backgroundColor, setBackgroundColor] = useState("#FFFFFF");
-  const [textColor, setTextColor] = useState("#000000");
   const [padding, setPadding] = useState(100);
   const [logoSizePercent, setLogoSizePercent] = useState(20);
 
@@ -36,20 +36,12 @@ export function QrDefaultsDialog({ open, onOpenChange }: QrDefaultsDialogProps) 
       const sizePresetSetting = getSetting?.("qr_defaults", "size_preset");
       const topCaptionSetting = getSetting?.("qr_defaults", "top_caption");
       const bottomCaptionSetting = getSetting?.("qr_defaults", "bottom_caption");
-      const borderWidthSetting = getSetting?.("qr_defaults", "border_width");
-      const borderColorSetting = getSetting?.("qr_defaults", "border_color");
-      const backgroundColorSetting = getSetting?.("qr_defaults", "background_color");
-      const textColorSetting = getSetting?.("qr_defaults", "text_color");
       const paddingSetting = getSetting?.("qr_defaults", "padding");
       const logoSizeSetting = getSetting?.("qr_defaults", "logo_size_percent");
 
       if (sizePresetSetting?.value?.selected) setSizePreset(sizePresetSetting.value.selected);
       if (topCaptionSetting?.value?.text !== undefined) setTopCaption(topCaptionSetting.value.text);
       if (bottomCaptionSetting?.value?.text) setBottomCaption(bottomCaptionSetting.value.text);
-      if (borderWidthSetting?.value?.value) setBorderWidth(borderWidthSetting.value.value);
-      if (borderColorSetting?.value?.value) setBorderColor(borderColorSetting.value.value);
-      if (backgroundColorSetting?.value?.value) setBackgroundColor(backgroundColorSetting.value.value);
-      if (textColorSetting?.value?.value) setTextColor(textColorSetting.value.value);
       if (paddingSetting?.value?.value) setPadding(paddingSetting.value.value);
       if (logoSizeSetting?.value?.value) setLogoSizePercent(logoSizeSetting.value.value);
     }
@@ -60,10 +52,6 @@ export function QrDefaultsDialog({ open, onOpenChange }: QrDefaultsDialogProps) 
       { key: "size_preset", value: { selected: sizePreset } },
       { key: "top_caption", value: { text: topCaption } },
       { key: "bottom_caption", value: { text: bottomCaption } },
-      { key: "border_width", value: { value: borderWidth } },
-      { key: "border_color", value: { value: borderColor } },
-      { key: "background_color", value: { value: backgroundColor } },
-      { key: "text_color", value: { value: textColor } },
       { key: "padding", value: { value: padding } },
       { key: "logo_size_percent", value: { value: logoSizePercent } },
     ];
@@ -76,6 +64,16 @@ export function QrDefaultsDialog({ open, onOpenChange }: QrDefaultsDialogProps) 
     });
 
     toast.success("QR code defaults saved successfully");
+  };
+
+  const handleNavigateToSettings = () => {
+    onOpenChange(false);
+    navigate("/settings");
+    // Small delay to ensure navigation completes before trying to switch tabs
+    setTimeout(() => {
+      const brandingTab = document.querySelector('[value="branding"]') as HTMLElement;
+      brandingTab?.click();
+    }, 100);
   };
 
   const currentPreset = SIZE_PRESETS[sizePreset];
@@ -91,7 +89,7 @@ export function QrDefaultsDialog({ open, onOpenChange }: QrDefaultsDialogProps) 
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="size">Size & Layout</TabsTrigger>
             <TabsTrigger value="captions">Captions</TabsTrigger>
-            <TabsTrigger value="styling">Styling</TabsTrigger>
+            <TabsTrigger value="branding">Branding</TabsTrigger>
           </TabsList>
 
           <TabsContent value="size" className="space-y-4">
@@ -170,75 +168,37 @@ export function QrDefaultsDialog({ open, onOpenChange }: QrDefaultsDialogProps) 
             </div>
           </TabsContent>
 
-          <TabsContent value="styling" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="borderWidth">Border Width (px)</Label>
-                <Input
-                  id="borderWidth"
-                  type="number"
-                  value={borderWidth}
-                  onChange={(e) => setBorderWidth(Number(e.target.value))}
-                  min={0}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="borderColor">Border Color</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="borderColor"
-                    type="color"
-                    value={borderColor}
-                    onChange={(e) => setBorderColor(e.target.value)}
-                    className="w-20 h-10 p-1"
-                  />
-                  <Input
-                    value={borderColor}
-                    onChange={(e) => setBorderColor(e.target.value)}
-                    placeholder="#000000"
-                  />
+          <TabsContent value="branding" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Logo Management
+                </CardTitle>
+                <CardDescription>
+                  Upload and manage logos that appear on your QR codes. Logos are managed in the Settings page.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <p className="text-sm mb-4">
+                    To upload logos and set a default logo for QR codes, go to the Branding section in Settings.
+                  </p>
+                  <Button onClick={handleNavigateToSettings} className="w-full">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Branding Settings
+                  </Button>
                 </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="backgroundColor">Background Color</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="backgroundColor"
-                    type="color"
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="w-20 h-10 p-1"
-                  />
-                  <Input
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    placeholder="#FFFFFF"
-                  />
+                
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">Note on QR Code Styling:</p>
+                  <p>
+                    QR code colors and borders are kept at default values (black border, white background, black text) 
+                    to ensure maximum scannability. Custom colors may reduce scan reliability.
+                  </p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="textColor">Text Color</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="textColor"
-                    type="color"
-                    value={textColor}
-                    onChange={(e) => setTextColor(e.target.value)}
-                    className="w-20 h-10 p-1"
-                  />
-                  <Input
-                    value={textColor}
-                    onChange={(e) => setTextColor(e.target.value)}
-                    placeholder="#000000"
-                  />
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
