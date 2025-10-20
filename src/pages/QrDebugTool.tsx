@@ -28,7 +28,6 @@ export default function QrDebugTool() {
   const [borderThickness, setBorderThickness] = useState(0);
   const [cornerRadius, setCornerRadius] = useState(0);
   const [moduleShape, setModuleShape] = useState<'square' | 'rounded' | 'dots'>('square');
-  const [splitForPrinting, setSplitForPrinting] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -292,126 +291,6 @@ export default function QrDebugTool() {
       }, 'image/png');
     };
     qrImg.src = qrDataUrl;
-  };
-
-  const downloadQuadrants = async () => {
-    if (!qrDataUrl) {
-      toast.error("Generate QR code first");
-      return;
-    }
-
-    try {
-      // Generate a QR code without quiet zone (margin: 0)
-      const fullSize = 4800; // 8" @ 600 DPI
-      const canvas = document.createElement('canvas');
-      canvas.width = fullSize;
-      canvas.height = fullSize;
-
-      await QRCode.toCanvas(canvas, url, {
-        width: fullSize,
-        margin: 0, // No quiet zone
-        errorCorrectionLevel: errorCorrectionLevel,
-        color: {
-          dark: qrColor,
-          light: bgColor
-        }
-      });
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        toast.error("Failed to create canvas");
-        return;
-      }
-
-      if (moduleShape !== 'square') {
-        applyModuleShape(canvas, ctx);
-      }
-
-      // If logo exists, add it to center
-      if (logo) {
-        const logoImg = new Image();
-        await new Promise((resolve) => {
-          logoImg.onload = () => {
-            const maxLogoSize = fullSize * 0.2;
-            const originalWidth = logoImg.naturalWidth || logoImg.width;
-            const originalHeight = logoImg.naturalHeight || logoImg.height;
-            const aspectRatio = originalWidth / originalHeight;
-            
-            let logoWidth, logoHeight;
-            if (aspectRatio > 1) {
-              logoWidth = maxLogoSize;
-              logoHeight = maxLogoSize / aspectRatio;
-            } else {
-              logoHeight = maxLogoSize;
-              logoWidth = maxLogoSize * aspectRatio;
-            }
-            
-            const x = (fullSize - logoWidth) / 2;
-            const y = (fullSize - logoHeight) / 2;
-            
-            const padding = 40;
-            const bgWidth = logoWidth + padding * 2;
-            const bgHeight = logoHeight + padding * 2;
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(
-              (fullSize - bgWidth) / 2,
-              (fullSize - bgHeight) / 2,
-              bgWidth,
-              bgHeight
-            );
-            
-            ctx.drawImage(logoImg, x, y, logoWidth, logoHeight);
-            resolve(null);
-          };
-          logoImg.src = logo;
-        });
-      }
-
-      // Split into 4 quadrants and download each
-      const quadrantSize = fullSize / 2;
-      const quadrants = [
-        { name: 'top-left', x: 0, y: 0 },
-        { name: 'top-right', x: quadrantSize, y: 0 },
-        { name: 'bottom-left', x: 0, y: quadrantSize },
-        { name: 'bottom-right', x: quadrantSize, y: quadrantSize }
-      ];
-
-      for (const quadrant of quadrants) {
-        const quadrantCanvas = document.createElement('canvas');
-        quadrantCanvas.width = quadrantSize;
-        quadrantCanvas.height = quadrantSize;
-        const quadrantCtx = quadrantCanvas.getContext('2d');
-        
-        if (quadrantCtx) {
-          quadrantCtx.drawImage(
-            canvas,
-            quadrant.x, quadrant.y, quadrantSize, quadrantSize,
-            0, 0, quadrantSize, quadrantSize
-          );
-
-          // Download this quadrant
-          await new Promise<void>((resolve) => {
-            quadrantCanvas.toBlob((blob) => {
-              if (blob) {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.download = `qr-quadrant-${quadrant.name}.png`;
-                link.href = url;
-                link.click();
-                URL.revokeObjectURL(url);
-              }
-              // Small delay between downloads
-              setTimeout(resolve, 100);
-            }, 'image/png');
-          });
-        }
-      }
-
-      toast.success("4 quadrants downloaded! Arrange as: top-left, top-right, bottom-left, bottom-right");
-    } catch (error) {
-      console.error('Error generating quadrants:', error);
-      toast.error("Failed to generate quadrants");
-    }
   };
 
   const handleShortenUrl = async () => {
@@ -714,21 +593,6 @@ export default function QrDebugTool() {
                 Download PNG
               </Button>
             </div>
-
-            <div className="pt-2">
-              <Button
-                onClick={downloadQuadrants}
-                variant="secondary"
-                disabled={!qrDataUrl}
-                className="w-full"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download 4 Quadrants (for 12" poster assembly)
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                Downloads 4 separate images without quiet zone - arrange them in a 2×2 grid for your 12"×12" poster
-              </p>
-            </div>
           </Card>
 
           {/* Preview */}
@@ -767,7 +631,6 @@ export default function QrDebugTool() {
           <h2 className="text-xl font-semibold mb-4">QR Code Scanability Tips</h2>
           <ul className="space-y-2 text-sm">
             <li>🚀 <strong className="text-primary">URL Shortening (Critical!):</strong> Shortened URLs create simpler QR codes with fewer modules, enabling reliable scanning at 0.6"×0.6" (256px) - perfect for compact pamphlets!</li>
-            <li>🖨️ <strong className="text-primary">Large Poster Printing:</strong> Use the "Download 4 Quadrants" button to create a 12"×12" poster by printing and assembling four 6"×6" sections (each fits on 8.5" paper)</li>
             <li>✅ <strong>Tiny size (0.6"):</strong> 256px works great with shortened URLs (tested with Bitly)</li>
             <li>✅ <strong>Standard size (1.5"):</strong> 512px for reliable scanning at arm's length</li>
             <li>✅ <strong>Large size (2"):</strong> 640px for high visibility on pamphlets</li>
