@@ -877,24 +877,22 @@ export default function CampaignEoaManager() {
 
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <CardTitle>
-                Event/Actions for {campaign.code}
+                Event/Actions for {campaign.title}
               </CardTitle>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setVisualizePayloadDialogOpen(true)}>
-                  <FileJson className="mr-2 h-4 w-4" />
-                  Visualize Generic Payload
-                </Button>
-                <Button onClick={() => {
-                setEditingEoa(null);
-                setDialogOpen(true);
-              }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Event/Action
-                </Button>
-              </div>
+              <Button variant="outline" onClick={() => setVisualizePayloadDialogOpen(true)}>
+                <FileJson className="mr-2 h-4 w-4" />
+                Visualize Generic Payload
+              </Button>
             </div>
+            <Button onClick={() => {
+              setEditingEoa(null);
+              setDialogOpen(true);
+            }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Event/Action
+            </Button>
           </CardHeader>
           <CardContent>
             {eoas.length === 0 ? <p className="text-center text-muted-foreground py-8">
