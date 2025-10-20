@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Upload, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from 'qrcode';
@@ -19,6 +20,15 @@ export default function QrDebugTool() {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [shortenedUrl, setShortenedUrl] = useState("");
   const [isShortening, setIsShortening] = useState(false);
+  
+  // New customization options
+  const [errorCorrectionLevel, setErrorCorrectionLevel] = useState<'L' | 'M' | 'Q' | 'H'>('H');
+  const [qrColor, setQrColor] = useState('#000000');
+  const [bgColor, setBgColor] = useState('#FFFFFF');
+  const [borderThickness, setBorderThickness] = useState(0);
+  const [cornerRadius, setCornerRadius] = useState(0);
+  const [moduleShape, setModuleShape] = useState<'square' | 'rounded' | 'dots'>('square');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generateQR = async () => {
@@ -30,12 +40,18 @@ export default function QrDebugTool() {
       await QRCode.toCanvas(canvas, url, {
         width: size,
         margin: 2,
-        errorCorrectionLevel: 'H',
+        errorCorrectionLevel: errorCorrectionLevel,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+          dark: qrColor,
+          light: bgColor
         }
       });
+
+      const ctx = canvas.getContext('2d');
+      if (ctx && moduleShape !== 'square') {
+        // Apply module shape effects
+        applyModuleShape(canvas, ctx);
+      }
 
       // If logo exists, add it to center
       if (logo) {
@@ -66,11 +82,11 @@ export default function QrDebugTool() {
             const x = (size - logoWidth) / 2;
             const y = (size - logoHeight) / 2;
             
-            // Draw white background (slightly larger than logo)
+            // Draw background (slightly larger than logo) in bg color
             const padding = 10;
             const bgWidth = logoWidth + padding * 2;
             const bgHeight = logoHeight + padding * 2;
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = bgColor;
             ctx.fillRect(
               (size - bgWidth) / 2,
               (size - bgHeight) / 2,
@@ -80,18 +96,121 @@ export default function QrDebugTool() {
             
             // Draw logo maintaining aspect ratio
             ctx.drawImage(logoImg, x, y, logoWidth, logoHeight);
-            setQrDataUrl(canvas.toDataURL('image/png'));
+            
+            // Apply border and corner radius after everything
+            applyBorderAndRadius(canvas, ctx);
           };
           logoImg.src = logo;
         }
       } else {
-        setQrDataUrl(canvas.toDataURL('image/png'));
+        // Apply border and corner radius
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          applyBorderAndRadius(canvas, ctx);
+        }
       }
 
       toast.success("QR code generated");
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error("Failed to generate QR code");
+    }
+  };
+
+  const applyModuleShape = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Create a new canvas for the shaped version
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+    
+    tempCtx.fillStyle = bgColor;
+    tempCtx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Detect module size (approximate)
+    const moduleSize = Math.max(2, Math.floor(canvas.width / 50));
+    
+    tempCtx.fillStyle = qrColor;
+    
+    // Scan and draw modules
+    for (let y = 0; y < canvas.height; y += moduleSize) {
+      for (let x = 0; x < canvas.width; x += moduleSize) {
+        const i = (y * canvas.width + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        // Check if this pixel is dark (part of QR code)
+        const isDark = (r + g + b) / 3 < 128;
+        
+        if (isDark) {
+          if (moduleShape === 'rounded') {
+            tempCtx.beginPath();
+            const radius = moduleSize * 0.4;
+            tempCtx.roundRect(x, y, moduleSize, moduleSize, radius);
+            tempCtx.fill();
+          } else if (moduleShape === 'dots') {
+            tempCtx.beginPath();
+            tempCtx.arc(x + moduleSize / 2, y + moduleSize / 2, moduleSize / 2, 0, Math.PI * 2);
+            tempCtx.fill();
+          }
+        }
+      }
+    }
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tempCanvas, 0, 0);
+  };
+
+  const applyBorderAndRadius = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+    if (borderThickness > 0 || cornerRadius > 0) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return;
+      
+      // Copy current canvas to temp
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Clear main canvas and apply corner radius
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (cornerRadius > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(0, 0, canvas.width, canvas.height, cornerRadius);
+        ctx.clip();
+      }
+      
+      ctx.drawImage(tempCanvas, 0, 0);
+      
+      if (cornerRadius > 0) {
+        ctx.restore();
+      }
+      
+      // Draw border
+      if (borderThickness > 0) {
+        ctx.strokeStyle = qrColor;
+        ctx.lineWidth = borderThickness;
+        if (cornerRadius > 0) {
+          ctx.beginPath();
+          ctx.roundRect(borderThickness / 2, borderThickness / 2, 
+                       canvas.width - borderThickness, canvas.height - borderThickness, cornerRadius);
+          ctx.stroke();
+        } else {
+          ctx.strokeRect(borderThickness / 2, borderThickness / 2, 
+                        canvas.width - borderThickness, canvas.height - borderThickness);
+        }
+      }
+      
+      setQrDataUrl(canvas.toDataURL('image/png'));
+    } else {
+      setQrDataUrl(canvas.toDataURL('image/png'));
     }
   };
 
@@ -325,6 +444,100 @@ export default function QrDebugTool() {
                 value={labelBelow}
                 onChange={(e) => setLabelBelow(e.target.value)}
                 placeholder="Optional label below"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="errorCorrection">Error Correction Level</Label>
+              <Select value={errorCorrectionLevel} onValueChange={(value: 'L' | 'M' | 'Q' | 'H') => setErrorCorrectionLevel(value)}>
+                <SelectTrigger id="errorCorrection">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="L">Low (7% recovery)</SelectItem>
+                  <SelectItem value="M">Medium (15% recovery)</SelectItem>
+                  <SelectItem value="Q">Quartile (25% recovery)</SelectItem>
+                  <SelectItem value="H">High (30% recovery) - Best for logos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="qrColor">QR Code Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="qrColor"
+                    type="color"
+                    value={qrColor}
+                    onChange={(e) => setQrColor(e.target.value)}
+                    className="w-16 h-10 p-1 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={qrColor}
+                    onChange={(e) => setQrColor(e.target.value)}
+                    className="flex-1"
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bgColor">Background Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="bgColor"
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    className="w-16 h-10 p-1 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    className="flex-1"
+                    placeholder="#FFFFFF"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="moduleShape">Module Shape</Label>
+              <Select value={moduleShape} onValueChange={(value: 'square' | 'rounded' | 'dots') => setModuleShape(value)}>
+                <SelectTrigger id="moduleShape">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="square">Square (Standard)</SelectItem>
+                  <SelectItem value="rounded">Rounded (Smooth edges)</SelectItem>
+                  <SelectItem value="dots">Dots (Circular modules)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="borderThickness">Border Thickness: {borderThickness}px</Label>
+              <Slider
+                id="borderThickness"
+                min={0}
+                max={20}
+                step={1}
+                value={[borderThickness]}
+                onValueChange={(values) => setBorderThickness(values[0])}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cornerRadius">Corner Radius: {cornerRadius}px</Label>
+              <Slider
+                id="cornerRadius"
+                min={0}
+                max={50}
+                step={5}
+                value={[cornerRadius]}
+                onValueChange={(values) => setCornerRadius(values[0])}
               />
             </div>
 
