@@ -24,23 +24,58 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     toast.success(`${label} copied to clipboard`);
   };
 
+  const generateDecoratedQRCanvas = async (urlForQr: string): Promise<HTMLCanvasElement> => {
+    const qrSize = 1000;
+    const padding = 100;
+    const borderWidth = 20;
+    const textHeight = 120;
+    const totalSize = qrSize + (padding * 2) + textHeight;
+    
+    // Create QR code canvas
+    const qrCanvas = document.createElement('canvas');
+    await QRCode.toCanvas(qrCanvas, urlForQr, {
+      width: qrSize,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+    
+    // Create final canvas with border and text
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = totalSize;
+    finalCanvas.height = totalSize;
+    const ctx = finalCanvas.getContext('2d')!;
+    
+    // Fill white background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, totalSize, totalSize);
+    
+    // Draw border
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = borderWidth;
+    ctx.strokeRect(borderWidth / 2, borderWidth / 2, totalSize - borderWidth, totalSize - borderWidth);
+    
+    // Draw QR code
+    ctx.drawImage(qrCanvas, padding, padding, qrSize, qrSize);
+    
+    // Draw text at bottom
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 48px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const textY = padding + qrSize + (textHeight / 2);
+    ctx.fillText(eoaTitle, totalSize / 2, textY);
+    
+    return finalCanvas;
+  };
+
   const copyQRToClipboard = async () => {
     try {
       const urlForQr = shortUrl || fullUrl;
-      const canvas = document.createElement('canvas');
-      const size = 1200;
-      canvas.width = size;
-      canvas.height = size;
-      
-      await QRCode.toCanvas(canvas, urlForQr, {
-        width: size,
-        margin: 2,
-        errorCorrectionLevel: 'H',
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+      const canvas = await generateDecoratedQRCanvas(urlForQr);
       
       canvas.toBlob(async (blob) => {
         if (blob) {
@@ -68,20 +103,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
   const downloadQR = async () => {
     try {
       const urlForQr = shortUrl || fullUrl;
-      const canvas = document.createElement('canvas');
-      const size = 1200;
-      canvas.width = size;
-      canvas.height = size;
-      
-      await QRCode.toCanvas(canvas, urlForQr, {
-        width: size,
-        margin: 2,
-        errorCorrectionLevel: 'H',
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+      const canvas = await generateDecoratedQRCanvas(urlForQr);
       
       canvas.toBlob((blob) => {
         if (blob) {
@@ -92,7 +114,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
           downloadLink.click();
           URL.revokeObjectURL(url);
           
-          toast.success("QR code downloaded (1200×1200px for 2\"×2\" printing)");
+          toast.success("QR code downloaded with border and label");
         } else {
           toast.error("Failed to create QR code image");
         }
@@ -223,13 +245,18 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                   </p>
                 )}
                 <div className="flex justify-center p-8 bg-white dark:bg-muted rounded">
-                  <QRCodeSVG
-                    id="qr-code-svg"
-                    value={shortUrl || fullUrl}
-                    size={384}
-                    level="H"
-                    includeMargin={true}
-                  />
+                  <div className="inline-block p-4 border-4 border-black bg-white">
+                    <QRCodeSVG
+                      id="qr-code-svg"
+                      value={shortUrl || fullUrl}
+                      size={300}
+                      level="H"
+                      includeMargin={true}
+                    />
+                    <div className="text-center mt-3 font-bold text-sm text-black">
+                      {eoaTitle}
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
