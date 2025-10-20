@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Save } from "lucide-react";
+import { LogoUpload } from "@/components/LogoUpload";
 
 export default function Settings() {
   const { settings, isLoading, updateSetting } = useSettings();
@@ -24,6 +25,7 @@ export default function Settings() {
   const smsSettings = settings?.filter((s) => s.category === "sms") || [];
   const utmSettings = settings?.filter((s) => s.category === "utm") || [];
   const generalSettings = settings?.filter((s) => s.category === "general") || [];
+  const brandingSettings = settings?.filter((s) => s.category === "branding") || [];
 
   const handleSave = (id: string) => {
     if (editedValues[id]) {
@@ -59,11 +61,12 @@ export default function Settings() {
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="email" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="email">Email Templates</TabsTrigger>
             <TabsTrigger value="sms">SMS Templates</TabsTrigger>
             <TabsTrigger value="utm">UTM Vocabularies</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="branding">Branding</TabsTrigger>
           </TabsList>
 
           <TabsContent value="email" className="space-y-4">
@@ -221,6 +224,61 @@ export default function Settings() {
                 </Card>
               );
             })}
+          </TabsContent>
+
+          <TabsContent value="branding" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-3">
+              {[1, 2, 3].map((num) => {
+                const logoSetting = brandingSettings.find((s) => s.key === `logo_${num}`);
+                const defaultSetting = brandingSettings.find((s) => s.key === "default_logo");
+                
+                if (!logoSetting) return null;
+
+                const logoValue = getValue(logoSetting);
+                const defaultValue = getValue(defaultSetting);
+                const isDefault = defaultValue?.selected === num;
+
+                return (
+                  <LogoUpload
+                    key={num}
+                    logoNumber={num as 1 | 2 | 3}
+                    currentUrl={logoValue?.url || null}
+                    isDefault={isDefault}
+                    onUpload={(url) => {
+                      setValue(logoSetting.id, { ...logoValue, url });
+                      handleSave(logoSetting.id);
+                    }}
+                    onDelete={() => {
+                      setValue(logoSetting.id, { ...logoValue, url: null });
+                      handleSave(logoSetting.id);
+                      
+                      // If this was the default, clear default selection
+                      if (isDefault && defaultSetting) {
+                        setValue(defaultSetting.id, { selected: null });
+                        handleSave(defaultSetting.id);
+                      }
+                    }}
+                    onSelectDefault={() => {
+                      if (defaultSetting) {
+                        setValue(defaultSetting.id, { selected: num });
+                        handleSave(defaultSetting.id);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+            
+            {brandingSettings.find((s) => s.key === "default_logo")?.value?.selected && (
+              <Card className="bg-muted/50">
+                <CardHeader>
+                  <CardTitle>Default Logo</CardTitle>
+                  <CardDescription>
+                    Logo {brandingSettings.find((s) => s.key === "default_logo")?.value?.selected} is currently set as the default logo for QR codes and other branding materials.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </main>
