@@ -48,7 +48,7 @@ export default function CampaignDetail() {
               </Button>
             </Link>
             <TabsList>
-              <TabsTrigger value="events">Event Manager</TabsTrigger>
+              <TabsTrigger value="events">Manage Events/Actions</TabsTrigger>
               <TabsTrigger value="config">Campaign Config</TabsTrigger>
             </TabsList>
           </div>
