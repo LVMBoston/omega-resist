@@ -263,10 +263,15 @@ export default function Settings() {
                     }}
                     onSelectDefault={() => {
                       if (defaultSetting) {
+                        console.log('Setting default logo to:', num);
+                        console.log('Default setting ID:', defaultSetting.id);
                         const newValue = { selected: num };
+                        console.log('New value:', newValue);
                         setValue(defaultSetting.id, newValue);
                         // Force immediate save
                         updateSetting({ id: defaultSetting.id, value: newValue });
+                      } else {
+                        console.error('Default setting not found!');
                       }
                     }}
                   />
