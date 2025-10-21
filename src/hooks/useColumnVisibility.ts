@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { VisibilityState } from "@tanstack/react-table";
 
@@ -56,7 +56,7 @@ export function useColumnVisibility() {
   }, [user?.id]);
 
   // Save visibility to localStorage whenever it changes
-  const updateColumnVisibility = (updater: VisibilityState | ((old: VisibilityState) => VisibilityState)) => {
+  const updateColumnVisibility = useCallback((updater: VisibilityState | ((old: VisibilityState) => VisibilityState)) => {
     setColumnVisibility((prev) => {
       const newState = typeof updater === "function" ? updater(prev) : updater;
       
@@ -71,7 +71,7 @@ export function useColumnVisibility() {
       
       return newState;
     });
-  };
+  }, [user?.id]);
 
   return {
     columnVisibility,
