@@ -45,7 +45,14 @@ export function useColumnVisibility() {
 
   // Update visibility when user changes (e.g., logout/login)
   useEffect(() => {
-    setColumnVisibility(loadColumnVisibility(user?.id));
+    const newVisibility = loadColumnVisibility(user?.id);
+    setColumnVisibility((prev) => {
+      // Only update if the visibility has actually changed
+      if (JSON.stringify(prev) !== JSON.stringify(newVisibility)) {
+        return newVisibility;
+      }
+      return prev;
+    });
   }, [user?.id]);
 
   // Save visibility to localStorage whenever it changes
