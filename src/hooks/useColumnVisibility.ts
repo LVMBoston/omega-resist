@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { VisibilityState } from "@tanstack/react-table";
 
@@ -42,18 +42,6 @@ export function useColumnVisibility() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => 
     loadColumnVisibility(user?.id)
   );
-
-  // Update visibility when user changes (e.g., logout/login)
-  useEffect(() => {
-    const newVisibility = loadColumnVisibility(user?.id);
-    setColumnVisibility((prev) => {
-      // Only update if the visibility has actually changed
-      if (JSON.stringify(prev) !== JSON.stringify(newVisibility)) {
-        return newVisibility;
-      }
-      return prev;
-    });
-  }, [user?.id]);
 
   // Save visibility to localStorage whenever it changes
   const updateColumnVisibility = useCallback((updater: VisibilityState | ((old: VisibilityState) => VisibilityState)) => {
