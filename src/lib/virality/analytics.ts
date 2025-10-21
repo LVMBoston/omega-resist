@@ -394,7 +394,7 @@ export async function getGeographicSpread(
 ): Promise<GeographicPoint[]> {
   let tokensQuery = supabase
     .from("tokens")
-    .select("token, level, is_simulated")
+    .select("token, level, is_simulated, eoa_id, events_actions(zip_code, city, state)")
     .eq("utm_campaign", campaignId);
 
   if (dataSource === "real") {
@@ -459,12 +459,57 @@ export async function getGeographicSpread(
     locationMap.get(key)!.event_count++;
   });
 
+  // Add EoA locations from zip codes
+  const eoaMap = new Map<string, { zip_code: string; city: string; state: string; level: number }>();
+  
+  tokens?.forEach((token) => {
+    if (token.eoa_id && token.events_actions?.zip_code) {
+      const key = `${token.eoa_id}-${token.level}`;
+      if (!eoaMap.has(key)) {
+        eoaMap.set(key, {
+          zip_code: token.events_actions.zip_code,
+          city: token.events_actions.city || "Unknown",
+          state: token.events_actions.state || "",
+          level: token.level,
+        });
+      }
+    }
+  });
+
+  // Lookup coordinates for each unique EoA zip code
+  for (const [, eoaData] of eoaMap.entries()) {
+    const { data: zipData } = await supabase
+      .from("zip_codes")
+      .select("latitude, longitude")
+      .eq("zip_code", eoaData.zip_code)
+      .maybeSingle();
+
+    if (zipData) {
+      const key = `${zipData.latitude},${zipData.longitude},${eoaData.level}`;
+      
+      if (!locationMap.has(key)) {
+        locationMap.set(key, {
+          latitude: Number(zipData.latitude),
+          longitude: Number(zipData.longitude),
+          city: eoaData.city,
+          region: eoaData.state,
+          country: "USA",
+          level: eoaData.level,
+          event_count: 0,
+        });
+      }
+      
+      locationMap.get(key)!.event_count++;
+    }
+  }
+
   const result = Array.from(locationMap.values());
   console.log(`getGeographicSpread result: ${result.length} points`, {
     L00_points: result.filter(p => p.level === 0).length,
     L01_points: result.filter(p => p.level === 1).length,
     L02_points: result.filter(p => p.level === 2).length,
     L03_points: result.filter(p => p.level === 3).length,
+    EoA_locations: eoaMap.size,
   });
   
   return result;
