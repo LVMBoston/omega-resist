@@ -19,25 +19,34 @@ interface TokenDisplayProps {
 
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(true);
-  const { getSetting } = useSettings();
+  const { getSetting, isLoading } = useSettings();
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Generate display QR code when dialog opens
   useEffect(() => {
-    if (showQRDialog && displayCanvasRef.current) {
+    if (showQRDialog && displayCanvasRef.current && (shortUrl || fullUrl) && !isLoading) {
       const urlForQr = shortUrl || fullUrl;
-      generateDecoratedQRCanvas(urlForQr).then(canvas => {
-        if (displayCanvasRef.current && canvas) {
-          const ctx = displayCanvasRef.current.getContext('2d');
-          displayCanvasRef.current.width = canvas.width;
-          displayCanvasRef.current.height = canvas.height;
-          if (ctx) {
-            ctx.drawImage(canvas, 0, 0);
+      console.log('Generating QR code for:', urlForQr);
+      console.log('Settings loaded:', !isLoading);
+      
+      generateDecoratedQRCanvas(urlForQr)
+        .then(canvas => {
+          if (displayCanvasRef.current && canvas) {
+            const ctx = displayCanvasRef.current.getContext('2d');
+            if (ctx) {
+              displayCanvasRef.current.width = canvas.width;
+              displayCanvasRef.current.height = canvas.height;
+              ctx.drawImage(canvas, 0, 0);
+              console.log('QR code rendered successfully');
+            }
           }
-        }
-      });
+        })
+        .catch(error => {
+          console.error('Error generating QR code:', error);
+          toast.error("Failed to generate QR code");
+        });
     }
-  }, [showQRDialog, shortUrl, fullUrl]);
+  }, [showQRDialog, shortUrl, fullUrl, eoaTitle, isLoading]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
