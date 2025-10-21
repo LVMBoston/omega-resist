@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export default function DeckViewer() {
   
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const viralToken = searchParams.get("t");
   const { userRole } = useAuth();
   
@@ -341,12 +342,10 @@ export default function DeckViewer() {
         <header className="border-b bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to="/">
-                <Button variant="ghost" size="sm">
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-              </Link>
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
               <div>
                 <h1 className="text-2xl font-bold">{slug}</h1>
                 <p className="text-sm text-muted-foreground">{slides.length} slides</p>
