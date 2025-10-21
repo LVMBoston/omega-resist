@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown } from "lucide-react";
+import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -73,6 +73,51 @@ const Index = () => {
       setLoading(false);
     }
   };
+  const handleRemoveInteractive = async (slug: string) => {
+    if (!confirm(`Remove all interactive pages from deck "${slug}"?`)) {
+      return;
+    }
+    try {
+      // Get all interactive slides for this deck
+      const { data: interactiveSlides, error: fetchError } = await supabase
+        .from("slide_items")
+        .select("id")
+        .eq("deck_slug", slug)
+        .eq("type", "spread-word");
+
+      if (fetchError) throw fetchError;
+
+      // Delete viral slide configs for these slides
+      if (interactiveSlides && interactiveSlides.length > 0) {
+        const slideIds = interactiveSlides.map(s => s.id);
+        const { error: viralConfigsError } = await supabase
+          .from("viral_slide_configs")
+          .delete()
+          .in("slide_id", slideIds);
+        
+        if (viralConfigsError) throw viralConfigsError;
+
+        // Delete the interactive slides
+        const { error: slidesError } = await supabase
+          .from("slide_items")
+          .delete()
+          .eq("deck_slug", slug)
+          .eq("type", "spread-word");
+        
+        if (slidesError) throw slidesError;
+
+        toast.success(`Removed ${interactiveSlides.length} interactive page(s)`);
+      } else {
+        toast.info("No interactive pages to remove");
+      }
+      
+      fetchDecks();
+    } catch (error) {
+      console.error("Error removing interactive pages:", error);
+      toast.error("Failed to remove interactive pages");
+    }
+  };
+
   const handleDelete = async (slug: string) => {
     if (!confirm(`Delete deck "${slug}"? This will also delete all associated slides.`)) {
       return;
@@ -316,9 +361,21 @@ const Index = () => {
                     </Button>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(deck.slug)} title="Delete deck">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-center gap-1">
+                      {deck.interactive_count > 0 && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleRemoveInteractive(deck.slug)} 
+                          title="Remove interactive pages"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(deck.slug)} title="Delete deck">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>)}
             </TableBody>
