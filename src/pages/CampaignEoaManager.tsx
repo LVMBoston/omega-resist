@@ -76,7 +76,6 @@ export default function CampaignEoaManager() {
   const [visualizePayloadDialogOpen, setVisualizePayloadDialogOpen] = useState(false);
   const [qrDefaultsDialogOpen, setQrDefaultsDialogOpen] = useState(false);
   const [selectedEoa, setSelectedEoa] = useState<EventAction | null>(null);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [bulkDeckSlug, setBulkDeckSlug] = useState("");
   const [bulkUtmId, setBulkUtmId] = useState("");
   const [showBulkActions, setShowBulkActions] = useState(false);
@@ -221,25 +220,12 @@ export default function CampaignEoaManager() {
     });
   };
 
-  // Sync rowSelection state with selectedRows Set for backward compatibility
-  useEffect(() => {
-    const selectedIds = new Set(
-      Object.keys(rowSelection).filter(id => rowSelection[id])
-    );
-    setSelectedRows(selectedIds);
-  }, [rowSelection]);
-
-  // Sync selectedRows Set back to rowSelection for backward compatibility
-  useEffect(() => {
-    const newRowSelection: RowSelectionState = {};
-    selectedRows.forEach(id => {
-      newRowSelection[id] = true;
-    });
-    setRowSelection(newRowSelection);
-  }, [selectedRows]);
+  // Derive selectedRows from rowSelection (one-way sync to avoid circular dependency)
+  const selectedRowsSet = new Set(
+    Object.keys(rowSelection).filter(id => rowSelection[id])
+  );
 
   const clearSelection = () => {
-    setSelectedRows(new Set());
     setRowSelection({});
     setShowBulkActions(false);
     setBulkDeckSlug("");
@@ -443,7 +429,7 @@ export default function CampaignEoaManager() {
   };
 
   const handleBulkGenerateL00 = async () => {
-    const selectedEoas = eoas.filter(eoa => selectedRows.has(eoa.id));
+    const selectedEoas = eoas.filter(eoa => selectedRowsSet.has(eoa.id));
     
     // Filter out already minted and validate requirements
     const readyToMint = selectedEoas.filter(eoa => {
@@ -853,7 +839,7 @@ export default function CampaignEoaManager() {
 
     const updates: { id: string; data: Partial<EventAction> }[] = [];
     
-    selectedRows.forEach(id => {
+    selectedRowsSet.forEach(id => {
       const updateData: Partial<EventAction> = {};
       if (bulkDeckSlug) updateData.assigned_deck_slug = bulkDeckSlug;
       if (bulkUtmId) updateData.utm_id = bulkUtmId;
@@ -909,7 +895,7 @@ export default function CampaignEoaManager() {
     }
 
     try {
-      const updates = Array.from(selectedRows).map(id => 
+      const updates = Array.from(selectedRowsSet).map(id => 
         supabase
           .from("events_actions")
           .update({ assigned_deck_slug: bulkDeckInput.trim() })
@@ -920,7 +906,7 @@ export default function CampaignEoaManager() {
 
       toast({
         title: "Success",
-        description: `Assigned deck "${bulkDeckInput}" to ${selectedRows.size} EoA(s)`
+        description: `Assigned deck "${bulkDeckInput}" to ${selectedRowsSet.size} EoA(s)`
       });
 
       setBulkDeckDialogOpen(false);
@@ -1004,24 +990,24 @@ export default function CampaignEoaManager() {
       </header>
 
       <main className="w-full px-6 py-8">
-        <Card className={cn("border-primary", selectedRows.size === 0 ? "mb-2" : "mb-4")}>
+        <Card className={cn("border-primary", selectedRowsSet.size === 0 ? "mb-2" : "mb-4")}>
           <CardContent className="pt-4">
             <div className="flex items-start gap-4">
               <div className="flex flex-col gap-1 items-start">
                 <Button 
                   variant="outline" 
                   onClick={() => setShowBulkActions(!showBulkActions)}
-                  disabled={selectedRows.size === 0}
+                  disabled={selectedRowsSet.size === 0}
                   className="justify-start"
                 >
                   {showBulkActions ? "Hide" : "Select rows to show"} bulk actions
                 </Button>
                 <span className="text-sm text-muted-foreground">
-                  # Selected: {selectedRows.size}
+                  # Selected: {selectedRowsSet.size}
                 </span>
               </div>
 
-              {selectedRows.size > 0 && (
+              {selectedRowsSet.size > 0 && (
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={clearSelection}>
                     <X className="h-4 w-4 mr-1" />
@@ -1031,56 +1017,45 @@ export default function CampaignEoaManager() {
               )}
             </div>
 
-            {selectedRows.size > 0 && (
+            {selectedRowsSet.size > 0 && (
               <div className="space-y-4 border-t pt-4 mt-4">
                 <div className="flex gap-3 items-end">
                   <div className="flex-1 space-y-2">
                     <Label htmlFor="bulk-deck">Assign Deck</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="bulk-deck"
-                        placeholder="e.g., deck-2024-q4"
-                        value={bulkDeckSlug}
-                        onChange={(e) => setBulkDeckSlug(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setBulkDeckDialogOpen(true)}
-                        title="Assign deck via dialog"
-                      >
-                        <Package className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Input
+                      id="bulk-deck"
+                      placeholder="Deck slug (optional)"
+                      value={bulkDeckSlug}
+                      onChange={(e) => setBulkDeckSlug(e.target.value)}
+                    />
                   </div>
                   <div className="flex-1 space-y-2">
-                    <Label htmlFor="bulk-utm">Assign utm_id</Label>
+                    <Label htmlFor="bulk-utm">Assign UTM ID</Label>
                     <Input
                       id="bulk-utm"
-                      placeholder="e.g., event-a1"
+                      placeholder="UTM ID (optional)"
                       value={bulkUtmId}
-                      onChange={(e) => setBulkUtmId(e.target.value.toLowerCase())}
-                      maxLength={8}
+                      onChange={(e) => setBulkUtmId(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Max 8 chars, lowercase only, use '-' or '_'
+                      Leave both empty to mint L00 tokens for selected rows
                     </p>
                   </div>
                   <Button
                     variant="outline"
-                    onClick={selectedRows.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
+                    onClick={selectedRowsSet.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
                     className="flex-1"
                   >
                     <QrCode className="h-4 w-4 mr-2" />
-                    {selectedRows.size > 0 
-                      ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRows.size})`
+                    {selectedRowsSet.size > 0 
+                      ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRowsSet.size})`
                       : "Generate short URLs and Mint L00 tokens for ALL rows"}
                   </Button>
                 </div>
                 <Button onClick={applyBulkUpdate} className="w-full">
                   {!bulkDeckSlug && !bulkUtmId 
-                    ? `Mint L00 for ${selectedRows.size} Selected`
-                    : `Apply to ${selectedRows.size} Selected`}
+                    ? `Mint L00 for ${selectedRowsSet.size} Selected`
+                    : `Apply to ${selectedRowsSet.size} Selected`}
                 </Button>
               </div>
             )}
@@ -1486,7 +1461,7 @@ export default function CampaignEoaManager() {
           <DialogHeader>
             <DialogTitle>Bulk Assign Deck</DialogTitle>
             <DialogDescription>
-              Assign a deck to all {selectedRows.size} selected EoA{selectedRows.size !== 1 ? 's' : ''}
+              Assign a deck to all {selectedRowsSet.size} selected EoA{selectedRowsSet.size !== 1 ? 's' : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1515,7 +1490,7 @@ export default function CampaignEoaManager() {
               Cancel
             </Button>
             <Button onClick={handleBulkDeckAssignment} disabled={!bulkDeckInput}>
-              Assign to {selectedRows.size} EoA{selectedRows.size !== 1 ? 's' : ''}
+              Assign to {selectedRowsSet.size} EoA{selectedRowsSet.size !== 1 ? 's' : ''}
             </Button>
           </div>
         </DialogContent>
