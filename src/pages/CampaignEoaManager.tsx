@@ -12,15 +12,26 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
 import { shortenUrlsBatch } from "@/lib/virality/shortener";
 import { TokenDisplay } from "@/components/TokenDisplay";
 import { QrDefaultsDialog } from "@/components/QrDefaultsDialog";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  ColumnDef,
+  flexRender,
+  SortingState,
+  RowSelectionState,
+} from "@tanstack/react-table";
+import { useColumnVisibility } from "@/hooks/useColumnVisibility";
 interface Campaign {
   id: string;
   code: string;
@@ -78,8 +89,9 @@ export default function CampaignEoaManager() {
     shortUrl?: string;
     eoaTitle: string;
   } | null>(null);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const { columnVisibility, setColumnVisibility } = useColumnVisibility();
   const [bulkDeckDialogOpen, setBulkDeckDialogOpen] = useState(false);
   const [bulkDeckInput, setBulkDeckInput] = useState("");
   const [availableDecks, setAvailableDecks] = useState<string[]>([]);
@@ -209,26 +221,26 @@ export default function CampaignEoaManager() {
     });
   };
 
-  const toggleRowSelection = (id: string) => {
-    const newSelection = new Set(selectedRows);
-    if (newSelection.has(id)) {
-      newSelection.delete(id);
-    } else {
-      newSelection.add(id);
-    }
-    setSelectedRows(newSelection);
-  };
+  // Sync rowSelection state with selectedRows Set for backward compatibility
+  useEffect(() => {
+    const selectedIds = new Set(
+      Object.keys(rowSelection).filter(id => rowSelection[id])
+    );
+    setSelectedRows(selectedIds);
+  }, [rowSelection]);
 
-  const toggleAllRows = () => {
-    if (selectedRows.size === eoas.length) {
-      setSelectedRows(new Set());
-    } else {
-      setSelectedRows(new Set(eoas.map(e => e.id)));
-    }
-  };
+  // Sync selectedRows Set back to rowSelection for backward compatibility
+  useEffect(() => {
+    const newRowSelection: RowSelectionState = {};
+    selectedRows.forEach(id => {
+      newRowSelection[id] = true;
+    });
+    setRowSelection(newRowSelection);
+  }, [selectedRows]);
 
   const clearSelection = () => {
     setSelectedRows(new Set());
+    setRowSelection({});
     setShowBulkActions(false);
     setBulkDeckSlug("");
     setBulkUtmId("");
@@ -595,44 +607,241 @@ export default function CampaignEoaManager() {
     });
   };
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
-  };
+  // Define columns for TanStack Table
+  const columns: ColumnDef<EventAction>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label={`Select ${row.original.title}`}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "mobilize_code",
+      header: "Mobilize Code",
+      cell: ({ row }) => row.original.mobilize_code || "—",
+    },
+    {
+      accessorKey: "utm_id",
+      header: "utm_id",
+    },
+    {
+      accessorKey: "title",
+      header: "Event/Action Name",
+      cell: ({ row }) => <span className="font-medium">{row.original.title}</span>,
+    },
+    {
+      accessorKey: "site_name",
+      header: "Site Name",
+      cell: ({ row }) => row.original.site_name || "—",
+    },
+    {
+      accessorKey: "city",
+      header: "City",
+      cell: ({ row }) => row.original.city || "—",
+    },
+    {
+      accessorKey: "state",
+      header: "State",
+      cell: ({ row }) => row.original.state || "—",
+    },
+    {
+      accessorKey: "zip_code",
+      header: "Zip Code",
+      cell: ({ row }) => row.original.zip_code || "—",
+    },
+    {
+      accessorKey: "type",
+      header: "Type",
+      cell: ({ row }) => <span className="capitalize">{row.original.type}</span>,
+    },
+    {
+      accessorKey: "start_date",
+      header: "Start Date/Time",
+      cell: ({ row }) => formatDateTime(row.original.start_date),
+    },
+    {
+      accessorKey: "end_date",
+      header: "End Date/Time",
+      cell: ({ row }) => formatDateTime(row.original.end_date),
+    },
+    {
+      accessorKey: "timezone",
+      header: "Timezone",
+      cell: ({ row }) => formatTimezone(row.original.timezone),
+    },
+    {
+      accessorKey: "assigned_deck_slug",
+      header: "Assigned Deck",
+      cell: ({ row }) => row.original.assigned_deck_slug || "—",
+    },
+    {
+      id: "status",
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const readiness = getMintReadiness(row.original);
+        const Icon = readiness.icon;
+        return (
+          <Badge variant="outline" className={readiness.className}>
+            <Icon className="h-3 w-3 mr-1" />
+            {readiness.label}
+          </Badge>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "l00_token",
+      accessorKey: "l00_token",
+      header: "L00 Token",
+      cell: ({ row }) => {
+        const eoa = row.original;
+        return l00Tokens[eoa.id] ? (
+          <div className="flex items-center gap-2">
+            {l00Tokens[eoa.id].shorteningInProgress ? (
+              <Badge variant="secondary" className="animate-pulse">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Shortening...
+              </Badge>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const tokenData = l00Tokens[eoa.id];
+                    const urlToUse = tokenData.shortUrl || tokenData.url;
+                    handleCopyUrl(urlToUse, eoa.id);
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  {l00Tokens[eoa.id].shortUrl ? "Short URL" : "URL"}
+                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedTokenForDisplay({ 
+                          token: l00Tokens[eoa.id].token, 
+                          url: l00Tokens[eoa.id].url,
+                          shortUrl: l00Tokens[eoa.id].shortUrl,
+                          eoaTitle: eoa.title 
+                        })}
+                      >
+                        <QrCode className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Display and copy QR code</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
+          </div>
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGenerateL00(eoa)}
+                    disabled={generatingL00 === eoa.id || !eoa.assigned_deck_slug || !eoa.mobilize_code}
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    {generatingL00 === eoa.id ? "Generating..." : "Generate L00 Token"}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {!eoa.assigned_deck_slug || !eoa.mobilize_code 
+                  ? `Missing: ${[!eoa.mobilize_code && "Mobilize Code", !eoa.assigned_deck_slug && "Deck"].filter(Boolean).join(", ")}`
+                  : "Generate L00 token with QR code and shortened URL"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const eoa = row.original;
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedEoa(eoa);
+                setPayloadDialogOpen(true);
+              }}
+              title="View Payload"
+            >
+              <FileJson className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setEditingEoa(eoa);
+                setDialogOpen(true);
+              }}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => deleteEoa(eoa.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" disabled title="Kit feature coming soon">
+              <Package className="h-4 w-4 opacity-50" />
+            </Button>
+          </div>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+    },
+  ];
 
-  const getSortIcon = (column: string) => {
-    if (sortColumn !== column) {
-      return <ArrowUpDown className="ml-2 h-4 w-4" />;
-    }
-    return sortDirection === "asc" ? (
-      <ArrowUp className="ml-2 h-4 w-4" />
-    ) : (
-      <ArrowDown className="ml-2 h-4 w-4" />
-    );
-  };
-
-  const sortedEoas = [...eoas].sort((a, b) => {
-    if (!sortColumn) return 0;
-
-    const aValue = a[sortColumn as keyof typeof a];
-    const bValue = b[sortColumn as keyof typeof b];
-
-    if (aValue === null || aValue === undefined) return 1;
-    if (bValue === null || bValue === undefined) return -1;
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortDirection === "asc"
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-
-    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-    return 0;
+  const table = useReactTable({
+    data: eoas,
+    columns,
+    state: {
+      sorting,
+      rowSelection,
+      columnVisibility,
+    },
+    enableRowSelection: true,
+    onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getRowId: (row) => row.id,
   });
 
   const applyBulkUpdate = async () => {
@@ -885,6 +1094,43 @@ export default function CampaignEoaManager() {
                 Event/Actions for {campaign.title}
               </CardTitle>
               <div className="flex gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Columns className="mr-2 h-4 w-4" />
+                      Columns
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
+                    {table
+                      .getAllColumns()
+                      .filter((column) => column.getCanHide())
+                      .map((column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={column.id}
+                            checked={column.getIsVisible()}
+                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                          >
+                            {column.id === "mobilize_code" && "Mobilize Code"}
+                            {column.id === "utm_id" && "utm_id"}
+                            {column.id === "title" && "Event/Action Name"}
+                            {column.id === "site_name" && "Site Name"}
+                            {column.id === "city" && "City"}
+                            {column.id === "state" && "State"}
+                            {column.id === "zip_code" && "Zip Code"}
+                            {column.id === "type" && "Type"}
+                            {column.id === "start_date" && "Start Date/Time"}
+                            {column.id === "end_date" && "End Date/Time"}
+                            {column.id === "timezone" && "Timezone"}
+                            {column.id === "assigned_deck_slug" && "Assigned Deck"}
+                            {column.id === "status" && "Status"}
+                            {column.id === "l00_token" && "L00 Token"}
+                          </DropdownMenuCheckboxItem>
+                        );
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" onClick={() => setQrDefaultsDialogOpen(true)}>
                   <Settings className="mr-2 h-4 w-4" />
                   QR Code Defaults
@@ -906,272 +1152,64 @@ export default function CampaignEoaManager() {
             </div>
           </CardHeader>
           <CardContent>
-            {eoas.length === 0 ? <p className="text-center text-muted-foreground py-8">
+            {eoas.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
                 No events or actions yet. Click "Add Event/Action" to create one.
-              </p> : <Table>
+              </p>
+            ) : (
+              <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectedRows.size === eoas.length}
-                        onCheckedChange={toggleAllRows}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("mobilize_code")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Mobilize Code
-                        {getSortIcon("mobilize_code")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("utm_id")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        utm_id
-                        {getSortIcon("utm_id")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("title")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Event/Action Name
-                        {getSortIcon("title")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("site_name")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Site Name
-                        {getSortIcon("site_name")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("city")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        City
-                        {getSortIcon("city")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("state")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        State
-                        {getSortIcon("state")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("zip_code")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Zip Code
-                        {getSortIcon("zip_code")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("type")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Type
-                        {getSortIcon("type")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("start_date")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Start Date/Time
-                        {getSortIcon("start_date")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("end_date")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        End Date/Time
-                        {getSortIcon("end_date")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("timezone")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Timezone
-                        {getSortIcon("timezone")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort("assigned_deck_slug")}
-                        className="h-auto p-0 hover:bg-transparent font-medium"
-                      >
-                        Assigned Deck
-                        {getSortIcon("assigned_deck_slug")}
-                      </Button>
-                    </TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>L00 Token</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id} className={header.id === "select" ? "w-12" : ""}>
+                          {header.isPlaceholder ? null : (
+                            <div
+                              {...{
+                                className: header.column.getCanSort()
+                                  ? "cursor-pointer select-none flex items-center"
+                                  : "",
+                                onClick: header.column.getToggleSortingHandler(),
+                              }}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                              {header.column.getCanSort() && (
+                                <span className="ml-2">
+                                  {header.column.getIsSorted() === "asc" ? (
+                                    <ArrowUp className="h-4 w-4" />
+                                  ) : header.column.getIsSorted() === "desc" ? (
+                                    <ArrowDown className="h-4 w-4" />
+                                  ) : (
+                                    <ArrowUpDown className="h-4 w-4" />
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableHeader>
                 <TableBody>
-                  {sortedEoas.map(eoa => <TableRow key={eoa.id} className={selectedRows.has(eoa.id) ? "bg-yellow-100 dark:bg-yellow-900/30" : ""}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedRows.has(eoa.id)}
-                          onCheckedChange={() => toggleRowSelection(eoa.id)}
-                          aria-label={`Select ${eoa.title}`}
-                        />
-                      </TableCell>
-                      <TableCell>{eoa.mobilize_code || "—"}</TableCell>
-                      <TableCell>{eoa.utm_id}</TableCell>
-                      <TableCell className="font-medium">{eoa.title}</TableCell>
-                      <TableCell>{eoa.site_name || "—"}</TableCell>
-                      <TableCell>{eoa.city || "—"}</TableCell>
-                      <TableCell>{eoa.state || "—"}</TableCell>
-                      <TableCell>{eoa.zip_code || "—"}</TableCell>
-                      <TableCell className="capitalize">{eoa.type}</TableCell>
-                      <TableCell>{formatDateTime(eoa.start_date)}</TableCell>
-                      <TableCell>{formatDateTime(eoa.end_date)}</TableCell>
-                      <TableCell>{formatTimezone(eoa.timezone)}</TableCell>
-                      <TableCell>{eoa.assigned_deck_slug || "—"}</TableCell>
-                      <TableCell>
-                        {(() => {
-                          const readiness = getMintReadiness(eoa);
-                          const Icon = readiness.icon;
-                          return (
-                            <Badge variant="outline" className={readiness.className}>
-                              <Icon className="h-3 w-3 mr-1" />
-                              {readiness.label}
-                            </Badge>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        {l00Tokens[eoa.id] ? (
-                          <div className="flex items-center gap-2">
-                            {l00Tokens[eoa.id].shorteningInProgress ? (
-                              <Badge variant="secondary" className="animate-pulse">
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                Shortening...
-                              </Badge>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    const tokenData = l00Tokens[eoa.id];
-                                    const urlToUse = tokenData.shortUrl || tokenData.url;
-                                    handleCopyUrl(urlToUse, eoa.id);
-                                  }}
-                                >
-                                  <Copy className="h-4 w-4 mr-1" />
-                                  {l00Tokens[eoa.id].shortUrl ? "Short URL" : "URL"}
-                                </Button>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setSelectedTokenForDisplay({ 
-                                          token: l00Tokens[eoa.id].token, 
-                                          url: l00Tokens[eoa.id].url,
-                                          shortUrl: l00Tokens[eoa.id].shortUrl,
-                                          eoaTitle: eoa.title 
-                                        })}
-                                      >
-                                        <QrCode className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Display and copy QR code</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </>
-                            )}
-                          </div>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleGenerateL00(eoa)}
-                                    disabled={generatingL00 === eoa.id || !eoa.assigned_deck_slug || !eoa.mobilize_code}
-                                  >
-                                    <QrCode className="h-4 w-4 mr-2" />
-                                    {generatingL00 === eoa.id ? "Generating..." : "Generate L00 Token"}
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {!eoa.assigned_deck_slug || !eoa.mobilize_code 
-                                  ? `Missing: ${[!eoa.mobilize_code && "Mobilize Code", !eoa.assigned_deck_slug && "Deck"].filter(Boolean).join(", ")}`
-                                  : "Generate L00 token with QR code and shortened URL"}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => {
-                      setSelectedEoa(eoa);
-                      setPayloadDialogOpen(true);
-                    }} title="View Payload">
-                            <FileJson className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                      setEditingEoa(eoa);
-                      setDialogOpen(true);
-                    }}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteEoa(eoa.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" disabled title="Kit feature coming soon">
-                            <Package className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>)}
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className={row.getIsSelected() ? "bg-yellow-100 dark:bg-yellow-900/30" : ""}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableBody>
-              </Table>}
+              </Table>
+            )}
           </CardContent>
         </Card>
       </main>
