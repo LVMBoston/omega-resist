@@ -345,7 +345,7 @@ const Index = () => {
             <TableBody>
               {decks.map(deck => <TableRow key={deck.slug}>
                   <TableCell>
-                    <Link to={`/deck/${deck.slug}`} className="flex items-center gap-2 hover:underline font-medium">
+                    <Link to={`/deck/${deck.slug}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline font-medium">
                       <Star className="h-4 w-4 text-yellow-500" />
                       {deck.slug}
                     </Link>
