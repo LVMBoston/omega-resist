@@ -7,8 +7,8 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
-        // Error toasts (destructive variant) should stay until dismissed
-        const duration = props.variant === "destructive" ? Infinity : undefined;
+        // All toasts auto-dismiss after a reasonable duration
+        const duration = props.variant === "destructive" ? 6000 : undefined;
         
         return (
           <Toast key={id} {...props} duration={duration}>
