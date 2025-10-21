@@ -19,29 +19,33 @@ const DEFAULT_VISIBILITY: VisibilityState = {
   l00_token: true,
 };
 
+// Helper to load visibility from localStorage
+const loadColumnVisibility = (userId: string | undefined): VisibilityState => {
+  if (!userId) return DEFAULT_VISIBILITY;
+  
+  try {
+    const storageKey = `eoa-columns-${userId}`;
+    const stored = localStorage.getItem(storageKey);
+    
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Failed to load column visibility:", error);
+  }
+  
+  return DEFAULT_VISIBILITY;
+};
+
 export function useColumnVisibility() {
   const { user } = useAuth();
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(DEFAULT_VISIBILITY);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => 
+    loadColumnVisibility(user?.id)
+  );
 
-  // Load visibility from localStorage on mount
+  // Update visibility when user changes (e.g., logout/login)
   useEffect(() => {
-    if (!user?.id) {
-      setColumnVisibility(DEFAULT_VISIBILITY);
-      return;
-    }
-
-    try {
-      const storageKey = `eoa-columns-${user.id}`;
-      const stored = localStorage.getItem(storageKey);
-      
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setColumnVisibility(parsed);
-      }
-    } catch (error) {
-      console.error("Failed to load column visibility:", error);
-      setColumnVisibility(DEFAULT_VISIBILITY);
-    }
+    setColumnVisibility(loadColumnVisibility(user?.id));
   }, [user?.id]);
 
   // Save visibility to localStorage whenever it changes
