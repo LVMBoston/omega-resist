@@ -266,7 +266,17 @@ export default function InteractiveTemplates() {
               </div>
 
               <div>
-                <Label htmlFor="image">Template Image</Label>
+                <Label htmlFor="image">
+                  {formData.image_url ? "Replace Template Image" : "Template Image"}
+                </Label>
+                {formData.image_url && (
+                  <div className="mb-3 p-3 border rounded-lg bg-muted">
+                    <p className="text-sm text-muted-foreground mb-2">Current image:</p>
+                    <div className="aspect-[9/16] w-full max-w-[160px] mx-auto">
+                      <img src={formData.image_url} alt="Current template" className="w-full h-full object-contain rounded" />
+                    </div>
+                  </div>
+                )}
                 <Input
                   id="image"
                   type="file"
@@ -276,10 +286,10 @@ export default function InteractiveTemplates() {
                     if (file) handleImageUpload(file);
                   }}
                 />
-                {formData.image_url && (
-                  <div className="mt-2">
-                    <img src={formData.image_url} alt="Preview" className="max-h-40 rounded" />
-                  </div>
+                {!formData.image_url && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload a portrait/mobile sized image (9:16 aspect ratio recommended)
+                  </p>
                 )}
               </div>
 
