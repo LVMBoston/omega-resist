@@ -354,11 +354,13 @@ export default function InteractiveTemplates() {
                 </div>
               </CardHeader>
               <CardContent>
-                <img
-                  src={template.image_url}
-                  alt={template.name}
-                  className="w-full h-40 object-cover rounded-lg mb-4"
-                />
+                <div className="aspect-[9/16] w-full max-w-[200px] mx-auto mb-4">
+                  <img
+                    src={template.image_url}
+                    alt={template.name}
+                    className="w-full h-full object-contain rounded-lg bg-muted"
+                  />
+                </div>
                 {template.description && (
                   <p className="text-sm text-muted-foreground mb-4">
                     {template.description}
