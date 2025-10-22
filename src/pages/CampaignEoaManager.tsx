@@ -911,16 +911,6 @@ export default function CampaignEoaManager() {
       return;
     }
 
-  const handleBulkDeckAssignment = async () => {
-    if (!bulkDeckInput.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Missing Deck Name",
-        description: "Please enter a deck name"
-      });
-      return;
-    }
-
     try {
       const updates = Array.from(selectedRowsSet).map(id => 
         supabase
@@ -1033,7 +1023,8 @@ export default function CampaignEoaManager() {
   if (!campaign) {
     return null;
   }
-  return <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="w-full px-6 py-4">
         </div>
