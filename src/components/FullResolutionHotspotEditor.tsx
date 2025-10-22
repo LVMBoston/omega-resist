@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, Save, Plus, Check, X } from "lucide-react";
+import { Trash2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Hotspot {
@@ -52,7 +52,9 @@ export const FullResolutionHotspotEditor = ({
       height: 10,
     };
 
-    setHotspots([...hotspots, newHotspot]);
+    const updatedHotspots = [...hotspots, newHotspot];
+    setHotspots(updatedHotspots);
+    onSave(updatedHotspots);
     setSelectedHotspot(newHotspot.id);
     setIsPlacing(false);
     toast({
@@ -62,21 +64,18 @@ export const FullResolutionHotspotEditor = ({
   };
 
   const updateHotspot = (id: string, updates: Partial<Hotspot>) => {
-    setHotspots(hotspots.map((h) => (h.id === id ? { ...h, ...updates } : h)));
+    const updatedHotspots = hotspots.map((h) => (h.id === id ? { ...h, ...updates } : h));
+    setHotspots(updatedHotspots);
+    onSave(updatedHotspots);
   };
 
   const deleteHotspot = (id: string) => {
-    setHotspots(hotspots.filter((h) => h.id !== id));
+    const updatedHotspots = hotspots.filter((h) => h.id !== id);
+    setHotspots(updatedHotspots);
+    onSave(updatedHotspots);
     if (selectedHotspot === id) setSelectedHotspot(null);
   };
 
-  const handleSave = () => {
-    onSave(hotspots);
-    toast({
-      title: "Saved",
-      description: "Hotspot configuration saved successfully",
-    });
-  };
 
   const selectedHotspotData = hotspots.find((h) => h.id === selectedHotspot);
 
@@ -84,12 +83,9 @@ export const FullResolutionHotspotEditor = ({
     <div className="space-y-4">
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4">
             <h3 className="text-lg font-semibold">Full Resolution Hotspot Editor</h3>
-            <Button onClick={handleSave} size="sm">
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
+            <p className="text-sm text-muted-foreground">Click on the image to place hotspots. Changes are automatically saved when you submit the template.</p>
           </div>
 
           <div className="space-y-4">
@@ -124,9 +120,12 @@ export const FullResolutionHotspotEditor = ({
                 </Button>
               )}
 
-              <Button onClick={() => setHotspots([])} variant="outline" size="sm">
+              <Button onClick={() => {
+                setHotspots([]);
+                onSave([]);
+              }} variant="outline" size="sm">
                 <X className="w-4 h-4 mr-2" />
-                Reject All
+                Clear All
               </Button>
             </div>
 
