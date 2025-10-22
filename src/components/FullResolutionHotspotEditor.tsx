@@ -32,6 +32,8 @@ export const FullResolutionHotspotEditor = ({
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);
   const [newHotspotType, setNewHotspotType] = useState<"sms" | "email" | "social">("sms");
+  const [isDragging, setIsDragging] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
 
@@ -76,6 +78,48 @@ export const FullResolutionHotspotEditor = ({
     if (selectedHotspot === id) setSelectedHotspot(null);
   };
 
+  const handleMouseDown = (e: React.MouseEvent, hotspot: Hotspot) => {
+    if (isPlacing) return;
+    e.stopPropagation();
+    
+    if (!imageRef.current) return;
+    const rect = imageRef.current.getBoundingClientRect();
+    const hotspotX = (hotspot.x / 100) * rect.width;
+    const hotspotY = (hotspot.y / 100) * rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    setIsDragging(hotspot.id);
+    setDragOffset({
+      x: mouseX - hotspotX,
+      y: mouseY - hotspotY
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !imageRef.current) return;
+    
+    const rect = imageRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - dragOffset.x;
+    const mouseY = e.clientY - rect.top - dragOffset.y;
+    
+    const x = (mouseX / rect.width) * 100;
+    const y = (mouseY / rect.height) * 100;
+    
+    const hotspot = hotspots.find(h => h.id === isDragging);
+    if (!hotspot) return;
+    
+    // Constrain to image bounds
+    const constrainedX = Math.max(0, Math.min(100 - hotspot.width, x));
+    const constrainedY = Math.max(0, Math.min(100 - hotspot.height, y));
+    
+    updateHotspot(isDragging, { x: constrainedX, y: constrainedY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(null);
+  };
+
 
   const selectedHotspotData = hotspots.find((h) => h.id === selectedHotspot);
 
@@ -85,7 +129,9 @@ export const FullResolutionHotspotEditor = ({
         <CardContent className="p-4">
           <div className="mb-4">
             <h3 className="text-lg font-semibold">Full Resolution Hotspot Editor</h3>
-            <p className="text-sm text-muted-foreground">Click on the image to place hotspots. Changes are automatically saved when you submit the template.</p>
+            <p className="text-sm text-muted-foreground">
+              Click to place hotspots, then drag them to reposition. Changes auto-save when you submit the template.
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -131,34 +177,40 @@ export const FullResolutionHotspotEditor = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
-                <div className="relative border rounded-lg overflow-hidden bg-muted">
+                <div 
+                  className="relative border rounded-lg overflow-hidden bg-muted"
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                >
                   <img
                     ref={imageRef}
                     src={imageUrl}
                     alt="Hotspot editor"
-                    className="w-full cursor-crosshair"
+                    className={isPlacing ? "w-full cursor-crosshair" : "w-full"}
                     onClick={handleImageClick}
                   />
                   {hotspots.map((hotspot) => (
                     <div
                       key={hotspot.id}
-                      className={`absolute border-2 cursor-pointer transition-colors ${
+                      className={`absolute border-2 transition-colors ${
                         selectedHotspot === hotspot.id
                           ? "border-primary bg-primary/20"
                           : "border-blue-500 bg-blue-500/10"
-                      }`}
+                      } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
                       style={{
                         left: `${hotspot.x}%`,
                         top: `${hotspot.y}%`,
                         width: `${hotspot.width}%`,
                         height: `${hotspot.height}%`,
                       }}
+                      onMouseDown={(e) => handleMouseDown(e, hotspot)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedHotspot(hotspot.id);
+                        if (!isDragging) setSelectedHotspot(hotspot.id);
                       }}
                     >
-                      <div className="absolute -top-6 left-0 bg-background border rounded px-2 py-1 text-xs whitespace-nowrap">
+                      <div className="absolute -top-6 left-0 bg-background border rounded px-2 py-1 text-xs whitespace-nowrap pointer-events-none">
                         {hotspot.label}
                       </div>
                     </div>
