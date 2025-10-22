@@ -6,12 +6,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Card, CardContent } from "./ui/card";
 import { Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
+import { MdEmail, MdOutlineEmail } from "react-icons/md";
+import { IoMdMail } from "react-icons/io";
+import { HiMail } from "react-icons/hi";
+import { BiMessageRounded, BiMessageDetail } from "react-icons/bi";
+import { IoChatbubbleEllipses, IoChatboxEllipses } from "react-icons/io5";
+import { BsShare, BsShareFill } from "react-icons/bs";
 
 interface IconPreset {
   id: string;
   label: string;
   type: "sms" | "email" | "social";
-  icon: string; // emoji or symbol for preview
+  icon: React.ComponentType<{ className?: string; size?: number }>; // React icon component
   width: number; // percentage
   height: number; // percentage
 }
@@ -29,22 +37,25 @@ interface Hotspot {
 // Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
   // SMS variants
-  { id: "sms-bubble", label: "Text Bubble", type: "sms", icon: "💬", width: 14, height: 9 },
-  { id: "sms-phone", label: "Phone Text", type: "sms", icon: "📱", width: 14, height: 9 },
-  { id: "sms-message", label: "Message", type: "sms", icon: "💭", width: 14, height: 9 },
-  { id: "sms-chat", label: "Chat", type: "sms", icon: "📨", width: 14, height: 9 },
+  { id: "sms-bubble", label: "Text Bubble", type: "sms", icon: BiMessageRounded, width: 14, height: 9 },
+  { id: "sms-message", label: "Message Detail", type: "sms", icon: BiMessageDetail, width: 14, height: 9 },
+  { id: "sms-chat", label: "Chat Bubble", type: "sms", icon: IoChatbubbleEllipses, width: 14, height: 9 },
+  { id: "sms-chatbox", label: "Chat Box", type: "sms", icon: IoChatboxEllipses, width: 14, height: 9 },
   
   // Email variants
-  { id: "email-envelope", label: "Envelope", type: "email", icon: "📧", width: 14, height: 9 },
-  { id: "email-letter", label: "Letter", type: "email", icon: "✉️", width: 14, height: 9 },
-  { id: "email-inbox", label: "Inbox", type: "email", icon: "📬", width: 14, height: 9 },
-  { id: "email-outbox", label: "Outbox", type: "email", icon: "📤", width: 14, height: 9 },
+  { id: "email-filled", label: "Email", type: "email", icon: MdEmail, width: 14, height: 9 },
+  { id: "email-outline", label: "Email Outline", type: "email", icon: MdOutlineEmail, width: 14, height: 9 },
+  { id: "email-mail", label: "Mail", type: "email", icon: IoMdMail, width: 14, height: 9 },
+  { id: "email-alt", label: "Mail Alt", type: "email", icon: HiMail, width: 14, height: 9 },
   
   // Social variants
-  { id: "social-share", label: "Share", type: "social", icon: "↗️", width: 14, height: 9 },
-  { id: "social-link", label: "Link", type: "social", icon: "🔗", width: 14, height: 9 },
-  { id: "social-people", label: "People", type: "social", icon: "👥", width: 14, height: 9 },
-  { id: "social-megaphone", label: "Announce", type: "social", icon: "📣", width: 14, height: 9 },
+  { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 14, height: 9 },
+  { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 14, height: 9 },
+  { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 14, height: 9 },
+  { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 14, height: 9 },
+  { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 14, height: 9 },
+  { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 14, height: 9 },
+  { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 14, height: 9 },
 ];
 
 type IconCategory = "sms" | "email" | "social";
@@ -70,10 +81,10 @@ export const FullResolutionHotspotEditor = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
 
-  const categoryIcons: Record<IconCategory, string> = {
-    sms: "💬",
-    email: "📧",
-    social: "↗️"
+  const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }>> = {
+    sms: BiMessageRounded,
+    email: MdEmail,
+    social: BsShare
   };
 
   const categoryLabels: Record<IconCategory, string> = {
@@ -204,35 +215,41 @@ export const FullResolutionHotspotEditor = ({
               {!selectedCategory ? (
                 // Step 1: Category selection
                 <div className="grid grid-cols-3 gap-3">
-                  {(["sms", "email", "social"] as IconCategory[]).map((category) => (
-                    <Button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      variant="outline"
-                      className="flex flex-col items-center gap-2 h-auto py-4"
-                    >
-                      <span className="text-3xl">{categoryIcons[category]}</span>
-                      <span className="text-sm font-medium">{categoryLabels[category]}</span>
-                    </Button>
-                  ))}
+                  {(["sms", "email", "social"] as IconCategory[]).map((category) => {
+                    const CategoryIcon = categoryIcons[category];
+                    return (
+                      <Button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        variant="outline"
+                        className="flex flex-col items-center gap-2 h-auto py-4"
+                      >
+                        <CategoryIcon className="w-8 h-8" />
+                        <span className="text-sm font-medium">{categoryLabels[category]}</span>
+                      </Button>
+                    );
+                  })}
                 </div>
               ) : (
                 // Step 2: Icon variant selection
                 <div className="grid grid-cols-2 gap-2">
-                  {ICON_PRESETS.filter(p => p.type === selectedCategory).map((preset) => (
-                    <Button
-                      key={preset.id}
-                      onClick={() => {
-                        setSelectedIconPreset(preset);
-                        setIsPlacing(true);
-                      }}
-                      variant={selectedIconPreset?.id === preset.id ? "default" : "outline"}
-                      className="flex flex-col items-center gap-2 h-auto py-3"
-                    >
-                      <span className="text-2xl">{preset.icon}</span>
-                      <span className="text-xs">{preset.label}</span>
-                    </Button>
-                  ))}
+                  {ICON_PRESETS.filter(p => p.type === selectedCategory).map((preset) => {
+                    const PresetIcon = preset.icon;
+                    return (
+                      <Button
+                        key={preset.id}
+                        onClick={() => {
+                          setSelectedIconPreset(preset);
+                          setIsPlacing(true);
+                        }}
+                        variant={selectedIconPreset?.id === preset.id ? "default" : "outline"}
+                        className="flex flex-col items-center gap-2 h-auto py-3"
+                      >
+                        <PresetIcon className="w-8 h-8" />
+                        <span className="text-xs">{preset.label}</span>
+                      </Button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -270,35 +287,40 @@ export const FullResolutionHotspotEditor = ({
                     className={isPlacing ? "w-full cursor-crosshair" : "w-full"}
                     onClick={handleImageClick}
                   />
-                  {hotspots.map((hotspot) => (
-                    <div
-                      key={hotspot.id}
-                      className={`absolute border-4 transition-all ${
-                        selectedHotspot === hotspot.id
-                          ? "border-yellow-400 bg-yellow-400/30 shadow-lg ring-2 ring-yellow-400"
-                          : "border-blue-500 bg-blue-500/10 opacity-50"
-                      } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
-                      style={{
-                        left: `${hotspot.x}%`,
-                        top: `${hotspot.y}%`,
-                        width: `${hotspot.width}%`,
-                        height: `${hotspot.height}%`,
-                      }}
-                      onMouseDown={(e) => handleMouseDown(e, hotspot)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isDragging) setSelectedHotspot(hotspot.id);
-                      }}
-                    >
-                      <div className={`absolute -top-7 left-0 border rounded px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none ${
-                        selectedHotspot === hotspot.id 
-                          ? "bg-yellow-400 text-black" 
-                          : "bg-background text-muted-foreground"
-                      }`}>
-                        {hotspot.label}
+                  {hotspots.map((hotspot) => {
+                    const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
+                    const HotspotIcon = preset?.icon;
+                    return (
+                      <div
+                        key={hotspot.id}
+                        className={`absolute border-4 transition-all flex items-center justify-center ${
+                          selectedHotspot === hotspot.id
+                            ? "border-yellow-400 bg-yellow-400/30 shadow-lg ring-2 ring-yellow-400"
+                            : "border-blue-500 bg-blue-500/10 opacity-50"
+                        } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
+                        style={{
+                          left: `${hotspot.x}%`,
+                          top: `${hotspot.y}%`,
+                          width: `${hotspot.width}%`,
+                          height: `${hotspot.height}%`,
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, hotspot)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isDragging) setSelectedHotspot(hotspot.id);
+                        }}
+                      >
+                        {HotspotIcon && <HotspotIcon className="w-1/2 h-1/2" />}
+                        <div className={`absolute -top-7 left-0 border rounded px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none ${
+                          selectedHotspot === hotspot.id 
+                            ? "bg-yellow-400 text-black" 
+                            : "bg-background text-muted-foreground"
+                        }`}>
+                          {hotspot.label}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -306,39 +328,43 @@ export const FullResolutionHotspotEditor = ({
                 <div>
                   <h4 className="font-semibold mb-2">Hotspots ({hotspots.length})</h4>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {hotspots.map((hotspot) => (
-                      <Card
-                        key={hotspot.id}
-                        className={`cursor-pointer transition-colors ${
-                          selectedHotspot === hotspot.id ? "border-primary" : ""
-                        }`}
-                        onClick={() => setSelectedHotspot(hotspot.id)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm">
-                              <div className="font-medium flex items-center gap-2">
-                                <span>{ICON_PRESETS.find(p => p.id === hotspot.iconId)?.icon || "📍"}</span>
-                                <span>{hotspot.label}</span>
+                    {hotspots.map((hotspot) => {
+                      const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
+                      const ListIcon = preset?.icon;
+                      return (
+                        <Card
+                          key={hotspot.id}
+                          className={`cursor-pointer transition-colors ${
+                            selectedHotspot === hotspot.id ? "border-primary" : ""
+                          }`}
+                          onClick={() => setSelectedHotspot(hotspot.id)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm">
+                                <div className="font-medium flex items-center gap-2">
+                                  {ListIcon && <ListIcon className="w-4 h-4" />}
+                                  <span>{hotspot.label}</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {hotspot.x.toFixed(1)}%, {hotspot.y.toFixed(1)}%
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {hotspot.x.toFixed(1)}%, {hotspot.y.toFixed(1)}%
-                              </div>
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteHotspot(hotspot.id);
+                                }}
+                                variant="ghost"
+                                size="sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteHotspot(hotspot.id);
-                              }}
-                              variant="ghost"
-                              size="sm"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -379,14 +405,17 @@ export const FullResolutionHotspotEditor = ({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-background z-50">
-                            {ICON_PRESETS.map((preset) => (
-                              <SelectItem key={preset.id} value={preset.id}>
-                                <span className="flex items-center gap-2">
-                                  <span>{preset.icon}</span>
-                                  <span>{preset.label}</span>
-                                </span>
-                              </SelectItem>
-                            ))}
+                            {ICON_PRESETS.map((preset) => {
+                              const SelectIcon = preset.icon;
+                              return (
+                                <SelectItem key={preset.id} value={preset.id}>
+                                  <span className="flex items-center gap-2">
+                                    <SelectIcon className="w-4 h-4" />
+                                    <span>{preset.label}</span>
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
