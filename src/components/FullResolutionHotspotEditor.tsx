@@ -193,10 +193,10 @@ export const FullResolutionHotspotEditor = ({
                   {hotspots.map((hotspot) => (
                     <div
                       key={hotspot.id}
-                      className={`absolute border-2 transition-colors ${
+                      className={`absolute border-4 transition-all ${
                         selectedHotspot === hotspot.id
-                          ? "border-primary bg-primary/20"
-                          : "border-blue-500 bg-blue-500/10"
+                          ? "border-yellow-400 bg-yellow-400/30 shadow-lg ring-2 ring-yellow-400"
+                          : "border-blue-500 bg-blue-500/10 opacity-50"
                       } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
                       style={{
                         left: `${hotspot.x}%`,
@@ -210,7 +210,11 @@ export const FullResolutionHotspotEditor = ({
                         if (!isDragging) setSelectedHotspot(hotspot.id);
                       }}
                     >
-                      <div className="absolute -top-6 left-0 bg-background border rounded px-2 py-1 text-xs whitespace-nowrap pointer-events-none">
+                      <div className={`absolute -top-7 left-0 border rounded px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none ${
+                        selectedHotspot === hotspot.id 
+                          ? "bg-yellow-400 text-black" 
+                          : "bg-background text-muted-foreground"
+                      }`}>
                         {hotspot.label}
                       </div>
                     </div>
