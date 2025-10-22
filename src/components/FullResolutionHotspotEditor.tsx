@@ -26,17 +26,28 @@ interface Hotspot {
   height: number;
 }
 
-// Icon catalog with pre-defined dimensions
+// Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
-  { id: "sms", label: "SMS/Text", type: "sms", icon: "💬", width: 14, height: 9 },
-  { id: "email", label: "Email", type: "email", icon: "📧", width: 14, height: 9 },
-  { id: "whatsapp", label: "WhatsApp", type: "social", icon: "📱", width: 14, height: 9 },
-  { id: "facebook", label: "Facebook", type: "social", icon: "👤", width: 14, height: 9 },
-  { id: "twitter", label: "Twitter/X", type: "social", icon: "🐦", width: 14, height: 9 },
-  { id: "instagram", label: "Instagram", type: "social", icon: "📷", width: 14, height: 9 },
-  { id: "linkedin", label: "LinkedIn", type: "social", icon: "💼", width: 14, height: 9 },
-  { id: "share", label: "Share", type: "social", icon: "↗️", width: 14, height: 9 },
+  // SMS variants
+  { id: "sms-bubble", label: "Text Bubble", type: "sms", icon: "💬", width: 14, height: 9 },
+  { id: "sms-phone", label: "Phone Text", type: "sms", icon: "📱", width: 14, height: 9 },
+  { id: "sms-message", label: "Message", type: "sms", icon: "💭", width: 14, height: 9 },
+  { id: "sms-chat", label: "Chat", type: "sms", icon: "📨", width: 14, height: 9 },
+  
+  // Email variants
+  { id: "email-envelope", label: "Envelope", type: "email", icon: "📧", width: 14, height: 9 },
+  { id: "email-letter", label: "Letter", type: "email", icon: "✉️", width: 14, height: 9 },
+  { id: "email-inbox", label: "Inbox", type: "email", icon: "📬", width: 14, height: 9 },
+  { id: "email-outbox", label: "Outbox", type: "email", icon: "📤", width: 14, height: 9 },
+  
+  // Social variants
+  { id: "social-share", label: "Share", type: "social", icon: "↗️", width: 14, height: 9 },
+  { id: "social-link", label: "Link", type: "social", icon: "🔗", width: 14, height: 9 },
+  { id: "social-people", label: "People", type: "social", icon: "👥", width: 14, height: 9 },
+  { id: "social-megaphone", label: "Announce", type: "social", icon: "📣", width: 14, height: 9 },
 ];
+
+type IconCategory = "sms" | "email" | "social";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -52,14 +63,27 @@ export const FullResolutionHotspotEditor = ({
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);
-  const [selectedIconPreset, setSelectedIconPreset] = useState<IconPreset>(ICON_PRESETS[0]);
+  const [selectedCategory, setSelectedCategory] = useState<IconCategory | null>(null);
+  const [selectedIconPreset, setSelectedIconPreset] = useState<IconPreset | null>(null);
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
 
+  const categoryIcons: Record<IconCategory, string> = {
+    sms: "💬",
+    email: "📧",
+    social: "↗️"
+  };
+
+  const categoryLabels: Record<IconCategory, string> = {
+    sms: "SMS/Text",
+    email: "Email",
+    social: "Social Share"
+  };
+
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (!isPlacing || !imageRef.current) return;
+    if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     const rect = imageRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -157,43 +181,74 @@ export const FullResolutionHotspotEditor = ({
 
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-medium">Select Icon:</h4>
-                {isPlacing && (
-                  <Button onClick={() => setIsPlacing(false)} variant="ghost" size="sm">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">
+                  {!selectedCategory ? "1. Select Category" : `2. Choose ${categoryLabels[selectedCategory]} Icon`}
+                </h4>
+                {selectedCategory && (
+                  <Button 
+                    onClick={() => {
+                      setSelectedCategory(null);
+                      setSelectedIconPreset(null);
+                      setIsPlacing(false);
+                    }} 
+                    variant="ghost" 
+                    size="sm"
+                  >
                     <X className="w-4 h-4 mr-2" />
-                    Cancel
+                    Back
                   </Button>
                 )}
               </div>
               
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {ICON_PRESETS.map((preset) => (
-                  <Button
-                    key={preset.id}
-                    onClick={() => {
-                      setSelectedIconPreset(preset);
-                      setIsPlacing(true);
-                    }}
-                    variant={isPlacing && selectedIconPreset.id === preset.id ? "default" : "outline"}
-                    className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-3 px-4"
-                    size="sm"
-                  >
-                    <span className="text-2xl">{preset.icon}</span>
-                    <span className="text-xs whitespace-nowrap">{preset.label}</span>
-                  </Button>
-                ))}
-              </div>
+              {!selectedCategory ? (
+                // Step 1: Category selection
+                <div className="grid grid-cols-3 gap-3">
+                  {(["sms", "email", "social"] as IconCategory[]).map((category) => (
+                    <Button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      variant="outline"
+                      className="flex flex-col items-center gap-2 h-auto py-4"
+                    >
+                      <span className="text-3xl">{categoryIcons[category]}</span>
+                      <span className="text-sm font-medium">{categoryLabels[category]}</span>
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                // Step 2: Icon variant selection
+                <div className="grid grid-cols-2 gap-2">
+                  {ICON_PRESETS.filter(p => p.type === selectedCategory).map((preset) => (
+                    <Button
+                      key={preset.id}
+                      onClick={() => {
+                        setSelectedIconPreset(preset);
+                        setIsPlacing(true);
+                      }}
+                      variant={selectedIconPreset?.id === preset.id ? "default" : "outline"}
+                      className="flex flex-col items-center gap-2 h-auto py-3"
+                    >
+                      <span className="text-2xl">{preset.icon}</span>
+                      <span className="text-xs">{preset.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
 
-              <div className="flex items-center gap-2">
-                <div className="text-sm text-muted-foreground">
-                  {isPlacing ? `Click on image to place ${selectedIconPreset.label}` : "Select an icon above to start placing"}
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <div className="text-sm text-muted-foreground flex-1">
+                  {isPlacing && selectedIconPreset 
+                    ? `Click on image to place "${selectedIconPreset.label}"` 
+                    : selectedCategory
+                    ? "Select an icon variant above"
+                    : "Start by selecting a category"}
                 </div>
                 
                 <Button onClick={() => {
                   setHotspots([]);
                   onSave([]);
-                }} variant="outline" size="sm" className="ml-auto">
+                }} variant="outline" size="sm">
                   <X className="w-4 h-4 mr-2" />
                   Clear All
                 </Button>
