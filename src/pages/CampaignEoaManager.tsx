@@ -94,6 +94,8 @@ export default function CampaignEoaManager() {
   const [bulkDeckDialogOpen, setBulkDeckDialogOpen] = useState(false);
   const [bulkDeckInput, setBulkDeckInput] = useState("");
   const [availableDecks, setAvailableDecks] = useState<string[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   useEffect(() => {
     if (campaignId) {
       fetchData();
@@ -102,6 +104,7 @@ export default function CampaignEoaManager() {
 
   useEffect(() => {
     fetchAvailableDecks();
+    fetchAvailableTemplates();
   }, []);
   const fetchData = async () => {
     setLoading(true);
@@ -119,6 +122,20 @@ export default function CampaignEoaManager() {
       console.error("Failed to fetch decks:", error);
     } else if (data) {
       setAvailableDecks(data.map(d => d.slug));
+    }
+  };
+
+  const fetchAvailableTemplates = async () => {
+    const { data, error } = await supabase
+      .from("viral_slide_configs")
+      .select("id, name, slug")
+      .order("is_default", { ascending: false })
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch templates:", error);
+    } else if (data) {
+      setAvailableTemplates(data);
     }
   };
 
@@ -894,6 +911,16 @@ export default function CampaignEoaManager() {
       return;
     }
 
+  const handleBulkDeckAssignment = async () => {
+    if (!bulkDeckInput.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Missing Deck Name",
+        description: "Please enter a deck name"
+      });
+      return;
+    }
+
     try {
       const updates = Array.from(selectedRowsSet).map(id => 
         supabase
@@ -904,13 +931,36 @@ export default function CampaignEoaManager() {
 
       await Promise.all(updates);
 
-      toast({
-        title: "Success",
-        description: `Assigned deck "${bulkDeckInput}" to ${selectedRowsSet.size} EoA(s)`
-      });
+      // If template selected, add it as a viral slide to the deck
+      if (selectedTemplate) {
+        const { data: slideData } = await supabase
+          .from("slide_items")
+          .insert({
+            deck_slug: bulkDeckInput.trim(),
+            type: 'interactive',
+            content_url: '',
+            position: 999,
+            template_id: selectedTemplate
+          })
+          .select()
+          .single();
+
+        if (slideData) {
+          toast({
+            title: "Success",
+            description: `Deck and interactive template assigned to ${selectedRowsSet.size} EoA(s)`
+          });
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: `Assigned deck "${bulkDeckInput}" to ${selectedRowsSet.size} EoA(s)`
+        });
+      }
 
       setBulkDeckDialogOpen(false);
       setBulkDeckInput("");
+      setSelectedTemplate("");
       clearSelection();
       fetchEoas();
     } catch (error: any) {
@@ -1461,7 +1511,7 @@ export default function CampaignEoaManager() {
           <DialogHeader>
             <DialogTitle>Bulk Assign Deck</DialogTitle>
             <DialogDescription>
-              Assign a deck to all {selectedRowsSet.size} selected EoA{selectedRowsSet.size !== 1 ? 's' : ''}
+              Assign a deck to all {selectedRowsSet.size} selected EoA{selectedRowsSet.size !== 1 ? 's' : ''}. Optionally add an interactive template.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1483,6 +1533,25 @@ export default function CampaignEoaManager() {
                   )}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="template-select">Add Interactive Template (Optional)</Label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <SelectTrigger id="template-select" className="w-full">
+                  <SelectValue placeholder="None - deck only" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="">None</SelectItem>
+                  {availableTemplates.map(template => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Templates will be added as viral slides to the deck. Changes to templates cascade automatically.
+              </p>
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -1509,5 +1578,6 @@ export default function CampaignEoaManager() {
         open={qrDefaultsDialogOpen}
         onOpenChange={setQrDefaultsDialogOpen}
       />
-    </div>;
+    </div>
+  );
 }

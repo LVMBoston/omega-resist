@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Save } from "lucide-react";
 import { LogoUpload } from "@/components/LogoUpload";
+import InteractiveTemplates from "./InteractiveTemplates";
 
 export default function Settings() {
   const { settings, isLoading, updateSetting } = useSettings();
@@ -62,13 +63,14 @@ export default function Settings() {
 
       <main className="container mx-auto px-6 py-8">
         <Tabs defaultValue="email" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="email">Email Templates</TabsTrigger>
             <TabsTrigger value="sms">SMS Templates</TabsTrigger>
             <TabsTrigger value="utm">UTM Vocabularies</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="branding">QR Logo Branding</TabsTrigger>
-            <TabsTrigger value="qr_defaults">QR Defaults (advanced)</TabsTrigger>
+            <TabsTrigger value="qr_defaults">QR Defaults</TabsTrigger>
+            <TabsTrigger value="templates">Interactive Pages</TabsTrigger>
           </TabsList>
 
           <TabsContent value="email" className="space-y-4">
@@ -416,6 +418,10 @@ export default function Settings() {
                 })}
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="templates" className="mt-6">
+            <InteractiveTemplates />
           </TabsContent>
         </Tabs>
       </main>

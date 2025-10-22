@@ -32,28 +32,66 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
 
   useEffect(() => {
     const fetchConfig = async () => {
-      const { data, error } = await supabase
-        .from("viral_slide_configs")
-        .select("*")
-        .eq("slide_id", slideId)
+      // First get the slide_items to find the template_id
+      const { data: slideData, error: slideError } = await supabase
+        .from("slide_items")
+        .select("template_id")
+        .eq("id", slideId)
         .maybeSingle();
 
-      if (error) {
-        console.error("❌ Error fetching viral config:", error);
-      } else if (data) {
-        console.log("✅ Viral config loaded:", {
-          slideId,
-          image_url: data.image_url,
-          hotspotsRaw: data.hotspots,
-          hotspotsIsArray: Array.isArray(data.hotspots),
-          hotspotsLength: Array.isArray(data.hotspots) ? data.hotspots.length : 0
+      if (slideError) {
+        console.error("❌ Error fetching slide:", slideError);
+        setLoading(false);
+        return;
+      }
+
+      if (!slideData?.template_id) {
+        // Fallback: Check if there's a direct viral_slide_config for this slide (legacy)
+        const { data: legacyData, error: legacyError } = await supabase
+          .from("viral_slide_configs")
+          .select("*")
+          .eq("slide_id", slideId)
+          .maybeSingle();
+
+        if (legacyError) {
+          console.error("❌ Error fetching legacy viral config:", legacyError);
+        } else if (legacyData) {
+          console.log("✅ Legacy viral config loaded:", {
+            slideId,
+            image_url: legacyData.image_url,
+            hotspotsLength: Array.isArray(legacyData.hotspots) ? legacyData.hotspots.length : 0
+          });
+          setConfig({
+            image_url: legacyData.image_url,
+            hotspots: Array.isArray(legacyData.hotspots) ? (legacyData.hotspots as unknown as Hotspot[]) : [],
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Fetch the template configuration
+      const { data: templateData, error: templateError } = await supabase
+        .from("viral_slide_configs")
+        .select("*")
+        .eq("id", slideData.template_id)
+        .single();
+
+      if (templateError) {
+        console.error("❌ Error fetching template:", templateError);
+      } else if (templateData) {
+        console.log("✅ Template config loaded:", {
+          templateId: templateData.id,
+          templateName: templateData.name,
+          image_url: templateData.image_url,
+          hotspotsLength: Array.isArray(templateData.hotspots) ? templateData.hotspots.length : 0
         });
         setConfig({
-          image_url: data.image_url,
-          hotspots: Array.isArray(data.hotspots) ? (data.hotspots as unknown as Hotspot[]) : [],
+          image_url: templateData.image_url,
+          hotspots: Array.isArray(templateData.hotspots) ? (templateData.hotspots as unknown as Hotspot[]) : [],
         });
       } else {
-        console.log("⚠️ No viral config found for slideId:", slideId);
+        console.log("⚠️ No template found for template_id:", slideData.template_id);
       }
       setLoading(false);
     };

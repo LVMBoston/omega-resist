@@ -396,6 +396,7 @@ export type Database = {
           id: string
           is_compressed: boolean | null
           position: number
+          template_id: string | null
           type: string
         }
         Insert: {
@@ -405,6 +406,7 @@ export type Database = {
           id?: string
           is_compressed?: boolean | null
           position: number
+          template_id?: string | null
           type?: string
         }
         Update: {
@@ -414,6 +416,7 @@ export type Database = {
           id?: string
           is_compressed?: boolean | null
           position?: number
+          template_id?: string | null
           type?: string
         }
         Relationships: [
@@ -423,6 +426,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "decks"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "slide_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "viral_slide_configs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -523,7 +533,7 @@ export type Database = {
           deleted_at: string | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           is_simulated: boolean
           latitude: number | null
           longitude: number | null
@@ -541,7 +551,7 @@ export type Database = {
           deleted_at?: string | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_simulated?: boolean
           latitude?: number | null
           longitude?: number | null
@@ -559,7 +569,7 @@ export type Database = {
           deleted_at?: string | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           is_simulated?: boolean
           latitude?: number | null
           longitude?: number | null
@@ -605,30 +615,39 @@ export type Database = {
         Row: {
           created_at: string
           deck_slug: string | null
+          description: string | null
           hotspots: Json | null
           id: string
           image_url: string
-          slide_id: string
+          is_default: boolean | null
+          name: string | null
+          slide_id: string | null
           slug: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           deck_slug?: string | null
+          description?: string | null
           hotspots?: Json | null
           id?: string
           image_url: string
-          slide_id: string
+          is_default?: boolean | null
+          name?: string | null
+          slide_id?: string | null
           slug: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           deck_slug?: string | null
+          description?: string | null
           hotspots?: Json | null
           id?: string
           image_url?: string
-          slide_id?: string
+          is_default?: boolean | null
+          name?: string | null
+          slide_id?: string | null
           slug?: string
           updated_at?: string
         }
@@ -687,18 +706,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_share_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_short_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_share_code: { Args: never; Returns: string }
+      generate_short_code: { Args: never; Returns: string }
+      generate_token: { Args: never; Returns: string }
       get_coordinates_from_zip: {
         Args: { p_zip_code: string }
         Returns: {
@@ -716,9 +726,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      log_event: {
-        Args:
-          | {
+      log_event:
+        | {
+            Args: {
               _city?: string
               _country?: string
               _country_code?: string
@@ -732,15 +742,18 @@ export type Database = {
               _utm_snapshot?: Json
               _zip_code?: string
             }
-          | {
+            Returns: string
+          }
+        | {
+            Args: {
               _event_type: string
               _ip_address?: unknown
               _token: string
               _user_agent?: string
               _utm_snapshot?: Json
             }
-        Returns: string
-      }
+            Returns: string
+          }
       lookup_token: {
         Args: { _token: string }
         Returns: {
@@ -765,10 +778,7 @@ export type Database = {
           token: string
         }[]
       }
-      refresh_daily_aggregates: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      refresh_daily_aggregates: { Args: never; Returns: undefined }
       shorten_url: {
         Args: { _full_url: string }
         Returns: {
@@ -776,10 +786,7 @@ export type Database = {
           short_url: string
         }[]
       }
-      track_redirect: {
-        Args: { _short_code: string }
-        Returns: string
-      }
+      track_redirect: { Args: { _short_code: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "viewer"
