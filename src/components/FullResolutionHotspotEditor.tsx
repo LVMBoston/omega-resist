@@ -4,18 +4,39 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, Plus, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface IconPreset {
+  id: string;
+  label: string;
+  type: "sms" | "email" | "social";
+  icon: string; // emoji or symbol for preview
+  width: number; // percentage
+  height: number; // percentage
+}
 
 interface Hotspot {
   id: string;
-  type: "sms" | "email" | "social";
+  iconId: string;
   label: string;
   x: number;
   y: number;
   width: number;
   height: number;
 }
+
+// Icon catalog with pre-defined dimensions
+const ICON_PRESETS: IconPreset[] = [
+  { id: "sms", label: "SMS/Text", type: "sms", icon: "💬", width: 14, height: 9 },
+  { id: "email", label: "Email", type: "email", icon: "📧", width: 14, height: 9 },
+  { id: "whatsapp", label: "WhatsApp", type: "social", icon: "📱", width: 14, height: 9 },
+  { id: "facebook", label: "Facebook", type: "social", icon: "👤", width: 14, height: 9 },
+  { id: "twitter", label: "Twitter/X", type: "social", icon: "🐦", width: 14, height: 9 },
+  { id: "instagram", label: "Instagram", type: "social", icon: "📷", width: 14, height: 9 },
+  { id: "linkedin", label: "LinkedIn", type: "social", icon: "💼", width: 14, height: 9 },
+  { id: "share", label: "Share", type: "social", icon: "↗️", width: 14, height: 9 },
+];
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -31,7 +52,7 @@ export const FullResolutionHotspotEditor = ({
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);
-  const [newHotspotType, setNewHotspotType] = useState<"sms" | "email" | "social">("sms");
+  const [selectedIconPreset, setSelectedIconPreset] = useState<IconPreset>(ICON_PRESETS[0]);
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
@@ -46,12 +67,12 @@ export const FullResolutionHotspotEditor = ({
 
     const newHotspot: Hotspot = {
       id: `hotspot-${Date.now()}`,
-      type: newHotspotType,
-      label: newHotspotType.charAt(0).toUpperCase() + newHotspotType.slice(1),
-      x: Math.max(0, Math.min(90, x)),
-      y: Math.max(0, Math.min(90, y)),
-      width: 16,
-      height: 10,
+      iconId: selectedIconPreset.id,
+      label: selectedIconPreset.label,
+      x: Math.max(0, Math.min(100 - selectedIconPreset.width, x)),
+      y: Math.max(0, Math.min(100 - selectedIconPreset.height, y)),
+      width: selectedIconPreset.width,
+      height: selectedIconPreset.height,
     };
 
     const updatedHotspots = [...hotspots, newHotspot];
@@ -61,7 +82,7 @@ export const FullResolutionHotspotEditor = ({
     setIsPlacing(false);
     toast({
       title: "Hotspot added",
-      description: `${newHotspotType} hotspot placed`,
+      description: `${selectedIconPreset.label} placed`,
     });
   };
 
@@ -135,44 +156,48 @@ export const FullResolutionHotspotEditor = ({
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Select
-                value={newHotspotType}
-                onValueChange={(value: "sms" | "email" | "social") => setNewHotspotType(value)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sms">SMS</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="social">Social</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-medium">Select Icon:</h4>
+                {isPlacing && (
+                  <Button onClick={() => setIsPlacing(false)} variant="ghost" size="sm">
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                {ICON_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    onClick={() => {
+                      setSelectedIconPreset(preset);
+                      setIsPlacing(true);
+                    }}
+                    variant={isPlacing && selectedIconPreset.id === preset.id ? "default" : "outline"}
+                    className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-3 px-4"
+                    size="sm"
+                  >
+                    <span className="text-2xl">{preset.icon}</span>
+                    <span className="text-xs whitespace-nowrap">{preset.label}</span>
+                  </Button>
+                ))}
+              </div>
 
-              <Button
-                onClick={() => setIsPlacing(true)}
-                variant={isPlacing ? "default" : "outline"}
-                size="sm"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {isPlacing ? "Click to place hotspot" : "Add Hotspot"}
-              </Button>
-
-              {isPlacing && (
-                <Button onClick={() => setIsPlacing(false)} variant="ghost" size="sm">
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground">
+                  {isPlacing ? `Click on image to place ${selectedIconPreset.label}` : "Select an icon above to start placing"}
+                </div>
+                
+                <Button onClick={() => {
+                  setHotspots([]);
+                  onSave([]);
+                }} variant="outline" size="sm" className="ml-auto">
                   <X className="w-4 h-4 mr-2" />
-                  Cancel
+                  Clear All
                 </Button>
-              )}
-
-              <Button onClick={() => {
-                setHotspots([]);
-                onSave([]);
-              }} variant="outline" size="sm">
-                <X className="w-4 h-4 mr-2" />
-                Clear All
-              </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -237,9 +262,12 @@ export const FullResolutionHotspotEditor = ({
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between">
                             <div className="text-sm">
-                              <div className="font-medium">{hotspot.label}</div>
+                              <div className="font-medium flex items-center gap-2">
+                                <span>{ICON_PRESETS.find(p => p.id === hotspot.iconId)?.icon || "📍"}</span>
+                                <span>{hotspot.label}</span>
+                              </div>
                               <div className="text-xs text-muted-foreground">
-                                {hotspot.type} | {hotspot.x.toFixed(1)}%, {hotspot.y.toFixed(1)}%
+                                {hotspot.x.toFixed(1)}%, {hotspot.y.toFixed(1)}%
                               </div>
                             </div>
                             <Button
@@ -275,20 +303,35 @@ export const FullResolutionHotspotEditor = ({
                       </div>
 
                       <div>
-                        <Label>Type</Label>
+                        <Label>Icon Type</Label>
                         <Select
-                          value={selectedHotspotData.type}
-                          onValueChange={(value: "sms" | "email" | "social") =>
-                            updateHotspot(selectedHotspotData.id, { type: value })
+                          value={selectedHotspotData.iconId}
+                          onValueChange={(value: string) =>
+                            {
+                              const preset = ICON_PRESETS.find(p => p.id === value);
+                              if (preset) {
+                                updateHotspot(selectedHotspotData.id, { 
+                                  iconId: value,
+                                  label: preset.label,
+                                  width: preset.width,
+                                  height: preset.height
+                                });
+                              }
+                            }
                           }
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="sms">SMS</SelectItem>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="social">Social</SelectItem>
+                          <SelectContent className="bg-background z-50">
+                            {ICON_PRESETS.map((preset) => (
+                              <SelectItem key={preset.id} value={preset.id}>
+                                <span className="flex items-center gap-2">
+                                  <span>{preset.icon}</span>
+                                  <span>{preset.label}</span>
+                                </span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
