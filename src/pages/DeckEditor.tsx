@@ -114,6 +114,8 @@ export default function DeckEditor() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [remintDialogOpen, setRemintDialogOpen] = useState(false);
   const [reminting, setReminting] = useState(false);
+  const [eoaCount, setEoaCount] = useState(0);
+  const [campaigns, setCampaigns] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -126,6 +128,7 @@ export default function DeckEditor() {
     if (slug) {
       fetchSlides();
       fetchTemplates();
+      fetchDeckUsage();
     }
   }, [slug]);
 
@@ -189,6 +192,29 @@ export default function DeckEditor() {
       setTemplates((data || []) as Template[]);
     } catch (error: any) {
       console.error('Error fetching templates:', error);
+    }
+  };
+
+  const fetchDeckUsage = async () => {
+    if (!slug) return;
+    
+    try {
+      const { data: eoas, error } = await supabase
+        .from('events_actions')
+        .select('id, campaign_id, campaigns(title)')
+        .eq('assigned_deck_slug', slug);
+
+      if (error) throw error;
+
+      setEoaCount(eoas?.length || 0);
+      
+      // Get unique campaign titles
+      const uniqueCampaigns = [...new Set(
+        eoas?.map((eoa: any) => eoa.campaigns?.title).filter(Boolean) || []
+      )];
+      setCampaigns(uniqueCampaigns);
+    } catch (error: any) {
+      console.error('Error fetching deck usage:', error);
     }
   };
 
@@ -676,6 +702,26 @@ export default function DeckEditor() {
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
               )}
+              
+              <div className="border-t pt-4 space-y-3 text-sm">
+                <h4 className="font-semibold">Deck Usage</h4>
+                <div>
+                  <div className="text-muted-foreground">EoAs Using Deck</div>
+                  <div className="font-medium">{eoaCount}</div>
+                </div>
+                {campaigns.length > 0 && (
+                  <div>
+                    <div className="text-muted-foreground">Campaigns</div>
+                    <div className="font-medium space-y-1">
+                      {campaigns.map((campaign, idx) => (
+                        <div key={idx} className="truncate" title={campaign}>
+                          {campaign}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
