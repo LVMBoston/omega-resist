@@ -232,7 +232,33 @@ export default function DeckManager() {
                         </SelectContent>
                       </Select>
                       {selectedTemplate && <div className="mt-2">
-                          <img src={templates.find(t => t.id === selectedTemplate)?.image_url} alt="Template preview" className="max-w-xs rounded border" />
+                          <div className="relative max-w-xs">
+                            <img 
+                              src={templates.find(t => t.id === selectedTemplate)?.image_url} 
+                              alt="Template preview" 
+                              className="w-full rounded border" 
+                            />
+                            {/* Show hotspot positions as preview */}
+                            {templates.find(t => t.id === selectedTemplate)?.hotspots.map((hotspot: any) => (
+                              <div
+                                key={hotspot.id}
+                                className="absolute border-2 border-yellow-400 bg-yellow-400/20 rounded pointer-events-none"
+                                style={{
+                                  left: `${hotspot.x}%`,
+                                  top: `${hotspot.y}%`,
+                                  width: `${hotspot.width}%`,
+                                  height: `${hotspot.height}%`,
+                                }}
+                              >
+                                <span className="text-xs text-yellow-400 font-bold px-1">
+                                  {hotspot.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Preview shows hotspot positions. Full interactivity available when viewing the deck.
+                          </p>
                         </div>}
                     </div>
                   </div>}
