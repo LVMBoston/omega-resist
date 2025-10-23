@@ -243,15 +243,21 @@ export default function DeckEditor() {
       return { valid: false, error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 5MB limit` };
     }
 
-    // Dimension validation
+    // Dimension validation with ±1% tolerance
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         if (referenceDimensions) {
-          if (img.width !== referenceDimensions.width || img.height !== referenceDimensions.height) {
+          const widthTolerance = referenceDimensions.width * 0.01;
+          const heightTolerance = referenceDimensions.height * 0.01;
+          
+          const widthInRange = Math.abs(img.width - referenceDimensions.width) <= widthTolerance;
+          const heightInRange = Math.abs(img.height - referenceDimensions.height) <= heightTolerance;
+          
+          if (!widthInRange || !heightInRange) {
             resolve({
               valid: false,
-              error: `Image dimensions (${img.width}×${img.height}) must match reference (${referenceDimensions.width}×${referenceDimensions.height})`
+              error: `Image dimensions (${img.width}×${img.height}) must match reference (${referenceDimensions.width}×${referenceDimensions.height}) ±1%`
             });
           } else {
             resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
