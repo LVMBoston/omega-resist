@@ -27,6 +27,7 @@ import Simulator from "./pages/Simulator";
 import ViralityDashboard from "./pages/ViralityDashboard";
 import ZipCodeImporter from "./pages/ZipCodeImporter";
 import ActivityMonitor from "./pages/ActivityMonitor";
+import InteractiveTemplates from "./pages/InteractiveTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Navigate to="/campaign-config" replace />} />
                     <Route path="/deck-management" element={<DeckManagement />} />
+                    <Route path="/interactive-templates" element={<InteractiveTemplates />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/deck/:slug?" element={<DeckViewer />} />
                     <Route path="/deck-builder/:slug?" element={<DeckBuilder />} />
