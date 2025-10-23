@@ -7,8 +7,8 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
-        // All toasts auto-dismiss after a reasonable duration
-        const duration = props.variant === "destructive" ? 6000 : undefined;
+        // Successful toasts clear after 3 seconds, destructive after 6 seconds
+        const duration = props.variant === "destructive" ? 6000 : 3000;
         
         return (
           <Toast key={id} {...props} duration={duration}>
