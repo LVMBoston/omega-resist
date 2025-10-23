@@ -15,22 +15,32 @@ interface DeckOption {
   slug: string;
   created_at: string;
 }
+
+interface Template {
+  id: string;
+  name: string;
+  slug: string;
+  image_url: string;
+  hotspots: any[];
+  is_default: boolean;
+}
+
 export default function DeckManager() {
   const [decks, setDecks] = useState<DeckOption[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<string>("");
   const [deckName, setDeckName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [addSpreadWord, setAddSpreadWord] = useState(false);
-  const [viralImageUrl, setViralImageUrl] = useState<string>("");
-  const [viralImageFile, setViralImageFile] = useState<File | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [showHotspotEditor, setShowHotspotEditor] = useState(false);
-  const [hotspots, setHotspots] = useState<any[]>([]);
   const {
     toast
   } = useToast();
   const navigate = useNavigate();
   useEffect(() => {
     fetchDecks();
+    fetchTemplates();
   }, []);
   const fetchDecks = async () => {
     const {
@@ -50,41 +60,34 @@ export default function DeckManager() {
     }
     setLoading(false);
   };
+
+  const fetchTemplates = async () => {
+    const {
+      data,
+      error
+    } = await supabase.from("viral_slide_configs").select("*").is("slide_id", null).order("is_default", { ascending: false });
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load templates",
+        variant: "destructive"
+      });
+    } else {
+      const templates = (data || []) as Template[];
+      setTemplates(templates);
+      // Auto-select default template
+      const defaultTemplate = templates.find(t => t.is_default);
+      if (defaultTemplate) {
+        setSelectedTemplate(defaultTemplate.id);
+      }
+    }
+  };
+
   useEffect(() => {
     if (selectedDeck) {
       setDeckName(selectedDeck);
     }
   }, [selectedDeck]);
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setViralImageFile(file);
-    const reader = new FileReader();
-    reader.onload = e => {
-      setViralImageUrl(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-  const uploadViralImage = async (): Promise<string | null> => {
-    if (!viralImageFile) return null;
-    const fileName = `${Date.now()}-${viralImageFile.name}`;
-    const {
-      data,
-      error
-    } = await supabase.storage.from("slides").upload(fileName, viralImageFile);
-    if (error) {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive"
-      });
-      return null;
-    }
-    const {
-      data: urlData
-    } = supabase.storage.from("slides").getPublicUrl(data.path);
-    return urlData.publicUrl;
-  };
   const handleApplyAdditions = async () => {
     if (!selectedDeck || !addSpreadWord) {
       toast({
@@ -94,22 +97,19 @@ export default function DeckManager() {
       });
       return;
     }
-    if (!viralImageUrl) {
+    if (!selectedTemplate) {
       toast({
-        title: "Image required",
-        description: "Please upload a viral slide image",
+        title: "Template required",
+        description: "Please select a template",
         variant: "destructive"
       });
       return;
     }
-    setShowHotspotEditor(true);
-  };
-  const handleSaveViralSlide = async (finalHotspots: any[]) => {
-    if (!selectedDeck) return;
-    const publicImageUrl = await uploadViralImage();
-    if (!publicImageUrl) return;
 
-    // First, create the slide and get its ID
+    const template = templates.find(t => t.id === selectedTemplate);
+    if (!template) return;
+
+    // Create the slide and link it to the template
     const {
       data: slides,
       error: slidesError
@@ -124,36 +124,16 @@ export default function DeckManager() {
     } = await supabase.from("slide_items").insert({
       deck_slug: selectedDeck,
       type: "spread-word",
-      content_url: publicImageUrl,
+      content_url: template.image_url,
       position: nextPosition,
-      is_compressed: false
+      is_compressed: false,
+      template_id: selectedTemplate
     }).select().single();
 
     if (slideError || !newSlide) {
       toast({
         title: "Error",
         description: "Failed to add slide to deck",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Now create the viral config linked to the slide
-    const viralSlug = `viral-${selectedDeck}-${Date.now()}`;
-    const {
-      error: configError
-    } = await supabase.from("viral_slide_configs").insert({
-      slug: viralSlug,
-      deck_slug: selectedDeck,
-      slide_id: newSlide.id,
-      image_url: publicImageUrl,
-      hotspots: finalHotspots
-    });
-
-    if (configError) {
-      toast({
-        title: "Error",
-        description: "Failed to save viral slide config",
         variant: "destructive"
       });
       return;
@@ -168,24 +148,6 @@ export default function DeckManager() {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
-      </div>;
-  }
-  if (showHotspotEditor && viralImageUrl) {
-    return <div className="min-h-screen bg-background">
-        <header className="border-b bg-card">
-          <div className="container mx-auto px-6 py-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setShowHotspotEditor(false)}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <h1 className="text-2xl font-bold">Edit Hotspots</h1>
-            </div>
-          </div>
-        </header>
-        <main className="container mx-auto px-6 py-8">
-          <FullResolutionHotspotEditor imageUrl={viralImageUrl} initialHotspots={hotspots} onSave={handleSaveViralSlide} />
-        </main>
       </div>;
   }
   return <div className="min-h-screen bg-background">
@@ -251,12 +213,26 @@ export default function DeckManager() {
                 </div>
 
                 {addSpreadWord && <div className="ml-6 space-y-3">
-                    <p className="text-sm text-muted-foreground">Open ViralSlide</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Configure templates in</span>
+                      <Link to="/settings?tab=interactive-pages" className="text-primary hover:underline">
+                        Settings → Interactive Pages
+                      </Link>
+                    </div>
                     <div className="space-y-2">
-                      <Label htmlFor="viral-upload">Upload a "Spread the Word" Image</Label>
-                      <Input id="viral-upload" type="file" accept="image/*" onChange={handleFileUpload} />
-                      {viralImageUrl && <div className="mt-2">
-                          <img src={viralImageUrl} alt="Viral slide preview" className="max-w-xs rounded border" />
+                      <Label htmlFor="template-select">Select Template</Label>
+                      <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                        <SelectTrigger id="template-select">
+                          <SelectValue placeholder="Choose a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates.map(template => <SelectItem key={template.id} value={template.id}>
+                              {template.name} {template.is_default && "(Default)"}
+                            </SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      {selectedTemplate && <div className="mt-2">
+                          <img src={templates.find(t => t.id === selectedTemplate)?.image_url} alt="Template preview" className="max-w-xs rounded border" />
                         </div>}
                     </div>
                   </div>}
