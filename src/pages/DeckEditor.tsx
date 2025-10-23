@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Upload, Loader2, Plus, Zap, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Plus, Zap, Image as ImageIcon, GripVertical } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -52,14 +52,27 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`relative group cursor-pointer border-2 rounded-lg overflow-hidden ${
+      className={`relative group border-2 rounded-lg overflow-hidden ${
         isSelected ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50'
       } ${slide.type === 'spread-word' ? 'ring-2 ring-blue-500' : ''}`}
-      onClick={onSelect}
     >
-      <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-0 top-0 bottom-0 w-8 bg-muted/80 hover:bg-muted flex items-center justify-center cursor-grab active:cursor-grabbing z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+      
+      {/* Clickable slide area */}
+      <div
+        className="cursor-pointer"
+        onClick={onSelect}
+      >
+        <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
+      </div>
+      
       <div className="absolute top-1 left-1 bg-background/90 px-2 py-1 rounded text-xs font-medium">
         {slide.position}
       </div>
