@@ -307,7 +307,7 @@ const Index = () => {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Button onClick={() => navigate("/build")}>
+                <Button onClick={() => navigate("/deck-manager")}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Deck
                 </Button>
@@ -327,7 +327,7 @@ const Index = () => {
             <p className="text-muted-foreground">Loading decks...</p>
           </div> : decks.length === 0 ? <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No decks found. Create your first deck to get started.</p>
-            <Button onClick={() => navigate("/build")}>
+            <Button onClick={() => navigate("/deck-manager")}>
               <Plus className="h-4 w-4 mr-2" />
               Create Deck
             </Button>
