@@ -102,10 +102,12 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
 export default function DeckEditor() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const [slides, setSlides] = useState<Slide[]>([]);
+  const [originalSlides, setOriginalSlides] = useState<Slide[]>([]); // Original state from DB
+  const [slides, setSlides] = useState<Slide[]>([]); // Draft state
   const [selectedSlide, setSelectedSlide] = useState<Slide | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [slideToDelete, setSlideToDelete] = useState<Slide | null>(null);
   const [referenceDimensions, setReferenceDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -116,6 +118,10 @@ export default function DeckEditor() {
   const [reminting, setReminting] = useState(false);
   const [eoaCount, setEoaCount] = useState(0);
   const [campaigns, setCampaigns] = useState<string[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [pendingUploads, setPendingUploads] = useState<{ file: File | Blob; position?: number }[]>([]);
+  const [pendingDeletes, setPendingDeletes] = useState<Slide[]>([]);
+  const [hotspotChanges, setHotspotChanges] = useState<{ [slideId: string]: any }>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -163,6 +169,7 @@ export default function DeckEditor() {
 
       if (error) throw error;
 
+      setOriginalSlides(data || []);
       setSlides(data || []);
       if (data && data.length > 0) {
         setSelectedSlide(data[0]);
@@ -280,176 +287,82 @@ export default function DeckEditor() {
       return;
     }
 
-    setUploading(true);
-    try {
-      // Compress image
-      const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'pasted-image.png', { type: file.type }));
-      
-      const targetPosition = insertPosition !== undefined ? insertPosition : slides.length;
-      
-      // Upload to storage
-      const fileName = `${slug}/${targetPosition.toString().padStart(3, "0")}-${Date.now()}.${file.type === 'image/png' ? 'png' : 'jpg'}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('slides')
-        .upload(fileName, compressedBlob, {
-          contentType: file.type,
-          upsert: true,
-        });
+    // Add to pending uploads and create temp slide preview
+    const targetPosition = insertPosition !== undefined ? insertPosition : slides.length;
+    const tempId = `temp-${Date.now()}`;
+    const tempSlide: Slide = {
+      id: tempId,
+      position: targetPosition,
+      type: 'image',
+      content_url: URL.createObjectURL(file),
+      is_compressed: true,
+      deck_slug: slug!,
+    };
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage.from('slides').getPublicUrl(fileName);
-
-      // Update positions of slides after insert position
-      if (insertPosition !== undefined) {
-        const slidesToUpdate = slides.filter(s => s.position >= insertPosition);
-        for (const slide of slidesToUpdate) {
-          await supabase
-            .from('slide_items')
-            .update({ position: slide.position + 1 })
-            .eq('id', slide.id);
-        }
-      }
-
-      // Insert new slide
-      const { error: insertError } = await supabase
-        .from('slide_items')
-        .insert({
-          deck_slug: slug,
-          position: targetPosition,
-          type: 'image',
-          content_url: urlData.publicUrl,
-          is_compressed: true,
-        });
-
-      if (insertError) throw insertError;
-
-      toast.success(insertPosition !== undefined ? `Slide inserted at position ${insertPosition}` : 'Slide added');
-      await fetchSlides();
-    } catch (error: any) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
-    } finally {
-      setUploading(false);
+    // Update draft slides
+    const updatedSlides = [...slides];
+    if (insertPosition !== undefined) {
+      // Shift positions
+      updatedSlides.forEach(s => {
+        if (s.position >= insertPosition) s.position++;
+      });
     }
+    updatedSlides.push(tempSlide);
+    updatedSlides.sort((a, b) => a.position - b.position);
+    
+    setSlides(updatedSlides);
+    setPendingUploads([...pendingUploads, { file, position: insertPosition }]);
+    setHasChanges(true);
+    toast.success('Slide staged for upload');
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!slideToDelete) return;
 
-    try {
-      // Delete from storage
-      const url = new URL(slideToDelete.content_url);
-      const filePath = url.pathname.split('/slides/')[1];
-      
-      if (filePath) {
-        await supabase.storage.from('slides').remove([filePath]);
-      }
-
-      // Delete viral config if interactive
-      if (slideToDelete.type === 'spread-word') {
-        await supabase
-          .from('viral_slide_configs')
-          .delete()
-          .eq('slide_id', slideToDelete.id);
-      }
-
-      // Delete slide record
-      await supabase
-        .from('slide_items')
-        .delete()
-        .eq('id', slideToDelete.id);
-
-      // Reorder remaining slides
-      const slidesAfter = slides.filter(s => s.position > slideToDelete.position);
-      for (const slide of slidesAfter) {
-        await supabase
-          .from('slide_items')
-          .update({ position: slide.position - 1 })
-          .eq('id', slide.id);
-      }
-
-      toast.success('Slide deleted and positions updated');
-      await fetchSlides();
-      setDeleteDialogOpen(false);
-      setSlideToDelete(null);
-    } catch (error: any) {
-      console.error('Error deleting slide:', error);
-      toast.error('Failed to delete slide');
+    // Add to pending deletes (only if not a temp slide)
+    if (!slideToDelete.id.startsWith('temp-')) {
+      setPendingDeletes([...pendingDeletes, slideToDelete]);
     }
+
+    // Remove from draft slides and reorder
+    const updatedSlides = slides
+      .filter(s => s.id !== slideToDelete.id)
+      .map((s, idx) => ({ ...s, position: idx }));
+    
+    setSlides(updatedSlides);
+    setHasChanges(true);
+    setDeleteDialogOpen(false);
+    setSlideToDelete(null);
+    toast.success('Slide marked for deletion');
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
       const oldIndex = slides.findIndex(s => s.id === active.id);
       const newIndex = slides.findIndex(s => s.id === over.id);
 
-      const newSlides = arrayMove(slides, oldIndex, newIndex);
+      const newSlides = arrayMove(slides, oldIndex, newIndex).map((s, idx) => ({ ...s, position: idx }));
       setSlides(newSlides);
-
-      // Update positions in database
-      try {
-        for (let i = 0; i < newSlides.length; i++) {
-          await supabase
-            .from('slide_items')
-            .update({ position: i })
-            .eq('id', newSlides[i].id);
-        }
-        toast.success('Slides reordered');
-      } catch (error: any) {
-        console.error('Error reordering slides:', error);
-        toast.error('Failed to reorder slides');
-        await fetchSlides(); // Revert on error
-      }
+      setHasChanges(true);
+      toast.success('Slides reordered (not saved yet)');
     }
   };
 
-  const handleSaveHotspots = async (hotspots: any[]) => {
+  const handleSaveHotspots = (hotspots: any[]) => {
     if (!selectedSlide) return;
 
-    try {
-      // Get existing config
-      const { data: existingConfig } = await supabase
-        .from('viral_slide_configs')
-        .select('id')
-        .eq('slide_id', selectedSlide.id)
-        .single();
-
-      if (existingConfig) {
-        // Update existing
-        await supabase
-          .from('viral_slide_configs')
-          .update({ hotspots })
-          .eq('id', existingConfig.id);
-      } else {
-        // Create new config
-        await supabase
-          .from('viral_slide_configs')
-          .insert({
-            slide_id: selectedSlide.id,
-            deck_slug: slug,
-            name: `Slide ${selectedSlide.position}`,
-            image_url: selectedSlide.content_url,
-            hotspots,
-          } as any);
-      }
-
-      toast.success('Interactive hotspots updated');
-      setHotspotEditorOpen(false);
-    } catch (error: any) {
-      console.error('Error saving hotspots:', error);
-      toast.error('Failed to save hotspots');
-    }
+    // Store hotspot changes for later
+    setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: hotspots });
+    setHasChanges(true);
+    setHotspotEditorOpen(false);
+    toast.success('Hotspot changes staged');
   };
 
   const handleAddInteractiveSlide = async (template: Template) => {
     if (!slug) return;
 
-    setUploading(true);
     try {
       // Download template image
       const response = await fetch(template.image_url);
@@ -462,57 +375,130 @@ export default function DeckEditor() {
       }
 
       const targetPosition = slides.length;
+      const tempId = `temp-interactive-${Date.now()}`;
       
-      // Upload to storage
-      const fileName = `${slug}/${targetPosition.toString().padStart(3, "0")}-interactive-${Date.now()}.png`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('slides')
-        .upload(fileName, blob, {
-          contentType: 'image/png',
-          upsert: true,
-        });
+      // Create temp slide
+      const tempSlide: Slide = {
+        id: tempId,
+        position: targetPosition,
+        type: 'spread-word',
+        content_url: template.image_url,
+        is_compressed: false,
+        template_id: template.id,
+        deck_slug: slug,
+      };
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage.from('slides').getPublicUrl(fileName);
-
-      // Insert slide
-      const { data: slideData, error: insertError } = await supabase
-        .from('slide_items')
-        .insert({
-          deck_slug: slug,
-          position: targetPosition,
-          type: 'spread-word',
-          content_url: urlData.publicUrl,
-          template_id: template.id,
-          is_compressed: false,
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      // Create viral config
-      await supabase
-        .from('viral_slide_configs')
-        .insert({
-          slide_id: slideData.id,
-          deck_slug: slug,
-          name: template.name,
-          image_url: urlData.publicUrl,
-          hotspots: template.hotspots,
-        } as any);
-
-      toast.success('Interactive slide added');
+      setSlides([...slides, tempSlide]);
+      setPendingUploads([...pendingUploads, { file: blob, position: targetPosition }]);
+      setHotspotChanges({ ...hotspotChanges, [tempId]: template.hotspots });
+      setHasChanges(true);
       setTemplateDialogOpen(false);
-      await fetchSlides();
+      toast.success('Interactive slide staged');
     } catch (error: any) {
       console.error('Error adding interactive slide:', error);
       toast.error('Failed to add interactive slide');
+    }
+  };
+
+  const handleCancel = () => {
+    setSlides([...originalSlides]);
+    setPendingUploads([]);
+    setPendingDeletes([]);
+    setHotspotChanges({});
+    setHasChanges(false);
+    toast.info('Changes discarded');
+  };
+
+  const handleSaveChanges = async () => {
+    if (!slug) return;
+
+    setSaving(true);
+    try {
+      // 1. Handle deletions first
+      for (const slide of pendingDeletes) {
+        const url = new URL(slide.content_url);
+        const filePath = url.pathname.split('/slides/')[1];
+        
+        if (filePath) {
+          await supabase.storage.from('slides').remove([filePath]);
+        }
+
+        if (slide.type === 'spread-word') {
+          await supabase
+            .from('viral_slide_configs')
+            .delete()
+            .eq('slide_id', slide.id);
+        }
+
+        await supabase
+          .from('slide_items')
+          .delete()
+          .eq('id', slide.id);
+      }
+
+      // 2. Handle uploads
+      for (const { file, position } of pendingUploads) {
+        const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
+        const targetPos = position !== undefined ? position : slides.length;
+        const fileName = `${slug}/${targetPos.toString().padStart(3, "0")}-${Date.now()}.${file.type === 'image/png' ? 'png' : 'jpg'}`;
+        
+        await supabase.storage.from('slides').upload(fileName, compressedBlob, {
+          contentType: file.type,
+          upsert: true,
+        });
+      }
+
+      // 3. Update all slide positions
+      const realSlides = slides.filter(s => !s.id.startsWith('temp-'));
+      for (let i = 0; i < realSlides.length; i++) {
+        await supabase
+          .from('slide_items')
+          .update({ position: i })
+          .eq('id', realSlides[i].id);
+      }
+
+      // 4. Handle hotspot changes
+      for (const [slideId, hotspots] of Object.entries(hotspotChanges)) {
+        if (slideId.startsWith('temp-')) continue;
+
+        const { data: existingConfig } = await supabase
+          .from('viral_slide_configs')
+          .select('id')
+          .eq('slide_id', slideId)
+          .single();
+
+        if (existingConfig) {
+          await supabase
+            .from('viral_slide_configs')
+            .update({ hotspots })
+            .eq('id', existingConfig.id);
+        } else {
+          const slide = slides.find(s => s.id === slideId);
+          if (slide) {
+            await supabase
+              .from('viral_slide_configs')
+              .insert({
+                slide_id: slideId,
+                deck_slug: slug,
+                name: `Slide ${slide.position}`,
+                image_url: slide.content_url,
+                hotspots,
+              } as any);
+          }
+        }
+      }
+
+      toast.success('All changes saved successfully');
+      setPendingUploads([]);
+      setPendingDeletes([]);
+      setHotspotChanges({});
+      setHasChanges(false);
+      await fetchSlides();
+    } catch (error: any) {
+      console.error('Error saving changes:', error);
+      toast.error('Failed to save some changes');
     } finally {
-      setUploading(false);
+      setSaving(false);
     }
   };
 
@@ -581,17 +567,41 @@ export default function DeckEditor() {
               <p className="text-muted-foreground">{slug}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {referenceDimensions && (
               <div className="text-sm text-muted-foreground px-4 py-2 bg-muted rounded">
                 Reference: {referenceDimensions.width}×{referenceDimensions.height}
               </div>
             )}
+            {hasChanges && (
+              <div className="text-sm text-amber-600 px-3 py-2 bg-amber-100 dark:bg-amber-950 rounded">
+                Unsaved changes
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={handleCancel}
+              disabled={!hasChanges || saving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveChanges}
+              disabled={!hasChanges || saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
             <Button variant="outline" onClick={() => setRemintDialogOpen(true)}>
               <Zap className="h-4 w-4 mr-2" />
               Re-mint Affected EoAs
             </Button>
-            <Button onClick={() => navigate('/deck-management')}>Done</Button>
           </div>
         </div>
 
