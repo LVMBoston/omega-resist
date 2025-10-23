@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import { Loader2, Save } from "lucide-react";
 import { LogoUpload } from "@/components/LogoUpload";
 import InteractiveTemplates from "./InteractiveTemplates";
@@ -381,6 +382,38 @@ export default function Settings() {
                             onChange={(e) => setValue(setting.id, { ...value, value: e.target.value })}
                             placeholder="#000000"
                           />
+                        </div>
+                        <Button
+                          onClick={() => handleSave(setting.id)}
+                          disabled={editedValues[setting.id] === undefined}
+                          size="sm"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          Save
+                        </Button>
+                      </div>
+                    );
+                  }
+                  
+                  // Icon size slider
+                  if (setting.key === "icon_size" || setting.key === "logo_size_percent") {
+                    const numValue = value?.value || 15;
+                    return (
+                      <div key={setting.id} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={setting.id}>{setting.description}</Label>
+                          <div className="flex items-center gap-4">
+                            <Slider
+                              id={setting.id}
+                              value={[numValue]}
+                              onValueChange={(vals) => setValue(setting.id, { ...value, value: vals[0] })}
+                              min={5}
+                              max={50}
+                              step={1}
+                              className="flex-1"
+                            />
+                            <span className="text-sm font-medium w-12 text-right">{numValue}%</span>
+                          </div>
                         </div>
                         <Button
                           onClick={() => handleSave(setting.id)}
