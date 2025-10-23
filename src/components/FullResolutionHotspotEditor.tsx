@@ -37,19 +37,19 @@ interface Hotspot {
 // Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
   // SMS variants - using custom iOS icon
-  { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 20, height: 13 },
+  { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 8, height: 6 },
   
   // Email variants - using custom iOS icon
-  { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 20, height: 13 },
+  { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 8, height: 6 },
   
   // Social variants
-  { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 20, height: 13 },
-  { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 20, height: 13 },
-  { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 20, height: 13 },
-  { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 20, height: 13 },
-  { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 20, height: 13 },
-  { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 20, height: 13 },
-  { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 20, height: 13 },
+  { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 8, height: 6 },
+  { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 8, height: 6 },
+  { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 8, height: 6 },
+  { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 8, height: 6 },
+  { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 8, height: 6 },
+  { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 8, height: 6 },
+  { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 8, height: 6 },
 ];
 
 type IconCategory = "sms" | "email" | "social";
