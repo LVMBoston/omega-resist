@@ -712,6 +712,10 @@ export default function DeckEditor() {
               <div className="border-t pt-4 space-y-3 text-sm">
                 <h4 className="font-semibold">Deck Usage</h4>
                 <div>
+                  <div className="text-muted-foreground">Campaign Usage</div>
+                  <div className="font-medium">{campaigns.length}</div>
+                </div>
+                <div>
                   <div className="text-muted-foreground">EoAs Using Deck</div>
                   <div className="font-medium">{eoaCount}</div>
                 </div>
