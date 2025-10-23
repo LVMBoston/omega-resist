@@ -21,7 +21,6 @@ import twitterXIcon from "@/assets/twitter-x-icon.svg";
 import facebookFIcon from "@/assets/facebook-f-icon.svg";
 import protonmailIcon from "@/assets/protonmail-icon.svg";
 import signalIcon from "@/assets/signal-icon.svg";
-import whatsappIconSvg from "@/assets/whatsapp-icon.svg";
 import whatsappLogo from "@/assets/whatsapp-logo.svg";
 
 interface IconPreset {
@@ -64,7 +63,6 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "social-linkedin-logo", label: "LinkedIn Logo", type: "social", imageUrl: linkedinIcon, width: 20, height: 13 },
   { id: "social-bluesky", label: "Bluesky", type: "social", imageUrl: blueskyIcon, width: 20, height: 13 },
   { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 20, height: 13 },
-  { id: "social-whatsapp-icon", label: "WhatsApp Icon", type: "social", imageUrl: whatsappIconSvg, width: 20, height: 13 },
   { id: "social-whatsapp-logo", label: "WhatsApp Logo", type: "social", imageUrl: whatsappLogo, width: 20, height: 13 },
   { id: "social-signal", label: "Signal", type: "social", imageUrl: signalIcon, width: 20, height: 13 },
   { id: "social-protonmail", label: "ProtonMail", type: "social", imageUrl: protonmailIcon, width: 20, height: 13 },
