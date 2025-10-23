@@ -306,10 +306,10 @@ export const FullResolutionHotspotEditor = ({
                     return (
                       <div
                         key={hotspot.id}
-                        className={`absolute border-4 transition-all flex items-center justify-center rounded-lg shadow-md ${
+                        className={`absolute transition-all flex items-center justify-center ${
                           selectedHotspot === hotspot.id
-                            ? "border-yellow-400 bg-yellow-400/40 shadow-xl ring-4 ring-yellow-400/50"
-                            : "border-blue-500 bg-blue-500/30"
+                            ? "ring-2 ring-yellow-400 rounded-lg"
+                            : ""
                         } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
                         style={{
                           left: `${hotspot.x}%`,
@@ -324,17 +324,17 @@ export const FullResolutionHotspotEditor = ({
                         }}
                       >
                         {hotspotImageUrl ? (
-                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-3/4 h-3/4 object-contain drop-shadow-md" />
+                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-full h-full object-contain drop-shadow-lg" />
                         ) : HotspotIcon ? (
-                          <HotspotIcon className="w-3/4 h-3/4 drop-shadow-md" />
+                          <HotspotIcon className="w-full h-full drop-shadow-lg" />
                         ) : null}
                         <div 
-                          className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none rounded ${
-                            hotspot.labelPosition === "top" ? "-top-7" : "-bottom-7"
+                          className={`absolute left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-bold whitespace-nowrap pointer-events-none rounded-md shadow-lg ${
+                            hotspot.labelPosition === "top" ? "-top-8" : "-bottom-8"
                           } ${
                             selectedHotspot === hotspot.id 
-                              ? "bg-yellow-400 text-black" 
-                              : "bg-background text-muted-foreground border"
+                              ? "bg-yellow-400 text-black ring-2 ring-yellow-400/50" 
+                              : "bg-black/80 text-white"
                           }`}
                         >
                           {hotspot.label}
