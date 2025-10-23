@@ -376,9 +376,13 @@ export default function InteractiveTemplates() {
                     {template.description}
                   </p>
                 )}
-                <div className="text-sm text-muted-foreground mb-4">
-                  {template.hotspots.length} hotspot{template.hotspots.length !== 1 ? 's' : ''}
-                </div>
+                {template.hotspots.length > 0 && (
+                  <div className="text-sm text-muted-foreground mb-4 p-2 bg-muted rounded">
+                    To see the <span className="font-semibold">
+                      {Array.from(new Set(template.hotspots.map((h: any) => h.label))).join(' and ')}
+                    </span> icons and their placement, edit the slide and scroll to the bottom.
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
