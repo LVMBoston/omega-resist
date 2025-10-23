@@ -532,7 +532,7 @@ const Index = () => {
                 <Loader2 className="w-8 h-8 animate-spin" />
               </div>
             ) : imageSlides.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {imageSlides.map((slide) => (
                   <div 
                     key={slide.id} 
@@ -541,7 +541,7 @@ const Index = () => {
                     <img 
                       src={slide.content_url} 
                       alt={`Slide ${slide.position + 1}`}
-                      className="w-full aspect-video object-cover"
+                      className="w-full aspect-[9/16] object-cover"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <span className="text-white font-medium">Slide {slide.position + 1}</span>
