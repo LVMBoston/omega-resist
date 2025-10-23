@@ -48,6 +48,7 @@ const navigation = [
       { title: "Deck Builder", url: "/deck-builder", icon: Hammer },
       { title: "Deck Viewer", url: "/deck", icon: Eye },
       { title: "Deck Manager", url: "/deck-manager", icon: Link2 },
+      { title: "Interactive Slide Templates", url: "/interactive-templates", icon: Presentation },
     ],
   },
   {
