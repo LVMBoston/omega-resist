@@ -11,6 +11,11 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
+import blueskyIcon from "@/assets/bluesky-icon.svg";
+import twitterIcon from "@/assets/twitter-icon.svg";
+import facebookIcon from "@/assets/facebook-icon.svg";
+import linkedinIcon from "@/assets/linkedin-icon.svg";
+import twitterXIcon from "@/assets/twitter-x-icon.svg";
 
 interface IconPreset {
   id: string;
@@ -42,9 +47,14 @@ const ICON_PRESETS: IconPreset[] = [
   
   // Social variants
   { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 20, height: 13 },
+  { id: "social-facebook-logo", label: "Facebook Logo", type: "social", imageUrl: facebookIcon, width: 20, height: 13 },
   { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 20, height: 13 },
   { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 20, height: 13 },
+  { id: "social-twitter-blue", label: "Twitter Blue", type: "social", imageUrl: twitterIcon, width: 20, height: 13 },
+  { id: "social-twitter-x", label: "Twitter & X", type: "social", imageUrl: twitterXIcon, width: 20, height: 13 },
   { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 20, height: 13 },
+  { id: "social-linkedin-logo", label: "LinkedIn Logo", type: "social", imageUrl: linkedinIcon, width: 20, height: 13 },
+  { id: "social-bluesky", label: "Bluesky", type: "social", imageUrl: blueskyIcon, width: 20, height: 13 },
   { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 20, height: 13 },
   { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 20, height: 13 },
   { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 20, height: 13 },
