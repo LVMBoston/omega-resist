@@ -306,10 +306,10 @@ export const FullResolutionHotspotEditor = ({
                     return (
                       <div
                         key={hotspot.id}
-                        className={`absolute border-4 transition-all flex items-center justify-center ${
+                        className={`absolute border-2 transition-all flex items-center justify-center rounded ${
                           selectedHotspot === hotspot.id
-                            ? "border-yellow-400 bg-yellow-400/30 shadow-lg ring-2 ring-yellow-400"
-                            : "border-blue-500 bg-blue-500/10 opacity-50"
+                            ? "border-yellow-400 bg-yellow-400/20 shadow-lg ring-2 ring-yellow-400"
+                            : "border-blue-400 bg-blue-400/20"
                         } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
                         style={{
                           left: `${hotspot.x}%`,
