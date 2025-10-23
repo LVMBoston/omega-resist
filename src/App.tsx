@@ -14,6 +14,7 @@ import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import DeckBuilder from "./pages/DeckBuilder";
 import DeckViewer from "./pages/DeckViewer";
+import DeckEditor from "./pages/DeckEditor";
 import DeckManager from "./pages/DeckManager";
 import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
@@ -55,6 +56,7 @@ const App = () => (
                     <Route path="/interactive-templates" element={<InteractiveTemplates />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/deck/:slug?" element={<DeckViewer />} />
+                    <Route path="/deck-editor/:slug" element={<DeckEditor />} />
                     <Route path="/deck-builder/:slug?" element={<DeckBuilder />} />
                     <Route path="/deck-manager" element={<DeckManager />} />
                     <Route 
