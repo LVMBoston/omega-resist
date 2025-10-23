@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, X } from "lucide-react";
+import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, X, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ interface DeckWithSlides {
 const Index = () => {
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [googleSlidesUrl, setGoogleSlidesUrl] = useState("");
   const [deckSlug, setDeckSlug] = useState("");
@@ -40,8 +41,12 @@ const Index = () => {
   useEffect(() => {
     fetchDecks();
   }, []);
-  const fetchDecks = async () => {
+  const fetchDecks = async (isRefresh = false) => {
     try {
+      if (isRefresh) {
+        setRefreshing(true);
+      }
+      
       // Fetch all decks
       const {
         data: decksData,
@@ -58,7 +63,7 @@ const Index = () => {
         } = await supabase.from("slide_items").select("*", {
           count: "exact",
           head: true
-        }).eq("deck_slug", deck.slug);
+        }).eq("deck_slug", deck.slug).eq("type", "image");
         const {
           count: interactiveCount
         } = await supabase.from("slide_items").select("*", {
@@ -73,11 +78,16 @@ const Index = () => {
         };
       }));
       setDecks(decksWithCounts);
+      
+      if (isRefresh) {
+        toast.success("Deck counts refreshed");
+      }
     } catch (error) {
       console.error("Error fetching decks:", error);
       toast.error("Failed to load decks");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
   const handleRemoveInteractive = async (slug: string) => {
@@ -368,6 +378,15 @@ const Index = () => {
                   </Button>}
                 <Button onClick={() => navigate("/manage")} variant="outline">
                   Manage Decks
+                </Button>
+                <Button 
+                  onClick={() => fetchDecks(true)} 
+                  variant="outline"
+                  disabled={refreshing}
+                  title="Refresh slide counts"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh Counts
                 </Button>
                 <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
                   <DialogTrigger asChild>
