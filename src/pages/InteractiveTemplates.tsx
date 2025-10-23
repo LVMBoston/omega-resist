@@ -53,6 +53,16 @@ export default function InteractiveTemplates() {
 
   const createTemplate = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // If setting as default, clear all other defaults first
+      if (data.is_default) {
+        const { error: clearError } = await supabase
+          .from("viral_slide_configs")
+          .update({ is_default: false })
+          .eq("is_default", true);
+        
+        if (clearError) throw clearError;
+      }
+
       const { error } = await supabase
         .from("viral_slide_configs")
         .insert({
@@ -86,6 +96,17 @@ export default function InteractiveTemplates() {
 
   const updateTemplate = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
+      // If setting as default, clear all other defaults first
+      if (data.is_default) {
+        const { error: clearError } = await supabase
+          .from("viral_slide_configs")
+          .update({ is_default: false })
+          .neq("id", id)
+          .eq("is_default", true);
+        
+        if (clearError) throw clearError;
+      }
+
       const { error } = await supabase
         .from("viral_slide_configs")
         .update(data)
