@@ -26,6 +26,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
+  type: "sms" | "email" | "social";
   label: string;
   x: number;
   y: number;
@@ -102,6 +103,7 @@ export const FullResolutionHotspotEditor = ({
     const newHotspot: Hotspot = {
       id: `hotspot-${Date.now()}`,
       iconId: selectedIconPreset.id,
+      type: selectedIconPreset.type,
       label: selectedIconPreset.label,
       x: Math.max(0, Math.min(100 - selectedIconPreset.width, x)),
       y: Math.max(0, Math.min(100 - selectedIconPreset.height, y)),
