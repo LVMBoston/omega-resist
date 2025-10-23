@@ -37,19 +37,19 @@ interface Hotspot {
 // Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
   // SMS variants - using custom iOS icon
-  { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 10, height: 8 },
+  { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 5, height: 4 },
   
   // Email variants - using custom iOS icon
-  { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 10, height: 8 },
+  { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 5, height: 4 },
   
   // Social variants
-  { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 10, height: 8 },
-  { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 10, height: 8 },
-  { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 10, height: 8 },
-  { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 10, height: 8 },
-  { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 10, height: 8 },
-  { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 10, height: 8 },
-  { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 10, height: 8 },
+  { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 5, height: 4 },
+  { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 5, height: 4 },
+  { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 5, height: 4 },
+  { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 5, height: 4 },
+  { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 5, height: 4 },
+  { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 5, height: 4 },
+  { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 5, height: 4 },
 ];
 
 type IconCategory = "sms" | "email" | "social";
@@ -322,17 +322,10 @@ export const FullResolutionHotspotEditor = ({
                         }}
                       >
                         {hotspotImageUrl ? (
-                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-1/2 h-1/2 object-contain" />
+                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-full h-full object-contain" />
                         ) : HotspotIcon ? (
-                          <HotspotIcon className="w-1/2 h-1/2" />
+                          <HotspotIcon className="w-full h-full" />
                         ) : null}
-                        <div className={`absolute -top-7 left-0 border rounded px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none ${
-                          selectedHotspot === hotspot.id 
-                            ? "bg-yellow-400 text-black" 
-                            : "bg-background text-muted-foreground"
-                        }`}>
-                          {hotspot.label}
-                        </div>
                       </div>
                     );
                   })}
