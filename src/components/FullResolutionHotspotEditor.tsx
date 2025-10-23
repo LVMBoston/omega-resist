@@ -306,10 +306,10 @@ export const FullResolutionHotspotEditor = ({
                     return (
                       <div
                         key={hotspot.id}
-                        className={`absolute border-2 transition-all flex items-center justify-center rounded ${
+                        className={`absolute border-4 transition-all flex items-center justify-center rounded-lg shadow-md ${
                           selectedHotspot === hotspot.id
-                            ? "border-yellow-400 bg-yellow-400/20 shadow-lg ring-2 ring-yellow-400"
-                            : "border-blue-400 bg-blue-400/20"
+                            ? "border-yellow-400 bg-yellow-400/40 shadow-xl ring-4 ring-yellow-400/50"
+                            : "border-blue-500 bg-blue-500/30"
                         } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
                         style={{
                           left: `${hotspot.x}%`,
@@ -324,9 +324,9 @@ export const FullResolutionHotspotEditor = ({
                         }}
                       >
                         {hotspotImageUrl ? (
-                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-full h-full object-contain" />
+                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-3/4 h-3/4 object-contain drop-shadow-md" />
                         ) : HotspotIcon ? (
-                          <HotspotIcon className="w-full h-full" />
+                          <HotspotIcon className="w-3/4 h-3/4 drop-shadow-md" />
                         ) : null}
                         <div 
                           className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none rounded ${
