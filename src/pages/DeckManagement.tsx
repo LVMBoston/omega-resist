@@ -504,6 +504,9 @@ const Index = () => {
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Interactive Slide Preview</DialogTitle>
+            <DialogDescription>
+              Preview of the interactive slide template
+            </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[400px]">
             {loadingImage ? (
@@ -525,6 +528,9 @@ const Index = () => {
         <DialogContent className="max-w-6xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>Image Slides</DialogTitle>
+            <DialogDescription>
+              Thumbnail preview of all image slides in this deck
+            </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto">
             {loadingImageSlides ? (
