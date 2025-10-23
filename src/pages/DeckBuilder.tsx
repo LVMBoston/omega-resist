@@ -199,7 +199,7 @@ export default function DeckBuilder() {
       await handleZipUpload(file, values.slug, values.compress);
       
       toast.success("Deck created successfully!");
-      navigate("/");
+      navigate("/deck-management");
     } catch (error: any) {
       console.error("Upload error:", error);
       toast.error(error.message || "Failed to create deck", {
