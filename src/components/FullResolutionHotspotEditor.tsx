@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Slider } from "./ui/slider";
 import { Card, CardContent } from "./ui/card";
 import { Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -439,6 +440,28 @@ export const FullResolutionHotspotEditor = ({
                             })}
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div>
+                        <Label>Icon Size</Label>
+                        <div className="flex items-center gap-4 pt-2">
+                          <Slider
+                            value={[selectedHotspotData.width]}
+                            onValueChange={(vals) => {
+                              const newSize = vals[0];
+                              const aspectRatio = selectedHotspotData.height / selectedHotspotData.width;
+                              updateHotspot(selectedHotspotData.id, {
+                                width: newSize,
+                                height: newSize * aspectRatio
+                              });
+                            }}
+                            min={5}
+                            max={50}
+                            step={1}
+                            className="flex-1"
+                          />
+                          <span className="text-sm font-medium w-12 text-right">{selectedHotspotData.width.toFixed(0)}%</span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
