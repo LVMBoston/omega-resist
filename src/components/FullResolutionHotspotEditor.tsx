@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
+
+// Icon assets
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
 import blueskyIcon from "@/assets/bluesky-icon.svg";
