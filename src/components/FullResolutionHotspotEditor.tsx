@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Slider } from "./ui/slider";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Card, CardContent } from "./ui/card";
 import { Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,7 @@ interface Hotspot {
   y: number;
   width: number;
   height: number;
+  labelPosition?: "top" | "bottom";
 }
 
 // Icon catalog organized by category with variants
@@ -109,6 +110,7 @@ export const FullResolutionHotspotEditor = ({
       y: Math.max(0, Math.min(100 - selectedIconPreset.height, y)),
       width: selectedIconPreset.width,
       height: selectedIconPreset.height,
+      labelPosition: "bottom",
     };
 
     const updatedHotspots = [...hotspots, newHotspot];
@@ -326,6 +328,17 @@ export const FullResolutionHotspotEditor = ({
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full" />
                         ) : null}
+                        <div 
+                          className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none rounded ${
+                            hotspot.labelPosition === "top" ? "-top-7" : "-bottom-7"
+                          } ${
+                            selectedHotspot === hotspot.id 
+                              ? "bg-yellow-400 text-black" 
+                              : "bg-background text-muted-foreground border"
+                          }`}
+                        >
+                          {hotspot.label}
+                        </div>
                       </div>
                     );
                   })}
@@ -357,11 +370,8 @@ export const FullResolutionHotspotEditor = ({
                                   ) : ListIcon ? (
                                     <ListIcon className="w-4 h-4" />
                                   ) : null}
-                                  <span>{hotspot.label}</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {hotspot.x.toFixed(1)}%, {hotspot.y.toFixed(1)}%
-                                </div>
+                                   <span>{hotspot.label}</span>
+                                 </div>
                               </div>
                               <Button
                                 onClick={(e) => {
@@ -384,58 +394,7 @@ export const FullResolutionHotspotEditor = ({
                 {selectedHotspotData && (
                   <Card>
                     <CardContent className="p-4 space-y-3">
-                      <h4 className="font-semibold">Edit Hotspot</h4>
-
-                      <div>
-                        <Label>Label</Label>
-                        <Input
-                          value={selectedHotspotData.label}
-                          onChange={(e) =>
-                            updateHotspot(selectedHotspotData.id, { label: e.target.value })
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Icon Type</Label>
-                        <Select
-                          value={selectedHotspotData.iconId}
-                          onValueChange={(value: string) =>
-                            {
-                              const preset = ICON_PRESETS.find(p => p.id === value);
-                              if (preset) {
-                                updateHotspot(selectedHotspotData.id, { 
-                                  iconId: value,
-                                  label: preset.label,
-                                  width: preset.width,
-                                  height: preset.height
-                                });
-                              }
-                            }
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
-                            {ICON_PRESETS.map((preset) => {
-                              const SelectIcon = preset.icon;
-                              return (
-                                <SelectItem key={preset.id} value={preset.id}>
-                                  <span className="flex items-center gap-2">
-                                    {preset.imageUrl ? (
-                                      <img src={preset.imageUrl} alt={preset.label} className="w-4 h-4 object-contain" />
-                                    ) : SelectIcon ? (
-                                      <SelectIcon className="w-4 h-4" />
-                                    ) : null}
-                                    <span>{preset.label}</span>
-                                  </span>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <h4 className="font-semibold">Resize Icon</h4>
 
                       <div>
                         <Label>Icon Size</Label>
@@ -459,58 +418,35 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label>X (%)</Label>
-                          <Input
-                            type="number"
-                            value={selectedHotspotData.x.toFixed(1)}
-                            onChange={(e) =>
-                              updateHotspot(selectedHotspotData.id, {
-                                x: parseFloat(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label>Y (%)</Label>
-                          <Input
-                            type="number"
-                            value={selectedHotspotData.y.toFixed(1)}
-                            onChange={(e) =>
-                              updateHotspot(selectedHotspotData.id, {
-                                y: parseFloat(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
+                      <div>
+                        <Label>Label</Label>
+                        <Input
+                          value={selectedHotspotData.label}
+                          onChange={(e) =>
+                            updateHotspot(selectedHotspotData.id, { label: e.target.value })
+                          }
+                          maxLength={10}
+                        />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label>Width (%)</Label>
-                          <Input
-                            type="number"
-                            value={selectedHotspotData.width.toFixed(1)}
-                            onChange={(e) =>
-                              updateHotspot(selectedHotspotData.id, {
-                                width: parseFloat(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label>Height (%)</Label>
-                          <Input
-                            type="number"
-                            value={selectedHotspotData.height.toFixed(1)}
-                            onChange={(e) =>
-                              updateHotspot(selectedHotspotData.id, {
-                                height: parseFloat(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
+                      <div>
+                        <Label>Label Position</Label>
+                        <RadioGroup
+                          value={selectedHotspotData.labelPosition || "bottom"}
+                          onValueChange={(value: "top" | "bottom") =>
+                            updateHotspot(selectedHotspotData.id, { labelPosition: value })
+                          }
+                          className="flex flex-col gap-2 pt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="top" id="top" />
+                            <Label htmlFor="top" className="font-normal cursor-pointer">Top Center</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="bottom" id="bottom" />
+                            <Label htmlFor="bottom" className="font-normal cursor-pointer">Bottom Center</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
                     </CardContent>
                   </Card>
