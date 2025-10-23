@@ -56,15 +56,24 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         if (legacyError) {
           console.error("❌ Error fetching legacy viral config:", legacyError);
         } else if (legacyData) {
-          console.log("✅ Legacy viral config loaded:", {
-            slideId,
-            image_url: legacyData.image_url,
-            hotspotsLength: Array.isArray(legacyData.hotspots) ? legacyData.hotspots.length : 0
-          });
-          setConfig({
-            image_url: legacyData.image_url,
-            hotspots: Array.isArray(legacyData.hotspots) ? (legacyData.hotspots as unknown as Hotspot[]) : [],
-          });
+        console.log("✅ Legacy viral config loaded:", {
+          slideId,
+          image_url: legacyData.image_url,
+          hotspotsLength: Array.isArray(legacyData.hotspots) ? legacyData.hotspots.length : 0
+        });
+        
+        // Map iconId to type for backward compatibility
+        const mappedHotspots = Array.isArray(legacyData.hotspots) 
+          ? legacyData.hotspots.map((h: any) => ({
+              ...h,
+              type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
+            }))
+          : [];
+        
+        setConfig({
+          image_url: legacyData.image_url,
+          hotspots: mappedHotspots,
+        });
         }
         setLoading(false);
         return;
@@ -86,9 +95,18 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           image_url: templateData.image_url,
           hotspotsLength: Array.isArray(templateData.hotspots) ? templateData.hotspots.length : 0
         });
+        
+        // Map iconId to type for backward compatibility
+        const mappedHotspots = Array.isArray(templateData.hotspots) 
+          ? templateData.hotspots.map((h: any) => ({
+              ...h,
+              type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
+            }))
+          : [];
+        
         setConfig({
           image_url: templateData.image_url,
-          hotspots: Array.isArray(templateData.hotspots) ? (templateData.hotspots as unknown as Hotspot[]) : [],
+          hotspots: mappedHotspots,
         });
       } else {
         console.log("⚠️ No template found for template_id:", slideData.template_id);
