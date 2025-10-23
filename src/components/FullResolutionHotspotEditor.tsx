@@ -8,18 +8,16 @@ import { Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import { MdEmail, MdOutlineEmail } from "react-icons/md";
-import { IoMdMail } from "react-icons/io";
-import { HiMail } from "react-icons/hi";
-import { BiMessageRounded, BiMessageDetail } from "react-icons/bi";
-import { IoChatbubbleEllipses, IoChatboxEllipses } from "react-icons/io5";
 import { BsShare, BsShareFill } from "react-icons/bs";
+import mailIcon from "@/assets/mail-icon.png";
+import textIcon from "@/assets/text-icon.svg";
 
 interface IconPreset {
   id: string;
   label: string;
   type: "sms" | "email" | "social";
-  icon: React.ComponentType<{ className?: string; size?: number }>; // React icon component
+  icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
+  imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
   height: number; // percentage
 }
@@ -36,17 +34,11 @@ interface Hotspot {
 
 // Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
-  // SMS variants
-  { id: "sms-bubble", label: "Text Bubble", type: "sms", icon: BiMessageRounded, width: 14, height: 9 },
-  { id: "sms-message", label: "Message Detail", type: "sms", icon: BiMessageDetail, width: 14, height: 9 },
-  { id: "sms-chat", label: "Chat Bubble", type: "sms", icon: IoChatbubbleEllipses, width: 14, height: 9 },
-  { id: "sms-chatbox", label: "Chat Box", type: "sms", icon: IoChatboxEllipses, width: 14, height: 9 },
+  // SMS variants - using custom iOS icon
+  { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 14, height: 9 },
   
-  // Email variants
-  { id: "email-filled", label: "Email", type: "email", icon: MdEmail, width: 14, height: 9 },
-  { id: "email-outline", label: "Email Outline", type: "email", icon: MdOutlineEmail, width: 14, height: 9 },
-  { id: "email-mail", label: "Mail", type: "email", icon: IoMdMail, width: 14, height: 9 },
-  { id: "email-alt", label: "Mail Alt", type: "email", icon: HiMail, width: 14, height: 9 },
+  // Email variants - using custom iOS icon
+  { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 14, height: 9 },
   
   // Social variants
   { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 14, height: 9 },
@@ -81,9 +73,15 @@ export const FullResolutionHotspotEditor = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
 
-  const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }>> = {
-    sms: BiMessageRounded,
-    email: MdEmail,
+  const categoryImages: Record<IconCategory, string> = {
+    sms: textIcon,
+    email: mailIcon,
+    social: "" // Will use icon component for social
+  };
+
+  const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
+    sms: null,
+    email: null,
     social: BsShare
   };
 
@@ -217,6 +215,7 @@ export const FullResolutionHotspotEditor = ({
                 <div className="grid grid-cols-3 gap-3">
                   {(["sms", "email", "social"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
+                    const categoryImageUrl = categoryImages[category];
                     return (
                       <Button
                         key={category}
@@ -224,7 +223,11 @@ export const FullResolutionHotspotEditor = ({
                         variant="outline"
                         className="flex flex-col items-center gap-2 h-auto py-4"
                       >
-                        <CategoryIcon className="w-8 h-8" />
+                        {categoryImageUrl ? (
+                          <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-8 h-8 object-contain" />
+                        ) : CategoryIcon ? (
+                          <CategoryIcon className="w-8 h-8" />
+                        ) : null}
                         <span className="text-sm font-medium">{categoryLabels[category]}</span>
                       </Button>
                     );
@@ -245,7 +248,11 @@ export const FullResolutionHotspotEditor = ({
                         variant={selectedIconPreset?.id === preset.id ? "default" : "outline"}
                         className="flex flex-col items-center gap-2 h-auto py-3"
                       >
-                        <PresetIcon className="w-8 h-8" />
+                        {preset.imageUrl ? (
+                          <img src={preset.imageUrl} alt={preset.label} className="w-8 h-8 object-contain" />
+                        ) : PresetIcon ? (
+                          <PresetIcon className="w-8 h-8" />
+                        ) : null}
                         <span className="text-xs">{preset.label}</span>
                       </Button>
                     );
@@ -290,6 +297,7 @@ export const FullResolutionHotspotEditor = ({
                   {hotspots.map((hotspot) => {
                     const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
                     const HotspotIcon = preset?.icon;
+                    const hotspotImageUrl = preset?.imageUrl;
                     return (
                       <div
                         key={hotspot.id}
@@ -310,7 +318,11 @@ export const FullResolutionHotspotEditor = ({
                           if (!isDragging) setSelectedHotspot(hotspot.id);
                         }}
                       >
-                        {HotspotIcon && <HotspotIcon className="w-1/2 h-1/2" />}
+                        {hotspotImageUrl ? (
+                          <img src={hotspotImageUrl} alt={hotspot.label} className="w-1/2 h-1/2 object-contain" />
+                        ) : HotspotIcon ? (
+                          <HotspotIcon className="w-1/2 h-1/2" />
+                        ) : null}
                         <div className={`absolute -top-7 left-0 border rounded px-2 py-1 text-xs font-semibold whitespace-nowrap pointer-events-none ${
                           selectedHotspot === hotspot.id 
                             ? "bg-yellow-400 text-black" 
@@ -331,6 +343,7 @@ export const FullResolutionHotspotEditor = ({
                     {hotspots.map((hotspot) => {
                       const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
                       const ListIcon = preset?.icon;
+                      const listImageUrl = preset?.imageUrl;
                       return (
                         <Card
                           key={hotspot.id}
@@ -343,7 +356,11 @@ export const FullResolutionHotspotEditor = ({
                             <div className="flex items-center justify-between">
                               <div className="text-sm">
                                 <div className="font-medium flex items-center gap-2">
-                                  {ListIcon && <ListIcon className="w-4 h-4" />}
+                                  {listImageUrl ? (
+                                    <img src={listImageUrl} alt={hotspot.label} className="w-4 h-4 object-contain" />
+                                  ) : ListIcon ? (
+                                    <ListIcon className="w-4 h-4" />
+                                  ) : null}
                                   <span>{hotspot.label}</span>
                                 </div>
                                 <div className="text-xs text-muted-foreground">
@@ -410,7 +427,11 @@ export const FullResolutionHotspotEditor = ({
                               return (
                                 <SelectItem key={preset.id} value={preset.id}>
                                   <span className="flex items-center gap-2">
-                                    <SelectIcon className="w-4 h-4" />
+                                    {preset.imageUrl ? (
+                                      <img src={preset.imageUrl} alt={preset.label} className="w-4 h-4 object-contain" />
+                                    ) : SelectIcon ? (
+                                      <SelectIcon className="w-4 h-4" />
+                                    ) : null}
                                     <span>{preset.label}</span>
                                   </span>
                                 </SelectItem>
