@@ -28,6 +28,9 @@ const Index = () => {
   const [interactiveImageDialog, setInteractiveImageDialog] = useState(false);
   const [interactiveImageUrl, setInteractiveImageUrl] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
+  const [imageSlidesDialog, setImageSlidesDialog] = useState(false);
+  const [imageSlides, setImageSlides] = useState<Array<{ id: string; content_url: string; position: number }>>([]);
+  const [loadingImageSlides, setLoadingImageSlides] = useState(false);
   const navigate = useNavigate();
   const {
     user,
@@ -303,6 +306,37 @@ const Index = () => {
     }
   };
 
+  const handleShowImageSlides = async (deckSlug: string) => {
+    setLoadingImageSlides(true);
+    setImageSlidesDialog(true);
+    setImageSlides([]);
+
+    try {
+      const { data: slides, error } = await supabase
+        .from("slide_items")
+        .select("id, content_url, position")
+        .eq("deck_slug", deckSlug)
+        .eq("type", "image")
+        .order("position");
+
+      if (error) throw error;
+      
+      if (!slides || slides.length === 0) {
+        toast.error("No image slides found");
+        setImageSlidesDialog(false);
+        return;
+      }
+
+      setImageSlides(slides);
+    } catch (error) {
+      console.error("Error fetching image slides:", error);
+      toast.error("Failed to load image slides");
+      setImageSlidesDialog(false);
+    } finally {
+      setLoadingImageSlides(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -415,7 +449,18 @@ const Index = () => {
                   <TableCell className="text-muted-foreground">
                     {formatDate(deck.created_at)}
                   </TableCell>
-                  <TableCell className="text-center">{deck.slide_count}</TableCell>
+                  <TableCell className="text-center">
+                    {deck.slide_count > 0 ? (
+                      <button 
+                        onClick={() => handleShowImageSlides(deck.slug)}
+                        className="hover:underline text-primary font-medium cursor-pointer"
+                      >
+                        {deck.slide_count}
+                      </button>
+                    ) : (
+                      deck.slide_count
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                     {deck.interactive_count > 0 ? (
                       <button 
@@ -471,6 +516,41 @@ const Index = () => {
               />
             ) : (
               <p className="text-muted-foreground">No image available</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={imageSlidesDialog} onOpenChange={setImageSlidesDialog}>
+        <DialogContent className="max-w-6xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Image Slides</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto">
+            {loadingImageSlides ? (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            ) : imageSlides.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {imageSlides.map((slide) => (
+                  <div 
+                    key={slide.id} 
+                    className="relative group border rounded-lg overflow-hidden hover:border-primary transition-colors"
+                  >
+                    <img 
+                      src={slide.content_url} 
+                      alt={`Slide ${slide.position + 1}`}
+                      className="w-full aspect-video object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white font-medium">Slide {slide.position + 1}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No image slides available</p>
             )}
           </div>
         </DialogContent>
