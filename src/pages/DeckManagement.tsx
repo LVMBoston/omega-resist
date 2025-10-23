@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 interface DeckWithSlides {
   slug: string;
   created_at: string;
@@ -24,6 +25,9 @@ const Index = () => {
   const [googleSlidesUrl, setGoogleSlidesUrl] = useState("");
   const [deckSlug, setDeckSlug] = useState("");
   const [importing, setImporting] = useState(false);
+  const [interactiveImageDialog, setInteractiveImageDialog] = useState(false);
+  const [interactiveImageUrl, setInteractiveImageUrl] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
   const navigate = useNavigate();
   const {
     user,
@@ -240,6 +244,65 @@ const Index = () => {
       setImporting(false);
     }
   };
+  const handleShowInteractiveImage = async (deckSlug: string) => {
+    setLoadingImage(true);
+    setInteractiveImageDialog(true);
+    setInteractiveImageUrl(null);
+
+    try {
+      // Get the first interactive slide for this deck
+      const { data: slideData, error: slideError } = await supabase
+        .from("slide_items")
+        .select("id, template_id")
+        .eq("deck_slug", deckSlug)
+        .eq("type", "spread-word")
+        .limit(1)
+        .maybeSingle();
+
+      if (slideError) throw slideError;
+      
+      if (!slideData) {
+        toast.error("No interactive slide found");
+        setInteractiveImageDialog(false);
+        return;
+      }
+
+      // If there's a template_id, fetch from template
+      if (slideData.template_id) {
+        const { data: templateData, error: templateError } = await supabase
+          .from("viral_slide_configs")
+          .select("image_url")
+          .eq("id", slideData.template_id)
+          .single();
+
+        if (templateError) throw templateError;
+        setInteractiveImageUrl(templateData.image_url);
+      } else {
+        // Legacy: fetch directly from viral_slide_configs
+        const { data: configData, error: configError } = await supabase
+          .from("viral_slide_configs")
+          .select("image_url")
+          .eq("slide_id", slideData.id)
+          .maybeSingle();
+
+        if (configError) throw configError;
+        
+        if (configData) {
+          setInteractiveImageUrl(configData.image_url);
+        } else {
+          toast.error("No interactive configuration found");
+          setInteractiveImageDialog(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching interactive image:", error);
+      toast.error("Failed to load interactive image");
+      setInteractiveImageDialog(false);
+    } finally {
+      setLoadingImage(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -353,7 +416,18 @@ const Index = () => {
                     {formatDate(deck.created_at)}
                   </TableCell>
                   <TableCell className="text-center">{deck.slide_count}</TableCell>
-                  <TableCell className="text-center">{deck.interactive_count}</TableCell>
+                  <TableCell className="text-center">
+                    {deck.interactive_count > 0 ? (
+                      <button 
+                        onClick={() => handleShowInteractiveImage(deck.slug)}
+                        className="hover:underline text-primary font-medium cursor-pointer"
+                      >
+                        {deck.interactive_count}
+                      </button>
+                    ) : (
+                      deck.interactive_count
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                     <Button variant="ghost" size="icon" onClick={() => handleExportPDF(deck.slug)} title="Export to PDF">
                       <Download className="h-4 w-4" />
@@ -380,6 +454,27 @@ const Index = () => {
             </TableBody>
           </Table>}
       </main>
+
+      <Dialog open={interactiveImageDialog} onOpenChange={setInteractiveImageDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Interactive Slide Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center min-h-[400px]">
+            {loadingImage ? (
+              <Loader2 className="w-8 h-8 animate-spin" />
+            ) : interactiveImageUrl ? (
+              <img 
+                src={interactiveImageUrl} 
+                alt="Interactive slide" 
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            ) : (
+              <p className="text-muted-foreground">No image available</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 export default Index;
