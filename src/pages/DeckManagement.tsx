@@ -367,73 +367,54 @@ const Index = () => {
             <p className="text-sm text-muted-foreground mt-1">Viral Deck Management</p>
           </div>
           <div className="flex items-center gap-2">
-            {user ? <>
-                <div className="flex items-center gap-2 mr-2">
-                  <span className="text-sm text-muted-foreground">{user.email}</span>
-                  {userRole && <Badge variant="outline">{userRole}</Badge>}
+            <Button 
+              onClick={() => fetchDecks(true)} 
+              variant="outline"
+              disabled={refreshing}
+              title="Refresh slide counts"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh Counts
+            </Button>
+            <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Import from Google Slides
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Import Google Slides</DialogTitle>
+                  <DialogDescription>
+                    Enter a Google Slides URL or presentation ID and choose a name for your deck.
+                    <br /><br />
+                    <strong>Important:</strong> You must share the presentation with your service account email.
+                    <br />
+                    Find the service account email in your Google Cloud Console under "Service Accounts".
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="slides-url">Google Slides URL</Label>
+                    <Input id="slides-url" placeholder="https://docs.google.com/presentation/d/1fDM9jDqB8G.../edit" value={googleSlidesUrl} onChange={e => setGoogleSlidesUrl(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deck-slug">Deck Name</Label>
+                    <Input id="deck-slug" placeholder="my-deck" value={deckSlug} onChange={e => setDeckSlug(e.target.value)} />
+                  </div>
                 </div>
-                {userRole === "admin" && <Button onClick={() => navigate("/admin")} variant="outline">
-                    <UserCog className="h-4 w-4 mr-2" />
-                    Admin
-                  </Button>}
-                <Button onClick={() => navigate("/manage")} variant="outline">
-                  Manage Decks
-                </Button>
-                <Button 
-                  onClick={() => fetchDecks(true)} 
-                  variant="outline"
-                  disabled={refreshing}
-                  title="Refresh slide counts"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  Refresh Counts
-                </Button>
-                <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Import from Google Slides
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Import Google Slides</DialogTitle>
-                      <DialogDescription>
-                        Enter a Google Slides URL or presentation ID and choose a name for your deck.
-                        <br /><br />
-                        <strong>Important:</strong> You must share the presentation with your service account email.
-                        <br />
-                        Find the service account email in your Google Cloud Console under "Service Accounts".
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="slides-url">Google Slides URL</Label>
-                        <Input id="slides-url" placeholder="https://docs.google.com/presentation/d/1fDM9jDqB8G.../edit" value={googleSlidesUrl} onChange={e => setGoogleSlidesUrl(e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="deck-slug">Deck Name</Label>
-                        <Input id="deck-slug" placeholder="my-deck" value={deckSlug} onChange={e => setDeckSlug(e.target.value)} />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button onClick={handleImportSlides} disabled={importing}>
-                        {importing ? "Importing..." : "Import"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                <Button onClick={() => navigate("/deck-builder")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Deck
-                </Button>
-                <Button onClick={signOut} variant="ghost" size="icon">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </> : <Button onClick={() => navigate("/auth")}>
-                <LogIn className="h-4 w-4 mr-2" />
-                Sign In
-              </Button>}
+                <DialogFooter>
+                  <Button onClick={handleImportSlides} disabled={importing}>
+                    {importing ? "Importing..." : "Import"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Button onClick={() => navigate("/deck-builder")}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Deck
+            </Button>
           </div>
         </div>
       </header>
