@@ -602,15 +602,23 @@ export default function DeckEditor() {
         }
       }
 
-      // 3. Update all slide positions
-      for (const slide of slides) {
-        // Skip temp slides - they'll be created with correct positions above
-        if (slide.id.startsWith('temp-')) continue;
-        
+      // 3. Update all slide positions (use temporary positions to avoid unique constraint conflicts)
+      const realSlides = slides.filter(s => !s.id.startsWith('temp-'));
+      
+      // First, shift all to temporary high positions
+      for (let i = 0; i < realSlides.length; i++) {
         await supabase
           .from('slide_items')
-          .update({ position: slide.position })
-          .eq('id', slide.id);
+          .update({ position: i + 10000 })
+          .eq('id', realSlides[i].id);
+      }
+      
+      // Then update to final positions
+      for (let i = 0; i < realSlides.length; i++) {
+        await supabase
+          .from('slide_items')
+          .update({ position: realSlides[i].position })
+          .eq('id', realSlides[i].id);
       }
 
       // 4. Handle hotspot changes (including temp slides that now have real IDs)
