@@ -30,7 +30,11 @@ const Index = () => {
   const [interactiveImageUrl, setInteractiveImageUrl] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
   const [imageSlidesDialog, setImageSlidesDialog] = useState(false);
-  const [imageSlides, setImageSlides] = useState<Array<{ id: string; content_url: string; position: number }>>([]);
+  const [imageSlides, setImageSlides] = useState<Array<{
+    id: string;
+    content_url: string;
+    position: number;
+  }>>([]);
   const [loadingImageSlides, setLoadingImageSlides] = useState(false);
   const navigate = useNavigate();
   const {
@@ -46,7 +50,7 @@ const Index = () => {
       if (isRefresh) {
         setRefreshing(true);
       }
-      
+
       // Fetch all decks
       const {
         data: decksData,
@@ -78,7 +82,6 @@ const Index = () => {
         };
       }));
       setDecks(decksWithCounts);
-      
       if (isRefresh) {
         toast.success("Deck counts refreshed");
       }
@@ -96,45 +99,35 @@ const Index = () => {
     }
     try {
       // Get all interactive slides for this deck
-      const { data: interactiveSlides, error: fetchError } = await supabase
-        .from("slide_items")
-        .select("id")
-        .eq("deck_slug", slug)
-        .eq("type", "spread-word");
-
+      const {
+        data: interactiveSlides,
+        error: fetchError
+      } = await supabase.from("slide_items").select("id").eq("deck_slug", slug).eq("type", "spread-word");
       if (fetchError) throw fetchError;
 
       // Delete viral slide configs for these slides
       if (interactiveSlides && interactiveSlides.length > 0) {
         const slideIds = interactiveSlides.map(s => s.id);
-        const { error: viralConfigsError } = await supabase
-          .from("viral_slide_configs")
-          .delete()
-          .in("slide_id", slideIds);
-        
+        const {
+          error: viralConfigsError
+        } = await supabase.from("viral_slide_configs").delete().in("slide_id", slideIds);
         if (viralConfigsError) throw viralConfigsError;
 
         // Delete the interactive slides
-        const { error: slidesError } = await supabase
-          .from("slide_items")
-          .delete()
-          .eq("deck_slug", slug)
-          .eq("type", "spread-word");
-        
+        const {
+          error: slidesError
+        } = await supabase.from("slide_items").delete().eq("deck_slug", slug).eq("type", "spread-word");
         if (slidesError) throw slidesError;
-
         toast.success(`Removed ${interactiveSlides.length} interactive page(s)`);
       } else {
         toast.info("No interactive pages to remove");
       }
-      
       fetchDecks();
     } catch (error) {
       console.error("Error removing interactive pages:", error);
       toast.error("Failed to remove interactive pages");
     }
   };
-
   const handleDelete = async (slug: string) => {
     if (!confirm(`Delete deck "${slug}"? This will also delete all associated slides.`)) {
       return;
@@ -261,19 +254,13 @@ const Index = () => {
     setLoadingImage(true);
     setInteractiveImageDialog(true);
     setInteractiveImageUrl(null);
-
     try {
       // Get the first interactive slide for this deck
-      const { data: slideData, error: slideError } = await supabase
-        .from("slide_items")
-        .select("id, template_id")
-        .eq("deck_slug", deckSlug)
-        .eq("type", "spread-word")
-        .limit(1)
-        .maybeSingle();
-
+      const {
+        data: slideData,
+        error: slideError
+      } = await supabase.from("slide_items").select("id, template_id").eq("deck_slug", deckSlug).eq("type", "spread-word").limit(1).maybeSingle();
       if (slideError) throw slideError;
-      
       if (!slideData) {
         toast.error("No interactive slide found");
         setInteractiveImageDialog(false);
@@ -282,24 +269,19 @@ const Index = () => {
 
       // If there's a template_id, fetch from template
       if (slideData.template_id) {
-        const { data: templateData, error: templateError } = await supabase
-          .from("viral_slide_configs")
-          .select("image_url")
-          .eq("id", slideData.template_id)
-          .single();
-
+        const {
+          data: templateData,
+          error: templateError
+        } = await supabase.from("viral_slide_configs").select("image_url").eq("id", slideData.template_id).single();
         if (templateError) throw templateError;
         setInteractiveImageUrl(templateData.image_url);
       } else {
         // Legacy: fetch directly from viral_slide_configs
-        const { data: configData, error: configError } = await supabase
-          .from("viral_slide_configs")
-          .select("image_url")
-          .eq("slide_id", slideData.id)
-          .maybeSingle();
-
+        const {
+          data: configData,
+          error: configError
+        } = await supabase.from("viral_slide_configs").select("image_url").eq("slide_id", slideData.id).maybeSingle();
         if (configError) throw configError;
-        
         if (configData) {
           setInteractiveImageUrl(configData.image_url);
         } else {
@@ -315,28 +297,21 @@ const Index = () => {
       setLoadingImage(false);
     }
   };
-
   const handleShowImageSlides = async (deckSlug: string) => {
     setLoadingImageSlides(true);
     setImageSlidesDialog(true);
     setImageSlides([]);
-
     try {
-      const { data: slides, error } = await supabase
-        .from("slide_items")
-        .select("id, content_url, position")
-        .eq("deck_slug", deckSlug)
-        .eq("type", "image")
-        .order("position");
-
+      const {
+        data: slides,
+        error
+      } = await supabase.from("slide_items").select("id, content_url, position").eq("deck_slug", deckSlug).eq("type", "image").order("position");
       if (error) throw error;
-      
       if (!slides || slides.length === 0) {
         toast.error("No image slides found");
         setImageSlidesDialog(false);
         return;
       }
-
       setImageSlides(slides);
     } catch (error) {
       console.error("Error fetching image slides:", error);
@@ -346,7 +321,6 @@ const Index = () => {
       setLoadingImageSlides(false);
     }
   };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -363,16 +337,11 @@ const Index = () => {
       <header className="border-b bg-card">
         <div className="w-full px-6 py-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Omega</h1>
+            <h1 className="text-3xl font-bold">Deck Management</h1>
             <p className="text-sm text-muted-foreground mt-1">Viral Deck Management</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              onClick={() => fetchDecks(true)} 
-              variant="outline"
-              disabled={refreshing}
-              title="Refresh slide counts"
-            >
+            <Button onClick={() => fetchDecks(true)} variant="outline" disabled={refreshing} title="Refresh slide counts">
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh Counts
             </Button>
@@ -450,28 +419,14 @@ const Index = () => {
                     {formatDate(deck.created_at)}
                   </TableCell>
                   <TableCell className="text-center">
-                    {deck.slide_count > 0 ? (
-                      <button 
-                        onClick={() => handleShowImageSlides(deck.slug)}
-                        className="hover:underline text-primary font-medium cursor-pointer"
-                      >
+                    {deck.slide_count > 0 ? <button onClick={() => handleShowImageSlides(deck.slug)} className="hover:underline text-primary font-medium cursor-pointer">
                         {deck.slide_count}
-                      </button>
-                    ) : (
-                      deck.slide_count
-                    )}
+                      </button> : deck.slide_count}
                   </TableCell>
                   <TableCell className="text-center">
-                    {deck.interactive_count > 0 ? (
-                      <button 
-                        onClick={() => handleShowInteractiveImage(deck.slug)}
-                        className="hover:underline text-primary font-medium cursor-pointer"
-                      >
+                    {deck.interactive_count > 0 ? <button onClick={() => handleShowInteractiveImage(deck.slug)} className="hover:underline text-primary font-medium cursor-pointer">
                         {deck.interactive_count}
-                      </button>
-                    ) : (
-                      deck.interactive_count
-                    )}
+                      </button> : deck.interactive_count}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button variant="ghost" size="icon" onClick={() => handleExportPDF(deck.slug)} title="Export to PDF">
@@ -480,16 +435,9 @@ const Index = () => {
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1">
-                      {deck.interactive_count > 0 && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleRemoveInteractive(deck.slug)} 
-                          title="Remove interactive pages"
-                        >
+                      {deck.interactive_count > 0 && <Button variant="ghost" size="icon" onClick={() => handleRemoveInteractive(deck.slug)} title="Remove interactive pages">
                           <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                        </Button>}
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(deck.slug)} title="Delete deck">
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -509,17 +457,7 @@ const Index = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[400px]">
-            {loadingImage ? (
-              <Loader2 className="w-8 h-8 animate-spin" />
-            ) : interactiveImageUrl ? (
-              <img 
-                src={interactiveImageUrl} 
-                alt="Interactive slide" 
-                className="max-w-full max-h-[70vh] object-contain"
-              />
-            ) : (
-              <p className="text-muted-foreground">No image available</p>
-            )}
+            {loadingImage ? <Loader2 className="w-8 h-8 animate-spin" /> : interactiveImageUrl ? <img src={interactiveImageUrl} alt="Interactive slide" className="max-w-full max-h-[70vh] object-contain" /> : <p className="text-muted-foreground">No image available</p>}
           </div>
         </DialogContent>
       </Dialog>
@@ -533,31 +471,16 @@ const Index = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto">
-            {loadingImageSlides ? (
-              <div className="flex items-center justify-center min-h-[400px]">
+            {loadingImageSlides ? <div className="flex items-center justify-center min-h-[400px]">
                 <Loader2 className="w-8 h-8 animate-spin" />
-              </div>
-            ) : imageSlides.length > 0 ? (
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {imageSlides.map((slide) => (
-                  <div 
-                    key={slide.id} 
-                    className="relative group border rounded-lg overflow-hidden hover:border-primary transition-colors"
-                  >
-                    <img 
-                      src={slide.content_url} 
-                      alt={`Slide ${slide.position + 1}`}
-                      className="w-full aspect-[9/16] object-cover"
-                    />
+              </div> : imageSlides.length > 0 ? <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {imageSlides.map(slide => <div key={slide.id} className="relative group border rounded-lg overflow-hidden hover:border-primary transition-colors">
+                    <img src={slide.content_url} alt={`Slide ${slide.position + 1}`} className="w-full aspect-[9/16] object-cover" />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <span className="text-white font-medium">Slide {slide.position + 1}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No image slides available</p>
-            )}
+                  </div>)}
+              </div> : <p className="text-muted-foreground text-center py-8">No image slides available</p>}
           </div>
         </DialogContent>
       </Dialog>
