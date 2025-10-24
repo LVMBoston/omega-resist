@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -383,6 +383,11 @@ export default function CampaignManager() {
   }
   
   const SortableCard = ({ campaign, stats }: SortableCardProps) => {
+    const [deckDialogOpen, setDeckDialogOpen] = useState(false);
+    const [deckSlides, setDeckSlides] = useState<any[]>([]);
+    const [loadingDeck, setLoadingDeck] = useState(false);
+    const [deckSlug, setDeckSlug] = useState<string | null>(null);
+
     const {
       attributes,
       listeners,
@@ -397,72 +402,186 @@ export default function CampaignManager() {
       transition,
       opacity: isDragging ? 0.5 : 1,
     };
+
+    const handleViewDeck = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeckDialogOpen(true);
+      setLoadingDeck(true);
+
+      try {
+        // Get the deck slug from events_actions for this campaign
+        const { data: eoaData } = await supabase
+          .from("events_actions")
+          .select("assigned_deck_slug")
+          .eq("campaign_id", campaign.id)
+          .not("assigned_deck_slug", "is", null)
+          .limit(1)
+          .single();
+
+        if (!eoaData?.assigned_deck_slug) {
+          toast({
+            variant: "destructive",
+            title: "No deck assigned",
+            description: "This campaign doesn't have an assigned deck yet."
+          });
+          setLoadingDeck(false);
+          return;
+        }
+
+        setDeckSlug(eoaData.assigned_deck_slug);
+
+        // Fetch slides for the deck
+        const { data: slidesData, error: slidesError } = await supabase
+          .from("slide_items")
+          .select("*")
+          .eq("deck_slug", eoaData.assigned_deck_slug)
+          .order("position", { ascending: true });
+
+        if (slidesError) throw slidesError;
+
+        setDeckSlides(slidesData || []);
+      } catch (error) {
+        console.error("Error loading deck:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load deck"
+        });
+      } finally {
+        setLoadingDeck(false);
+      }
+    };
     
     return (
-      <Card 
-        ref={setNodeRef} 
-        style={style}
-        className="cursor-pointer hover:shadow-lg transition-shadow" 
-        onClick={() => navigate(`/campaign/${campaign.id}`)}
-      >
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div 
-              className="cursor-grab active:cursor-grabbing mr-2 touch-none" 
-              {...attributes} 
-              {...listeners}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
+      <>
+        <Card 
+          ref={setNodeRef} 
+          style={style}
+          className="cursor-pointer hover:shadow-lg transition-shadow" 
+          onClick={() => navigate(`/campaign/${campaign.id}`)}
+        >
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div 
+                className="cursor-grab active:cursor-grabbing mr-2 touch-none" 
+                {...attributes} 
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <GripVertical className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1">
+                <CardTitle>{campaign.title}</CardTitle>
+                <CardDescription>utm_campaign: {campaign.code}</CardDescription>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={handleViewDeck} title="View Deck">
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  handleEditCampaign(campaign);
+                }}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  handleDeleteClick(campaign);
+                }}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex-1">
-              <CardTitle>{campaign.title}</CardTitle>
-              <CardDescription>utm_campaign: {campaign.code}</CardDescription>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="sm" onClick={e => {
-                e.stopPropagation();
-                handleEditCampaign(campaign);
-              }}>
-                <Pencil className="h-4 w-4" />
+            {campaign.description && <p className="text-sm text-muted-foreground mt-2">
+              {campaign.description}
+            </p>}
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 text-sm">
+              <div className="flex justify-between gap-4">
+                <div>
+                  <p className="text-muted-foreground">Active Events</p>
+                  <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Active Actions</p>
+                  <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
+                </div>
+              </div>
+              <div className="flex justify-between gap-4">
+                <div>
+                  <p className="text-muted-foreground">Earliest Active</p>
+                  <p className="font-medium">{formatDateWithTime(stats?.earliestActive || null)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Latest Active</p>
+                  <p className="font-medium">{formatDateWithTime(stats?.latestActive || null)}</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={handleViewDeck}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Deck
               </Button>
-              <Button variant="ghost" size="sm" onClick={e => {
-                e.stopPropagation();
-                handleDeleteClick(campaign);
-              }}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
             </div>
-          </div>
-          {campaign.description && <p className="text-sm text-muted-foreground mt-2">
-            {campaign.description}
-          </p>}
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4 text-sm">
-            <div className="flex justify-between gap-4">
-              <div>
-                <p className="text-muted-foreground">Active Events</p>
-                <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+          </CardContent>
+        </Card>
+
+        <Dialog open={deckDialogOpen} onOpenChange={setDeckDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Deck Thumbnail View</DialogTitle>
+              <DialogDescription>
+                {deckSlug ? `Deck: ${deckSlug}` : "Loading deck..."}
+              </DialogDescription>
+            </DialogHeader>
+            {loadingDeck ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
               </div>
-              <div>
-                <p className="text-muted-foreground">Active Actions</p>
-                <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
+            ) : deckSlides.length === 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                No slides found in this deck
               </div>
-            </div>
-            <div className="flex justify-between gap-4">
-              <div>
-                <p className="text-muted-foreground">Earliest Active</p>
-                <p className="font-medium">{formatDateWithTime(stats?.earliestActive || null)}</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
+                {deckSlides.map((slide, index) => (
+                  <div key={slide.id} className="relative group">
+                    <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
+                      <img
+                        src={slide.content_url}
+                        alt={`Slide ${index + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs">
+                      {index + 1}
+                    </div>
+                    {slide.type === "spread-word" && (
+                      <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground px-2 py-0.5 rounded text-xs font-medium">
+                        Interactive
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div>
-                <p className="text-muted-foreground">Latest Active</p>
-                <p className="font-medium">{formatDateWithTime(stats?.latestActive || null)}</p>
+            )}
+            {deckSlug && !loadingDeck && (
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" asChild>
+                  <Link to={`/deck/${deckSlug}`} target="_blank">
+                    Open Full Deck
+                  </Link>
+                </Button>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </DialogContent>
+        </Dialog>
+      </>
     );
   };
   if (loading) {
