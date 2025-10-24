@@ -369,31 +369,30 @@ export const InteractiveSlideOverlay = ({
 
   // Map iconId to actual icon/image
   const getHotspotIcon = (iconId: string) => {
-    const iconColor = "#facc15"; // yellow-400
     switch (iconId) {
       case "sms-ios":
-        return <img src={textIcon} alt="Text Message" className="w-full h-full object-contain drop-shadow-lg" />;
+        return <img src={textIcon} alt="Text Message" className="w-full h-full object-contain" />;
       case "email-ios":
-        return <img src={mailIcon} alt="Email" className="w-full h-full object-contain drop-shadow-lg" />;
+        return <img src={mailIcon} alt="Email" className="w-full h-full object-contain" />;
       case "social-facebook":
-        return <FaFacebookF className="w-full h-full" color={iconColor} />;
+        return <FaFacebookF className="w-full h-full" />;
       case "social-instagram":
-        return <FaInstagram className="w-full h-full" color={iconColor} />;
+        return <FaInstagram className="w-full h-full" />;
       case "social-twitter":
-        return <FaXTwitter className="w-full h-full" color={iconColor} />;
+        return <FaXTwitter className="w-full h-full" />;
       case "social-linkedin":
-        return <FaLinkedinIn className="w-full h-full" color={iconColor} />;
+        return <FaLinkedinIn className="w-full h-full" />;
       case "social-whatsapp":
-        return <FaWhatsapp className="w-full h-full" color={iconColor} />;
+        return <FaWhatsapp className="w-full h-full" />;
       case "social-share":
-        return <BsShare className="w-full h-full" color={iconColor} />;
+        return <BsShare className="w-full h-full" />;
       case "social-share-filled":
-        return <BsShareFill className="w-full h-full" color={iconColor} />;
+        return <BsShareFill className="w-full h-full" />;
       // Fallback for legacy or unknown icons
       default:
-        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full" color={iconColor} />;
-        if (iconId.includes('email')) return <Mail className="w-full h-full" color={iconColor} />;
-        return <Share2 className="w-full h-full" color={iconColor} />;
+        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full" />;
+        if (iconId.includes('email')) return <Mail className="w-full h-full" />;
+        return <Share2 className="w-full h-full" />;
     }
   };
 
@@ -459,11 +458,8 @@ export const InteractiveSlideOverlay = ({
               touchAction: 'manipulation',
             }}
           >
-            <div className="flex items-center justify-center gap-2 w-full h-full p-2">
-              <div className="w-6 h-6 md:w-8 md:h-8 flex-shrink-0">
-                {getHotspotIcon(hotspot.iconId)}
-              </div>
-              <span className="text-yellow-400 text-xs md:text-sm font-bold drop-shadow-lg">{hotspot.label}</span>
+            <div className="w-full h-full">
+              {getHotspotIcon(hotspot.iconId)}
             </div>
           </button>
         );
