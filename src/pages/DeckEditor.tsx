@@ -603,12 +603,14 @@ export default function DeckEditor() {
       }
 
       // 3. Update all slide positions
-      const realSlides = slides.filter(s => !s.id.startsWith('temp-'));
-      for (let i = 0; i < realSlides.length; i++) {
+      for (const slide of slides) {
+        // Skip temp slides - they'll be created with correct positions above
+        if (slide.id.startsWith('temp-')) continue;
+        
         await supabase
           .from('slide_items')
-          .update({ position: i })
-          .eq('id', realSlides[i].id);
+          .update({ position: slide.position })
+          .eq('id', slide.id);
       }
 
       // 4. Handle hotspot changes (including temp slides that now have real IDs)
