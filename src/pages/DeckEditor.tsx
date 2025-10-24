@@ -113,6 +113,7 @@ export default function DeckEditor() {
   const [referenceDimensions, setReferenceDimensions] = useState<{ width: number; height: number } | null>(null);
   const [hotspotEditorOpen, setHotspotEditorOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [remintDialogOpen, setRemintDialogOpen] = useState(false);
   const [reminting, setReminting] = useState(false);
@@ -400,6 +401,45 @@ export default function DeckEditor() {
     }
   };
 
+  const handleApplyTemplateToSlide = async (template: Template) => {
+    if (!slug || !selectedSlide) return;
+
+    try {
+      // Download template image
+      const response = await fetch(template.image_url);
+      const blob = await response.blob();
+
+      const validation = await validateImage(blob);
+      if (!validation.valid) {
+        toast.error(validation.error);
+        return;
+      }
+
+      // Update the existing slide with template data
+      const updatedSlides = slides.map(slide => 
+        slide.id === selectedSlide.id 
+          ? { ...slide, content_url: template.image_url, type: 'spread-word', template_id: template.id }
+          : slide
+      );
+
+      setSlides(updatedSlides);
+      setSelectedSlide({ ...selectedSlide, content_url: template.image_url, type: 'spread-word', template_id: template.id });
+      
+      // Mark as pending upload to replace the image
+      setPendingUploads([...pendingUploads, { file: blob, position: selectedSlide.position }]);
+      
+      // Apply template hotspots
+      setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: template.hotspots });
+      
+      setHasChanges(true);
+      setTemplatePickerOpen(false);
+      toast.success('Template applied to slide');
+    } catch (error: any) {
+      console.error('Error applying template:', error);
+      toast.error('Failed to apply template');
+    }
+  };
+
   const handleCancel = () => {
     setSlides([...originalSlides]);
     setPendingUploads([]);
@@ -678,9 +718,9 @@ export default function DeckEditor() {
                     className="w-full rounded-lg border"
                   />
                   {selectedSlide.type === 'spread-word' && (
-                    <Button onClick={() => setHotspotEditorOpen(true)} className="w-full">
+                    <Button onClick={() => setTemplatePickerOpen(true)} className="w-full">
                       <ImageIcon className="h-4 w-4 mr-2" />
-                      Edit Interactive Hotspots
+                      Pick Interactive Template
                     </Button>
                   )}
                 </div>
@@ -783,7 +823,7 @@ export default function DeckEditor() {
         </Dialog>
       )}
 
-      {/* Template Selection Dialog */}
+      {/* Template Selection Dialog - Add New Slide */}
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -802,6 +842,36 @@ export default function DeckEditor() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Picker Dialog - Apply to Existing Slide */}
+      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pick Interactive Template</DialogTitle>
+            <p className="text-sm text-muted-foreground">Choose a template to apply to this slide</p>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+            {templates.length === 0 ? (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                No templates available. Create templates in Settings → Interactive Pages.
+              </div>
+            ) : (
+              templates.map((template) => (
+                <Card
+                  key={template.id}
+                  className="cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => handleApplyTemplateToSlide(template)}
+                >
+                  <CardContent className="p-4 space-y-2">
+                    <img src={template.image_url} alt={template.name} className="w-full rounded" />
+                    <div className="font-medium text-sm">{template.name}</div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>
