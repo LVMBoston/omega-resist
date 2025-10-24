@@ -240,7 +240,50 @@ export default function DeckEditor() {
     }
   };
 
-  const validateImage = async (file: File | Blob): Promise<{ valid: boolean; error?: string; dimensions?: { width: number; height: number } }> => {
+  const resizeImage = async (file: File | Blob, targetWidth: number, targetHeight: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        // Calculate scaling to fit while preserving aspect ratio
+        const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        
+        // Center the image
+        const x = (targetWidth - scaledWidth) / 2;
+        const y = (targetHeight - scaledHeight) / 2;
+
+        // Fill with white background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        
+        // Draw the scaled image
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, file.type);
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const validateImage = async (file: File | Blob): Promise<{ valid: boolean; error?: string; dimensions?: { width: number; height: number }; resizedFile?: Blob }> => {
     // File type validation
     if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
       return { valid: false, error: 'Only PNG and JPG images are allowed' };
@@ -251,10 +294,10 @@ export default function DeckEditor() {
       return { valid: false, error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 5MB limit` };
     }
 
-    // Dimension validation with ±1% tolerance
+    // Dimension validation with aspect ratio tolerance
     return new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         if (referenceDimensions) {
           const widthTolerance = referenceDimensions.width * 0.01;
           const heightTolerance = referenceDimensions.height * 0.01;
@@ -262,13 +305,37 @@ export default function DeckEditor() {
           const widthInRange = Math.abs(img.width - referenceDimensions.width) <= widthTolerance;
           const heightInRange = Math.abs(img.height - referenceDimensions.height) <= heightTolerance;
           
-          if (!widthInRange || !heightInRange) {
+          if (widthInRange && heightInRange) {
+            resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
+            return;
+          }
+
+          // Check aspect ratio tolerance (5%)
+          const imageAspectRatio = img.width / img.height;
+          const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
+          const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
+          
+          if (aspectRatioDiff <= 0.05) {
+            // Aspect ratio is close enough, resize automatically
+            try {
+              const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
+              resolve({ 
+                valid: true, 
+                dimensions: { width: referenceDimensions.width, height: referenceDimensions.height },
+                resizedFile
+              });
+            } catch (error) {
+              console.error('Error resizing image:', error);
+              resolve({
+                valid: false,
+                error: `Image dimensions (${img.width}×${img.height}) must match reference (${referenceDimensions.width}×${referenceDimensions.height}) ±1%`
+              });
+            }
+          } else {
             resolve({
               valid: false,
-              error: `Image dimensions (${img.width}×${img.height}) must match reference (${referenceDimensions.width}×${referenceDimensions.height}) ±1%`
+              error: `Image aspect ratio (${imageAspectRatio.toFixed(2)}) differs too much from reference (${referenceAspectRatio.toFixed(2)}). Must be within 5%.`
             });
-          } else {
-            resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
           }
         } else {
           resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
@@ -288,6 +355,12 @@ export default function DeckEditor() {
       return;
     }
 
+    // Use resized file if available
+    const fileToUpload = validation.resizedFile || file;
+    if (validation.resizedFile) {
+      toast.success('Image automatically resized to match deck dimensions');
+    }
+
     // Add to pending uploads and create temp slide preview
     const targetPosition = insertPosition !== undefined ? insertPosition : slides.length;
     const tempId = `temp-${Date.now()}`;
@@ -295,7 +368,7 @@ export default function DeckEditor() {
       id: tempId,
       position: targetPosition,
       type: 'image',
-      content_url: URL.createObjectURL(file),
+      content_url: URL.createObjectURL(fileToUpload),
       is_compressed: true,
       deck_slug: slug!,
     };
@@ -312,7 +385,7 @@ export default function DeckEditor() {
     updatedSlides.sort((a, b) => a.position - b.position);
     
     setSlides(updatedSlides);
-    setPendingUploads([...pendingUploads, { file, position: insertPosition }]);
+    setPendingUploads([...pendingUploads, { file: fileToUpload, position: insertPosition }]);
     setHasChanges(true);
     toast.success('Slide staged for upload');
   };
@@ -415,6 +488,12 @@ export default function DeckEditor() {
         return;
       }
 
+      // Use resized file if available
+      const fileToUpload = validation.resizedFile || blob;
+      if (validation.resizedFile) {
+        toast.success('Template automatically resized to match deck dimensions');
+      }
+
       // Update the existing slide with template data
       const updatedSlides = slides.map(slide => 
         slide.id === selectedSlide.id 
@@ -426,7 +505,7 @@ export default function DeckEditor() {
       setSelectedSlide({ ...selectedSlide, content_url: template.image_url, type: 'spread-word', template_id: template.id });
       
       // Mark as pending upload to replace the image
-      setPendingUploads([...pendingUploads, { file: blob, position: selectedSlide.position }]);
+      setPendingUploads([...pendingUploads, { file: fileToUpload, position: selectedSlide.position }]);
       
       // Apply template hotspots
       setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: template.hotspots });
