@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -179,6 +179,49 @@ export const FullResolutionHotspotEditor = ({
     setIsDragging(null);
   };
 
+  // Keyboard controls for fine-tuning position when dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const hotspot = hotspots.find(h => h.id === isDragging);
+      if (!hotspot) return;
+
+      let newX = hotspot.x;
+      let newY = hotspot.y;
+      const step = 0.5; // Move by 0.5% per keypress
+
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          newY = Math.max(0, hotspot.y - step);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          newY = Math.min(100 - hotspot.height, hotspot.y + step);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          newX = Math.max(0, hotspot.x - step);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          newX = Math.min(100 - hotspot.width, hotspot.x + step);
+          break;
+        case " ":
+          e.preventDefault();
+          setIsDragging(null);
+          return;
+      }
+
+      if (newX !== hotspot.x || newY !== hotspot.y) {
+        updateHotspot(isDragging, { x: newX, y: newY });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDragging, hotspots]);
 
   const selectedHotspotData = hotspots.find((h) => h.id === selectedHotspot);
 
@@ -189,7 +232,7 @@ export const FullResolutionHotspotEditor = ({
           <div className="mb-4">
             <h3 className="text-lg font-semibold">Full Resolution Hotspot Editor</h3>
             <p className="text-sm text-muted-foreground">
-              Click to place hotspots, then drag them to reposition. Changes auto-save when you submit the template.
+              Click to place hotspots, then drag them to reposition. Use arrow keys for fine control and space to release. Changes auto-save when you submit the template.
             </p>
           </div>
 
