@@ -4,9 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { mintShare } from "@/lib/virality/mint";
 import { useSearchParams } from "react-router-dom";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
+import { BsShare, BsShareFill } from "react-icons/bs";
+import mailIcon from "@/assets/mail-icon.png";
+import textIcon from "@/assets/text-icon.svg";
 
 interface Hotspot {
   id: string;
+  iconId: string;
   type: "sms" | "email" | "social";
   label: string;
   x: number; // percentage
@@ -361,16 +367,32 @@ export const InteractiveSlideOverlay = ({
     }
   };
 
-  const getHotspotIcon = (type: string) => {
-    switch (type) {
-      case "sms":
-        return <MessageSquare className="w-6 h-6" color="#facc15" />;
-      case "email":
-        return <Mail className="w-6 h-6" color="#facc15" />;
-      case "social":
-        return <Share2 className="w-6 h-6" color="#facc15" />;
+  // Map iconId to actual icon/image
+  const getHotspotIcon = (iconId: string) => {
+    switch (iconId) {
+      case "sms-ios":
+        return <img src={textIcon} alt="Text Message" className="w-full h-full object-contain" />;
+      case "email-ios":
+        return <img src={mailIcon} alt="Email" className="w-full h-full object-contain" />;
+      case "social-facebook":
+        return <FaFacebookF className="w-full h-full" />;
+      case "social-instagram":
+        return <FaInstagram className="w-full h-full" />;
+      case "social-twitter":
+        return <FaXTwitter className="w-full h-full" />;
+      case "social-linkedin":
+        return <FaLinkedinIn className="w-full h-full" />;
+      case "social-whatsapp":
+        return <FaWhatsapp className="w-full h-full" />;
+      case "social-share":
+        return <BsShare className="w-full h-full" />;
+      case "social-share-filled":
+        return <BsShareFill className="w-full h-full" />;
+      // Fallback for legacy or unknown icons
       default:
-        return <Share2 className="w-6 h-6" color="#facc15" />;
+        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full" />;
+        if (iconId.includes('email')) return <Mail className="w-full h-full" />;
+        return <Share2 className="w-full h-full" />;
     }
   };
 
@@ -436,9 +458,11 @@ export const InteractiveSlideOverlay = ({
               touchAction: 'manipulation',
             }}
           >
-            <span className="text-yellow-400 flex items-center">
-              {getHotspotIcon(hotspot.type)}
-              <span className="ml-2">{hotspot.label}</span>
+            <span className="text-yellow-400 flex items-center gap-2 w-full h-full">
+              <span className="w-8 h-8 flex-shrink-0">
+                {getHotspotIcon(hotspot.iconId)}
+              </span>
+              <span className="text-sm font-medium">{hotspot.label}</span>
             </span>
           </button>
         );

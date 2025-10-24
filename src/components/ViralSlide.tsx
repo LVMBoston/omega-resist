@@ -11,6 +11,7 @@ interface ViralSlideProps {
 
 interface Hotspot {
   id: string;
+  iconId: string;
   type: "sms" | "email" | "social";
   label: string;
   x: number;
@@ -62,10 +63,11 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           hotspotsLength: Array.isArray(legacyData.hotspots) ? legacyData.hotspots.length : 0
         });
         
-        // Map iconId to type for backward compatibility
+        // Map iconId to type for backward compatibility and ensure all fields are present
         const mappedHotspots = Array.isArray(legacyData.hotspots) 
           ? legacyData.hotspots.map((h: any) => ({
               ...h,
+              iconId: h.iconId || `${h.type}-default`,
               type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
             }))
           : [];
@@ -96,10 +98,11 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           hotspotsLength: Array.isArray(templateData.hotspots) ? templateData.hotspots.length : 0
         });
         
-        // Map iconId to type for backward compatibility
+        // Map iconId to type for backward compatibility and ensure all fields are present
         const mappedHotspots = Array.isArray(templateData.hotspots) 
           ? templateData.hotspots.map((h: any) => ({
               ...h,
+              iconId: h.iconId || `${h.type}-default`,
               type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
             }))
           : [];
