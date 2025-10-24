@@ -364,13 +364,13 @@ export const InteractiveSlideOverlay = ({
   const getHotspotIcon = (type: string) => {
     switch (type) {
       case "sms":
-        return <MessageSquare className="w-6 h-6" />;
+        return <MessageSquare className="w-6 h-6" color="#facc15" />;
       case "email":
-        return <Mail className="w-6 h-6" />;
+        return <Mail className="w-6 h-6" color="#facc15" />;
       case "social":
-        return <Share2 className="w-6 h-6" />;
+        return <Share2 className="w-6 h-6" color="#facc15" />;
       default:
-        return <Share2 className="w-6 h-6" />;
+        return <Share2 className="w-6 h-6" color="#facc15" />;
     }
   };
 
