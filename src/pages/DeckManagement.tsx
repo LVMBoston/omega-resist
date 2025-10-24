@@ -368,10 +368,6 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-2">
             {user ? <>
-                <div className="flex items-center gap-2 mr-2">
-                  <span className="text-sm text-muted-foreground">{user.email}</span>
-                  {userRole && <Badge variant="outline">{userRole}</Badge>}
-                </div>
                 {userRole === "admin" && <Button onClick={() => navigate("/admin")} variant="outline">
                     <UserCog className="h-4 w-4 mr-2" />
                     Admin
@@ -426,9 +422,6 @@ const Index = () => {
                 <Button onClick={() => navigate("/deck-builder")}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Deck
-                </Button>
-                <Button onClick={signOut} variant="ghost" size="icon">
-                  <LogOut className="h-4 w-4" />
                 </Button>
               </> : <Button onClick={() => navigate("/auth")}>
                 <LogIn className="h-4 w-4 mr-2" />
