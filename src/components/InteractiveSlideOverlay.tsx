@@ -369,30 +369,34 @@ export const InteractiveSlideOverlay = ({
 
   // Map iconId to actual icon/image
   const getHotspotIcon = (iconId: string) => {
+    console.log("🎨 Rendering icon for iconId:", iconId);
+    console.log("📦 Available assets - textIcon:", textIcon, "mailIcon:", mailIcon);
+    
     switch (iconId) {
       case "sms-ios":
-        return <img src={textIcon} alt="Text Message" className="w-full h-full object-contain" />;
+        return <img src={textIcon} alt="Text Message" className="w-full h-full object-contain" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
       case "email-ios":
-        return <img src={mailIcon} alt="Email" className="w-full h-full object-contain" />;
+        return <img src={mailIcon} alt="Email" className="w-full h-full object-contain" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
       case "social-facebook":
-        return <FaFacebookF className="w-full h-full text-white" />;
+        return <FaFacebookF className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-instagram":
-        return <FaInstagram className="w-full h-full text-white" />;
+        return <FaInstagram className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-twitter":
-        return <FaXTwitter className="w-full h-full text-white" />;
+        return <FaXTwitter className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-linkedin":
-        return <FaLinkedinIn className="w-full h-full text-white" />;
+        return <FaLinkedinIn className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-whatsapp":
-        return <FaWhatsapp className="w-full h-full text-white" />;
+        return <FaWhatsapp className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-share":
-        return <BsShare className="w-full h-full text-white" />;
+        return <BsShare className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-share-filled":
-        return <BsShareFill className="w-full h-full text-white" />;
+        return <BsShareFill className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       // Fallback for legacy or unknown icons
       default:
-        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full text-white" />;
-        if (iconId.includes('email')) return <Mail className="w-full h-full text-white" />;
-        return <Share2 className="w-full h-full text-white" />;
+        console.warn("⚠️ Unknown iconId, using fallback:", iconId);
+        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full" style={{ color: '#000000' }} />;
+        if (iconId.includes('email')) return <Mail className="w-full h-full" style={{ color: '#000000' }} />;
+        return <Share2 className="w-full h-full" style={{ color: '#000000' }} />;
     }
   };
 
