@@ -74,7 +74,7 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
       </div>
       
       <div className="absolute top-1 left-1 bg-background/90 px-2 py-1 rounded text-xs font-medium">
-        {slide.position}
+        {slide.position + 1}
       </div>
       {slide.type === 'spread-word' && (
         <div className="absolute top-1 right-8 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
