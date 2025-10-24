@@ -31,6 +31,8 @@ interface EventAction {
   end_date: string | null;
 }
 interface CampaignStats {
+  totalEvents: number;
+  totalActions: number;
   activeEvents: number;
   activeActions: number;
   earliestActive: string | null;
@@ -115,6 +117,12 @@ export default function CampaignManager() {
     
     for (const campaign of campaigns) {
       const campaignEoas = eoas.filter(e => e.campaign_id === campaign.id);
+      
+      // Calculate totals by type
+      const totalEvents = campaignEoas.filter(e => e.type === "event").length;
+      const totalActions = campaignEoas.filter(e => e.type === "action").length;
+      
+      // Calculate active (within 14 days past end_date)
       const activeEoas = campaignEoas.filter(eoa => {
         if (!eoa.end_date) return true;
         const endDate = new Date(eoa.end_date);
@@ -161,6 +169,8 @@ export default function CampaignManager() {
       }
       
       stats.set(campaign.id, {
+        totalEvents,
+        totalActions,
         activeEvents,
         activeActions,
         earliestActive: earliestEvent?.occurred_at || null,
@@ -519,12 +529,16 @@ export default function CampaignManager() {
             <div className="space-y-4 text-sm">
               <div className="flex justify-between gap-4">
                 <div>
-                  <p className="text-muted-foreground">Active Events</p>
-                  <p className="font-semibold text-lg">{stats?.activeEvents || 0}</p>
+                  <p className="text-sm text-muted-foreground">Events: Total / Active</p>
+                  <p className="font-semibold text-lg">
+                    {stats?.totalEvents || 0} / {stats?.activeEvents || 0}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Active Actions</p>
-                  <p className="font-semibold text-lg">{stats?.activeActions || 0}</p>
+                  <p className="text-sm text-muted-foreground">Actions: Total / Active</p>
+                  <p className="font-semibold text-lg">
+                    {stats?.totalActions || 0} / {stats?.activeActions || 0}
+                  </p>
                 </div>
               </div>
               <div className="flex justify-between gap-4">
