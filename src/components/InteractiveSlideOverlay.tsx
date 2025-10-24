@@ -375,24 +375,24 @@ export const InteractiveSlideOverlay = ({
       case "email-ios":
         return <img src={mailIcon} alt="Email" className="w-full h-full object-contain" />;
       case "social-facebook":
-        return <FaFacebookF className="w-full h-full" />;
+        return <FaFacebookF className="w-full h-full text-white" />;
       case "social-instagram":
-        return <FaInstagram className="w-full h-full" />;
+        return <FaInstagram className="w-full h-full text-white" />;
       case "social-twitter":
-        return <FaXTwitter className="w-full h-full" />;
+        return <FaXTwitter className="w-full h-full text-white" />;
       case "social-linkedin":
-        return <FaLinkedinIn className="w-full h-full" />;
+        return <FaLinkedinIn className="w-full h-full text-white" />;
       case "social-whatsapp":
-        return <FaWhatsapp className="w-full h-full" />;
+        return <FaWhatsapp className="w-full h-full text-white" />;
       case "social-share":
-        return <BsShare className="w-full h-full" />;
+        return <BsShare className="w-full h-full text-white" />;
       case "social-share-filled":
-        return <BsShareFill className="w-full h-full" />;
+        return <BsShareFill className="w-full h-full text-white" />;
       // Fallback for legacy or unknown icons
       default:
-        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full" />;
-        if (iconId.includes('email')) return <Mail className="w-full h-full" />;
-        return <Share2 className="w-full h-full" />;
+        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full text-white" />;
+        if (iconId.includes('email')) return <Mail className="w-full h-full text-white" />;
+        return <Share2 className="w-full h-full text-white" />;
     }
   };
 
