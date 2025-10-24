@@ -555,16 +555,51 @@ export default function DeckEditor() {
           .eq('id', slide.id);
       }
 
-      // 2. Handle uploads
+      // 2. Handle uploads and create slide records for temp slides
+      const tempSlideIdMap: { [tempId: string]: string } = {}; // Map temp IDs to real IDs
+      
       for (const { file, position } of pendingUploads) {
         const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
         const targetPos = position !== undefined ? position : slides.length;
         const fileName = `${slug}/${targetPos.toString().padStart(3, "0")}-${Date.now()}.${file.type === 'image/png' ? 'png' : 'jpg'}`;
         
-        await supabase.storage.from('slides').upload(fileName, compressedBlob, {
+        const { data: uploadData } = await supabase.storage.from('slides').upload(fileName, compressedBlob, {
           contentType: file.type,
           upsert: true,
         });
+
+        if (uploadData) {
+          const { data: { publicUrl } } = supabase.storage.from('slides').getPublicUrl(fileName);
+          
+          // Find the temp slide that corresponds to this upload
+          const tempSlide = slides.find(s => s.id.startsWith('temp-') && s.position === targetPos);
+          
+          if (tempSlide) {
+            // Create a new slide_items record
+            const { data: newSlide, error: insertError } = await supabase
+              .from('slide_items')
+              .insert({
+                deck_slug: slug,
+                position: targetPos,
+                content_url: publicUrl,
+                type: tempSlide.type,
+                is_compressed: true,
+                template_id: tempSlide.template_id,
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error('Error creating slide record:', insertError);
+              throw insertError;
+            }
+
+            if (newSlide) {
+              // Map the temp ID to the real ID
+              tempSlideIdMap[tempSlide.id] = newSlide.id;
+            }
+          }
+        }
       }
 
       // 3. Update all slide positions
@@ -576,14 +611,20 @@ export default function DeckEditor() {
           .eq('id', realSlides[i].id);
       }
 
-      // 4. Handle hotspot changes
+      // 4. Handle hotspot changes (including temp slides that now have real IDs)
       for (const [slideId, hotspots] of Object.entries(hotspotChanges)) {
-        if (slideId.startsWith('temp-')) continue;
+        // Map temp ID to real ID if applicable
+        const realSlideId = slideId.startsWith('temp-') ? tempSlideIdMap[slideId] : slideId;
+        
+        if (!realSlideId) {
+          console.warn(`No real slide ID found for temp ID: ${slideId}`);
+          continue;
+        }
 
         const { data: existingConfig } = await supabase
           .from('viral_slide_configs')
           .select('id')
-          .eq('slide_id', slideId)
+          .eq('slide_id', realSlideId)
           .single();
 
         if (existingConfig) {
@@ -592,15 +633,22 @@ export default function DeckEditor() {
             .update({ hotspots })
             .eq('id', existingConfig.id);
         } else {
-          const slide = slides.find(s => s.id === slideId);
-          if (slide) {
+          // Get the slide to find its content URL
+          const { data: slideData } = await supabase
+            .from('slide_items')
+            .select('position, content_url')
+            .eq('id', realSlideId)
+            .single();
+
+          if (slideData) {
             await supabase
               .from('viral_slide_configs')
               .insert({
-                slide_id: slideId,
+                slide_id: realSlideId,
                 deck_slug: slug,
-                name: `Slide ${slide.position}`,
-                image_url: slide.content_url,
+                name: `Slide ${slideData.position + 1}`,
+                slug: `${slug}-slide-${slideData.position + 1}`,
+                image_url: slideData.content_url,
                 hotspots,
               } as any);
           }
