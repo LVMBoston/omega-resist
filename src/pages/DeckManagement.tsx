@@ -27,7 +27,11 @@ const Index = () => {
   const [deckSlug, setDeckSlug] = useState("");
   const [importing, setImporting] = useState(false);
   const [interactiveImageDialog, setInteractiveImageDialog] = useState(false);
-  const [interactiveImageUrl, setInteractiveImageUrl] = useState<string | null>(null);
+  const [interactiveSlides, setInteractiveSlides] = useState<Array<{
+    id: string;
+    content_url: string;
+    position: number;
+  }>>([]);
   const [loadingImage, setLoadingImage] = useState(false);
   const [imageSlidesDialog, setImageSlidesDialog] = useState(false);
   const [imageSlides, setImageSlides] = useState<Array<{
@@ -253,45 +257,22 @@ const Index = () => {
   const handleShowInteractiveImage = async (deckSlug: string) => {
     setLoadingImage(true);
     setInteractiveImageDialog(true);
-    setInteractiveImageUrl(null);
+    setInteractiveSlides([]);
     try {
-      // Get the first interactive slide for this deck
       const {
-        data: slideData,
-        error: slideError
-      } = await supabase.from("slide_items").select("id, template_id").eq("deck_slug", deckSlug).eq("type", "spread-word").limit(1).maybeSingle();
-      if (slideError) throw slideError;
-      if (!slideData) {
-        toast.error("No interactive slide found");
+        data: slides,
+        error
+      } = await supabase.from("slide_items").select("id, content_url, position").eq("deck_slug", deckSlug).eq("type", "spread-word").order("position");
+      if (error) throw error;
+      if (!slides || slides.length === 0) {
+        toast.error("No interactive slides found");
         setInteractiveImageDialog(false);
         return;
       }
-
-      // If there's a template_id, fetch from template
-      if (slideData.template_id) {
-        const {
-          data: templateData,
-          error: templateError
-        } = await supabase.from("viral_slide_configs").select("image_url").eq("id", slideData.template_id).single();
-        if (templateError) throw templateError;
-        setInteractiveImageUrl(templateData.image_url);
-      } else {
-        // Legacy: fetch directly from viral_slide_configs
-        const {
-          data: configData,
-          error: configError
-        } = await supabase.from("viral_slide_configs").select("image_url").eq("slide_id", slideData.id).maybeSingle();
-        if (configError) throw configError;
-        if (configData) {
-          setInteractiveImageUrl(configData.image_url);
-        } else {
-          toast.error("No interactive configuration found");
-          setInteractiveImageDialog(false);
-        }
-      }
+      setInteractiveSlides(slides);
     } catch (error) {
-      console.error("Error fetching interactive image:", error);
-      toast.error("Failed to load interactive image");
+      console.error("Error fetching interactive slides:", error);
+      toast.error("Failed to load interactive slides");
       setInteractiveImageDialog(false);
     } finally {
       setLoadingImage(false);
@@ -449,15 +430,24 @@ const Index = () => {
       </main>
 
       <Dialog open={interactiveImageDialog} onOpenChange={setInteractiveImageDialog}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-6xl max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Interactive Slide Preview</DialogTitle>
+            <DialogTitle>Interactive Slides</DialogTitle>
             <DialogDescription>
-              Preview of the interactive slide template
+              Preview of all interactive slides in this deck
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center justify-center min-h-[400px]">
-            {loadingImage ? <Loader2 className="w-8 h-8 animate-spin" /> : interactiveImageUrl ? <img src={interactiveImageUrl} alt="Interactive slide" className="max-w-full max-h-[70vh] object-contain" /> : <p className="text-muted-foreground">No image available</p>}
+          <div className="overflow-y-auto">
+            {loadingImage ? <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div> : interactiveSlides.length > 0 ? <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {interactiveSlides.map(slide => <div key={slide.id} className="relative group border rounded-lg overflow-hidden hover:border-primary transition-colors">
+                    <img src={slide.content_url} alt={`Slide ${slide.position + 1}`} className="w-full aspect-[9/16] object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white font-medium">Slide {slide.position + 1}</span>
+                    </div>
+                  </div>)}
+              </div> : <p className="text-muted-foreground text-center py-8">No interactive slides available</p>}
           </div>
         </DialogContent>
       </Dialog>
