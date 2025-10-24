@@ -426,7 +426,7 @@ export const InteractiveSlideOverlay = ({
             key={hotspot.id}
             onClick={handleInteraction}
             onTouchStart={handleInteraction}
-            className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center text-yellow-400 font-medium touch-manipulation cursor-pointer"
+            className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center font-medium touch-manipulation cursor-pointer"
             style={{
               left: `${left}px`,
               top: `${top}px`,
@@ -436,8 +436,10 @@ export const InteractiveSlideOverlay = ({
               touchAction: 'manipulation',
             }}
           >
-            {getHotspotIcon(hotspot.type)}
-            <span className="ml-2">{hotspot.label}</span>
+            <span className="text-yellow-400 flex items-center">
+              {getHotspotIcon(hotspot.type)}
+              <span className="ml-2">{hotspot.label}</span>
+            </span>
           </button>
         );
       })}
