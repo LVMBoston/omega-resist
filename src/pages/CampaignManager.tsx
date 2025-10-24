@@ -396,6 +396,25 @@ export default function CampaignManager() {
       transition,
       isDragging,
     } = useSortable({ id: campaign.id });
+
+    // Fetch deck slug when component mounts
+    useEffect(() => {
+      const fetchDeckSlug = async () => {
+        const { data: eoaData } = await supabase
+          .from("events_actions")
+          .select("assigned_deck_slug")
+          .eq("campaign_id", campaign.id)
+          .not("assigned_deck_slug", "is", null)
+          .limit(1)
+          .single();
+
+        if (eoaData?.assigned_deck_slug) {
+          setDeckSlug(eoaData.assigned_deck_slug);
+        }
+      };
+
+      fetchDeckSlug();
+    }, [campaign.id]);
     
     const style = {
       transform: CSS.Transform.toString(transform),
