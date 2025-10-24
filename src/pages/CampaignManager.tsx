@@ -525,7 +525,7 @@ export default function CampaignManager() {
                 onClick={handleViewDeck}
               >
                 <Eye className="mr-2 h-4 w-4" />
-                View Deck
+                {deckSlug ? `View ${deckSlug}` : "View Deck"}
               </Button>
             </div>
           </CardContent>
