@@ -771,7 +771,7 @@ export default function DeckEditor() {
       {/* Hotspot Editor Dialog */}
       {selectedSlide && hotspotEditorOpen && (
         <Dialog open={hotspotEditorOpen} onOpenChange={setHotspotEditorOpen}>
-          <DialogContent className="max-w-[90vw] max-h-[90vh]">
+          <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Interactive Hotspots</DialogTitle>
             </DialogHeader>
