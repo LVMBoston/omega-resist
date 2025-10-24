@@ -369,34 +369,38 @@ export const InteractiveSlideOverlay = ({
 
   // Map iconId to actual icon/image
   const getHotspotIcon = (iconId: string) => {
-    console.log("🎨 Rendering icon for iconId:", iconId);
-    console.log("📦 Available assets - textIcon:", textIcon, "mailIcon:", mailIcon);
+    const iconSize = "80%"; // Use percentage of button size
+    const iconStyle = { 
+      width: iconSize, 
+      height: iconSize,
+      maxWidth: '100px',
+      maxHeight: '100px',
+    };
     
     switch (iconId) {
       case "sms-ios":
-        return <img src={textIcon} alt="Text Message" className="w-full h-full object-contain" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
+        return <img src={textIcon} alt="Text Message" style={{ ...iconStyle, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
       case "email-ios":
-        return <img src={mailIcon} alt="Email" className="w-full h-full object-contain" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
+        return <img src={mailIcon} alt="Email" style={{ ...iconStyle, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
       case "social-facebook":
-        return <FaFacebookF className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <FaFacebookF style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-instagram":
-        return <FaInstagram className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <FaInstagram style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-twitter":
-        return <FaXTwitter className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <FaXTwitter style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-linkedin":
-        return <FaLinkedinIn className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <FaLinkedinIn style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-whatsapp":
-        return <FaWhatsapp className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <FaWhatsapp style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-share":
-        return <BsShare className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <BsShare style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-share-filled":
-        return <BsShareFill className="w-full h-full" style={{ color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return <BsShareFill style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       // Fallback for legacy or unknown icons
       default:
-        console.warn("⚠️ Unknown iconId, using fallback:", iconId);
-        if (iconId.includes('sms')) return <MessageSquare className="w-full h-full" style={{ color: '#000000' }} />;
-        if (iconId.includes('email')) return <Mail className="w-full h-full" style={{ color: '#000000' }} />;
-        return <Share2 className="w-full h-full" style={{ color: '#000000' }} />;
+        if (iconId.includes('sms')) return <MessageSquare style={{ ...iconStyle, color: '#000000' }} />;
+        if (iconId.includes('email')) return <Mail style={{ ...iconStyle, color: '#000000' }} />;
+        return <Share2 style={{ ...iconStyle, color: '#000000' }} />;
     }
   };
 
@@ -452,7 +456,7 @@ export const InteractiveSlideOverlay = ({
             key={hotspot.id}
             onClick={handleInteraction}
             onTouchStart={handleInteraction}
-            className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center font-medium touch-manipulation cursor-pointer"
+            className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center font-medium touch-manipulation cursor-pointer p-2"
             style={{
               left: `${left}px`,
               top: `${top}px`,
@@ -462,9 +466,7 @@ export const InteractiveSlideOverlay = ({
               touchAction: 'manipulation',
             }}
           >
-            <div className="w-full h-full">
-              {getHotspotIcon(hotspot.iconId)}
-            </div>
+            {getHotspotIcon(hotspot.iconId)}
           </button>
         );
       })}
