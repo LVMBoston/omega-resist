@@ -74,7 +74,7 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
       </div>
       
       <div className="absolute top-1 left-1 bg-background/90 px-2 py-1 rounded text-xs font-medium">
-        {slide.position + 1}
+        {slide.position}
       </div>
       {slide.type === 'spread-word' && (
         <div className="absolute top-1 right-8 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
@@ -170,16 +170,22 @@ export default function DeckEditor() {
 
       if (error) throw error;
 
-      setOriginalSlides(data || []);
-      setSlides(data || []);
-      if (data && data.length > 0) {
-        setSelectedSlide(data[0]);
+      // Convert 0-based positions to 1-based if necessary
+      let slides = data || [];
+      if (slides.length > 0 && slides[0].position === 0) {
+        slides = slides.map(slide => ({ ...slide, position: slide.position + 1 }));
+      }
+
+      setOriginalSlides(slides);
+      setSlides(slides);
+      if (slides.length > 0) {
+        setSelectedSlide(slides[0]);
         // Get reference dimensions from first slide
         const img = new Image();
         img.onload = () => {
           setReferenceDimensions({ width: img.width, height: img.height });
         };
-        img.src = data[0].content_url;
+        img.src = slides[0].content_url;
       }
     } catch (error: any) {
       console.error('Error fetching slides:', error);
@@ -362,7 +368,7 @@ export default function DeckEditor() {
     }
 
     // Add to pending uploads and create temp slide preview
-    const targetPosition = insertPosition !== undefined ? insertPosition : slides.length;
+    const targetPosition = insertPosition !== undefined ? insertPosition : (slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1);
     const tempId = `temp-${Date.now()}`;
     const tempSlide: Slide = {
       id: tempId,
@@ -401,7 +407,7 @@ export default function DeckEditor() {
     // Remove from draft slides and reorder
     const updatedSlides = slides
       .filter(s => s.id !== slideToDelete.id)
-      .map((s, idx) => ({ ...s, position: idx }));
+      .map((s, idx) => ({ ...s, position: idx + 1 }));
     
     setSlides(updatedSlides);
     setHasChanges(true);
@@ -417,7 +423,7 @@ export default function DeckEditor() {
       const oldIndex = slides.findIndex(s => s.id === active.id);
       const newIndex = slides.findIndex(s => s.id === over.id);
 
-      const newSlides = arrayMove(slides, oldIndex, newIndex).map((s, idx) => ({ ...s, position: idx }));
+      const newSlides = arrayMove(slides, oldIndex, newIndex).map((s, idx) => ({ ...s, position: idx + 1 }));
       setSlides(newSlides);
       setHasChanges(true);
       toast.success('Slides reordered (not saved yet)');
@@ -448,7 +454,7 @@ export default function DeckEditor() {
         return;
       }
 
-      const targetPosition = slides.length;
+      const targetPosition = slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1;
       const tempId = `temp-interactive-${Date.now()}`;
       
       // Create temp slide
@@ -656,8 +662,8 @@ export default function DeckEditor() {
               .insert({
                 slide_id: realSlideId,
                 deck_slug: slug,
-                name: `Slide ${slideData.position + 1}`,
-                slug: `${slug}-slide-${slideData.position + 1}`,
+                name: `Slide ${slideData.position}`,
+                slug: `${slug}-slide-${slideData.position}`,
                 image_url: slideData.content_url,
                 hotspots,
               } as any);
