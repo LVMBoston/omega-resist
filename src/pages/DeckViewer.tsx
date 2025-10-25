@@ -160,21 +160,8 @@ export default function DeckViewer() {
     logViewEvent();
   }, [viralToken, searchParams, loading, eventLogged]);
 
-  // Auto-enter fullscreen on load
-  useEffect(() => {
-    if (!loading && slides.length > 0 && !hasAutoOpened) {
-      setHasAutoOpened(true);
-      if (isIOS) {
-        // Use CSS-based fullscreen for iOS
-        setIOSFullscreen(true);
-      } else {
-        // Request fullscreen for other devices
-        document.documentElement.requestFullscreen().catch(err => {
-          console.log("Fullscreen request failed:", err);
-        });
-      }
-    }
-  }, [loading, slides.length, hasAutoOpened, isIOS]);
+  // Removed auto-fullscreen on load - must be triggered by user gesture
+  // Users can press 'f' key to toggle fullscreen manually
 
 
   // Track fullscreen state
