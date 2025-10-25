@@ -238,23 +238,27 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
       const urlForQr = shortUrl || fullUrl;
       const canvas = await generateDecoratedQRCanvas(urlForQr);
       
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({
-                'image/png': blob
-              })
-            ]);
-            toast.success("QR code copied to clipboard!");
-          } catch (clipboardError) {
-            console.error('Clipboard error:', clipboardError);
-            toast.error("Failed to copy to clipboard. Try downloading instead.");
-          }
-        } else {
-          toast.error("Failed to create QR code image");
-        }
-      }, 'image/png');
+      // Convert canvas to blob using Promise to stay in user gesture context
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      
+      if (!blob) {
+        toast.error("Failed to create QR code image");
+        return;
+      }
+      
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'image/png': blob
+          })
+        ]);
+        toast.success("QR code copied to clipboard!");
+      } catch (clipboardError) {
+        console.error('Clipboard error:', clipboardError);
+        toast.error("Failed to copy to clipboard. Try downloading instead.");
+      }
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error("Failed to copy QR code");
