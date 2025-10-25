@@ -415,7 +415,12 @@ export default function DeckViewer() {
                     <CardContent className={effectiveFullscreen ? "p-0 h-full" : "p-0"}>
                       <div className={`relative bg-muted ${effectiveFullscreen ? 'h-full w-full' : 'aspect-video'}`}>
                         {slide.type === "spread-word" ? (
-                          <ViralSlide slideId={slide.id} deckSlug={slug || ""} viralToken={viralToken} />
+                          <ViralSlide 
+                            key={`viral-${slide.id}`}
+                            slideId={slide.id} 
+                            deckSlug={slug || ""} 
+                            viralToken={viralToken} 
+                          />
                         ) : (
                           <img
                             src={slide.content_url}

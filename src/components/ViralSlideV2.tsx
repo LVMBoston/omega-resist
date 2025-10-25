@@ -26,7 +26,7 @@ interface ViralConfig {
 }
 
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
-  const COMPONENT_VERSION = "v2.0.0-20251025"; // Cache buster
+  const COMPONENT_VERSION = "v2.1.0-20251025-REBUILD"; // Force rebuild
   console.log(`🎯 ViralSlide ${COMPONENT_VERSION} - Mounting with slideId:`, slideId);
   
   const [config, setConfig] = useState<ViralConfig | null>(null);
