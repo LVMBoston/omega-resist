@@ -170,22 +170,16 @@ export default function DeckEditor() {
 
       if (error) throw error;
 
-      // Convert 0-based positions to 1-based if necessary
-      let slides = data || [];
-      if (slides.length > 0 && slides[0].position === 0) {
-        slides = slides.map(slide => ({ ...slide, position: slide.position + 1 }));
-      }
-
-      setOriginalSlides(slides);
-      setSlides(slides);
-      if (slides.length > 0) {
-        setSelectedSlide(slides[0]);
+      setOriginalSlides(data || []);
+      setSlides(data || []);
+      if (data && data.length > 0) {
+        setSelectedSlide(data[0]);
         // Get reference dimensions from first slide
         const img = new Image();
         img.onload = () => {
           setReferenceDimensions({ width: img.width, height: img.height });
         };
-        img.src = slides[0].content_url;
+        img.src = data[0].content_url;
       }
     } catch (error: any) {
       console.error('Error fetching slides:', error);
