@@ -96,6 +96,7 @@ export default function CampaignEoaManager() {
   const [availableDecks, setAvailableDecks] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [deckSlides, setDeckSlides] = useState<Record<string, Array<{ id: string; position: number; type: string; content_url: string }>>>({});
   useEffect(() => {
     if (campaignId) {
       fetchData();
@@ -108,8 +109,35 @@ export default function CampaignEoaManager() {
   }, []);
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchCampaign(), fetchEoas(), fetchExistingTokens()]);
+    await Promise.all([fetchCampaign(), fetchEoas(), fetchExistingTokens(), fetchDeckSlides()]);
     setLoading(false);
+  };
+
+  const fetchDeckSlides = async () => {
+    // Get all unique deck slugs from eoas
+    const deckSlugs = [...new Set(eoas.map(eoa => eoa.assigned_deck_slug).filter(Boolean))];
+    
+    if (deckSlugs.length === 0) return;
+
+    const { data, error } = await supabase
+      .from("slide_items")
+      .select("id, deck_slug, position, type, content_url")
+      .in("deck_slug", deckSlugs)
+      .order("position", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch deck slides:", error);
+    } else if (data) {
+      // Group slides by deck_slug
+      const slidesByDeck: Record<string, Array<{ id: string; position: number; type: string; content_url: string }>> = {};
+      data.forEach(slide => {
+        if (!slidesByDeck[slide.deck_slug]) {
+          slidesByDeck[slide.deck_slug] = [];
+        }
+        slidesByDeck[slide.deck_slug].push(slide);
+      });
+      setDeckSlides(slidesByDeck);
+    }
   };
 
   const fetchAvailableDecks = async () => {
@@ -206,6 +234,30 @@ export default function CampaignEoaManager() {
       });
     } else {
       setEoas(data || []);
+      // Fetch slides after eoas are updated
+      if (data && data.length > 0) {
+        const deckSlugs = [...new Set(data.map(eoa => eoa.assigned_deck_slug).filter(Boolean))];
+        if (deckSlugs.length > 0) {
+          const { data: slideData, error: slideError } = await supabase
+            .from("slide_items")
+            .select("id, deck_slug, position, type, content_url")
+            .in("deck_slug", deckSlugs)
+            .order("position", { ascending: true });
+
+          if (slideError) {
+            console.error("Failed to fetch deck slides:", slideError);
+          } else if (slideData) {
+            const slidesByDeck: Record<string, Array<{ id: string; position: number; type: string; content_url: string }>> = {};
+            slideData.forEach(slide => {
+              if (!slidesByDeck[slide.deck_slug]) {
+                slidesByDeck[slide.deck_slug] = [];
+              }
+              slidesByDeck[slide.deck_slug].push(slide);
+            });
+            setDeckSlides(slidesByDeck);
+          }
+        }
+      }
     }
   };
   const deleteEoa = async (id: string) => {
@@ -689,6 +741,42 @@ export default function CampaignEoaManager() {
       accessorKey: "assigned_deck_slug",
       header: "Assigned Deck",
       cell: ({ row }) => row.original.assigned_deck_slug || "—",
+    },
+    {
+      id: "slides",
+      header: "Slides",
+      cell: ({ row }) => {
+        const eoa = row.original;
+        if (!eoa.assigned_deck_slug) return <span className="text-muted-foreground">—</span>;
+        
+        const slides = deckSlides[eoa.assigned_deck_slug] || [];
+        
+        if (slides.length === 0) {
+          return <span className="text-muted-foreground">No Slide</span>;
+        }
+        
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary">
+                  {slides.length} slide{slides.length !== 1 ? 's' : ''}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-xs">
+                  {slides.map(slide => (
+                    <div key={slide.id} className="py-0.5">
+                      Position {slide.position}: {slide.type}
+                    </div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
+      enableSorting: false,
     },
     {
       id: "status",
