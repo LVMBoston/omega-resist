@@ -26,8 +26,8 @@ interface ViralConfig {
 }
 
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
-  console.log("🚀🚀🚀 === VIRAL SLIDE COMPONENT MOUNTED === 🚀🚀🚀");
-  console.log("🚀 Props:", { slideId, deckSlug, viralToken });
+  const COMPONENT_VERSION = "v2.0.0-20251025"; // Cache buster
+  console.log(`🎯 ViralSlide ${COMPONENT_VERSION} - Mounting with slideId:`, slideId);
   
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +36,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
 
   useEffect(() => {
     const fetchConfig = async () => {
-      console.log("🔥🔥🔥 === FETCHING CONFIG START === 🔥🔥🔥");
-      console.log("🔍 ViralSlide fetching config for slideId:", slideId);
+      console.log(`🔥 ${COMPONENT_VERSION} - Fetching config for slideId:`, slideId);
       
       // First get the slide_items to find the template_id
       const { data: slideData, error: slideError } = await supabase
@@ -46,22 +45,26 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         .eq("id", slideId)
         .maybeSingle();
 
-      console.log("📊 Slide data response:", { slideData, slideError });
+      console.log("📊 Slide query result:", { 
+        found: !!slideData, 
+        hasTemplate: !!slideData?.template_id,
+        templateId: slideData?.template_id 
+      });
 
       if (slideError) {
-        console.error("❌ Error fetching slide:", slideError);
+        console.error(`❌ ${COMPONENT_VERSION} - Slide fetch error:`, slideError);
         setLoading(false);
         return;
       }
 
       if (!slideData) {
-        console.error("❌ No slide found with id:", slideId);
+        console.error(`❌ ${COMPONENT_VERSION} - No slide found for id:`, slideId);
         setLoading(false);
         return;
       }
 
       if (!slideData?.template_id) {
-        console.log("⚠️ No template_id found, trying legacy fallback for slideId:", slideId);
+        console.log(`⚠️ ${COMPONENT_VERSION} - No template_id, checking legacy config`);
         // Fallback: Check if there's a direct viral_slide_config for this slide (legacy)
         const { data: legacyData, error: legacyError } = await supabase
           .from("viral_slide_configs")
@@ -97,6 +100,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
       }
 
       // Fetch the template configuration
+      console.log(`🔍 ${COMPONENT_VERSION} - Querying template:`, slideData.template_id);
       const { data: templateData, error: templateError } = await supabase
         .from("viral_slide_configs")
         .select("*")
@@ -104,13 +108,12 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         .single();
 
       if (templateError) {
-        console.error("❌ Error fetching template:", templateError);
+        console.error(`❌ ${COMPONENT_VERSION} - Template query error:`, templateError);
       } else if (templateData) {
-        console.log("✅ Template config loaded:", {
-          templateId: templateData.id,
-          templateName: templateData.name,
-          image_url: templateData.image_url,
-          hotspotsLength: Array.isArray(templateData.hotspots) ? templateData.hotspots.length : 0
+        console.log(`✅ ${COMPONENT_VERSION} - Template loaded:`, {
+          id: templateData.id,
+          name: templateData.name,
+          hotspots: Array.isArray(templateData.hotspots) ? templateData.hotspots.length : 0
         });
         
         // Map iconId to type for backward compatibility and ensure all fields are present
@@ -127,13 +130,13 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           hotspots: mappedHotspots,
         });
       } else {
-        console.log("⚠️ No template found for template_id:", slideData.template_id);
+        console.warn(`⚠️ ${COMPONENT_VERSION} - Template query returned null for:`, slideData.template_id);
       }
       setLoading(false);
     };
 
     fetchConfig();
-  }, [slideId]);
+  }, [slideId, COMPONENT_VERSION]);
 
   // Delay overlay mount to allow layout to complete on iPhone
   useEffect(() => {
@@ -154,6 +157,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   }
 
   if (!config) {
+    console.error(`❌ ${COMPONENT_VERSION} - Render aborted: No config available for slideId:`, slideId);
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">No viral slide configuration found</p>
@@ -161,7 +165,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
     );
   }
 
-  console.log("🎨 ViralSlide rendering with hotspots:", config.hotspots.length);
+  console.log(`🎨 ${COMPONENT_VERSION} - Rendering with ${config.hotspots.length} hotspots`);
   console.log("📱 Device info:", {
     userAgent: navigator.userAgent,
     isIPhone: navigator.userAgent.includes('iPhone'),
