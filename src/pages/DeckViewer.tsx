@@ -16,6 +16,7 @@ interface SlideItem {
   content_url: string;
   is_compressed: boolean;
   type: string;
+  template_id?: string;
 }
 
 export default function DeckViewer() {
@@ -85,6 +86,8 @@ export default function DeckViewer() {
           return;
         }
 
+        console.log("📊 Slides loaded:", slideData);
+        console.log("📊 Slide types:", slideData?.map(s => ({ id: s.id, type: s.type, template_id: s.template_id, position: s.position })));
         setSlides(slideData || []);
       } catch (err) {
         console.error("Error fetching deck:", err);
@@ -382,7 +385,14 @@ export default function DeckViewer() {
         ) : (
           <Carousel className={effectiveFullscreen ? "w-full h-full" : "max-w-5xl mx-auto"}>
             <CarouselContent className={effectiveFullscreen ? "h-full" : ""}>
-              {slides.map((slide, index) => (
+              {slides.map((slide, index) => {
+                console.log(`🎨 Rendering slide ${index + 1}:`, { 
+                  id: slide.id, 
+                  type: slide.type, 
+                  template_id: slide.template_id,
+                  isSpreadWord: slide.type === "spread-word"
+                });
+                return (
                 <CarouselItem key={slide.id} className={effectiveFullscreen ? "h-full" : ""}>
                   <Card className={effectiveFullscreen ? "h-full border-0 rounded-none" : ""}>
                     <CardContent className={effectiveFullscreen ? "p-0 h-full" : "p-0"}>
@@ -420,7 +430,8 @@ export default function DeckViewer() {
                     </CardContent>
                   </Card>
                 </CarouselItem>
-              ))}
+                );
+              })}
             </CarouselContent>
             <CarouselPrevious 
               data-carousel-prev 
