@@ -74,6 +74,9 @@ export default function DeckViewer() {
         }
 
         // Fetch slides with cache busting
+        const timestamp = Date.now();
+        console.log(`🔄 [${timestamp}] Fetching slides for deck:`, slug);
+        
         const { data: slideData, error: slideError } = await supabase
           .from("slide_items")
           .select("*")
@@ -81,14 +84,40 @@ export default function DeckViewer() {
           .order("position", { ascending: true })
           .abortSignal(AbortSignal.timeout(10000)); // Force fresh data
 
+        console.log(`📊 [${timestamp}] Raw Supabase response:`, {
+          success: !slideError,
+          error: slideError,
+          dataLength: slideData?.length,
+          rawData: slideData
+        });
+
         if (slideError) {
+          console.error(`❌ [${timestamp}] Slide fetch error:`, slideError);
           toast.error("Failed to load slides");
           setError("Failed to load slides");
           return;
         }
 
-        console.log("📊 Slides loaded:", slideData);
-        console.log("📊 Slide types:", slideData?.map(s => ({ id: s.id, type: s.type, template_id: s.template_id, position: s.position })));
+        // Validate spread-word slides
+        const invalidSlides = slideData?.filter(s => 
+          s.type === 'spread-word' && !s.template_id
+        );
+        
+        if (invalidSlides && invalidSlides.length > 0) {
+          console.error(`⚠️ [${timestamp}] Found spread-word slides without template_id:`, 
+            invalidSlides.map(s => ({ id: s.id, position: s.position }))
+          );
+        }
+
+        console.log(`✅ [${timestamp}] Slides loaded:`, slideData?.length);
+        console.log(`📋 [${timestamp}] Slide details:`, slideData?.map(s => ({ 
+          id: s.id, 
+          type: s.type, 
+          template_id: s.template_id, 
+          position: s.position,
+          deck_slug: s.deck_slug
+        })));
+        
         setSlides(slideData || []);
       } catch (err) {
         console.error("Error fetching deck:", err);

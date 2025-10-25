@@ -64,8 +64,15 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
       }
 
       if (!slideData?.template_id) {
-        console.log(`⚠️ ${COMPONENT_VERSION} - No template_id, checking legacy config`);
+        console.error(`❌ ${COMPONENT_VERSION} - CRITICAL: No template_id found for slide:`, {
+          slideId,
+          slideData,
+          deck_slug: slideData?.deck_slug,
+          type: slideData?.type
+        });
+        
         // Fallback: Check if there's a direct viral_slide_config for this slide (legacy)
+        console.log(`🔍 ${COMPONENT_VERSION} - Attempting legacy config lookup...`);
         const { data: legacyData, error: legacyError } = await supabase
           .from("viral_slide_configs")
           .select("*")
@@ -73,28 +80,35 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           .maybeSingle();
 
         if (legacyError) {
-          console.error("❌ Error fetching legacy viral config:", legacyError);
-        } else if (legacyData) {
-        console.log("✅ Legacy viral config loaded:", {
-          slideId,
-          image_url: legacyData.image_url,
-          hotspotsLength: Array.isArray(legacyData.hotspots) ? legacyData.hotspots.length : 0
-        });
-        
-        // Map iconId to type for backward compatibility and ensure all fields are present
-        const mappedHotspots = Array.isArray(legacyData.hotspots) 
-          ? legacyData.hotspots.map((h: any) => ({
-              ...h,
-              iconId: h.iconId || `${h.type}-default`,
-              type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
-            }))
-          : [];
-        
-        setConfig({
-          image_url: legacyData.image_url,
-          hotspots: mappedHotspots,
-        });
+          console.error(`❌ ${COMPONENT_VERSION} - Legacy config fetch error:`, legacyError);
+          setLoading(false);
+          return;
         }
+        
+        if (legacyData) {
+          console.log(`✅ ${COMPONENT_VERSION} - Legacy viral config loaded:`, {
+            slideId,
+            image_url: legacyData.image_url,
+            hotspotsLength: Array.isArray(legacyData.hotspots) ? legacyData.hotspots.length : 0
+          });
+          
+          // Map iconId to type for backward compatibility and ensure all fields are present
+          const mappedHotspots = Array.isArray(legacyData.hotspots) 
+            ? legacyData.hotspots.map((h: any) => ({
+                ...h,
+                iconId: h.iconId || `${h.type}-default`,
+                type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
+              }))
+            : [];
+          
+          setConfig({
+            image_url: legacyData.image_url,
+            hotspots: mappedHotspots,
+          });
+        } else {
+          console.error(`❌ ${COMPONENT_VERSION} - No legacy config found either. Slide cannot be rendered.`);
+        }
+        
         setLoading(false);
         return;
       }
@@ -159,8 +173,12 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   if (!config) {
     console.error(`❌ ${COMPONENT_VERSION} - Render aborted: No config available for slideId:`, slideId);
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">No viral slide configuration found</p>
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+        <p className="text-destructive font-semibold mb-2">Interactive Slide Configuration Missing</p>
+        <p className="text-muted-foreground text-sm mb-4">
+          This slide is marked as interactive but has no template assigned.
+        </p>
+        <p className="text-xs text-muted-foreground">Slide ID: {slideId}</p>
       </div>
     );
   }
