@@ -73,7 +73,7 @@ export default function DeckViewer() {
           return;
         }
 
-        // Fetch slides with cache busting
+        // Fetch slides with cache busting [REBUILD 2025-10-25]
         const timestamp = Date.now();
         console.log(`🔄 [${timestamp}] Fetching slides for deck:`, slug);
         
