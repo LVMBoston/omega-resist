@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { ViralSlide } from "@/components/ViralSlide";
+import { ViralSlide } from "@/components/ViralSlideV2";
 import { logEvent } from "@/lib/virality/mint";
 import { useAuth } from "@/contexts/AuthContext";
 
