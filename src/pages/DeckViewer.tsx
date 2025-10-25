@@ -73,12 +73,13 @@ export default function DeckViewer() {
           return;
         }
 
-        // Fetch slides
+        // Fetch slides with cache busting
         const { data: slideData, error: slideError } = await supabase
           .from("slide_items")
           .select("*")
           .eq("deck_slug", slug)
-          .order("position", { ascending: true });
+          .order("position", { ascending: true })
+          .abortSignal(AbortSignal.timeout(10000)); // Force fresh data
 
         if (slideError) {
           toast.error("Failed to load slides");
