@@ -26,6 +26,9 @@ interface ViralConfig {
 }
 
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
+  console.log("🚀🚀🚀 === VIRAL SLIDE COMPONENT MOUNTED === 🚀🚀🚀");
+  console.log("🚀 Props:", { slideId, deckSlug, viralToken });
+  
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -33,6 +36,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
 
   useEffect(() => {
     const fetchConfig = async () => {
+      console.log("🔥🔥🔥 === FETCHING CONFIG START === 🔥🔥🔥");
       console.log("🔍 ViralSlide fetching config for slideId:", slideId);
       
       // First get the slide_items to find the template_id
