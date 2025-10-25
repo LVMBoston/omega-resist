@@ -1,3 +1,4 @@
+// vite.config.ts - Last modified: 2025-10-25T19:30:00Z
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
