@@ -33,12 +33,16 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
 
   useEffect(() => {
     const fetchConfig = async () => {
+      console.log("🔍 ViralSlide fetching config for slideId:", slideId);
+      
       // First get the slide_items to find the template_id
       const { data: slideData, error: slideError } = await supabase
         .from("slide_items")
-        .select("template_id")
+        .select("template_id, type, deck_slug")
         .eq("id", slideId)
         .maybeSingle();
+
+      console.log("📊 Slide data response:", { slideData, slideError });
 
       if (slideError) {
         console.error("❌ Error fetching slide:", slideError);
@@ -46,7 +50,14 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         return;
       }
 
+      if (!slideData) {
+        console.error("❌ No slide found with id:", slideId);
+        setLoading(false);
+        return;
+      }
+
       if (!slideData?.template_id) {
+        console.log("⚠️ No template_id found, trying legacy fallback for slideId:", slideId);
         // Fallback: Check if there's a direct viral_slide_config for this slide (legacy)
         const { data: legacyData, error: legacyError } = await supabase
           .from("viral_slide_configs")
