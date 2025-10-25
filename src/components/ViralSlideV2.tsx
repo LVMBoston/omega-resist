@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { InteractiveSlideOverlay } from "./InteractiveSlideOverlay";
 import { Loader2 } from "lucide-react";
 
+// Module loaded timestamp - 2025-10-25T19:20:00Z
+console.log("🚀🚀🚀 ViralSlideV2 MODULE LOADED - TIMESTAMP: 2025-10-25T19:20:00Z 🚀🚀🚀");
+
 interface ViralSlideProps {
   slideId: string;
   deckSlug: string;
@@ -26,8 +29,9 @@ interface ViralConfig {
 }
 
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
-  const COMPONENT_VERSION = "v2.1.0-20251025-REBUILD"; // Force rebuild
-  console.log(`🎯 ViralSlide ${COMPONENT_VERSION} - Mounting with slideId:`, slideId);
+  const COMPONENT_VERSION = "v2.2.0-FORCE-REBUILD-NOW"; // Force rebuild
+  console.log(`🎯🎯🎯 ViralSlide ${COMPONENT_VERSION} - Mounting with slideId:`, slideId);
+  console.log(`🔥🔥🔥 NEW CODE IS RUNNING - slideId:`, slideId);
   
   const [config, setConfig] = useState<ViralConfig | null>(null);
   const [loading, setLoading] = useState(true);
