@@ -384,7 +384,9 @@ export default function InteractiveTemplates() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((template) => (
-            <Card key={template.id}>
+            <Card key={template.id} className={
+              !isValidInteractiveTemplate(template) ? 'bg-red-100 dark:bg-red-950/30' : ''
+            }>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -401,9 +403,7 @@ export default function InteractiveTemplates() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className={`aspect-[9/16] w-full max-w-[200px] mx-auto mb-4 relative rounded-lg ${
-                  !isValidInteractiveTemplate(template) ? 'bg-red-100 dark:bg-red-950/30 p-2' : ''
-                }`}>
+                <div className="aspect-[9/16] w-full max-w-[200px] mx-auto mb-4 relative">
                   <img
                     src={template.image_url}
                     alt={template.name}
