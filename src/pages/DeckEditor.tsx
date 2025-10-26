@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Upload, Loader2, Plus, Zap, Image as ImageIcon, GripVertical } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Plus, Zap, Image as ImageIcon, GripVertical, Check, X } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -97,6 +97,21 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
       )}
     </div>
   );
+};
+
+const isValidInteractiveTemplate = (template: Template): boolean => {
+  if (!template.image_url) return false;
+  if (!template.hotspots || template.hotspots.length === 0) return false;
+  
+  const hasValidHotspots = template.hotspots.every((hotspot: any) => {
+    return (
+      typeof hotspot.x === 'number' &&
+      typeof hotspot.y === 'number' &&
+      hotspot.type
+    );
+  });
+  
+  return hasValidHotspots;
 };
 
 export default function DeckEditor() {
@@ -197,7 +212,10 @@ export default function DeckEditor() {
         .is('slide_id', null) as any;
 
       if (error) throw error;
-      setTemplates((data || []) as Template[]);
+      
+      // Only include valid templates
+      const validTemplates = (data || []).filter(isValidInteractiveTemplate);
+      setTemplates(validTemplates as Template[]);
     } catch (error: any) {
       console.error('Error fetching templates:', error);
     }
@@ -967,18 +985,32 @@ export default function DeckEditor() {
             <DialogTitle>Add Interactive Slide from Template</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4">
-            {templates.map((template) => (
-              <Card
-                key={template.id}
-                className="cursor-pointer hover:border-primary transition-colors"
-                onClick={() => handleAddInteractiveSlide(template)}
-              >
-                <CardContent className="p-4 space-y-2">
-                  <img src={template.image_url} alt={template.name} className="w-full rounded" />
-                  <div className="font-medium text-sm">{template.name}</div>
-                </CardContent>
-              </Card>
-            ))}
+            {templates.length === 0 ? (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                No valid templates available. Templates must have at least one hotspot configured.
+              </div>
+            ) : (
+              templates.map((template) => (
+                <Card
+                  key={template.id}
+                  className="cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => handleAddInteractiveSlide(template)}
+                >
+                  <CardContent className="p-4 space-y-2">
+                    <div className="relative">
+                      <img src={template.image_url} alt={template.name} className="w-full rounded" />
+                      <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1 shadow-lg">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    </div>
+                    <div className="font-medium text-sm">{template.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {template.hotspots.length} hotspot(s)
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -993,7 +1025,7 @@ export default function DeckEditor() {
           <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
             {templates.length === 0 ? (
               <div className="col-span-2 text-center py-8 text-muted-foreground">
-                No templates available. Create templates in Settings → Interactive Pages.
+                No valid templates available. Templates must have at least one hotspot configured.
               </div>
             ) : (
               templates.map((template) => (
@@ -1003,8 +1035,16 @@ export default function DeckEditor() {
                   onClick={() => handleApplyTemplateToSlide(template)}
                 >
                   <CardContent className="p-4 space-y-2">
-                    <img src={template.image_url} alt={template.name} className="w-full rounded" />
+                    <div className="relative">
+                      <img src={template.image_url} alt={template.name} className="w-full rounded" />
+                      <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1 shadow-lg">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    </div>
                     <div className="font-medium text-sm">{template.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {template.hotspots.length} hotspot(s)
+                    </div>
                   </CardContent>
                 </Card>
               ))
