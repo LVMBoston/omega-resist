@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info, Eye } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 
@@ -44,6 +44,7 @@ export default function InteractiveTemplates() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [showingHotspots, setShowingHotspots] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -389,7 +390,7 @@ export default function InteractiveTemplates() {
                 ? 'bg-red-100 dark:bg-red-950/30' 
                 : 'bg-green-100 dark:bg-green-950/30'
             }`}>
-              {!isValidInteractiveTemplate(template) && (
+              {!isValidInteractiveTemplate(template) ? (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -409,6 +410,25 @@ export default function InteractiveTemplates() {
                     </TooltipTrigger>
                     <TooltipContent>
                       Click to see why this template is invalid
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowingHotspots(showingHotspots === template.id ? null : template.id);
+                        }}
+                        className="absolute top-3 right-3 z-10 bg-green-600 text-white rounded-full p-1.5 shadow-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {showingHotspots === template.id ? "Hide" : "Show"} hotspot locations
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -435,6 +455,18 @@ export default function InteractiveTemplates() {
                     alt={template.name}
                     className="w-full h-full object-contain rounded-lg bg-muted"
                   />
+                  {showingHotspots === template.id && template.hotspots.map((hotspot: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="absolute border-2 border-yellow-400 bg-yellow-400/20 pointer-events-none"
+                      style={{
+                        left: `${hotspot.x}%`,
+                        top: `${hotspot.y}%`,
+                        width: `${hotspot.width}%`,
+                        height: `${hotspot.height}%`,
+                      }}
+                    />
+                  ))}
                 </div>
                 {template.description && (
                   <p className="text-sm text-muted-foreground mb-4">
