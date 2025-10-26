@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 
 interface Template {
@@ -22,6 +23,21 @@ interface Template {
   is_default: boolean;
   created_at: string;
 }
+
+const isValidInteractiveTemplate = (template: Template): boolean => {
+  if (!template.image_url) return false;
+  if (!template.hotspots || template.hotspots.length === 0) return false;
+  
+  const hasValidHotspots = template.hotspots.every((hotspot: any) => {
+    return (
+      typeof hotspot.x === 'number' &&
+      typeof hotspot.y === 'number' &&
+      hotspot.action?.type
+    );
+  });
+  
+  return hasValidHotspots;
+};
 
 export default function InteractiveTemplates() {
   const { toast } = useToast();
@@ -385,12 +401,35 @@ export default function InteractiveTemplates() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="aspect-[9/16] w-full max-w-[200px] mx-auto mb-4">
+                <div className="aspect-[9/16] w-full max-w-[200px] mx-auto mb-4 relative">
                   <img
                     src={template.image_url}
                     alt={template.name}
                     className="w-full h-full object-contain rounded-lg bg-muted"
                   />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="absolute top-2 right-2">
+                          {isValidInteractiveTemplate(template) ? (
+                            <div className="bg-green-500 text-white rounded-full p-1.5 shadow-lg">
+                              <Check className="h-4 w-4" />
+                            </div>
+                          ) : (
+                            <div className="bg-red-500 text-white rounded-full p-1.5 shadow-lg">
+                              <X className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isValidInteractiveTemplate(template) 
+                          ? `Valid interactive slide with ${template.hotspots.length} hotspot(s)`
+                          : "Invalid: No hotspots configured"
+                        }
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 {template.description && (
                   <p className="text-sm text-muted-foreground mb-4">
