@@ -32,7 +32,7 @@ const isValidInteractiveTemplate = (template: Template): boolean => {
     return (
       typeof hotspot.x === 'number' &&
       typeof hotspot.y === 'number' &&
-      hotspot.action?.type
+      hotspot.type
     );
   });
   
