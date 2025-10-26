@@ -6,14 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Upload, Loader2, Plus, Zap, Image as ImageIcon, GripVertical, Check, X } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
-import { mintL00 } from "@/lib/virality/mint";
 
 interface Slide {
   id: string;
@@ -130,8 +129,6 @@ export default function DeckEditor() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [remintDialogOpen, setRemintDialogOpen] = useState(false);
-  const [reminting, setReminting] = useState(false);
   const [eoaCount, setEoaCount] = useState(0);
   const [campaigns, setCampaigns] = useState<string[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
@@ -697,49 +694,6 @@ export default function DeckEditor() {
     }
   };
 
-  const handleRemintEoas = async () => {
-    if (!slug) return;
-
-    setReminting(true);
-    try {
-      // Fetch all EoAs using this deck
-      const { data: eoas, error } = await supabase
-        .from('events_actions')
-        .select('id, title')
-        .eq('assigned_deck_slug', slug);
-
-      if (error) throw error;
-
-      if (!eoas || eoas.length === 0) {
-        toast.info('No EoAs found using this deck');
-        return;
-      }
-
-      // Re-mint L00 for each EoA
-      let successCount = 0;
-      for (const eoa of eoas) {
-        try {
-          await mintL00({
-            eoaId: eoa.id,
-            deckSlug: slug,
-            utmMedium: 'qr',
-          });
-          successCount++;
-        } catch (error: any) {
-          console.error(`Failed to mint L00 for ${eoa.title}:`, error);
-        }
-      }
-
-      toast.success(`Re-minted L00 tokens for ${successCount} of ${eoas.length} EoAs`);
-      setRemintDialogOpen(false);
-    } catch (error: any) {
-      console.error('Error re-minting EoAs:', error);
-      toast.error('Failed to re-mint EoAs');
-    } finally {
-      setReminting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -792,10 +746,6 @@ export default function DeckEditor() {
               ) : (
                 'Save Changes'
               )}
-            </Button>
-            <Button variant="outline" onClick={() => setRemintDialogOpen(true)}>
-              <Zap className="h-4 w-4 mr-2" />
-              Re-mint Affected EoAs
             </Button>
           </div>
         </div>
@@ -1052,34 +1002,6 @@ export default function DeckEditor() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Re-mint Confirmation Dialog */}
-      <AlertDialog open={remintDialogOpen} onOpenChange={setRemintDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Re-mint L00 Tokens</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will re-mint L00 tokens for all EoAs using the deck "{slug}".
-              Existing L01-L03 viral chains will be preserved.
-              <br /><br />
-              Are you sure you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={reminting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemintEoas} disabled={reminting}>
-              {reminting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Re-minting...
-                </>
-              ) : (
-                'Re-mint'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
