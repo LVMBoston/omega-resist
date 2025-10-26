@@ -401,7 +401,9 @@ export default function InteractiveTemplates() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="aspect-[9/16] w-full max-w-[200px] mx-auto mb-4 relative">
+                <div className={`aspect-[9/16] w-full max-w-[200px] mx-auto mb-4 relative rounded-lg ${
+                  !isValidInteractiveTemplate(template) ? 'bg-red-100 dark:bg-red-950/30 p-2' : ''
+                }`}>
                   <img
                     src={template.image_url}
                     alt={template.name}
@@ -411,13 +413,9 @@ export default function InteractiveTemplates() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="absolute top-2 right-2">
-                          {isValidInteractiveTemplate(template) ? (
+                          {isValidInteractiveTemplate(template) && (
                             <div className="bg-green-500 text-white rounded-full p-1.5 shadow-lg">
                               <Check className="h-4 w-4" />
-                            </div>
-                          ) : (
-                            <div className="bg-red-500 text-white rounded-full p-1.5 shadow-lg">
-                              <X className="h-4 w-4" />
                             </div>
                           )}
                         </div>
