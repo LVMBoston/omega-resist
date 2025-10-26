@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 
@@ -413,17 +413,31 @@ export default function InteractiveTemplates() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="absolute top-2 right-2">
-                          {isValidInteractiveTemplate(template) && (
+                          {isValidInteractiveTemplate(template) ? (
                             <div className="bg-green-500 text-white rounded-full p-1.5 shadow-lg">
                               <Check className="h-4 w-4" />
                             </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toast({
+                                  variant: "destructive",
+                                  title: "Invalid Interactive Slide",
+                                  description: "This template has no hotspots configured. Edit it and add at least one hotspot to make it functional.",
+                                });
+                              }}
+                              className="bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                            >
+                              <Info className="h-4 w-4" />
+                            </button>
                           )}
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
                         {isValidInteractiveTemplate(template) 
                           ? `Valid interactive slide with ${template.hotspots.length} hotspot(s)`
-                          : "Invalid: No hotspots configured"
+                          : "Click to see why this template is invalid"
                         }
                       </TooltipContent>
                     </Tooltip>
