@@ -435,22 +435,6 @@ export default function InteractiveTemplates() {
                     alt={template.name}
                     className="w-full h-full object-contain rounded-lg bg-muted"
                   />
-                  {isValidInteractiveTemplate(template) && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="absolute top-2 right-2">
-                            <div className="bg-green-500 text-white rounded-full p-1.5 shadow-lg">
-                              <Check className="h-4 w-4" />
-                            </div>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Valid interactive slide with {template.hotspots.length} hotspot(s)
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
                 </div>
                 {template.description && (
                   <p className="text-sm text-muted-foreground mb-4">
