@@ -440,13 +440,16 @@ export type Database = {
         Row: {
           created_by: string | null
           deck_slug: string
+          deck_version_at_mint: string | null
           deleted_at: string | null
           eoa_id: string
           full_url: string
           id: string
+          invalidated_at: string | null
           is_simulated: boolean
           level: number
           minted_at: string
+          needs_regeneration: boolean | null
           parent_token: string | null
           root_token: string | null
           token: string
@@ -459,13 +462,16 @@ export type Database = {
         Insert: {
           created_by?: string | null
           deck_slug: string
+          deck_version_at_mint?: string | null
           deleted_at?: string | null
           eoa_id: string
           full_url: string
           id?: string
+          invalidated_at?: string | null
           is_simulated?: boolean
           level: number
           minted_at?: string
+          needs_regeneration?: boolean | null
           parent_token?: string | null
           root_token?: string | null
           token: string
@@ -478,13 +484,16 @@ export type Database = {
         Update: {
           created_by?: string | null
           deck_slug?: string
+          deck_version_at_mint?: string | null
           deleted_at?: string | null
           eoa_id?: string
           full_url?: string
           id?: string
+          invalidated_at?: string | null
           is_simulated?: boolean
           level?: number
           minted_at?: string
+          needs_regeneration?: boolean | null
           parent_token?: string | null
           root_token?: string | null
           token?: string
@@ -726,6 +735,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      invalidate_deck_tokens: { Args: { p_deck_slug: string }; Returns: number }
+      is_token_valid: { Args: { p_token: string }; Returns: boolean }
       log_event:
         | {
             Args: {
