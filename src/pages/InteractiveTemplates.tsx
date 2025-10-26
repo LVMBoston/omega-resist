@@ -385,7 +385,9 @@ export default function InteractiveTemplates() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((template) => (
             <Card key={template.id} className={`relative ${
-              !isValidInteractiveTemplate(template) ? 'bg-red-100 dark:bg-red-950/30' : ''
+              !isValidInteractiveTemplate(template) 
+                ? 'bg-red-100 dark:bg-red-950/30' 
+                : 'bg-green-100 dark:bg-green-950/30'
             }`}>
               {!isValidInteractiveTemplate(template) && (
                 <TooltipProvider>
