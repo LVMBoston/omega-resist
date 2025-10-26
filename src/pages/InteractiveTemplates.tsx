@@ -384,9 +384,33 @@ export default function InteractiveTemplates() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((template) => (
-            <Card key={template.id} className={
+            <Card key={template.id} className={`relative ${
               !isValidInteractiveTemplate(template) ? 'bg-red-100 dark:bg-red-950/30' : ''
-            }>
+            }`}>
+              {!isValidInteractiveTemplate(template) && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toast({
+                            variant: "destructive",
+                            title: "Invalid Interactive Slide",
+                            description: "This template has no hotspots configured. Edit it and add at least one hotspot to make it functional.",
+                          });
+                        }}
+                        className="absolute top-3 right-3 z-10 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Click to see why this template is invalid
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -409,39 +433,22 @@ export default function InteractiveTemplates() {
                     alt={template.name}
                     className="w-full h-full object-contain rounded-lg bg-muted"
                   />
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="absolute top-2 right-2">
-                          {isValidInteractiveTemplate(template) ? (
+                  {isValidInteractiveTemplate(template) && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="absolute top-2 right-2">
                             <div className="bg-green-500 text-white rounded-full p-1.5 shadow-lg">
                               <Check className="h-4 w-4" />
                             </div>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toast({
-                                  variant: "destructive",
-                                  title: "Invalid Interactive Slide",
-                                  description: "This template has no hotspots configured. Edit it and add at least one hotspot to make it functional.",
-                                });
-                              }}
-                              className="bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
-                            >
-                              <Info className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {isValidInteractiveTemplate(template) 
-                          ? `Valid interactive slide with ${template.hotspots.length} hotspot(s)`
-                          : "Click to see why this template is invalid"
-                        }
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Valid interactive slide with {template.hotspots.length} hotspot(s)
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
                 {template.description && (
                   <p className="text-sm text-muted-foreground mb-4">
