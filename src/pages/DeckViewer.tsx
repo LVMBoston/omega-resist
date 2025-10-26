@@ -73,6 +73,20 @@ export default function DeckViewer() {
           return;
         }
 
+        // If we have a viral token, check if it's valid
+        if (viralToken) {
+          const { data: tokenValid, error: tokenError } = await supabase
+            .rpc("is_token_valid", { p_token: viralToken });
+          
+          if (tokenError) {
+            console.error("Error checking token validity:", tokenError);
+          } else if (!tokenValid) {
+            setError("This content has been updated. Please get the latest link from your organizer.");
+            setLoading(false);
+            return;
+          }
+        }
+
         // Fetch slides with cache busting [REBUILD 2025-10-25]
         const timestamp = Date.now();
         console.log(`🔄 [${timestamp}] Fetching slides for deck:`, slug);

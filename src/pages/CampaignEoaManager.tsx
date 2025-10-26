@@ -80,7 +80,14 @@ export default function CampaignEoaManager() {
   const [bulkUtmId, setBulkUtmId] = useState("");
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [generatingL00, setGeneratingL00] = useState<string | null>(null);
-  const [l00Tokens, setL00Tokens] = useState<Record<string, { token: string; url: string; shortUrl?: string; shorteningInProgress?: boolean }>>({});
+  const [l00Tokens, setL00Tokens] = useState<Record<string, { 
+    token: string; 
+    url: string; 
+    shortUrl?: string; 
+    shorteningInProgress?: boolean;
+    invalidated_at?: string | null;
+    needs_regeneration?: boolean;
+  }>>({});
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [selectedTokenForDisplay, setSelectedTokenForDisplay] = useState<{
     token: string;
@@ -170,7 +177,7 @@ export default function CampaignEoaManager() {
   const fetchExistingTokens = async () => {
     const { data, error } = await supabase
       .from("tokens")
-      .select("eoa_id, token, full_url")
+      .select("eoa_id, token, full_url, invalidated_at, needs_regeneration")
       .eq("level", 0);
 
     if (error) {
@@ -192,12 +199,14 @@ export default function CampaignEoaManager() {
         shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
       });
 
-      const tokenMap: Record<string, { token: string; url: string; shortUrl?: string }> = {};
+      const tokenMap: Record<string, { token: string; url: string; shortUrl?: string; invalidated_at?: string | null; needs_regeneration?: boolean }> = {};
       data.forEach(t => {
         tokenMap[t.eoa_id] = { 
           token: t.token, 
           url: t.full_url,
-          shortUrl: shortUrlMap.get(t.full_url)
+          shortUrl: shortUrlMap.get(t.full_url),
+          invalidated_at: t.invalidated_at,
+          needs_regeneration: t.needs_regeneration
         };
       });
       setL00Tokens(tokenMap);
@@ -1082,9 +1091,19 @@ export default function CampaignEoaManager() {
   const getMintReadiness = (eoa: EventAction) => {
     const hasMobilizeCode = !!eoa.mobilize_code;
     const hasDeck = !!eoa.assigned_deck_slug;
-    const isMinted = !!l00Tokens[eoa.id];
+    const tokenData = l00Tokens[eoa.id];
+    const isMinted = !!tokenData;
     
     if (isMinted) {
+      // Check if token is invalidated or needs regeneration
+      if (tokenData.invalidated_at || tokenData.needs_regeneration) {
+        return { 
+          status: "outdated", 
+          label: "Deck Updated - Regenerate", 
+          icon: AlertCircle, 
+          className: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200" 
+        };
+      }
       return { status: "minted", label: "Minted", icon: Lock, className: "bg-muted text-muted-foreground" };
     }
     
