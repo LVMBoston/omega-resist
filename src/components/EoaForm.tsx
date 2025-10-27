@@ -98,12 +98,10 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     setFetchingMobilize(true);
     try {
-      console.log('Calling edge function with code:', formData.mobilize_code);
       const { data, error } = await supabase.functions.invoke('fetch-mobilize-event', {
         body: { mobilizeCode: formData.mobilize_code }
       });
 
-      console.log('Edge function response:', { data, error });
       if (error) throw error;
 
       if (data && !data.error) {
