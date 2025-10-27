@@ -1326,7 +1326,7 @@ export default function CampaignEoaManager() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingEoa ? "Edit Event/Action" : "Create Event/Action"}
+              {editingEoa ? "Edit Event/Action" : `Create Event/Action for Campaign: ${campaign?.title || ""}`}
             </DialogTitle>
             <DialogDescription>
               {editingEoa ? "Update the event or action details below." : "Add a new event or action to this campaign."}
