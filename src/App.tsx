@@ -12,10 +12,8 @@ import DeckManagement from "./pages/DeckManagement";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
-import DeckBuilder from "./pages/DeckBuilder";
 import DeckViewer from "./pages/DeckViewer";
 import DeckEditor from "./pages/DeckEditor";
-import DeckManager from "./pages/DeckManager";
 import CampaignManager from "./pages/CampaignManager";
 import CampaignEoaManager from "./pages/CampaignEoaManager";
 import CampaignAnalytics from "./pages/CampaignAnalytics";
@@ -57,8 +55,6 @@ const App = () => (
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/deck/:slug?" element={<DeckViewer />} />
                     <Route path="/deck-editor/:slug" element={<DeckEditor />} />
-                    <Route path="/deck-builder/:slug?" element={<DeckBuilder />} />
-                    <Route path="/deck-manager" element={<DeckManager />} />
                     <Route 
                       path="/campaign/:campaignId" 
                       element={

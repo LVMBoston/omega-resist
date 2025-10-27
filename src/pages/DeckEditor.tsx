@@ -135,6 +135,7 @@ export default function DeckEditor() {
   const [pendingUploads, setPendingUploads] = useState<{ file: File | Blob; position?: number }[]>([]);
   const [pendingDeletes, setPendingDeletes] = useState<Slide[]>([]);
   const [hotspotChanges, setHotspotChanges] = useState<{ [slideId: string]: any }>({});
+  const [hasDeployedTokens, setHasDeployedTokens] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -236,6 +237,20 @@ export default function DeckEditor() {
         eoas?.map((eoa: any) => eoa.campaigns?.title).filter(Boolean) || []
       )];
       setCampaigns(uniqueCampaigns);
+
+      // Check if any L00 tokens exist for this deck
+      const { data: tokens, error: tokenError } = await supabase
+        .from('tokens')
+        .select('id')
+        .eq('deck_slug', slug)
+        .eq('level', 0)
+        .limit(1);
+
+      if (!tokenError && tokens && tokens.length > 0) {
+        setHasDeployedTokens(true);
+      } else {
+        setHasDeployedTokens(false);
+      }
     } catch (error: any) {
       console.error('Error fetching deck usage:', error);
     }
@@ -680,7 +695,54 @@ export default function DeckEditor() {
         }
       }
 
-      toast.success('All changes saved successfully');
+      // Enhanced toast for deployed campaigns
+      if (hasDeployedTokens && campaigns.length > 0) {
+        toast.success(
+          <div className="space-y-3 text-sm">
+            <p className="font-medium text-base">📦 Deck Saved - Changes Staged</p>
+            <p>Changes saved but not yet live in the field.</p>
+            
+            <div className="bg-muted/50 rounded p-2 space-y-1">
+              <div className="font-semibold">Affected Campaigns:</div>
+              <ul className="list-disc list-inside text-muted-foreground">
+                {campaigns.slice(0, 3).map((campaign, i) => (
+                  <li key={i}>{campaign}</li>
+                ))}
+                {campaigns.length > 3 && (
+                  <li>...and {campaigns.length - 3} more</li>
+                )}
+              </ul>
+            </div>
+
+            <div className="border-l-2 border-blue-500 pl-3 space-y-1">
+              <div className="font-semibold">Next Steps to Deploy Changes:</div>
+              <ol className="list-decimal list-inside text-muted-foreground space-y-0.5 text-xs">
+                <li>Go to Campaign Detail page (/campaign/:campaignId)</li>
+                <li>Click "Save and Deploy"</li>
+                <li>Confirm the deployment</li>
+              </ol>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded p-2">
+              <div className="font-semibold text-xs">What happens when you deploy:</div>
+              <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
+                <li>Existing QR codes continue to work</li>
+                <li>New L00 tokens generated for each EOA</li>
+                <li>Updates visible on next scan/view</li>
+              </ul>
+            </div>
+          </div>,
+          { duration: 10000 }
+        );
+      } else {
+        // Simple toast for non-deployed or unused decks
+        toast.success(
+          eoaCount > 0 
+            ? `All changes saved successfully. This deck is assigned to ${eoaCount} event(s). Create tokens when ready.`
+            : "All changes saved successfully. This deck is not yet assigned to any campaigns."
+        );
+      }
+
       setPendingUploads([]);
       setPendingDeletes([]);
       setHotspotChanges({});
