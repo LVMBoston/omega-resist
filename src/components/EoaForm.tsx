@@ -98,11 +98,26 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     setFetchingMobilize(true);
     try {
-      const { data, error } = await supabase.functions.invoke('fetch-mobilize-event', {
-        body: { mobilizeCode: formData.mobilize_code }
-      });
+      // Direct fetch to avoid preview environment issues
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-mobilize-event`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ mobilizeCode: formData.mobilize_code })
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
 
       if (data && !data.error) {
         setFormData(prev => ({
