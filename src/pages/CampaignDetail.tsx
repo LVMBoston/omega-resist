@@ -30,7 +30,7 @@ export default function CampaignDetail() {
       <main className="container mx-auto px-6 py-8">
         <div className="mb-6">
           <h1 className="text-4xl font-bold mb-2">
-            {campaign?.title || "Campaign"}
+            Create Event/Action for Campaign: {campaign?.title || "Campaign"}
           </h1>
         </div>
 
