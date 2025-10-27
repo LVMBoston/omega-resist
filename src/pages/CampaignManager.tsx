@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -16,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 interface Campaign {
   id: string;
   code: string;
@@ -397,6 +399,13 @@ export default function CampaignManager() {
     const [deckSlides, setDeckSlides] = useState<any[]>([]);
     const [loadingDeck, setLoadingDeck] = useState(false);
     const [deckSlug, setDeckSlug] = useState<string | null>(null);
+    const [deploymentState, setDeploymentState] = useState<{
+      ready: boolean;
+      hasExistingTokens: boolean;
+      readyEoas: number;
+      totalEoas: number;
+    }>({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0 });
+    const [deploying, setDeploying] = useState(false);
 
     const {
       attributes,
@@ -407,24 +416,150 @@ export default function CampaignManager() {
       isDragging,
     } = useSortable({ id: campaign.id });
 
-    // Fetch deck slug when component mounts
+    // Fetch deck slug and deployment state when component mounts
     useEffect(() => {
-      const fetchDeckSlug = async () => {
+      const fetchCampaignData = async () => {
+        // Fetch deck slug
         const { data: eoaData } = await supabase
           .from("events_actions")
           .select("assigned_deck_slug")
           .eq("campaign_id", campaign.id)
           .not("assigned_deck_slug", "is", null)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (eoaData?.assigned_deck_slug) {
           setDeckSlug(eoaData.assigned_deck_slug);
         }
+
+        // Check deployment state
+        await checkDeploymentState();
       };
 
-      fetchDeckSlug();
+      fetchCampaignData();
     }, [campaign.id]);
+
+    const checkDeploymentState = async () => {
+      // Get all EoAs for campaign
+      const { data: eoas } = await supabase
+        .from("events_actions")
+        .select("id, mobilize_code, assigned_deck_slug")
+        .eq("campaign_id", campaign.id);
+      
+      if (!eoas || eoas.length === 0) {
+        setDeploymentState({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0 });
+        return;
+      }
+      
+      // Check if all EoAs have required fields
+      const readyEoas = eoas.filter(eoa => eoa.mobilize_code && eoa.assigned_deck_slug);
+      const allReady = readyEoas.length === eoas.length;
+      
+      if (!allReady) {
+        setDeploymentState({ 
+          ready: false, 
+          hasExistingTokens: false, 
+          readyEoas: readyEoas.length, 
+          totalEoas: eoas.length 
+        });
+        return;
+      }
+      
+      // Check if any L00 tokens exist
+      const { data: tokens } = await supabase
+        .from("tokens")
+        .select("id")
+        .eq("level", 0)
+        .in("eoa_id", eoas.map(e => e.id))
+        .limit(1);
+      
+      setDeploymentState({
+        ready: true,
+        hasExistingTokens: (tokens?.length ?? 0) > 0,
+        readyEoas: readyEoas.length,
+        totalEoas: eoas.length
+      });
+    };
+
+    const handleDeploy = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeploying(true);
+
+      try {
+        // Get all EoAs for campaign
+        const { data: eoas } = await supabase
+          .from("events_actions")
+          .select("*")
+          .eq("campaign_id", campaign.id)
+          .not("mobilize_code", "is", null)
+          .not("assigned_deck_slug", "is", null);
+
+        if (!eoas || eoas.length === 0) {
+          toast({
+            variant: "destructive",
+            title: "No EoAs to Deploy",
+            description: "No events/actions found with required fields"
+          });
+          return;
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Bulk mint all L00 tokens
+        for (const eoa of eoas) {
+          try {
+            // Import mintL00 function
+            const { mintL00 } = await import("@/lib/virality/mint");
+            await mintL00(
+              {
+                eoaId: eoa.id,
+                deckSlug: eoa.assigned_deck_slug!,
+                utmMedium: "qr"
+              },
+              { lazy: false }
+            );
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to mint L00 for ${eoa.title}:`, error);
+            errorCount++;
+          }
+        }
+
+        // Show appropriate toast based on deployment state
+        if (deploymentState.hasExistingTokens) {
+          toast({
+            title: "Campaign Updated Successfully",
+            description: "All existing QR codes and links will continue to work. They now point to your updated decks/content.",
+            duration: 6000,
+          });
+        } else {
+          toast({
+            title: "Campaign Deployed",
+            description: `Successfully minted ${successCount} L00 tokens`,
+          });
+        }
+
+        if (errorCount > 0) {
+          toast({
+            variant: "destructive",
+            title: "Partial Deployment",
+            description: `${errorCount} tokens failed to generate`,
+          });
+        }
+
+        // Refresh deployment state
+        await checkDeploymentState();
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Deployment Failed",
+          description: error.message,
+        });
+      } finally {
+        setDeploying(false);
+      }
+    };
     
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -551,15 +686,62 @@ export default function CampaignManager() {
                   <p className="font-medium">{formatDateWithTime(stats?.latestActive || null)}</p>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={handleViewDeck}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                {deckSlug ? `View ${deckSlug}` : "View Deck"}
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={handleViewDeck}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  {deckSlug ? `View ${deckSlug}` : "View Deck"}
+                </Button>
+                
+                {deploymentState.ready ? (
+                  <Button
+                    variant={deploymentState.hasExistingTokens ? "default" : "default"}
+                    size="sm"
+                    className={cn(
+                      "w-full",
+                      deploymentState.hasExistingTokens && "bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800"
+                    )}
+                    onClick={handleDeploy}
+                    disabled={deploying}
+                  >
+                    {deploying ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deploying...
+                      </>
+                    ) : deploymentState.hasExistingTokens ? (
+                      "Review before Deployment"
+                    ) : (
+                      "Ready to Deploy"
+                    )}
+                  </Button>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            disabled
+                          >
+                            Not Ready to Deploy
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
+                        <p className="text-xs">Missing Mobilize Code or Deck</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1089,35 +1089,20 @@ export default function CampaignEoaManager() {
   };
 
   const getMintReadiness = (eoa: EventAction) => {
-    const hasMobilizeCode = !!eoa.mobilize_code;
-    const hasDeck = !!eoa.assigned_deck_slug;
     const tokenData = l00Tokens[eoa.id];
     const isMinted = !!tokenData;
     
     if (isMinted) {
-      // Check if token is invalidated or needs regeneration
-      if (tokenData.invalidated_at || tokenData.needs_regeneration) {
-        return { 
-          status: "outdated", 
-          label: "Deck Updated - Regenerate", 
-          icon: AlertCircle, 
-          className: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200" 
-        };
-      }
       return { status: "minted", label: "Minted", icon: Lock, className: "bg-muted text-muted-foreground" };
     }
     
-    if (hasMobilizeCode && hasDeck) {
-      return { status: "ready", label: "Ready to Mint", icon: CheckCircle2, className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200" };
-    }
-    
     const missing = [];
-    if (!hasMobilizeCode) missing.push("Mobilize Code");
-    if (!hasDeck) missing.push("Deck");
+    if (!eoa.mobilize_code) missing.push("Mobilize Code");
+    if (!eoa.assigned_deck_slug) missing.push("Deck");
     
     return { 
-      status: "incomplete", 
-      label: `Missing: ${missing.join(", ")}`, 
+      status: "needs-minting", 
+      label: missing.length > 0 ? `Missing: ${missing.join(", ")}` : "Needs Minting", 
       icon: AlertCircle, 
       className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200" 
     };
