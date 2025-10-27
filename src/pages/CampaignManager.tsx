@@ -404,7 +404,8 @@ export default function CampaignManager() {
       hasExistingTokens: boolean;
       readyEoas: number;
       totalEoas: number;
-    }>({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0 });
+      lastDeployed: string | null;
+    }>({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0, lastDeployed: null });
     const [deploying, setDeploying] = useState(false);
 
     const {
@@ -447,7 +448,7 @@ export default function CampaignManager() {
         .eq("campaign_id", campaign.id);
       
       if (!eoas || eoas.length === 0) {
-        setDeploymentState({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0 });
+        setDeploymentState({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0, lastDeployed: null });
         return;
       }
       
@@ -460,24 +461,29 @@ export default function CampaignManager() {
           ready: false, 
           hasExistingTokens: false, 
           readyEoas: readyEoas.length, 
-          totalEoas: eoas.length 
+          totalEoas: eoas.length,
+          lastDeployed: null
         });
         return;
       }
       
-      // Check if any L00 tokens exist
+      // Check if any L00 tokens exist and get most recent deployment
       const { data: tokens } = await supabase
         .from("tokens")
-        .select("id")
+        .select("id, minted_at")
         .eq("level", 0)
         .in("eoa_id", eoas.map(e => e.id))
+        .order("minted_at", { ascending: false })
         .limit(1);
+      
+      const lastDeployed = tokens && tokens.length > 0 ? tokens[0].minted_at : null;
       
       setDeploymentState({
         ready: true,
         hasExistingTokens: (tokens?.length ?? 0) > 0,
         readyEoas: readyEoas.length,
-        totalEoas: eoas.length
+        totalEoas: eoas.length,
+        lastDeployed
       });
     };
 
@@ -698,27 +704,35 @@ export default function CampaignManager() {
                 </Button>
                 
                 {deploymentState.ready ? (
-                  <Button
-                    variant={deploymentState.hasExistingTokens ? "default" : "default"}
-                    size="sm"
-                    className={cn(
-                      "w-full",
-                      deploymentState.hasExistingTokens && "bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800"
-                    )}
-                    onClick={handleDeploy}
-                    disabled={deploying}
-                  >
-                    {deploying ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deploying...
-                      </>
-                    ) : deploymentState.hasExistingTokens ? (
-                      "Review before Deployment"
-                    ) : (
-                      "Ready to Deploy"
-                    )}
-                  </Button>
+                  deploymentState.lastDeployed ? (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      Deployed: {new Date(deploymentState.lastDeployed).toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric', 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      })}
+                    </div>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleDeploy}
+                      disabled={deploying}
+                    >
+                      {deploying ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deploying...
+                        </>
+                      ) : (
+                        "Ready to Deploy"
+                      )}
+                    </Button>
+                  )
                 ) : (
                   <TooltipProvider>
                     <Tooltip>
