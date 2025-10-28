@@ -470,14 +470,17 @@ export const InteractiveSlideOverlay = ({
             key={hotspot.id}
             onClick={handleInteraction}
             onTouchStart={handleInteraction}
-            className="absolute pointer-events-auto bg-yellow-400/10 border-2 border-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30 transition-colors rounded-md flex items-center justify-center font-medium touch-manipulation cursor-pointer p-2"
+            className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
             style={{
               left: `${left}px`,
               top: `${top}px`,
               width: `${buttonWidth}px`,
               height: `${buttonHeight}px`,
-              WebkitTapHighlightColor: 'rgba(250, 204, 21, 0.2)',
+              WebkitTapHighlightColor: 'transparent',
               touchAction: 'manipulation',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
             }}
           >
             {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
