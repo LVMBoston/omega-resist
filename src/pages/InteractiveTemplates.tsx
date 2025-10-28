@@ -363,7 +363,8 @@ export default function InteractiveTemplates() {
         thumbnailUrl = await generateAndUploadThumbnail(
           formData.image_url,
           formData.hotspots,
-          formData.slug
+          formData.slug,
+          () => {} // No selection to clear when creating from form
         );
       } catch (error: any) {
         console.error("Thumbnail generation failed:", error);

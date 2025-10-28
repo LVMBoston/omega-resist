@@ -622,8 +622,15 @@ export const FullResolutionHotspotEditor = ({
  */
 export const generateThumbnail = async (
   baseImageUrl: string,
-  hotspots: Hotspot[]
+  hotspots: Hotspot[],
+  clearSelection?: () => void
 ): Promise<Blob> => {
+  // Clear any selection before generating thumbnail
+  if (clearSelection) {
+    clearSelection();
+    // Small delay to ensure UI updates
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -743,9 +750,10 @@ export const uploadThumbnail = async (
 export const generateAndUploadThumbnail = async (
   imageUrl: string,
   hotspots: Hotspot[],
-  templateSlug: string
+  templateSlug: string,
+  clearSelection?: () => void
 ): Promise<string> => {
-  const thumbnailBlob = await generateThumbnail(imageUrl, hotspots);
+  const thumbnailBlob = await generateThumbnail(imageUrl, hotspots, clearSelection);
   const thumbnailUrl = await uploadThumbnail(thumbnailBlob, templateSlug);
   return thumbnailUrl;
 };
