@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info, Eye, FolderKanban } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -56,6 +56,7 @@ export default function InteractiveTemplates() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [showingHotspots, setShowingHotspots] = useState<string | null>(null);
+  const [viewingCampaigns, setViewingCampaigns] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -78,6 +79,57 @@ export default function InteractiveTemplates() {
       
       if (error) throw error;
       return data as Template[];
+    },
+  });
+
+  const { data: templateCampaigns } = useQuery({
+    queryKey: ["template-campaigns", viewingCampaigns],
+    enabled: !!viewingCampaigns,
+    queryFn: async () => {
+      if (!viewingCampaigns) return [];
+      
+      // Step 1: Find slide_items using this template
+      const { data: slideItems, error: slideError } = await supabase
+        .from("slide_items")
+        .select("deck_slug")
+        .eq("template_id", viewingCampaigns);
+      
+      if (slideError) throw slideError;
+      if (!slideItems || slideItems.length === 0) return [];
+      
+      const deckSlugs = [...new Set(slideItems.map(item => item.deck_slug))];
+      
+      // Step 2: Find deck_eoa_assignments for these decks
+      const { data: assignments, error: assignError } = await supabase
+        .from("deck_eoa_assignments")
+        .select("eoa_id")
+        .in("deck_slug", deckSlugs);
+      
+      if (assignError) throw assignError;
+      if (!assignments || assignments.length === 0) return [];
+      
+      const eoaIds = [...new Set(assignments.map(a => a.eoa_id))];
+      
+      // Step 3: Find events_actions for these EOAs
+      const { data: eventsActions, error: eaError } = await supabase
+        .from("events_actions")
+        .select("campaign_id")
+        .in("id", eoaIds);
+      
+      if (eaError) throw eaError;
+      if (!eventsActions || eventsActions.length === 0) return [];
+      
+      const campaignIds = [...new Set(eventsActions.map(ea => ea.campaign_id))];
+      
+      // Step 4: Get campaign details
+      const { data: campaigns, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("id, code, title, description")
+        .in("id", campaignIds)
+        .order("title");
+      
+      if (campaignError) throw campaignError;
+      return campaigns || [];
     },
   });
 
@@ -568,7 +620,15 @@ export default function InteractiveTemplates() {
                     {template.description}
                   </p>
                 )}
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewingCampaigns(template.id)}
+                  >
+                    <FolderKanban className="h-4 w-4 mr-2" />
+                    Campaigns
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -595,6 +655,42 @@ export default function InteractiveTemplates() {
           )})}
         </div>
       )}
+
+      {/* Campaign Usage Dialog */}
+      <Dialog open={!!viewingCampaigns} onOpenChange={(open) => !open && setViewingCampaigns(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Campaigns Using This Template</DialogTitle>
+            <DialogDescription>
+              {templates?.find(t => t.id === viewingCampaigns)?.name || 'Template'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {!templateCampaigns ? (
+              <div className="text-center py-8 text-muted-foreground">Loading campaigns...</div>
+            ) : templateCampaigns.length === 0 ? (
+              <div className="text-center py-8">
+                <FolderKanban className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">This template is not currently used in any campaigns</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {templateCampaigns.map((campaign: any) => (
+                  <Card key={campaign.id}>
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-base">{campaign.title}</CardTitle>
+                      <CardDescription className="text-sm">
+                        Code: {campaign.code}
+                        {campaign.description && ` • ${campaign.description}`}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
