@@ -32,23 +32,8 @@ export async function mintL00(
 ) {
   const { eoaId, deckSlug, utmMedium } = MintL00Input.parse(input);
   
-  // Step 1: Invalidate existing L00 tokens for this EoA (not the deck)
-  const { error: invalidateError } = await supabase
-    .from("tokens")
-    .update({ 
-      invalidated_at: new Date().toISOString(),
-      needs_regeneration: false // Mark as obsolete, not needing regeneration
-    })
-    .eq("eoa_id", eoaId)
-    .eq("level", 0)
-    .is("invalidated_at", null);
-  
-  if (invalidateError) {
-    console.warn("Failed to invalidate old tokens:", invalidateError);
-    // Continue anyway - minting is more important
-  }
-  
-  // Step 2: Mint new token with deck version tracking
+  // Mint new token (old L00 tokens are automatically replaced by RPC function)
+  // The mint_l00 function deletes existing L00 tokens for this EoA before creating new ones
   const { data, error } = await supabase.rpc("mint_l00", {
     _eoa_id: eoaId,
     _deck_slug: deckSlug,
@@ -63,14 +48,14 @@ export async function mintL00(
   const result = Array.isArray(data) ? data[0] : data;
   const tokenData = MintL00Output.parse(result);
   
-  // Step 3: Update token with current deck version (timestamp)
+  // Update token with current deck version (timestamp)
   const deckVersion = new Date().toISOString();
   await supabase
     .from("tokens")
     .update({ deck_version_at_mint: deckVersion })
     .eq("token", tokenData.token);
 
-  // Step 4: Shorten URL (lazy or blocking)
+  // Shorten URL (lazy or blocking)
   if (options?.lazy) {
     // Background shortening (non-blocking)
     shortenUrl(tokenData.full_url)

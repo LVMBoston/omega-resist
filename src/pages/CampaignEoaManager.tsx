@@ -85,8 +85,6 @@ export default function CampaignEoaManager() {
     url: string; 
     shortUrl?: string; 
     shorteningInProgress?: boolean;
-    invalidated_at?: string | null;
-    needs_regeneration?: boolean;
   }>>({});
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [selectedTokenForDisplay, setSelectedTokenForDisplay] = useState<{
@@ -177,7 +175,7 @@ export default function CampaignEoaManager() {
   const fetchExistingTokens = async () => {
     const { data, error } = await supabase
       .from("tokens")
-      .select("eoa_id, token, full_url, invalidated_at, needs_regeneration")
+      .select("eoa_id, token, full_url")
       .eq("level", 0);
 
     if (error) {
@@ -199,14 +197,12 @@ export default function CampaignEoaManager() {
         shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
       });
 
-      const tokenMap: Record<string, { token: string; url: string; shortUrl?: string; invalidated_at?: string | null; needs_regeneration?: boolean }> = {};
+      const tokenMap: Record<string, { token: string; url: string; shortUrl?: string }> = {};
       data.forEach(t => {
         tokenMap[t.eoa_id] = { 
           token: t.token, 
           url: t.full_url,
-          shortUrl: shortUrlMap.get(t.full_url),
-          invalidated_at: t.invalidated_at,
-          needs_regeneration: t.needs_regeneration
+          shortUrl: shortUrlMap.get(t.full_url)
         };
       });
       setL00Tokens(tokenMap);

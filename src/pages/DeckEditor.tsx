@@ -13,6 +13,8 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
+import { DeploymentConfirmDialog } from "@/components/DeploymentConfirmDialog";
+import { mintL00 } from "@/lib/virality/mint";
 
 interface Slide {
   id: string;
@@ -136,6 +138,9 @@ export default function DeckEditor() {
   const [pendingDeletes, setPendingDeletes] = useState<Slide[]>([]);
   const [hotspotChanges, setHotspotChanges] = useState<{ [slideId: string]: any }>({});
   const [hasDeployedTokens, setHasDeployedTokens] = useState(false);
+  const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string }>>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -225,12 +230,18 @@ export default function DeckEditor() {
     try {
       const { data: eoas, error } = await supabase
         .from('events_actions')
-        .select('id, campaign_id, campaigns(title)')
+        .select('id, title, campaign_id, campaigns(title)')
         .eq('assigned_deck_slug', slug);
 
       if (error) throw error;
 
       setEoaCount(eoas?.length || 0);
+      
+      // Store affected EoAs for deployment
+      setAffectedEoas(eoas?.map((eoa: any) => ({ 
+        id: eoa.id, 
+        title: eoa.title 
+      })) || []);
       
       // Get unique campaign titles
       const uniqueCampaigns = [...new Set(
@@ -695,45 +706,10 @@ export default function DeckEditor() {
         }
       }
 
-      // Enhanced toast for deployed campaigns
+      // Check if deployment is needed
       if (hasDeployedTokens && campaigns.length > 0) {
-        toast.success(
-          <div className="space-y-3 text-sm">
-            <p className="font-medium text-base">📦 Deck Saved - Changes Staged</p>
-            <p>Changes saved but not yet live in the field.</p>
-            
-            <div className="bg-muted/50 rounded p-2 space-y-1">
-              <div className="font-semibold">Affected Campaigns:</div>
-              <ul className="list-disc list-inside text-muted-foreground">
-                {campaigns.slice(0, 3).map((campaign, i) => (
-                  <li key={i}>{campaign}</li>
-                ))}
-                {campaigns.length > 3 && (
-                  <li>...and {campaigns.length - 3} more</li>
-                )}
-              </ul>
-            </div>
-
-            <div className="border-l-2 border-blue-500 pl-3 space-y-1">
-              <div className="font-semibold">Next Steps to Deploy Changes:</div>
-              <ol className="list-decimal list-inside text-muted-foreground space-y-0.5 text-xs">
-                <li>Go to Campaign Detail page (/campaign/:campaignId)</li>
-                <li>Click "Save and Deploy"</li>
-                <li>Confirm the deployment</li>
-              </ol>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded p-2">
-              <div className="font-semibold text-xs">What happens when you deploy:</div>
-              <ul className="list-disc list-inside text-xs mt-1 space-y-0.5">
-                <li>Existing QR codes continue to work</li>
-                <li>New L00 tokens generated for each EOA</li>
-                <li>Updates visible on next scan/view</li>
-              </ul>
-            </div>
-          </div>,
-          { duration: Infinity }
-        );
+        // Open deployment dialog instead of showing toast
+        setDeploymentDialogOpen(true);
       } else {
         // Simple toast for non-deployed or unused decks
         toast.success(
@@ -754,6 +730,53 @@ export default function DeckEditor() {
       toast.error('Failed to save some changes');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeployConfirm = async () => {
+    if (!slug) return;
+
+    setIsDeploying(true);
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      // Regenerate tokens for all affected EoAs
+      for (const eoa of affectedEoas) {
+        try {
+          await mintL00({
+            eoaId: eoa.id,
+            deckSlug: slug,
+            utmMedium: "qr"
+          });
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to mint token for EoA ${eoa.id}:`, error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(
+          `Deployed! ${successCount} event${successCount !== 1 ? 's' : ''} updated. Changes are now live.`,
+          { duration: 5000 }
+        );
+      }
+
+      if (failCount > 0) {
+        toast.error(
+          `${failCount} event${failCount !== 1 ? 's' : ''} failed to update. Check console for details.`,
+          { duration: 5000 }
+        );
+      }
+
+      setDeploymentDialogOpen(false);
+      await fetchDeckUsage(); // Refresh to update status
+    } catch (error) {
+      console.error('Deployment error:', error);
+      toast.error('Deployment failed. Please try again.');
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -1064,6 +1087,16 @@ export default function DeckEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Deployment Confirmation Dialog */}
+      <DeploymentConfirmDialog
+        open={deploymentDialogOpen}
+        onOpenChange={setDeploymentDialogOpen}
+        onConfirm={handleDeployConfirm}
+        eoaCount={eoaCount}
+        campaigns={campaigns}
+        isDeploying={isDeploying}
+      />
     </div>
   );
 }
