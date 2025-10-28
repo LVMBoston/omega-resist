@@ -372,41 +372,7 @@ export default function DeckViewer() {
 
   return (
     <div className="min-h-screen bg-background">
-      {!effectiveFullscreen && (
-        <header className="border-b bg-card">
-          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{slug}</h1>
-                <p className="text-sm text-muted-foreground">{slides.length} slides</p>
-              </div>
-            </div>
-            {(userRole === "admin" || userRole === "manager") && !viralToken && (
-              <Button 
-                onClick={handleGenerateTestToken}
-                disabled={generatingToken}
-                size="sm"
-                variant="outline"
-              >
-                {generatingToken ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Generate Test Token"
-                )}
-              </Button>
-            )}
-          </div>
-        </header>
-      )}
-
-      <main className="h-[calc(100vh-73px)] flex items-center justify-center">
+      <main className="h-screen flex items-center justify-center">
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">

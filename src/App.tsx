@@ -38,105 +38,112 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <div className="flex-1 flex flex-col">
-                <header className="sticky top-0 z-10 h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <div className="flex h-14 items-center px-4">
-                    <SidebarTrigger />
+          <Routes>
+            {/* Deck viewer without sidebar */}
+            <Route path="/deck/:slug?" element={<DeckViewer />} />
+            <Route path="/s/:code" element={<ShortUrlRedirect />} />
+            <Route path="/shared/:shareCode" element={<SharedDashboard />} />
+            
+            {/* All other routes with sidebar */}
+            <Route path="*" element={
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full">
+                  <AppSidebar />
+                  <div className="flex-1 flex flex-col">
+                    <header className="sticky top-0 z-10 h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                      <div className="flex h-14 items-center px-4">
+                        <SidebarTrigger />
+                      </div>
+                    </header>
+                    <main className="flex-1">
+                      <Routes>
+                        <Route path="/" element={<Navigate to="/campaign-config" replace />} />
+                        <Route path="/deck-management" element={<DeckManagement />} />
+                        <Route path="/interactive-templates" element={<InteractiveTemplates />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/deck-editor/:slug" element={<DeckEditor />} />
+                        <Route 
+                          path="/campaign/:campaignId" 
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <CampaignDetail />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route path="/qr-debug" element={<QrDebugTool />} />
+                        <Route path="/activity-monitor" element={<ActivityMonitor />} />
+                        <Route 
+                          path="/campaign-analytics" 
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <CampaignAnalytics />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/campaign-dashboard" 
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <CampaignDashboard />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/campaign-config" 
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <CampaignManager />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/simulator" 
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <Simulator />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/settings"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <Settings />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/admin"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <Admin />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/virality-dashboard"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <ViralityDashboard />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/zip-code-importer"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <ZipCodeImporter />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
                   </div>
-                </header>
-                <main className="flex-1">
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/campaign-config" replace />} />
-                    <Route path="/deck-management" element={<DeckManagement />} />
-                    <Route path="/interactive-templates" element={<InteractiveTemplates />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/deck/:slug?" element={<DeckViewer />} />
-                    <Route path="/deck-editor/:slug" element={<DeckEditor />} />
-                    <Route 
-                      path="/campaign/:campaignId" 
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <CampaignDetail />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route path="/qr-debug" element={<QrDebugTool />} />
-                    <Route path="/s/:code" element={<ShortUrlRedirect />} />
-                    <Route path="/activity-monitor" element={<ActivityMonitor />} />
-                    <Route path="/shared/:shareCode" element={<SharedDashboard />} />
-                    <Route 
-                      path="/campaign-analytics" 
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <CampaignAnalytics />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/campaign-dashboard" 
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <CampaignDashboard />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/campaign-config" 
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <CampaignManager />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/simulator" 
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <Simulator />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/settings"
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <Settings />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/admin"
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <Admin />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/virality-dashboard"
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <ViralityDashboard />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/zip-code-importer"
-                      element={
-                        <ProtectedRoute requiredRole="admin">
-                          <ZipCodeImporter />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-              </div>
-            </div>
-          </SidebarProvider>
+                </div>
+              </SidebarProvider>
+            } />
+          </Routes>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
