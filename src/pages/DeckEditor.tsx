@@ -1015,11 +1015,11 @@ export default function DeckEditor() {
 
       {/* Template Selection Dialog - Add New Slide */}
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add Interactive Slide from Template</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-1 pr-2">
             {templates.length === 0 ? (
               <div className="col-span-2 text-center py-8 text-muted-foreground">
                 No valid templates available. Templates must have at least one hotspot configured.
@@ -1052,12 +1052,12 @@ export default function DeckEditor() {
 
       {/* Template Picker Dialog - Apply to Existing Slide */}
       <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Pick Interactive Template</DialogTitle>
             <p className="text-sm text-muted-foreground">Choose a template to apply to this slide</p>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-1 pr-2">
             {templates.length === 0 ? (
               <div className="col-span-2 text-center py-8 text-muted-foreground">
                 No valid templates available. Templates must have at least one hotspot configured.
