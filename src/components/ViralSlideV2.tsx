@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { InteractiveSlideOverlay } from "./InteractiveSlideOverlay";
+import { InteractiveShareSlide } from "./InteractiveShareSlide";
+import { DisplayOnlySlide } from "./DisplayOnlySlide";
 import { Loader2 } from "lucide-react";
+import { TemplateType, DisplayOnlyConfig } from "@/types/viralTemplates";
 
 // Module loaded timestamp - 2025-10-25T19:20:00Z
 console.log("🚀🚀🚀 ViralSlideV2 MODULE LOADED - TIMESTAMP: 2025-10-25T19:20:00Z 🚀🚀🚀");
@@ -26,6 +28,8 @@ interface Hotspot {
 interface ViralConfig {
   image_url: string;
   hotspots: Hotspot[];
+  template_type?: TemplateType;
+  config?: any;
 }
 
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
@@ -108,6 +112,8 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           setConfig({
             image_url: legacyData.image_url,
             hotspots: mappedHotspots,
+            template_type: (legacyData.template_type as TemplateType) || 'interactive_share',
+            config: legacyData.config || {},
           });
         } else {
           console.error(`❌ ${COMPONENT_VERSION} - No legacy config found either. Slide cannot be rendered.`);
@@ -146,6 +152,8 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         setConfig({
           image_url: templateData.image_url,
           hotspots: mappedHotspots,
+          template_type: (templateData.template_type as TemplateType) || 'interactive_share',
+          config: templateData.config || {},
         });
       } else {
         console.warn(`⚠️ ${COMPONENT_VERSION} - Template query returned null for:`, slideData.template_id);
@@ -187,7 +195,9 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
     );
   }
 
-  console.log(`🎨 ${COMPONENT_VERSION} - Rendering with ${config.hotspots.length} hotspots`);
+  const templateType = config.template_type || 'interactive_share';
+  
+  console.log(`🎨 ${COMPONENT_VERSION} - Rendering template type: ${templateType}`);
   console.log("📱 Device info:", {
     userAgent: navigator.userAgent,
     isIPhone: navigator.userAgent.includes('iPhone'),
@@ -198,25 +208,30 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
     }
   });
 
-  return (
-    <div className="relative w-full h-full bg-black flex items-center justify-center">
-      <img
-        src={config.image_url}
-        alt="Viral slide"
-        className="max-w-full max-h-full object-contain"
-        onLoad={() => {
-          console.log("🖼️ ViralSlide image loaded");
-          setImageLoaded(true);
-        }}
+  // Branch rendering based on template_type
+  if (templateType === 'display_only') {
+    return <DisplayOnlySlide imageUrl={config.image_url} config={config.config as DisplayOnlyConfig || { type: 'display_only' }} />;
+  }
+  
+  if (templateType === 'interactive_share' || !templateType) {
+    return (
+      <InteractiveShareSlide 
+        imageUrl={config.image_url} 
+        hotspots={config.hotspots} 
+        deckSlug={deckSlug}
+        viralToken={viralToken}
       />
-      {overlayReady && config.hotspots.length > 0 && (
-        <InteractiveSlideOverlay
-          hotspots={config.hotspots}
-          deckSlug={deckSlug}
-          imageUrl={config.image_url}
-          viralToken={viralToken}
-        />
-      )}
+    );
+  }
+
+  // Fallback for unknown types
+  return (
+    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+      <p className="text-destructive font-semibold mb-2">Unknown Template Type</p>
+      <p className="text-muted-foreground text-sm mb-4">
+        Template type "{templateType}" is not supported.
+      </p>
+      <p className="text-xs text-muted-foreground">Slide ID: {slideId}</p>
     </div>
   );
 };

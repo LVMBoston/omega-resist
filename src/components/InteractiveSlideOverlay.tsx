@@ -9,17 +9,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
-
-interface Hotspot {
-  id: string;
-  iconId: string;
-  type: "sms" | "email" | "social";
-  label: string;
-  x: number; // percentage
-  y: number; // percentage
-  width: number; // percentage
-  height: number; // percentage
-}
+import { Hotspot } from "@/types/viralTemplates";
 
 interface InteractiveSlideOverlayProps {
   hotspots: Hotspot[];
@@ -411,6 +401,9 @@ export const InteractiveSlideOverlay = ({
       case "email":
         return handleEmail;
       case "social":
+      case "external_link":
+      case "form_trigger":
+      case "custom":
         return handleSocial;
       default:
         return handleSocial;

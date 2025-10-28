@@ -616,6 +616,7 @@ export type Database = {
       }
       viral_slide_configs: {
         Row: {
+          config: Json | null
           created_at: string
           deck_slug: string | null
           description: string | null
@@ -626,9 +627,11 @@ export type Database = {
           name: string | null
           slide_id: string | null
           slug: string
+          template_type: string
           updated_at: string
         }
         Insert: {
+          config?: Json | null
           created_at?: string
           deck_slug?: string | null
           description?: string | null
@@ -639,9 +642,11 @@ export type Database = {
           name?: string | null
           slide_id?: string | null
           slug: string
+          template_type?: string
           updated_at?: string
         }
         Update: {
+          config?: Json | null
           created_at?: string
           deck_slug?: string | null
           description?: string | null
@@ -652,6 +657,7 @@ export type Database = {
           name?: string | null
           slide_id?: string | null
           slug?: string
+          template_type?: string
           updated_at?: string
         }
         Relationships: [

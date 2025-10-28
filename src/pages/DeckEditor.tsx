@@ -79,7 +79,7 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
       </div>
       {slide.type === 'spread-word' && (
         <div className="absolute top-1 right-8 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-          Interactive
+          {slide.template_id ? 'Interactive' : 'Legacy'}
         </div>
       )}
       <button

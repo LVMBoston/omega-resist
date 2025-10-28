@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info, Eye } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { TemplateType } from "@/types/viralTemplates";
 
 interface Template {
   id: string;
@@ -22,10 +25,17 @@ interface Template {
   hotspots: any[];
   is_default: boolean;
   created_at: string;
+  template_type?: TemplateType;
+  config?: any;
 }
 
 const isValidInteractiveTemplate = (template: Template): boolean => {
   if (!template.image_url) return false;
+  
+  // Display-only templates don't need hotspots
+  if (template.template_type === 'display_only') return true;
+  
+  // Interactive templates need hotspots
   if (!template.hotspots || template.hotspots.length === 0) return false;
   
   const hasValidHotspots = template.hotspots.every((hotspot: any) => {
@@ -52,6 +62,8 @@ export default function InteractiveTemplates() {
     image_url: "",
     hotspots: [] as any[],
     is_default: false,
+    template_type: "interactive_share" as TemplateType,
+    config: {},
   });
 
   const { data: templates, isLoading } = useQuery({
@@ -89,6 +101,8 @@ export default function InteractiveTemplates() {
           image_url: data.image_url,
           hotspots: data.hotspots,
           is_default: data.is_default,
+          template_type: data.template_type,
+          config: data.config,
         });
       
       if (error) throw error;
@@ -207,6 +221,8 @@ export default function InteractiveTemplates() {
       image_url: "",
       hotspots: [],
       is_default: false,
+      template_type: "interactive_share",
+      config: {},
     });
   };
 
@@ -219,6 +235,8 @@ export default function InteractiveTemplates() {
       image_url: template.image_url,
       hotspots: template.hotspots,
       is_default: template.is_default,
+      template_type: template.template_type || "interactive_share",
+      config: template.config || {},
     });
   };
 
@@ -228,6 +246,16 @@ export default function InteractiveTemplates() {
         variant: "destructive",
         title: "Validation Error",
         description: "Name, slug, and image are required",
+      });
+      return;
+    }
+
+    // Validate interactive templates have hotspots
+    if (formData.template_type === "interactive_share" && (!formData.hotspots || formData.hotspots.length === 0)) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Interactive templates must have at least one hotspot",
       });
       return;
     }
@@ -273,6 +301,30 @@ export default function InteractiveTemplates() {
             </DialogHeader>
             
             <div className="space-y-4">
+              <div>
+                <Label>Template Type</Label>
+                <RadioGroup
+                  value={formData.template_type}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, template_type: value as TemplateType }))}
+                  className="flex gap-4 mt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="interactive_share" id="interactive_share" />
+                    <Label htmlFor="interactive_share" className="cursor-pointer">
+                      Interactive Share
+                      <p className="text-xs text-muted-foreground">With viral hotspots (L01-L03)</p>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="display_only" id="display_only" />
+                    <Label htmlFor="display_only" className="cursor-pointer">
+                      Display Only
+                      <p className="text-xs text-muted-foreground">No interactivity</p>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               <div>
                 <Label htmlFor="name">Template Name</Label>
                 <Input
@@ -331,7 +383,7 @@ export default function InteractiveTemplates() {
                 )}
               </div>
 
-              {formData.image_url && (
+              {formData.image_url && formData.template_type === 'interactive_share' && (
                 <div>
                   <Label>Configure Hotspots</Label>
                   <div className="border rounded-lg p-4 bg-muted">
@@ -384,7 +436,12 @@ export default function InteractiveTemplates() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => (
+          {templates.map((template) => {
+            const templateType = template.template_type || 'interactive_share';
+            const typeBadgeColor = templateType === 'interactive_share' ? 'bg-green-500' : 'bg-blue-500';
+            const typeLabel = templateType === 'interactive_share' ? 'Interactive' : 'Display Only';
+            
+            return (
             <Card key={template.id} className={`relative ${
               !isValidInteractiveTemplate(template) 
                 ? 'bg-red-100 dark:bg-red-950/30' 
@@ -442,8 +499,9 @@ export default function InteractiveTemplates() {
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                       )}
                     </CardTitle>
-                    <CardDescription className="mt-1">
+                    <CardDescription className="mt-1 flex items-center gap-2">
                       {template.slug}
+                      <Badge className={typeBadgeColor}>{typeLabel}</Badge>
                     </CardDescription>
                   </div>
                 </div>
@@ -500,7 +558,7 @@ export default function InteractiveTemplates() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
       )}
     </div>
