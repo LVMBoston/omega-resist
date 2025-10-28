@@ -706,7 +706,7 @@ export default function CampaignManager() {
                 {deploymentState.ready ? (
                   deploymentState.lastDeployed ? (
                     <div className="text-sm text-muted-foreground text-center py-2">
-                      Deployed: {new Date(deploymentState.lastDeployed).toLocaleString('en-US', { 
+                      Status: Deployed {new Date(deploymentState.lastDeployed).toLocaleString('en-US', {
                         month: 'short', 
                         day: 'numeric', 
                         year: 'numeric', 
@@ -729,7 +729,7 @@ export default function CampaignManager() {
                           Deploying...
                         </>
                       ) : (
-                        "Ready to Deploy"
+                        "Status: Ready to Deploy"
                       )}
                     </Button>
                   )
@@ -744,7 +744,7 @@ export default function CampaignManager() {
                             className="w-full"
                             disabled
                           >
-                            Not Ready to Deploy
+                            Status: Not Ready to Deploy
                           </Button>
                         </div>
                       </TooltipTrigger>
