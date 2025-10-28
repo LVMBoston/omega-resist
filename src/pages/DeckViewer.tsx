@@ -371,7 +371,7 @@ export default function DeckViewer() {
   const effectiveFullscreen = isFullscreen || iOSFullscreen;
 
   return (
-    <div className={`min-h-screen bg-background ${iOSFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+    <div className="min-h-screen bg-background">
       {!effectiveFullscreen && (
         <header className="border-b bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -406,7 +406,7 @@ export default function DeckViewer() {
         </header>
       )}
 
-      <main className={effectiveFullscreen ? "h-screen flex items-center justify-center" : "container mx-auto px-6 py-12"}>
+      <main className="h-[calc(100vh-73px)] flex items-center justify-center">
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
@@ -414,8 +414,8 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className={effectiveFullscreen ? "w-full h-full" : "max-w-5xl mx-auto"}>
-            <CarouselContent className={effectiveFullscreen ? "h-full" : ""}>
+          <Carousel className="w-full h-full">
+            <CarouselContent className="h-full">
               {slides.map((slide, index) => {
                 console.log(`🎨 Rendering slide ${index + 1}:`, { 
                   id: slide.id, 
@@ -424,10 +424,10 @@ export default function DeckViewer() {
                   isSpreadWord: slide.type === "spread-word"
                 });
                 return (
-                <CarouselItem key={slide.id} className={effectiveFullscreen ? "h-full" : ""}>
-                  <Card className={effectiveFullscreen ? "h-full border-0 rounded-none" : ""}>
-                    <CardContent className={effectiveFullscreen ? "p-0 h-full" : "p-0"}>
-                      <div className={`relative bg-muted ${effectiveFullscreen ? 'h-full w-full' : 'aspect-video'}`}>
+                <CarouselItem key={slide.id} className="h-full">
+                  <Card className="h-full border-0 rounded-none">
+                    <CardContent className="p-0 h-full">
+                      <div className="relative bg-black h-full w-full">
                         {slide.type === "spread-word" ? (
                           <ViralSlide 
                             key={`viral-${slide.id}`}
@@ -439,7 +439,7 @@ export default function DeckViewer() {
                           <img
                             src={slide.content_url}
                             alt={`Slide ${index + 1}`}
-                            className={`w-full h-full ${effectiveFullscreen ? 'object-contain' : 'object-contain'}`}
+                            className="w-full h-full object-contain"
                             loading="lazy"
                           />
                         )}
@@ -471,11 +471,11 @@ export default function DeckViewer() {
             </CarouselContent>
             <CarouselPrevious 
               data-carousel-prev 
-              className={effectiveFullscreen ? "left-4 -translate-y-1/2" : undefined}
+              className="left-4 -translate-y-1/2"
             />
             <CarouselNext 
               data-carousel-next 
-              className={effectiveFullscreen ? "right-4 -translate-y-1/2" : undefined}
+              className="right-4 -translate-y-1/2"
             />
           </Carousel>
         )}
