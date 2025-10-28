@@ -107,14 +107,17 @@ export function getAllIntersections(hotspots: Hotspot[]): Array<{
 }
 
 /**
- * Check if a hotspot is out of bounds (extends beyond 0-100% range)
+ * Check if a hotspot is out of bounds (extends beyond valid placement area)
+ * Allows 2% padding at top/bottom for labels (reduced from 4%)
  */
 export function isOutOfBounds(hotspot: Hotspot): boolean {
+  const labelPadding = 2; // 2% padding for labels at top/bottom (half of previous 4%)
+  
   return (
     hotspot.x < 0 ||
-    hotspot.y < 0 ||
+    hotspot.y < labelPadding ||
     hotspot.x + hotspot.width > 100 ||
-    hotspot.y + hotspot.height > 100
+    hotspot.y + hotspot.height > 100 - labelPadding
   );
 }
 
@@ -130,10 +133,13 @@ export function detectOutOfBounds(hotspots: Hotspot[]): string[] {
 
 /**
  * Get the maximum allowed size for a hotspot at a given position
+ * Accounts for 2% label padding at top/bottom
  */
 export function getMaxSize(x: number, y: number, aspectRatio: number): { maxWidth: number; maxHeight: number } {
+  const labelPadding = 2; // 2% padding for labels (reduced from 4%)
+  
   const maxWidthFromX = 100 - x;
-  const maxHeightFromY = 100 - y;
+  const maxHeightFromY = (100 - labelPadding) - y;
   
   // Calculate based on aspect ratio constraints
   const maxWidthFromAspect = maxHeightFromY / aspectRatio;

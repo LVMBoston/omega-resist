@@ -105,6 +105,7 @@ export const FullResolutionHotspotEditor = ({
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
+    const labelPadding = 2; // 2% padding for labels (reduced from 4%)
     const rect = imageRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -115,7 +116,7 @@ export const FullResolutionHotspotEditor = ({
       type: selectedIconPreset.type,
       label: selectedIconPreset.label,
       x: Math.max(0, Math.min(100 - selectedIconPreset.width, x)),
-      y: Math.max(0, Math.min(100 - selectedIconPreset.height, y)),
+      y: Math.max(labelPadding, Math.min(100 - labelPadding - selectedIconPreset.height, y)),
       width: selectedIconPreset.width,
       height: selectedIconPreset.height,
       labelPosition: "bottom",
@@ -166,6 +167,7 @@ export const FullResolutionHotspotEditor = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !imageRef.current) return;
     
+    const labelPadding = 2; // 2% padding for labels (reduced from 4%)
     const rect = imageRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left - dragOffset.x;
     const mouseY = e.clientY - rect.top - dragOffset.y;
@@ -176,9 +178,9 @@ export const FullResolutionHotspotEditor = ({
     const hotspot = hotspots.find(h => h.id === isDragging);
     if (!hotspot) return;
     
-    // Constrain to image bounds
+    // Constrain to image bounds with label padding
     const constrainedX = Math.max(0, Math.min(100 - hotspot.width, x));
-    const constrainedY = Math.max(0, Math.min(100 - hotspot.height, y));
+    const constrainedY = Math.max(labelPadding, Math.min(100 - labelPadding - hotspot.height, y));
     
     updateHotspot(isDragging, { x: constrainedX, y: constrainedY });
   };
