@@ -351,7 +351,7 @@ export default function DeckEditor() {
             return;
           }
 
-          // Check aspect ratio tolerance (6%)
+          // Check aspect ratio tolerance (7%)
           const imageAspectRatio = img.width / img.height;
           const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
           const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
@@ -360,11 +360,11 @@ export default function DeckEditor() {
             imageAspectRatio: imageAspectRatio.toFixed(4),
             referenceAspectRatio: referenceAspectRatio.toFixed(4),
             difference: (aspectRatioDiff * 100).toFixed(2) + '%',
-            tolerance: '6%',
-            willPass: aspectRatioDiff <= 0.06
+            tolerance: '7%',
+            willPass: aspectRatioDiff <= 0.07
           });
           
-          if (aspectRatioDiff <= 0.06) {
+          if (aspectRatioDiff <= 0.07) {
             // Aspect ratio is close enough, resize automatically
             try {
               const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
@@ -383,7 +383,7 @@ export default function DeckEditor() {
           } else {
             resolve({
               valid: false,
-              error: `Image aspect ratio differs by ${(aspectRatioDiff * 100).toFixed(2)}% from reference. Must be within 6%.`
+              error: `Image aspect ratio differs by ${(aspectRatioDiff * 100).toFixed(2)}% from reference. Must be within 7%.`
             });
           }
         } else {
