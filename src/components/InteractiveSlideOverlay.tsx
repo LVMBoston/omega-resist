@@ -358,13 +358,12 @@ export const InteractiveSlideOverlay = ({
   };
 
   // Map iconId to actual icon/image
-  const getHotspotIcon = (iconId: string) => {
-    const iconSize = "80%"; // Use percentage of button size
+  const getHotspotIcon = (iconId: string, buttonWidth: number, buttonHeight: number) => {
+    const iconSize = Math.max(Math.min(buttonWidth, buttonHeight) * 0.6, 24);
     const iconStyle = { 
-      width: iconSize, 
-      height: iconSize,
-      maxWidth: '100px',
-      maxHeight: '100px',
+      width: iconSize + 'px', 
+      height: iconSize + 'px',
+      objectFit: 'contain' as const,
     };
     
     switch (iconId) {
@@ -459,7 +458,7 @@ export const InteractiveSlideOverlay = ({
               touchAction: 'manipulation',
             }}
           >
-            {getHotspotIcon(hotspot.iconId)}
+            {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
           </button>
         );
       })}
