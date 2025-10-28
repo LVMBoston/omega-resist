@@ -359,37 +359,59 @@ export const InteractiveSlideOverlay = ({
 
   // Map iconId to actual icon/image
   const getHotspotIcon = (iconId: string, buttonWidth: number, buttonHeight: number) => {
-    const iconSize = Math.max(Math.min(buttonWidth, buttonHeight) * 0.6, 24);
-    const iconStyle = { 
-      width: iconSize + 'px', 
-      height: iconSize + 'px',
+    // Use fixed 40px size for reliable mobile rendering
+    const iconSize = 40;
+    
+    // Wrapper div ensures consistent sizing across all icon types
+    const iconWrapper = (icon: React.ReactNode) => (
+      <div 
+        style={{ 
+          width: `${iconSize}px`, 
+          height: `${iconSize}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {icon}
+      </div>
+    );
+    
+    const imgStyle = {
+      width: `${iconSize}px`,
+      height: `${iconSize}px`,
       objectFit: 'contain' as const,
+    };
+    
+    const svgStyle = {
+      width: `${iconSize}px`,
+      height: `${iconSize}px`,
     };
     
     switch (iconId) {
       case "sms-ios":
-        return <img src={textIcon} alt="Text Message" style={{ ...iconStyle, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
+        return iconWrapper(<img src={textIcon} alt="Text Message" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       case "email-ios":
-        return <img src={mailIcon} alt="Email" style={{ ...iconStyle, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />;
+        return iconWrapper(<img src={mailIcon} alt="Email" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       case "social-facebook":
-        return <FaFacebookF style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<FaFacebookF style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-instagram":
-        return <FaInstagram style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<FaInstagram style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-twitter":
-        return <FaXTwitter style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<FaXTwitter style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-linkedin":
-        return <FaLinkedinIn style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<FaLinkedinIn style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-whatsapp":
-        return <FaWhatsapp style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<FaWhatsapp style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-share":
-        return <BsShare style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<BsShare style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-share-filled":
-        return <BsShareFill style={{ ...iconStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
+        return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       // Fallback for legacy or unknown icons
       default:
-        if (iconId.includes('sms')) return <MessageSquare style={{ ...iconStyle, color: '#000000' }} />;
-        if (iconId.includes('email')) return <Mail style={{ ...iconStyle, color: '#000000' }} />;
-        return <Share2 style={{ ...iconStyle, color: '#000000' }} />;
+        if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
+        if (iconId.includes('email')) return iconWrapper(<Mail style={{ ...svgStyle, color: '#000000' }} />);
+        return iconWrapper(<Share2 style={{ ...svgStyle, color: '#000000' }} />);
     }
   };
 
