@@ -468,6 +468,9 @@ export default function InteractiveTemplates() {
                     />
                   ))}
                 </div>
+                <div className="text-sm text-muted-foreground mb-3 text-center font-medium">
+                  # Hotspots Configured: {template.hotspots.length}
+                </div>
                 {template.description && (
                   <p className="text-sm text-muted-foreground mb-4">
                     {template.description}
