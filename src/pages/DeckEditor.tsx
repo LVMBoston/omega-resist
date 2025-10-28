@@ -356,7 +356,7 @@ export default function DeckEditor() {
           const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
           const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
           
-          if (aspectRatioDiff <= 0.05) {
+          if (aspectRatioDiff <= 0.06) {
             // Aspect ratio is close enough, resize automatically
             try {
               const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
@@ -375,7 +375,7 @@ export default function DeckEditor() {
           } else {
             resolve({
               valid: false,
-              error: `Image aspect ratio (${imageAspectRatio.toFixed(2)}) differs too much from reference (${referenceAspectRatio.toFixed(2)}). Must be within 5%.`
+              error: `Image aspect ratio (${imageAspectRatio.toFixed(2)}) differs too much from reference (${referenceAspectRatio.toFixed(2)}). Must be within 6%.`
             });
           }
         } else {
