@@ -732,14 +732,15 @@ export default function DeckEditor() {
               </ul>
             </div>
           </div>,
-          { duration: 10000 }
+          { duration: Infinity }
         );
       } else {
         // Simple toast for non-deployed or unused decks
         toast.success(
           eoaCount > 0 
             ? `All changes saved successfully. This deck is assigned to ${eoaCount} event(s). Create tokens when ready.`
-            : "All changes saved successfully. This deck is not yet assigned to any campaigns."
+            : "All changes saved successfully. This deck is not yet assigned to any campaigns.",
+          { duration: Infinity }
         );
       }
 
