@@ -351,10 +351,18 @@ export default function DeckEditor() {
             return;
           }
 
-          // Check aspect ratio tolerance (5%)
+          // Check aspect ratio tolerance (6%)
           const imageAspectRatio = img.width / img.height;
           const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
           const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
+          
+          console.log('🔍 Aspect Ratio Validation:', {
+            imageAspectRatio: imageAspectRatio.toFixed(4),
+            referenceAspectRatio: referenceAspectRatio.toFixed(4),
+            difference: (aspectRatioDiff * 100).toFixed(2) + '%',
+            tolerance: '6%',
+            willPass: aspectRatioDiff <= 0.06
+          });
           
           if (aspectRatioDiff <= 0.06) {
             // Aspect ratio is close enough, resize automatically
