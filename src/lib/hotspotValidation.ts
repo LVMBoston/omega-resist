@@ -4,20 +4,45 @@ interface Hotspot {
   y: number;
   width: number;
   height: number;
+  labelPosition?: 'top' | 'bottom';
+}
+
+/**
+ * Get expanded bounds for a hotspot including its label area
+ */
+function getExpandedBounds(h: Hotspot): { x: number; y: number; right: number; bottom: number } {
+  const labelPadding = 2; // 2% padding for labels
+  
+  let expandedY = h.y;
+  let expandedBottom = h.y + h.height;
+  
+  // Expand bounds to include label area
+  if (h.labelPosition === 'top') {
+    expandedY = Math.max(0, h.y - labelPadding);
+  } else {
+    // Default to bottom if not specified
+    expandedBottom = Math.min(100, h.y + h.height + labelPadding);
+  }
+  
+  return {
+    x: h.x,
+    y: expandedY,
+    right: h.x + h.width,
+    bottom: expandedBottom
+  };
 }
 
 /**
  * Check if two hotspots overlap using bounding box collision detection
+ * Includes label areas in the overlap calculation
  */
 export function checkOverlap(h1: Hotspot, h2: Hotspot): boolean {
-  const h1Right = h1.x + h1.width;
-  const h1Bottom = h1.y + h1.height;
-  const h2Right = h2.x + h2.width;
-  const h2Bottom = h2.y + h2.height;
+  const bounds1 = getExpandedBounds(h1);
+  const bounds2 = getExpandedBounds(h2);
   
   // No overlap if one is completely to the left/right/above/below the other
-  if (h1Right <= h2.x || h2Right <= h1.x || 
-      h1Bottom <= h2.y || h2Bottom <= h1.y) {
+  if (bounds1.right <= bounds2.x || bounds2.right <= bounds1.x || 
+      bounds1.bottom <= bounds2.y || bounds2.bottom <= bounds1.y) {
     return false;
   }
   return true;
@@ -53,6 +78,7 @@ export function detectOverlaps(hotspots: Hotspot[]): Map<string, string[]> {
 
 /**
  * Calculate the intersection rectangle for two overlapping hotspots
+ * Includes label areas in the intersection calculation
  */
 export function calculateIntersectionRect(
   h1: Hotspot, 
@@ -60,10 +86,13 @@ export function calculateIntersectionRect(
 ): { x: number; y: number; width: number; height: number } | null {
   if (!checkOverlap(h1, h2)) return null;
   
-  const x = Math.max(h1.x, h2.x);
-  const y = Math.max(h1.y, h2.y);
-  const right = Math.min(h1.x + h1.width, h2.x + h2.width);
-  const bottom = Math.min(h1.y + h1.height, h2.y + h2.height);
+  const bounds1 = getExpandedBounds(h1);
+  const bounds2 = getExpandedBounds(h2);
+  
+  const x = Math.max(bounds1.x, bounds2.x);
+  const y = Math.max(bounds1.y, bounds2.y);
+  const right = Math.min(bounds1.right, bounds2.right);
+  const bottom = Math.min(bounds1.bottom, bounds2.bottom);
   
   return {
     x,
