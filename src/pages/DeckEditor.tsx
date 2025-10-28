@@ -774,8 +774,7 @@ export default function DeckEditor() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Deck Editor</h1>
-              <p className="text-muted-foreground">{slug}</p>
+              <h1 className="text-3xl font-bold">Editing Deck: {slug}</h1>
             </div>
           </div>
           <div className="flex gap-2 items-center">
