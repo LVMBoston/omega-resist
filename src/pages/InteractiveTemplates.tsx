@@ -476,7 +476,7 @@ export default function InteractiveTemplates() {
                     {template.description}
                   </p>
                 )}
-                <div className="flex gap-2">
+                <div className="flex gap-2 justify-center">
                   <Button
                     variant="outline"
                     size="sm"
