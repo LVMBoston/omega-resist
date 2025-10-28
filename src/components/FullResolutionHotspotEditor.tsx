@@ -640,7 +640,7 @@ export const generateThumbnail = async (
       // Draw base image
       ctx.drawImage(baseImg, 0, 0);
       
-      // Draw each hotspot icon
+      // Draw each hotspot icon and label
       for (const hotspot of hotspots) {
         const iconPreset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
         if (!iconPreset?.imageUrl) continue;
@@ -655,7 +655,43 @@ export const generateThumbnail = async (
             const width = (hotspot.width / 100) * canvas.width;
             const height = (hotspot.height / 100) * canvas.height;
             
+            // Draw icon
             ctx.drawImage(iconImg, x, y, width, height);
+            
+            // Draw label
+            const fontSize = Math.max(14, width * 0.15);
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Measure text for background
+            const text = hotspot.label;
+            const metrics = ctx.measureText(text);
+            const textWidth = metrics.width;
+            const textHeight = fontSize * 1.4;
+            const padding = 8;
+            
+            // Calculate label position
+            const labelX = x + width / 2;
+            const labelY = hotspot.labelPosition === 'top' 
+              ? y - textHeight / 2 - padding 
+              : y + height + textHeight / 2 + padding;
+            
+            // Draw background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.roundRect(
+              labelX - textWidth / 2 - padding,
+              labelY - textHeight / 2,
+              textWidth + padding * 2,
+              textHeight,
+              6
+            );
+            ctx.fill();
+            
+            // Draw text
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(text, labelX, labelY);
+            
             resolveIcon();
           };
           iconImg.onerror = () => rejectIcon(new Error(`Failed to load icon: ${hotspot.iconId}`));
