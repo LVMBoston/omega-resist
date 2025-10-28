@@ -700,7 +700,7 @@ export default function CampaignManager() {
                   onClick={handleViewDeck}
                 >
                   <Eye className="mr-2 h-4 w-4" />
-                  {deckSlug ? `View ${deckSlug}` : "View Deck"}
+                  {deckSlug ? `View ${deckSlug}` : "No Deck Assigned"}
                 </Button>
                 
                 {deploymentState.ready ? (
