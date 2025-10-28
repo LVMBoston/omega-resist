@@ -15,6 +15,7 @@ import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotE
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { TemplateType } from "@/types/viralTemplates";
+import { detectOverlaps } from "@/lib/hotspotValidation";
 
 interface Template {
   id: string;
@@ -258,6 +259,24 @@ export default function InteractiveTemplates() {
         description: "Interactive templates must have at least one hotspot",
       });
       return;
+    }
+
+    // CRITICAL: Block save if hotspots overlap
+    if (formData.template_type === "interactive_share" && formData.hotspots.length > 0) {
+      const overlaps = detectOverlaps(formData.hotspots);
+      if (overlaps.size > 0) {
+        const overlappingIds = Array.from(overlaps.keys());
+        const overlappingHotspots = formData.hotspots.filter(h => overlappingIds.includes(h.id));
+        const hotspotNames = overlappingHotspots.map(h => h.label).join(', ');
+        
+        toast({
+          variant: "destructive",
+          title: "Cannot Save - Hotspots Overlap",
+          description: `${overlaps.size} hotspot${overlaps.size > 1 ? 's are' : ' is'} overlapping: ${hotspotNames}. Please reposition them so they don't touch.`,
+          duration: 6000,
+        });
+        return;
+      }
     }
 
     if (editingTemplate) {

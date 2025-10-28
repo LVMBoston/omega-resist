@@ -1,17 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
+import { detectOverlaps, getAllIntersections } from "@/lib/hotspotValidation";
 
 interface IconPreset {
   id: string;
@@ -75,6 +76,11 @@ export const FullResolutionHotspotEditor = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
+
+  // Detect overlaps in real-time
+  const overlaps = useMemo(() => detectOverlaps(hotspots), [hotspots]);
+  const intersections = useMemo(() => getAllIntersections(hotspots), [hotspots]);
+  const overlapCount = overlaps.size;
 
   const categoryImages: Record<IconCategory, string> = {
     sms: textIcon,
@@ -227,6 +233,19 @@ export const FullResolutionHotspotEditor = ({
 
   return (
     <div className="space-y-4">
+      {overlapCount > 0 && (
+        <div className="bg-red-100 dark:bg-red-950/50 border-2 border-red-500 rounded-lg p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-red-900 dark:text-red-100">
+              {overlapCount} Hotspot Overlap{overlapCount > 1 ? 's' : ''} Detected
+            </h4>
+            <p className="text-sm text-red-800 dark:text-red-200 mt-1">
+              Overlapping hotspots cause ambiguous click behavior. Please reposition them so they don't touch.
+            </p>
+          </div>
+        </div>
+      )}
       <Card>
         <CardContent className="p-4">
           <div className="mb-4">
@@ -342,15 +361,33 @@ export const FullResolutionHotspotEditor = ({
                     className={isPlacing ? "w-full cursor-crosshair" : "w-full"}
                     onClick={handleImageClick}
                   />
+                  {/* Render intersection overlays */}
+                  {intersections.map((intersection, idx) => (
+                    <div
+                      key={`intersection-${idx}`}
+                      className="absolute bg-red-500/30 border-2 border-red-500 pointer-events-none animate-pulse"
+                      style={{
+                        left: `${intersection.x}%`,
+                        top: `${intersection.y}%`,
+                        width: `${intersection.width}%`,
+                        height: `${intersection.height}%`,
+                      }}
+                    />
+                  ))}
                   {hotspots.map((hotspot) => {
                     const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
                     const HotspotIcon = preset?.icon;
                     const hotspotImageUrl = preset?.imageUrl;
+                    const hasOverlap = overlaps.has(hotspot.id);
+                    const overlapPartners = overlaps.get(hotspot.id) || [];
+                    
                     return (
                       <div
                         key={hotspot.id}
                         className={`absolute transition-all flex items-center justify-center ${
-                          selectedHotspot === hotspot.id
+                          hasOverlap
+                            ? "ring-4 ring-red-500 animate-pulse rounded-lg"
+                            : selectedHotspot === hotspot.id
                             ? "ring-2 ring-yellow-400 rounded-lg"
                             : ""
                         } ${isDragging === hotspot.id ? "cursor-grabbing" : "cursor-grab"}`}
@@ -371,11 +408,18 @@ export const FullResolutionHotspotEditor = ({
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full drop-shadow-lg" />
                         ) : null}
+                        {hasOverlap && (
+                          <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10">
+                            ⚠
+                          </div>
+                        )}
                         <div 
                           className={`absolute left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-bold whitespace-nowrap pointer-events-none rounded-md shadow-lg ${
                             hotspot.labelPosition === "top" ? "-top-8" : "-bottom-8"
                           } ${
-                            selectedHotspot === hotspot.id 
+                            hasOverlap
+                              ? "bg-red-500 text-white ring-2 ring-red-500/50"
+                              : selectedHotspot === hotspot.id 
                               ? "bg-yellow-400 text-black ring-2 ring-yellow-400/50" 
                               : "bg-black/80 text-white"
                           }`}
@@ -400,14 +444,21 @@ export const FullResolutionHotspotEditor = ({
                         <Card
                           key={hotspot.id}
                           className={`cursor-pointer transition-colors ${
-                            selectedHotspot === hotspot.id ? "border-primary" : ""
+                            overlaps.has(hotspot.id)
+                              ? "border-red-500 bg-red-50 dark:bg-red-950/30"
+                              : selectedHotspot === hotspot.id 
+                              ? "border-primary" 
+                              : ""
                           }`}
                           onClick={() => setSelectedHotspot(hotspot.id)}
                         >
                           <CardContent className="p-3">
                             <div className="flex items-center justify-between">
-                              <div className="text-sm">
+                              <div className="text-sm flex-1">
                                 <div className="font-medium flex items-center gap-2">
+                                  {overlaps.has(hotspot.id) && (
+                                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                  )}
                                   {listImageUrl ? (
                                     <img src={listImageUrl} alt={hotspot.label} className="w-4 h-4 object-contain" />
                                   ) : ListIcon ? (
