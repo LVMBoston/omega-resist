@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Hotspot } from "@/types/viralTemplates";
 import { InteractiveSlideOverlay } from "./InteractiveSlideOverlay";
 
@@ -17,6 +17,7 @@ export const InteractiveShareSlide = ({
 }: InteractiveShareSlideProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // Delay overlay mount to allow layout to complete on iPhone
   useEffect(() => {
@@ -31,6 +32,7 @@ export const InteractiveShareSlide = ({
   return (
     <div className="relative w-full h-full bg-black flex items-center justify-center">
       <img
+        ref={imageRef}
         src={imageUrl}
         alt="Interactive viral slide"
         className="max-w-full max-h-full object-contain"
@@ -43,7 +45,7 @@ export const InteractiveShareSlide = ({
         <InteractiveSlideOverlay
           hotspots={hotspots}
           deckSlug={deckSlug}
-          imageUrl={imageUrl}
+          imageRef={imageRef}
           viralToken={viralToken}
         />
       )}

@@ -14,20 +14,19 @@ import { Hotspot } from "@/types/viralTemplates";
 interface InteractiveSlideOverlayProps {
   hotspots: Hotspot[];
   deckSlug: string;
-  imageUrl: string;
+  imageRef: React.RefObject<HTMLImageElement>;
   viralToken: string | null;
 }
 
 export const InteractiveSlideOverlay = ({
   hotspots,
   deckSlug,
-  imageUrl,
+  imageRef,
   viralToken,
 }: InteractiveSlideOverlayProps) => {
   const { toast } = useToast();
-  const containerRef = useRef<HTMLDivElement>(null);
   const [imageDimensions, setImageDimensions] = useState({ 
-    offsetX: 0, 
+    offsetX: 0,
     offsetY: 0, 
     width: 0, 
     height: 0 
@@ -59,7 +58,7 @@ export const InteractiveSlideOverlay = ({
   }, []);
 
   useEffect(() => {
-    console.log("🔧 InteractiveSlideOverlay effect running, ref:", !!containerRef.current);
+    console.log("🔧 InteractiveSlideOverlay effect running, imageRef:", !!imageRef.current);
     let retryCount = 0;
     const maxRetries = 50;
     let retryTimer: number | undefined;
@@ -71,96 +70,69 @@ export const InteractiveSlideOverlay = ({
     const updateImageDimensions = () => {
       retryCount++;
       
-      if (!containerRef.current) {
-        console.log(`⚠️ No container ref available (attempt ${retryCount}/${maxRetries})`);
+      if (!imageRef.current) {
+        console.log(`⚠️ No image ref available (attempt ${retryCount}/${maxRetries})`);
         if (retryCount < maxRetries) {
           retryTimer = window.setTimeout(updateImageDimensions, 100);
         } else {
-          console.error("❌ Failed to get container ref after max retries");
+          console.error("❌ Failed to get image ref after max retries");
         }
         return;
       }
 
-      const container = containerRef.current;
-      const containerRect = container.getBoundingClientRect();
+      const img = imageRef.current;
+      const imgRect = img.getBoundingClientRect();
+      const parentRect = img.parentElement?.getBoundingClientRect();
       
-      console.log(`📐 Container dimensions (attempt ${retryCount}):`, {
-        width: containerRect.width,
-        height: containerRect.height,
+      console.log(`📐 Image dimensions (attempt ${retryCount}):`, {
+        imgWidth: imgRect.width,
+        imgHeight: imgRect.height,
+        imgLeft: imgRect.left,
+        imgTop: imgRect.top,
+        parentWidth: parentRect?.width,
+        parentHeight: parentRect?.height,
+        parentLeft: parentRect?.left,
+        parentTop: parentRect?.top,
         device: navigator.userAgent.includes('iPhone') ? 'iPhone' : 
                 navigator.userAgent.includes('iPad') ? 'iPad' : 'Other'
       });
 
-      if (containerRect.width === 0 || containerRect.height === 0) {
-        console.log(`⚠️ Container has zero dimensions (attempt ${retryCount}/${maxRetries}), retrying...`);
+      if (imgRect.width === 0 || imgRect.height === 0) {
+        console.log(`⚠️ Image has zero dimensions (attempt ${retryCount}/${maxRetries}), retrying...`);
         if (retryCount < maxRetries) {
           retryTimer = window.setTimeout(updateImageDimensions, 100);
         } else {
-          console.error("❌ Container dimensions never became available");
+          console.error("❌ Image dimensions never became available");
         }
         return;
       }
       
-      const img = new Image();
-      img.onload = () => {
-        const containerAspect = containerRect.width / containerRect.height;
-        const imageAspect = img.naturalWidth / img.naturalHeight;
-        
-        console.log("🖼️ Image loaded:", {
-          naturalWidth: img.naturalWidth,
-          naturalHeight: img.naturalHeight,
-          containerAspect,
-          imageAspect
-        });
-        
-        let renderedWidth, renderedHeight, offsetX = 0, offsetY = 0;
-        
-        if (containerAspect > imageAspect) {
-          renderedHeight = containerRect.height;
-          renderedWidth = renderedHeight * imageAspect;
-          offsetX = (containerRect.width - renderedWidth) / 2;
-        } else {
-          renderedWidth = containerRect.width;
-          renderedHeight = renderedWidth / imageAspect;
-          offsetY = (containerRect.height - renderedHeight) / 2;
-        }
-        
-        console.log("✅ Setting image dimensions:", {
-          offsetX,
-          offsetY,
-          width: renderedWidth,
-          height: renderedHeight
-        });
-        
-        setImageDimensions({
-          offsetX,
-          offsetY,
-          width: renderedWidth,
-          height: renderedHeight,
-        });
-      };
+      // Calculate offset relative to parent container
+      const offsetX = parentRect ? imgRect.left - parentRect.left : 0;
+      const offsetY = parentRect ? imgRect.top - parentRect.top : 0;
       
-      img.onerror = () => {
-        console.error("❌ Failed to load image:", imageUrl);
-      };
+      console.log("✅ Setting image dimensions from actual element:", {
+        offsetX,
+        offsetY,
+        width: imgRect.width,
+        height: imgRect.height
+      });
       
-      img.src = imageUrl;
+      setImageDimensions({
+        offsetX,
+        offsetY,
+        width: imgRect.width,
+        height: imgRect.height,
+      });
     };
 
-    // Set up ResizeObserver to detect when container gets dimensions
-    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-            console.log("📏 ResizeObserver detected dimensions:", {
-              width: entry.contentRect.width,
-              height: entry.contentRect.height
-            });
-            updateImageDimensions();
-          }
-        }
+    // Set up ResizeObserver to detect when image dimensions change
+    if (imageRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        console.log("📏 ResizeObserver detected image change");
+        updateImageDimensions();
       });
-      resizeObserver.observe(containerRef.current);
+      resizeObserver.observe(imageRef.current);
     }
 
     const timer = window.setTimeout(updateImageDimensions, 100);
@@ -181,7 +153,7 @@ export const InteractiveSlideOverlay = ({
       window.removeEventListener('resize', updateImageDimensions);
       document.removeEventListener('fullscreenchange', updateImageDimensions);
     };
-  }, [imageUrl]);
+  }, [imageRef]);
 
   const handleSMS = async () => {
     try {
@@ -438,7 +410,7 @@ export const InteractiveSlideOverlay = ({
   });
 
   return (
-    <div ref={containerRef} className="absolute inset-0 pointer-events-none z-50">
+    <div className="absolute inset-0 pointer-events-none z-50">
       {imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
         // Calculate hotspot position relative to rendered image
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
