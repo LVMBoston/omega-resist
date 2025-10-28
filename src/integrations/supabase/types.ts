@@ -628,6 +628,7 @@ export type Database = {
           slide_id: string | null
           slug: string
           template_type: string
+          thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
@@ -643,6 +644,7 @@ export type Database = {
           slide_id?: string | null
           slug: string
           template_type?: string
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -658,6 +660,7 @@ export type Database = {
           slide_id?: string | null
           slug?: string
           template_type?: string
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Relationships: [

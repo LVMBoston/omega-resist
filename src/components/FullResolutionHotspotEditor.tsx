@@ -7,11 +7,12 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Card, CardContent } from "./ui/card";
 import { Trash2, X, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
-import textIcon from "@/assets/text-icon.svg";
+import textIcon from "@/assets/text-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
@@ -36,22 +37,25 @@ interface Hotspot {
   labelPosition?: "top" | "bottom";
 }
 
+// Simple placeholder base64 PNG for social icons (blue circle)
+const SOCIAL_PLACEHOLDER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAABfUlEQVR4nO2ZS0oDQRCGP0VBBBHx8QBevIKP3bgQb+BKvYKPjSfwAl5A8AaCiuJCEQVRdOFGUXThQvGBiA+UCQyEQCadma6e7pkfPoiZTPd8+auqe7ohhBBCCCFqAuiANaAHnIAr4BF4BT6Bk+z1O2CdzAfmgDYwd60twAngFFgGGsBU9mg659aBQ2A3u84BcJJdO8haQLPwDu1lXx5jCdgBHoDxD5onwHb2vLj4SHfkvt6sUYK+M4pjDVgs+zv1Y9nuBVguSjhLaLvJNEtYbxbYqphIp2IinZyEbdJgL2f9vsC6/Rz1+znq93PU7+eo389Rv5+jfj9H/X6O+v0c9fs56vdz1O/nqN/PUb+fo34/R/1+jvr9HPX7Oer3c9Tv56jfz1G/n6N+P0f9fo76/Rz1B5PIKMd4lLB+lGM8Slg/yjEeJawf5RiPEtaPcoxHCetHOcajhPWjHONRwvpRjvEoYf0ox3iUsH6UYzxKWD/KMR4lrB8FcA2sAlP/PRwhhBBCCBGYL+R5m3PWztpYAAAAAElFTkSuQmCC";
+
 // Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
-  // SMS variants - using custom iOS icon
+  // SMS variants - using custom iOS icon (real PNG)
   { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 5, height: 4 },
   
-  // Email variants - using custom iOS icon
+  // Email variants - using custom iOS icon (real PNG)
   { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 5, height: 4 },
   
-  // Social variants
-  { id: "social-facebook", label: "Facebook", type: "social", icon: FaFacebookF, width: 5, height: 4 },
-  { id: "social-instagram", label: "Instagram", type: "social", icon: FaInstagram, width: 5, height: 4 },
-  { id: "social-twitter", label: "X (Twitter)", type: "social", icon: FaXTwitter, width: 5, height: 4 },
-  { id: "social-linkedin", label: "LinkedIn", type: "social", icon: FaLinkedinIn, width: 5, height: 4 },
-  { id: "social-whatsapp", label: "WhatsApp", type: "social", icon: FaWhatsapp, width: 5, height: 4 },
-  { id: "social-share", label: "Share", type: "social", icon: BsShare, width: 5, height: 4 },
-  { id: "social-share-filled", label: "Share Filled", type: "social", icon: BsShareFill, width: 5, height: 4 },
+  // Social variants - placeholder PNGs (replace when real icons provided)
+  { id: "social-facebook", label: "Facebook (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "social-instagram", label: "Instagram (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "social-twitter", label: "X/Twitter (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "social-linkedin", label: "LinkedIn (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "social-whatsapp", label: "WhatsApp (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "social-share", label: "Share (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "social-share-filled", label: "Share Filled (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
 ];
 
 type IconCategory = "sms" | "email" | "social";
@@ -607,4 +611,105 @@ export const FullResolutionHotspotEditor = ({
       </Card>
     </div>
   );
+};
+
+// ============================================
+// THUMBNAIL GENERATION FUNCTIONS
+// ============================================
+
+/**
+ * Generates a thumbnail image by compositing the base image with hotspot icons
+ */
+export const generateThumbnail = async (
+  baseImageUrl: string,
+  hotspots: Hotspot[]
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return reject(new Error('Failed to get canvas context'));
+
+    const baseImg = new Image();
+    baseImg.crossOrigin = 'anonymous';
+    
+    baseImg.onload = async () => {
+      // Set canvas to match image dimensions
+      canvas.width = baseImg.width;
+      canvas.height = baseImg.height;
+      
+      // Draw base image
+      ctx.drawImage(baseImg, 0, 0);
+      
+      // Draw each hotspot icon
+      for (const hotspot of hotspots) {
+        const iconPreset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
+        if (!iconPreset?.imageUrl) continue;
+        
+        const iconImg = new Image();
+        iconImg.crossOrigin = 'anonymous';
+        
+        await new Promise<void>((resolveIcon, rejectIcon) => {
+          iconImg.onload = () => {
+            const x = (hotspot.x / 100) * canvas.width;
+            const y = (hotspot.y / 100) * canvas.height;
+            const width = (hotspot.width / 100) * canvas.width;
+            const height = (hotspot.height / 100) * canvas.height;
+            
+            ctx.drawImage(iconImg, x, y, width, height);
+            resolveIcon();
+          };
+          iconImg.onerror = () => rejectIcon(new Error(`Failed to load icon: ${hotspot.iconId}`));
+          iconImg.src = iconPreset.imageUrl;
+        }).catch(err => console.warn('Icon load failed:', err));
+      }
+      
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to create thumbnail blob'));
+      }, 'image/png');
+    };
+    
+    baseImg.onerror = () => reject(new Error('Failed to load base image'));
+    baseImg.src = baseImageUrl;
+  });
+};
+
+/**
+ * Uploads a thumbnail blob to Supabase Storage
+ */
+export const uploadThumbnail = async (
+  blob: Blob,
+  templateSlug: string
+): Promise<string> => {
+  const fileName = `${templateSlug}-thumbnail-${Date.now()}.png`;
+  const filePath = `interactive-templates/thumbnails/${fileName}`;
+  
+  const { error: uploadError } = await supabase.storage
+    .from('slides')
+    .upload(filePath, blob, {
+      contentType: 'image/png',
+      upsert: true,
+    });
+  
+  if (uploadError) throw uploadError;
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('slides')
+    .getPublicUrl(filePath);
+  
+  return publicUrl;
+};
+
+/**
+ * Combined function: generates and uploads thumbnail in one call
+ */
+export const generateAndUploadThumbnail = async (
+  imageUrl: string,
+  hotspots: Hotspot[],
+  templateSlug: string
+): Promise<string> => {
+  const thumbnailBlob = await generateThumbnail(imageUrl, hotspots);
+  const thumbnailUrl = await uploadThumbnail(thumbnailBlob, templateSlug);
+  return thumbnailUrl;
 };

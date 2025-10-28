@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Star, Image as ImageIcon, Check, X, Info, Eye, FolderKanban } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
+import { FullResolutionHotspotEditor, generateAndUploadThumbnail } from "@/components/FullResolutionHotspotEditor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { TemplateType } from "@/types/viralTemplates";
@@ -23,6 +23,7 @@ interface Template {
   slug: string;
   description: string | null;
   image_url: string;
+  thumbnail_url?: string | null;
   hotspots: any[];
   is_default: boolean;
   created_at: string;
@@ -57,11 +58,13 @@ export default function InteractiveTemplates() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [showingHotspots, setShowingHotspots] = useState<string | null>(null);
   const [viewingCampaigns, setViewingCampaigns] = useState<string | null>(null);
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
     description: "",
     image_url: "",
+    thumbnail_url: "" as string | undefined,
     hotspots: [] as any[],
     is_default: false,
     template_type: "interactive_share" as TemplateType,
@@ -272,6 +275,7 @@ export default function InteractiveTemplates() {
       slug: "",
       description: "",
       image_url: "",
+      thumbnail_url: undefined,
       hotspots: [],
       is_default: false,
       template_type: "interactive_share",
@@ -286,6 +290,7 @@ export default function InteractiveTemplates() {
       slug: template.slug,
       description: template.description || "",
       image_url: template.image_url,
+      thumbnail_url: template.thumbnail_url || undefined,
       hotspots: template.hotspots,
       is_default: template.is_default,
       template_type: template.template_type || "interactive_share",
@@ -293,7 +298,7 @@ export default function InteractiveTemplates() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name || !formData.slug || !formData.image_url) {
       toast({
         variant: "destructive",
@@ -346,10 +351,39 @@ export default function InteractiveTemplates() {
       }
     }
 
+    // Generate thumbnail for interactive templates with hotspots
+    let thumbnailUrl = formData.thumbnail_url;
+    if (formData.template_type === "interactive_share" && formData.hotspots.length > 0) {
+      try {
+        setIsGeneratingThumbnail(true);
+        toast({
+          title: "Generating thumbnail...",
+          description: "Creating preview with hotspot icons",
+        });
+        thumbnailUrl = await generateAndUploadThumbnail(
+          formData.image_url,
+          formData.hotspots,
+          formData.slug
+        );
+      } catch (error: any) {
+        console.error("Thumbnail generation failed:", error);
+        toast({
+          variant: "destructive",
+          title: "Thumbnail generation failed",
+          description: error.message || "Proceeding without thumbnail",
+        });
+        // Continue without thumbnail - not critical
+      } finally {
+        setIsGeneratingThumbnail(false);
+      }
+    }
+
+    const dataToSave = { ...formData, thumbnail_url: thumbnailUrl };
+
     if (editingTemplate) {
-      updateTemplate.mutate({ id: editingTemplate.id, data: formData });
+      updateTemplate.mutate({ id: editingTemplate.id, data: dataToSave });
     } else {
-      createTemplate.mutate(formData);
+      createTemplate.mutate(dataToSave);
     }
   };
 
@@ -499,8 +533,11 @@ export default function InteractiveTemplates() {
                 }}>
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit}>
-                  {editingTemplate ? "Update Template" : "Create Template"}
+                <Button onClick={handleSubmit} disabled={isGeneratingThumbnail}>
+                  {isGeneratingThumbnail 
+                    ? "Generating Thumbnail..." 
+                    : editingTemplate ? "Update Template" : "Create Template"
+                  }
                 </Button>
               </div>
             </div>
@@ -595,10 +632,15 @@ export default function InteractiveTemplates() {
               <CardContent>
                 <div className="aspect-[9/16] w-full max-w-[200px] mx-auto mb-4 relative">
                   <img
-                    src={template.image_url}
+                    src={template.thumbnail_url || template.image_url}
                     alt={template.name}
                     className="w-full h-full object-contain rounded-lg bg-muted"
                   />
+                  {template.thumbnail_url && (
+                    <Badge className="absolute bottom-2 right-2 bg-primary/80 text-xs">
+                      With Icons
+                    </Badge>
+                  )}
                   {showingHotspots === template.id && template.hotspots.map((hotspot: any, idx: number) => (
                     <div
                       key={idx}
