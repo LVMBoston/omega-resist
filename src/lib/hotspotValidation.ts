@@ -105,3 +105,42 @@ export function getAllIntersections(hotspots: Hotspot[]): Array<{
   
   return intersections;
 }
+
+/**
+ * Check if a hotspot is out of bounds (extends beyond 0-100% range)
+ */
+export function isOutOfBounds(hotspot: Hotspot): boolean {
+  return (
+    hotspot.x < 0 ||
+    hotspot.y < 0 ||
+    hotspot.x + hotspot.width > 100 ||
+    hotspot.y + hotspot.height > 100
+  );
+}
+
+/**
+ * Detect all out-of-bounds hotspots
+ * Returns an array of hotspot IDs that are out of bounds
+ */
+export function detectOutOfBounds(hotspots: Hotspot[]): string[] {
+  return hotspots
+    .filter(hotspot => isOutOfBounds(hotspot))
+    .map(hotspot => hotspot.id);
+}
+
+/**
+ * Get the maximum allowed size for a hotspot at a given position
+ */
+export function getMaxSize(x: number, y: number, aspectRatio: number): { maxWidth: number; maxHeight: number } {
+  const maxWidthFromX = 100 - x;
+  const maxHeightFromY = 100 - y;
+  
+  // Calculate based on aspect ratio constraints
+  const maxWidthFromAspect = maxHeightFromY / aspectRatio;
+  const maxHeightFromAspect = maxWidthFromX * aspectRatio;
+  
+  return {
+    maxWidth: Math.min(maxWidthFromX, maxWidthFromAspect),
+    maxHeight: Math.min(maxHeightFromY, maxHeightFromAspect)
+  };
+}

@@ -12,7 +12,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
-import { detectOverlaps, getAllIntersections } from "@/lib/hotspotValidation";
+import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
   id: string;
@@ -77,10 +77,12 @@ export const FullResolutionHotspotEditor = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
 
-  // Detect overlaps in real-time
+  // Detect overlaps and out-of-bounds in real-time
   const overlaps = useMemo(() => detectOverlaps(hotspots), [hotspots]);
   const intersections = useMemo(() => getAllIntersections(hotspots), [hotspots]);
   const overlapCount = overlaps.size;
+  const outOfBoundsIds = useMemo(() => detectOutOfBounds(hotspots), [hotspots]);
+  const outOfBoundsCount = outOfBoundsIds.length;
 
   const categoryImages: Record<IconCategory, string> = {
     sms: textIcon,
@@ -246,6 +248,19 @@ export const FullResolutionHotspotEditor = ({
           </div>
         </div>
       )}
+      {outOfBoundsCount > 0 && (
+        <div className="bg-orange-100 dark:bg-orange-950/50 border-2 border-orange-500 rounded-lg p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-orange-900 dark:text-orange-100">
+              {outOfBoundsCount} Hotspot{outOfBoundsCount > 1 ? 's' : ''} Out of Bounds
+            </h4>
+            <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
+              Hotspots extend beyond the image boundaries. Please resize or reposition them to fit within the image.
+            </p>
+          </div>
+        </div>
+      )}
       <Card>
         <CardContent className="p-4">
           <div className="mb-4">
@@ -379,6 +394,7 @@ export const FullResolutionHotspotEditor = ({
                     const HotspotIcon = preset?.icon;
                     const hotspotImageUrl = preset?.imageUrl;
                     const hasOverlap = overlaps.has(hotspot.id);
+                    const isOutOfBounds = outOfBoundsIds.includes(hotspot.id);
                     const overlapPartners = overlaps.get(hotspot.id) || [];
                     
                     return (
@@ -387,6 +403,8 @@ export const FullResolutionHotspotEditor = ({
                         className={`absolute transition-all flex items-center justify-center ${
                           hasOverlap
                             ? "ring-4 ring-red-500 animate-pulse rounded-lg"
+                            : isOutOfBounds
+                            ? "ring-4 ring-orange-500 animate-pulse rounded-lg"
                             : selectedHotspot === hotspot.id
                             ? "ring-2 ring-yellow-400 rounded-lg"
                             : ""
@@ -408,8 +426,10 @@ export const FullResolutionHotspotEditor = ({
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full drop-shadow-lg" />
                         ) : null}
-                        {hasOverlap && (
-                          <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10">
+                        {(hasOverlap || isOutOfBounds) && (
+                          <div className={`absolute -top-2 -right-2 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10 ${
+                            hasOverlap ? "bg-red-500" : "bg-orange-500"
+                          } text-white`}>
                             ⚠
                           </div>
                         )}
@@ -419,6 +439,8 @@ export const FullResolutionHotspotEditor = ({
                           } ${
                             hasOverlap
                               ? "bg-red-500 text-white ring-2 ring-red-500/50"
+                              : isOutOfBounds
+                              ? "bg-orange-500 text-white ring-2 ring-orange-500/50"
                               : selectedHotspot === hotspot.id 
                               ? "bg-yellow-400 text-black ring-2 ring-yellow-400/50" 
                               : "bg-black/80 text-white"
@@ -440,14 +462,17 @@ export const FullResolutionHotspotEditor = ({
                       const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
                       const ListIcon = preset?.icon;
                       const listImageUrl = preset?.imageUrl;
+                      const isOutOfBounds = outOfBoundsIds.includes(hotspot.id);
                       return (
                         <Card
                           key={hotspot.id}
                           className={`cursor-pointer transition-colors ${
                             overlaps.has(hotspot.id)
                               ? "border-red-500 bg-red-50 dark:bg-red-950/30"
+                              : isOutOfBounds
+                              ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30"
                               : selectedHotspot === hotspot.id 
-                              ? "border-primary" 
+                              ? "border-primary"
                               : ""
                           }`}
                           onClick={() => setSelectedHotspot(hotspot.id)}
@@ -458,6 +483,9 @@ export const FullResolutionHotspotEditor = ({
                                 <div className="font-medium flex items-center gap-2">
                                   {overlaps.has(hotspot.id) && (
                                     <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                  )}
+                                  {isOutOfBounds && (
+                                    <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0" />
                                   )}
                                   {listImageUrl ? (
                                     <img src={listImageUrl} alt={hotspot.label} className="w-4 h-4 object-contain" />
@@ -498,9 +526,22 @@ export const FullResolutionHotspotEditor = ({
                             onValueChange={(vals) => {
                               const newSize = vals[0];
                               const aspectRatio = selectedHotspotData.height / selectedHotspotData.width;
+                              const newHeight = newSize * aspectRatio;
+                              
+                              // Calculate max size based on position to prevent out-of-bounds
+                              const maxSizeConstraints = getMaxSize(
+                                selectedHotspotData.x, 
+                                selectedHotspotData.y, 
+                                aspectRatio
+                              );
+                              
+                              // Constrain to prevent going out of bounds
+                              const constrainedWidth = Math.min(newSize, maxSizeConstraints.maxWidth);
+                              const constrainedHeight = Math.min(newHeight, maxSizeConstraints.maxHeight);
+                              
                               updateHotspot(selectedHotspotData.id, {
-                                width: newSize,
-                                height: newSize * aspectRatio
+                                width: constrainedWidth,
+                                height: constrainedHeight
                               });
                             }}
                             min={5}

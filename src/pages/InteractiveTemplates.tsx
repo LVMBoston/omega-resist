@@ -15,7 +15,7 @@ import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotE
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { TemplateType } from "@/types/viralTemplates";
-import { detectOverlaps } from "@/lib/hotspotValidation";
+import { detectOverlaps, detectOutOfBounds } from "@/lib/hotspotValidation";
 
 interface Template {
   id: string;
@@ -273,6 +273,21 @@ export default function InteractiveTemplates() {
           variant: "destructive",
           title: "Cannot Save - Hotspots Overlap",
           description: `${overlaps.size} hotspot${overlaps.size > 1 ? 's are' : ' is'} overlapping: ${hotspotNames}. Please reposition them so they don't touch.`,
+          duration: 6000,
+        });
+        return;
+      }
+      
+      // CRITICAL: Block save if hotspots are out of bounds
+      const outOfBoundsIds = detectOutOfBounds(formData.hotspots);
+      if (outOfBoundsIds.length > 0) {
+        const outOfBoundsHotspots = formData.hotspots.filter(h => outOfBoundsIds.includes(h.id));
+        const hotspotNames = outOfBoundsHotspots.map(h => h.label).join(', ');
+        
+        toast({
+          variant: "destructive",
+          title: "Cannot Save - Hotspots Out of Bounds",
+          description: `${outOfBoundsIds.length} hotspot${outOfBoundsIds.length > 1 ? 's extend' : ' extends'} beyond the image boundaries: ${hotspotNames}. Please resize or reposition them to fit within the image.`,
           duration: 6000,
         });
         return;
