@@ -383,7 +383,7 @@ export default function DeckEditor() {
           } else {
             resolve({
               valid: false,
-              error: `Image aspect ratio (${imageAspectRatio.toFixed(2)}) differs too much from reference (${referenceAspectRatio.toFixed(2)}). Must be within 6%.`
+              error: `Image aspect ratio differs by ${(aspectRatioDiff * 100).toFixed(2)}% from reference. Must be within 6%.`
             });
           }
         } else {
