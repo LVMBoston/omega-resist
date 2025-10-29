@@ -490,7 +490,7 @@ export default function DeckEditor() {
     if (!slug) return;
 
     try {
-      // Download template image
+      // Download template image for validation only
       const response = await fetch(template.image_url);
       const blob = await response.blob();
 
@@ -501,21 +501,21 @@ export default function DeckEditor() {
       }
 
       const targetPosition = slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1;
-      const tempId = `temp-interactive-${Date.now()}`;
+      const tempId = `temp-template-${Date.now()}`;
       
-      // Create temp slide
+      // Create temp slide - NO upload needed, use template's content_url directly
       const tempSlide: Slide = {
         id: tempId,
         position: targetPosition,
         type: 'spread-word',
-        content_url: template.image_url,
+        content_url: template.image_url, // Use template's URL directly
         is_compressed: false,
         template_id: template.id,
         deck_slug: slug,
       };
 
       setSlides([...slides, tempSlide]);
-      setPendingUploads([...pendingUploads, { file: blob, position: targetPosition }]);
+      // DO NOT add to pendingUploads - template already has a valid content_url
       setHotspotChanges({ ...hotspotChanges, [tempId]: template.hotspots });
       setHasChanges(true);
       setTemplateDialogOpen(false);
@@ -581,15 +581,47 @@ export default function DeckEditor() {
           .eq('id', realSlides[i].id);
       }
 
-      // 3. NOW handle uploads and create slide records for temp slides
+      // 3. Handle temp slides - split into two paths
       const tempSlideIdMap: { [tempId: string]: string } = {}; // Map temp IDs to real IDs
-      const processedTempIds = new Set<string>();
       
+      // Path A: Template-based temp slides (no upload needed)
+      const templateTempSlides = slides.filter(s => s.id.startsWith('temp-template-'));
+      for (const tempSlide of templateTempSlides) {
+        const { data: newSlide, error: insertError } = await supabase
+          .from('slide_items')
+          .insert({
+            deck_slug: slug,
+            position: tempSlide.position,
+            content_url: tempSlide.content_url, // Use template's URL directly
+            type: tempSlide.type,
+            is_compressed: false,
+            template_id: tempSlide.template_id, // Preserve template_id
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Error creating template slide record:', insertError);
+          throw insertError;
+        }
+
+        if (newSlide) {
+          tempSlideIdMap[tempSlide.id] = newSlide.id;
+        }
+      }
+      
+      // Path B: Uploaded temp slides (need file upload)
+      const processedTempIds = new Set<string>();
       for (const { file, position } of pendingUploads) {
         const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
         
-        // Find an unprocessed temp slide
-        const tempSlide = slides.find(s => s.id.startsWith('temp-') && !processedTempIds.has(s.id));
+        // Find an unprocessed temp slide that's NOT a template slide
+        const tempSlide = slides.find(s => 
+          s.id.startsWith('temp-') && 
+          !s.id.startsWith('temp-template-') && 
+          !processedTempIds.has(s.id)
+        );
+        
         if (!tempSlide) {
           console.warn('Could not find unprocessed temp slide for upload');
           continue;
@@ -627,7 +659,6 @@ export default function DeckEditor() {
           }
 
           if (newSlide) {
-            // Map the temp ID to the real ID
             tempSlideIdMap[tempSlide.id] = newSlide.id;
           }
         }
