@@ -284,11 +284,25 @@ export default function DeckBuilder() {
               Import slides directly from a Google Slides presentation
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="import-slug">Deck Slug</Label>
+              <Input
+                id="import-slug"
+                placeholder="my-deck"
+                value={importDeckSlug}
+                onChange={(e) => setImportDeckSlug(e.target.value)}
+                disabled={importing}
+              />
+              <p className="text-sm text-muted-foreground">
+                Choose a unique name for your deck
+              </p>
+            </div>
             <Button 
               onClick={() => setImportDialogOpen(true)} 
               variant="outline" 
               className="w-full"
+              disabled={!importDeckSlug.trim() || importing}
             >
               <FileDown className="h-4 w-4 mr-2" />
               Import from Google Slides
