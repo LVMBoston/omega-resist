@@ -286,7 +286,7 @@ export default function DeckBuilder() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="import-slug">Deck Slug</Label>
+              <Label htmlFor="import-slug">Deck name</Label>
               <Input
                 id="import-slug"
                 placeholder="my-deck"
