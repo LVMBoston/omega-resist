@@ -713,6 +713,51 @@ export default function CampaignDashboard({
 
           {/* Filters Tab - Single Source of Truth */}
           <TabsContent value="filters" className="space-y-6 mt-6">
+            {/* Campaign Selection Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Campaign Selection</CardTitle>
+                <CardDescription>
+                  Select the active campaign to view data across all tabs
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Campaign</label>
+                  <Select 
+                    value={selectedCampaignId || ""} 
+                    onValueChange={(campaignId) => {
+                      const campaign = campaigns?.find(c => c.id === campaignId);
+                      if (campaign) {
+                        const params = new URLSearchParams(searchParams);
+                        params.set("campaign", campaign.code);
+                        params.set("campaignId", campaign.id);
+                        setSearchParams(params);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a campaign..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns?.map(campaign => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          {campaign.code} - {campaign.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedCampaign && (
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                    <span className="text-sm font-medium">Active Campaign:</span>
+                    <span className="text-sm">{selectedCampaign} - {campaignTitle}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Configure Filters Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Configure Filters</CardTitle>
