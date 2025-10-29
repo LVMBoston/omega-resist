@@ -21,6 +21,7 @@ interface DeckWithSlides {
   slide_count: number;
   interactive_count: number;
   mobilize_org_count: number;
+  campaigns: Array<{ code: string; title: string; id: string }>;
 }
 const Index = () => {
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
@@ -92,13 +93,35 @@ const Index = () => {
         
         const uniqueMobilizeCodes = new Set(mobilizeData?.map(ea => ea.mobilize_code) || []);
         
+        // Get campaigns using this deck
+        const { data: campaignsData } = await supabase
+          .from("events_actions")
+          .select("campaign_id, campaigns(id, code, title)")
+          .eq("assigned_deck_slug", deck.slug);
+        
+        const uniqueCampaigns = Array.from(
+          new Map(
+            (campaignsData || [])
+              .filter(ea => ea.campaigns)
+              .map(ea => [
+                ea.campaigns.id,
+                { 
+                  id: ea.campaigns.id, 
+                  code: ea.campaigns.code, 
+                  title: ea.campaigns.title 
+                }
+              ])
+          ).values()
+        );
+        
         return {
           slug: deck.slug,
           created_at: deck.created_at,
           updated_at: deck.updated_at,
           slide_count: count || 0,
           interactive_count: interactiveCount || 0,
-          mobilize_org_count: uniqueMobilizeCodes.size
+          mobilize_org_count: uniqueMobilizeCodes.size,
+          campaigns: uniqueCampaigns
         };
       }));
       setDecks(decksWithCounts);
@@ -427,6 +450,23 @@ const Index = () => {
                     <div>
                       <p className="text-muted-foreground"># Mobilize Orgs:</p>
                       <p className="font-medium">{deck.mobilize_org_count}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="text-muted-foreground">Deck used in campaigns:</p>
+                      {deck.campaigns.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {deck.campaigns.map(campaign => (
+                            <Badge key={campaign.id} variant="secondary" className="text-xs">
+                              {campaign.code}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="font-medium text-muted-foreground">None</p>
+                      )}
                     </div>
                   </div>
                   <Separator className="my-3" />
