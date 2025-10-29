@@ -372,7 +372,7 @@ export default function DeckViewer() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="h-screen flex items-center justify-center">
+      <main className="h-screen flex items-center justify-center bg-black">
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
@@ -380,7 +380,7 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className="w-full h-full">
+          <Carousel className="w-full h-full md:max-w-[90vw] md:max-h-[90vh] md:aspect-video">
             <CarouselContent className="h-full">
               {slides.map((slide, index) => {
                 console.log(`🎨 Rendering slide ${index + 1}:`, { 
@@ -390,10 +390,10 @@ export default function DeckViewer() {
                   isSpreadWord: slide.type === "spread-word"
                 });
                 return (
-                <CarouselItem key={slide.id} className="h-full">
-                  <Card className="h-full border-0 rounded-none">
-                    <CardContent className="p-0 h-full">
-                      <div className="relative bg-black h-full w-full">
+                <CarouselItem key={slide.id} className="h-full flex items-center justify-center">
+                  <Card className="h-full w-full border-0 rounded-none">
+                    <CardContent className="p-0 h-full w-full flex items-center justify-center">
+                      <div className="relative bg-black h-full w-full max-w-full max-h-full flex items-center justify-center">
                         {slide.type === "spread-word" ? (
                           <ViralSlide 
                             key={`viral-${slide.id}`}
@@ -413,7 +413,7 @@ export default function DeckViewer() {
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-4 right-4"
+                            className="absolute top-4 right-4 z-10"
                             onClick={() => handleDeleteInteractive(slide.id)}
                             disabled={deletingSlide === slide.id}
                             title="Delete interactive page"
@@ -425,7 +425,7 @@ export default function DeckViewer() {
                             )}
                           </Button>
                         )}
-                        <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                        <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm z-10">
                           {index + 1} / {slides.length}
                         </div>
                       </div>
@@ -437,11 +437,11 @@ export default function DeckViewer() {
             </CarouselContent>
             <CarouselPrevious 
               data-carousel-prev 
-              className="left-4 -translate-y-1/2"
+              className="left-4 -translate-y-1/2 z-10"
             />
             <CarouselNext 
               data-carousel-next 
-              className="right-4 -translate-y-1/2"
+              className="right-4 -translate-y-1/2 z-10"
             />
           </Carousel>
         )}
