@@ -11,10 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, FileDown } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   slug: z.string()
@@ -31,10 +29,6 @@ export default function DeckBuilder() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState("");
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [googleSlidesUrl, setGoogleSlidesUrl] = useState("");
-  const [importDeckSlug, setImportDeckSlug] = useState("");
-  const [importing, setImporting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -217,55 +211,6 @@ export default function DeckBuilder() {
     }
   };
 
-  const handleImportSlides = async () => {
-    if (!googleSlidesUrl || !importDeckSlug) {
-      toast.error("Please provide both Google Slides URL and deck name");
-      return;
-    }
-
-    // Extract presentation ID from URL
-    const urlMatch = googleSlidesUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    const presentationId = urlMatch ? urlMatch[1] : googleSlidesUrl;
-    if (!presentationId) {
-      toast.error("Invalid Google Slides URL");
-      return;
-    }
-
-    setImporting(true);
-    try {
-      // Check if deck exists, create only if it doesn't
-      const { data: existingDeck } = await supabase
-        .from("decks")
-        .select("slug")
-        .eq("slug", importDeckSlug)
-        .maybeSingle();
-
-      if (!existingDeck) {
-        const { error: deckError } = await supabase
-          .from("decks")
-          .insert({ slug: importDeckSlug });
-        if (deckError) throw deckError;
-      }
-
-      // Call edge function to import slides
-      const { data, error } = await supabase.functions.invoke("import-google-slides", {
-        body: { presentationId, deckSlug: importDeckSlug }
-      });
-
-      if (error) throw error;
-
-      toast.success(`Successfully imported ${data.slidesCount} slides`);
-      setImportDialogOpen(false);
-      setGoogleSlidesUrl("");
-      setImportDeckSlug("");
-      navigate("/deck-management");
-    } catch (error: any) {
-      console.error("Error importing slides:", error);
-      toast.error(error.message || "Failed to import slides");
-    } finally {
-      setImporting(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -275,43 +220,6 @@ export default function DeckBuilder() {
           <p className="text-muted-foreground">
             Upload slides as a ZIP file containing PNG or JPG images
           </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Import from Google Slides</CardTitle>
-            <CardDescription>
-              Import slides directly from a Google Slides presentation
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="import-slug">Deck name</Label>
-              <Input
-                id="import-slug"
-                placeholder="my-deck"
-                value={importDeckSlug}
-                onChange={(e) => setImportDeckSlug(e.target.value)}
-                disabled={importing}
-              />
-              <p className="text-sm text-muted-foreground">
-                Choose a unique name for your deck
-              </p>
-            </div>
-            <Button 
-              onClick={() => setImportDialogOpen(true)} 
-              variant="outline" 
-              className="w-full"
-              disabled={!importDeckSlug.trim() || importing}
-            >
-              <FileDown className="h-4 w-4 mr-2" />
-              Import from Google Slides
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="text-center text-sm text-muted-foreground">
-          — or —
         </div>
 
         <Card>
@@ -408,46 +316,6 @@ export default function DeckBuilder() {
             </Form>
           </CardContent>
         </Card>
-
-        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Import Google Slides</DialogTitle>
-              <DialogDescription>
-                Enter a Google Slides URL or presentation ID and choose a name for your deck.
-                <br /><br />
-                <strong>Important:</strong> You must share the presentation with your service account email.
-                <br />
-                Find the service account email in your Google Cloud Console under "Service Accounts".
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="slides-url">Google Slides URL</Label>
-                <Input
-                  id="slides-url"
-                  placeholder="https://docs.google.com/presentation/d/1fDM9jDqB8G.../edit"
-                  value={googleSlidesUrl}
-                  onChange={(e) => setGoogleSlidesUrl(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="deck-slug">Deck Name</Label>
-                <Input
-                  id="deck-slug"
-                  placeholder="my-deck"
-                  value={importDeckSlug}
-                  onChange={(e) => setImportDeckSlug(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleImportSlides} disabled={importing}>
-                {importing ? "Importing..." : "Import"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
