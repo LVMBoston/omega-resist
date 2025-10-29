@@ -562,57 +562,10 @@ export default function DeckEditor() {
           .eq('id', slide.id);
       }
 
-      // 2. Handle uploads and create slide records for temp slides
-      const tempSlideIdMap: { [tempId: string]: string } = {}; // Map temp IDs to real IDs
-      
-      for (const { file, position } of pendingUploads) {
-        const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
-        const targetPos = position !== undefined ? position : slides.length;
-        const fileName = `${slug}/${targetPos.toString().padStart(3, "0")}-${Date.now()}.${file.type === 'image/png' ? 'png' : 'jpg'}`;
-        
-        const { data: uploadData } = await supabase.storage.from('slides').upload(fileName, compressedBlob, {
-          contentType: file.type,
-          upsert: true,
-        });
-
-        if (uploadData) {
-          const { data: { publicUrl } } = supabase.storage.from('slides').getPublicUrl(fileName);
-          
-          // Find the temp slide that corresponds to this upload
-          const tempSlide = slides.find(s => s.id.startsWith('temp-') && s.position === targetPos);
-          
-          if (tempSlide) {
-            // Create a new slide_items record
-            const { data: newSlide, error: insertError } = await supabase
-              .from('slide_items')
-              .insert({
-                deck_slug: slug,
-                position: targetPos,
-                content_url: publicUrl,
-                type: tempSlide.type,
-                is_compressed: true,
-                template_id: tempSlide.template_id,
-              })
-              .select()
-              .single();
-
-            if (insertError) {
-              console.error('Error creating slide record:', insertError);
-              throw insertError;
-            }
-
-            if (newSlide) {
-              // Map the temp ID to the real ID
-              tempSlideIdMap[tempSlide.id] = newSlide.id;
-            }
-          }
-        }
-      }
-
-      // 3. Update all slide positions (use temporary positions to avoid unique constraint conflicts)
+      // 2. Update all existing slide positions FIRST (use temporary positions to avoid conflicts)
       const realSlides = slides.filter(s => !s.id.startsWith('temp-'));
       
-      // First, shift all to temporary high positions
+      // First, shift all to temporary high positions to avoid unique constraint violations
       for (let i = 0; i < realSlides.length; i++) {
         await supabase
           .from('slide_items')
@@ -626,6 +579,58 @@ export default function DeckEditor() {
           .from('slide_items')
           .update({ position: realSlides[i].position })
           .eq('id', realSlides[i].id);
+      }
+
+      // 3. NOW handle uploads and create slide records for temp slides
+      const tempSlideIdMap: { [tempId: string]: string } = {}; // Map temp IDs to real IDs
+      const processedTempIds = new Set<string>();
+      
+      for (const { file, position } of pendingUploads) {
+        const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
+        
+        // Find an unprocessed temp slide
+        const tempSlide = slides.find(s => s.id.startsWith('temp-') && !processedTempIds.has(s.id));
+        if (!tempSlide) {
+          console.warn('Could not find unprocessed temp slide for upload');
+          continue;
+        }
+        
+        processedTempIds.add(tempSlide.id);
+        const targetPos = tempSlide.position;
+        const fileName = `${slug}/${targetPos.toString().padStart(3, "0")}-${Date.now()}.${file.type === 'image/png' ? 'png' : 'jpg'}`;
+        
+        const { data: uploadData } = await supabase.storage.from('slides').upload(fileName, compressedBlob, {
+          contentType: file.type,
+          upsert: true,
+        });
+
+        if (uploadData) {
+          const { data: { publicUrl } } = supabase.storage.from('slides').getPublicUrl(fileName);
+          
+          // Create a new slide_items record
+          const { data: newSlide, error: insertError } = await supabase
+            .from('slide_items')
+            .insert({
+              deck_slug: slug,
+              position: targetPos,
+              content_url: publicUrl,
+              type: tempSlide.type,
+              is_compressed: true,
+              template_id: tempSlide.template_id,
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Error creating slide record:', insertError);
+            throw insertError;
+          }
+
+          if (newSlide) {
+            // Map the temp ID to the real ID
+            tempSlideIdMap[tempSlide.id] = newSlide.id;
+          }
+        }
       }
 
       // 4. Handle hotspot changes (including temp slides that now have real IDs)
