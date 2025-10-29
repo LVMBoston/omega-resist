@@ -455,7 +455,7 @@ const Index = () => {
                   <div className="flex items-start gap-2 text-sm">
                     <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div>
-                      <p className="text-muted-foreground">Deck used in campaigns:</p>
+                      <p className="text-muted-foreground">Campaigns using this deck:</p>
                       {deck.campaigns.length > 0 ? (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {deck.campaigns.map(campaign => (
