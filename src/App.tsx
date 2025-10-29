@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import DeckManagement from "./pages/DeckManagement";
+import DeckBuilder from "./pages/DeckBuilder";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
@@ -65,6 +66,7 @@ const App = () => (
             {/* Routes with sidebar */}
             <Route path="/" element={<LayoutWithSidebar><Navigate to="/campaign-config" replace /></LayoutWithSidebar>} />
             <Route path="/deck-management" element={<LayoutWithSidebar><DeckManagement /></LayoutWithSidebar>} />
+            <Route path="/deck-builder" element={<LayoutWithSidebar><DeckBuilder /></LayoutWithSidebar>} />
             <Route path="/interactive-templates" element={<LayoutWithSidebar><InteractiveTemplates /></LayoutWithSidebar>} />
             <Route path="/auth" element={<LayoutWithSidebar><Auth /></LayoutWithSidebar>} />
             <Route path="/deck-editor/:slug" element={<LayoutWithSidebar><DeckEditor /></LayoutWithSidebar>} />
