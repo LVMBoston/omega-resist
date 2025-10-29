@@ -352,7 +352,7 @@ export default function DeckBuilder() {
                   name="slug"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Deck Slug</FormLabel>
+                      <FormLabel>Deck name</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="my-deck-2024"
