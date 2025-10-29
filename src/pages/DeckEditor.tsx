@@ -101,10 +101,13 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
   );
 };
 
-const isValidInteractiveTemplate = (template: Template): boolean => {
+const isValidTemplate = (template: Template): boolean => {
   if (!template.image_url) return false;
-  if (!template.hotspots || template.hotspots.length === 0) return false;
   
+  // Allow templates with no hotspots (display-only)
+  if (!template.hotspots || template.hotspots.length === 0) return true;
+  
+  // If has hotspots, validate they're properly configured
   const hasValidHotspots = template.hotspots.every((hotspot: any) => {
     return (
       typeof hotspot.x === 'number' &&
@@ -217,7 +220,7 @@ export default function DeckEditor() {
       if (error) throw error;
       
       // Only include valid templates
-      const validTemplates = (data || []).filter(isValidInteractiveTemplate);
+      const validTemplates = (data || []).filter(isValidTemplate);
       setTemplates(validTemplates as Template[]);
     } catch (error: any) {
       console.error('Error fetching templates:', error);
@@ -974,12 +977,12 @@ export default function DeckEditor() {
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
         <DialogContent className="max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Add Interactive Slide from Template</DialogTitle>
+            <DialogTitle>Add Slide from Template</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-1 pr-2">
             {templates.length === 0 ? (
               <div className="col-span-2 text-center py-8 text-muted-foreground">
-                No valid templates available. Templates must have at least one hotspot configured.
+                No valid templates available.
               </div>
             ) : (
               templates.map((template) => (
@@ -997,7 +1000,9 @@ export default function DeckEditor() {
                     </div>
                     <div className="font-medium text-sm">{template.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {template.hotspots.length} hotspot(s)
+                      {template.hotspots && template.hotspots.length > 0 
+                        ? `${template.hotspots.length} hotspot(s)` 
+                        : 'Display only'}
                     </div>
                   </CardContent>
                 </Card>
