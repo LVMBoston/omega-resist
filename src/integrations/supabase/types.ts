@@ -394,6 +394,7 @@ export type Database = {
           created_at: string
           deck_slug: string
           id: string
+          import_source: string | null
           is_compressed: boolean | null
           position: number
           template_id: string | null
@@ -404,6 +405,7 @@ export type Database = {
           created_at?: string
           deck_slug: string
           id?: string
+          import_source?: string | null
           is_compressed?: boolean | null
           position: number
           template_id?: string | null
@@ -414,6 +416,7 @@ export type Database = {
           created_at?: string
           deck_slug?: string
           id?: string
+          import_source?: string | null
           is_compressed?: boolean | null
           position?: number
           template_id?: string | null
