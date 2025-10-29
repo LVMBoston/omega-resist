@@ -155,6 +155,7 @@ export default function InteractiveTemplates() {
           slug: data.slug,
           description: data.description,
           image_url: data.image_url,
+          thumbnail_url: data.thumbnail_url,
           hotspots: data.hotspots,
           is_default: data.is_default,
           template_type: data.template_type,
@@ -379,7 +380,11 @@ export default function InteractiveTemplates() {
       }
     }
 
-    const dataToSave = { ...formData, thumbnail_url: thumbnailUrl };
+    // CRITICAL: Display-only templates should never have a thumbnail_url
+    const dataToSave = { 
+      ...formData, 
+      thumbnail_url: formData.template_type === 'display_only' ? null : thumbnailUrl 
+    };
 
     if (editingTemplate) {
       updateTemplate.mutate({ id: editingTemplate.id, data: dataToSave });
