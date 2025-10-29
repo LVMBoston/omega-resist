@@ -130,7 +130,6 @@ export default function DeckEditor() {
   const [referenceDimensions, setReferenceDimensions] = useState<{ width: number; height: number } | null>(null);
   const [hotspotEditorOpen, setHotspotEditorOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [eoaCount, setEoaCount] = useState(0);
   const [campaigns, setCampaigns] = useState<string[]>([]);
@@ -524,51 +523,6 @@ export default function DeckEditor() {
     }
   };
 
-  const handleApplyTemplateToSlide = async (template: Template) => {
-    if (!slug || !selectedSlide) return;
-
-    try {
-      // Download template image
-      const response = await fetch(template.image_url);
-      const blob = await response.blob();
-
-      const validation = await validateImage(blob);
-      if (!validation.valid) {
-        toast.error(validation.error);
-        return;
-      }
-
-      // Use resized file if available
-      const fileToUpload = validation.resizedFile || blob;
-      if (validation.resizedFile) {
-        toast.success('Template automatically resized to match deck dimensions');
-      }
-
-      // Update the existing slide with template data
-      const updatedSlides = slides.map(slide => 
-        slide.id === selectedSlide.id 
-          ? { ...slide, content_url: template.image_url, type: 'spread-word', template_id: template.id }
-          : slide
-      );
-
-      setSlides(updatedSlides);
-      setSelectedSlide({ ...selectedSlide, content_url: template.image_url, type: 'spread-word', template_id: template.id });
-      
-      // Mark as pending upload to replace the image
-      setPendingUploads([...pendingUploads, { file: fileToUpload, position: selectedSlide.position }]);
-      
-      // Apply template hotspots
-      setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: template.hotspots });
-      
-      setHasChanges(true);
-      setTemplatePickerOpen(false);
-      toast.success('Template applied to slide');
-    } catch (error: any) {
-      console.error('Error applying template:', error);
-      toast.error('Failed to apply template');
-    }
-  };
-
   const handleCancel = () => {
     setSlides([...originalSlides]);
     setPendingUploads([]);
@@ -916,12 +870,6 @@ export default function DeckEditor() {
                     alt={`Slide ${selectedSlide.position}`}
                     className="w-full rounded-lg border"
                   />
-                  {selectedSlide.type === 'spread-word' && (
-                    <Button onClick={() => setTemplatePickerOpen(true)} className="w-full">
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Pick Interactive Template
-                    </Button>
-                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -1059,43 +1007,6 @@ export default function DeckEditor() {
         </DialogContent>
       </Dialog>
 
-      {/* Template Picker Dialog - Apply to Existing Slide */}
-      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
-        <DialogContent className="max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Pick Interactive Template</DialogTitle>
-            <p className="text-sm text-muted-foreground">Choose a template to apply to this slide</p>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 overflow-y-auto flex-1 pr-2">
-            {templates.length === 0 ? (
-              <div className="col-span-2 text-center py-8 text-muted-foreground">
-                No valid templates available. Templates must have at least one hotspot configured.
-              </div>
-            ) : (
-              templates.map((template) => (
-                <Card
-                  key={template.id}
-                  className="cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => handleApplyTemplateToSlide(template)}
-                >
-                  <CardContent className="p-4 space-y-2">
-                    <div className="relative">
-                      <img src={template.thumbnail_url || template.image_url} alt={template.name} className="w-full rounded" />
-                      <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1 shadow-lg">
-                        <Check className="h-3 w-3" />
-                      </div>
-                    </div>
-                    <div className="font-medium text-sm">{template.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {template.hotspots.length} hotspot(s)
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Deployment Confirmation Dialog */}
       <DeploymentConfirmDialog
