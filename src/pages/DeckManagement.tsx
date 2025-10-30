@@ -598,7 +598,7 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
                         <div className="flex flex-wrap gap-1 mt-1">
                           {deck.campaigns.map(campaign => (
                             <Badge key={campaign.id} variant="secondary" className="text-xs">
-                              {campaign.code}
+                              {campaign.title}
                             </Badge>
                           ))}
                         </div>
