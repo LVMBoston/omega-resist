@@ -25,7 +25,7 @@ interface DeckWithSlides {
   slide_count: number;
   interactive_count: number;
   mobilize_org_count: number;
-  campaigns: Array<{ code: string; title: string; id: string }>;
+  campaigns: Array<{ code: string; title: string; id: string; description?: string }>;
   first_slide_url?: string;
 }
 const Index = () => {
@@ -597,7 +597,17 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
                       {deck.campaigns.length > 0 ? (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {deck.campaigns.map(campaign => (
-                            <Badge key={campaign.id} variant="secondary" className="text-xs">
+                            <Badge 
+                              key={campaign.id} 
+                              variant="secondary" 
+                              className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
+                              onClick={() => {
+                                const descriptionText = `Code: ${campaign.code}${campaign.description ? `\n\nDescription: ${campaign.description}` : ''}`;
+                                toast(campaign.title, {
+                                  description: descriptionText,
+                                });
+                              }}
+                            >
                               {campaign.title}
                             </Badge>
                           ))}
