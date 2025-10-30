@@ -624,7 +624,7 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
                   </div>
                 </div>
           {deck.first_slide_url && (
-            <div className="w-24 h-32 flex-shrink-0 rounded-md overflow-hidden border">
+            <div className="w-36 h-48 flex-shrink-0 rounded-md overflow-hidden border">
               <img 
                 src={deck.first_slide_url} 
                 alt="First slide preview" 
