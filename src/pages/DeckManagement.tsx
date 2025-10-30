@@ -28,6 +28,22 @@ interface DeckWithSlides {
   campaigns: Array<{ code: string; title: string; id: string; description?: string }>;
   first_slide_url?: string;
 }
+
+interface CampaignDetails {
+  id: string;
+  title: string;
+  code: string;
+  description?: string;
+  created_at: string;
+  events: Array<{
+    id: string;
+    title: string;
+    type: string;
+    start_date?: string;
+    end_date?: string;
+  }>;
+}
+
 const Index = () => {
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +66,8 @@ const Index = () => {
     position: number;
   }>>([]);
   const [loadingImageSlides, setLoadingImageSlides] = useState(false);
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null);
   const navigate = useNavigate();
   const {
     user,
@@ -185,6 +203,35 @@ const Index = () => {
       setRefreshing(false);
     }
   };
+
+  const fetchCampaignDetails = async (campaignId: string) => {
+    try {
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("id", campaignId)
+        .single();
+
+      if (campaignError) throw campaignError;
+
+      const { data: events, error: eventsError } = await supabase
+        .from("events_actions")
+        .select("id, title, type, start_date, end_date")
+        .eq("campaign_id", campaignId);
+
+      if (eventsError) throw eventsError;
+
+      setSelectedCampaign({
+        ...campaign,
+        events: events || [],
+      });
+      setCampaignDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching campaign details:", error);
+      toast.error("Failed to load campaign details");
+    }
+  };
+
   const handleRemoveInteractive = async (slug: string) => {
     if (!confirm(`Remove all interactive pages from deck "${slug}"?`)) {
       return;
@@ -470,7 +517,17 @@ const Index = () => {
             <SortableContext items={decks.map(d => d.slug)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {decks.map(deck => (
-                  <SortableDeckCard key={deck.slug} deck={deck} onExportPDF={handleExportPDF} onRemoveInteractive={handleRemoveInteractive} onDelete={handleDelete} onShowInteractiveImage={handleShowInteractiveImage} onShowImageSlides={handleShowImageSlides} formatDate={formatDate} />
+                  <SortableDeckCard 
+                    key={deck.slug} 
+                    deck={deck} 
+                    onExportPDF={handleExportPDF} 
+                    onRemoveInteractive={handleRemoveInteractive} 
+                    onDelete={handleDelete} 
+                    onShowInteractiveImage={handleShowInteractiveImage} 
+                    onShowImageSlides={handleShowImageSlides} 
+                    onShowCampaignDetails={fetchCampaignDetails}
+                    formatDate={formatDate} 
+                  />
                 ))}
               </div>
             </SortableContext>
@@ -522,6 +579,66 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={campaignDialogOpen} onOpenChange={setCampaignDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          {selectedCampaign && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-2xl mb-1">{selectedCampaign.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">utm_campaign: {selectedCampaign.code}</p>
+                  </div>
+                </div>
+                {selectedCampaign.description && (
+                  <CardDescription className="mt-2">{selectedCampaign.description}</CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Events: Total / Active</p>
+                    <p className="text-2xl font-bold">{selectedCampaign.events.length} / {selectedCampaign.events.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Actions: Total / Active</p>
+                    <p className="text-2xl font-bold">0 / 0</p>
+                  </div>
+                </div>
+                
+                {selectedCampaign.events.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Events & Actions</h3>
+                    {selectedCampaign.events.map(event => (
+                      <div key={event.id} className="p-3 border rounded-md">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{event.title}</p>
+                            <p className="text-sm text-muted-foreground">{event.type}</p>
+                            {event.start_date && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(event.start_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => navigate(`/campaign/${selectedCampaign.id}`)}
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 
@@ -532,10 +649,11 @@ interface SortableDeckCardProps {
   onDelete: (slug: string) => void;
   onShowInteractiveImage: (slug: string) => void;
   onShowImageSlides: (slug: string) => void;
+  onShowCampaignDetails: (campaignId: string) => void;
   formatDate: (date: string) => string;
 }
 
-const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, onShowInteractiveImage, onShowImageSlides, formatDate }: SortableDeckCardProps) => {
+const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, onShowInteractiveImage, onShowImageSlides, onShowCampaignDetails, formatDate }: SortableDeckCardProps) => {
   const {
     attributes,
     listeners,
@@ -601,12 +719,7 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
                               key={campaign.id} 
                               variant="secondary" 
                               className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
-                              onClick={() => {
-                                const descriptionText = `Code: ${campaign.code}${campaign.description ? `\n\nDescription: ${campaign.description}` : ''}`;
-                                toast(campaign.title, {
-                                  description: descriptionText,
-                                });
-                              }}
+                              onClick={() => onShowCampaignDetails(campaign.id)}
                             >
                               {campaign.title}
                             </Badge>
