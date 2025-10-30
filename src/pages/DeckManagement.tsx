@@ -25,6 +25,7 @@ interface DeckWithSlides {
   interactive_count: number;
   mobilize_org_count: number;
   campaigns: Array<{ code: string; title: string; id: string }>;
+  first_slide_url?: string;
 }
 const Index = () => {
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
@@ -137,6 +138,16 @@ const Index = () => {
           ).values()
         );
         
+        // Get first slide for preview
+        const { data: firstSlide } = await supabase
+          .from("slide_items")
+          .select("content_url")
+          .eq("deck_slug", deck.slug)
+          .eq("type", "image")
+          .order("position")
+          .limit(1)
+          .single();
+        
         return {
           slug: deck.slug,
           created_at: deck.created_at,
@@ -144,7 +155,8 @@ const Index = () => {
           slide_count: count || 0,
           interactive_count: interactiveCount || 0,
           mobilize_org_count: uniqueMobilizeCodes.size,
-          campaigns: uniqueCampaigns
+          campaigns: uniqueCampaigns,
+          first_slide_url: firstSlide?.content_url
         };
       }));
       setDecks(decksWithCounts);
@@ -536,11 +548,13 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
             <GripVertical className="h-5 w-5 text-muted-foreground" />
           </div>
         </CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    Deck Slug: {deck.slug}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
+        <CardDescription className="text-xs mt-1">
+          Deck Slug: {deck.slug}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-4">
+          <div className="flex-1 space-y-3">
                   <div className="flex items-start gap-2 text-sm">
                     <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div>
@@ -608,8 +622,19 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
                       )}
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter className="flex justify-between gap-2">
+                </div>
+          {deck.first_slide_url && (
+            <div className="w-24 h-32 flex-shrink-0 rounded-md overflow-hidden border">
+              <img 
+                src={deck.first_slide_url} 
+                alt="First slide preview" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between gap-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
