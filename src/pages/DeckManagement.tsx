@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, X, RefreshCw, Calendar, Clock, Building2 } from "lucide-react";
+import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, X, RefreshCw, Calendar, Clock, Building2, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -54,6 +57,26 @@ const Index = () => {
   useEffect(() => {
     fetchDecks();
   }, []);
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setDecks((items) => {
+        const oldIndex = items.findIndex((item) => item.slug === active.id);
+        const newIndex = items.findIndex((item) => item.slug === over.id);
+        
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
   const fetchDecks = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -417,122 +440,15 @@ const Index = () => {
               <Plus className="h-4 w-4 mr-2" />
               Create Deck
             </Button>
-          </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {decks.map(deck => (
-              <Card key={deck.slug} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <Link to={`/deck-editor/${deck.slug}`} className="hover:underline">
-                      {deck.slug}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    Deck Slug: {deck.slug}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-start gap-2 text-sm">
-                    <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div>
-                      <p className="text-muted-foreground">Created on:</p>
-                      <p className="font-medium">{formatDate(deck.created_at)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 text-sm">
-                    <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div>
-                      <p className="text-muted-foreground">Last Update:</p>
-                      <p className="font-medium">{formatDate(deck.updated_at)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 text-sm">
-                    <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div>
-                      <p className="text-muted-foreground"># Mobilize Orgs:</p>
-                      <p className="font-medium">{deck.mobilize_org_count}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 text-sm">
-                    <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div>
-                      <p className="text-muted-foreground">Campaigns using this deck:</p>
-                      {deck.campaigns.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {deck.campaigns.map(campaign => (
-                            <Badge key={campaign.id} variant="secondary" className="text-xs">
-                              {campaign.code}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="font-medium text-muted-foreground">None</p>
-                      )}
-                    </div>
-                  </div>
-                  <Separator className="my-3" />
-                  <div className="flex gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Image Slides</p>
-                      {deck.slide_count > 0 ? (
-                        <button 
-                          onClick={() => handleShowImageSlides(deck.slug)} 
-                          className="hover:underline text-primary font-medium cursor-pointer"
-                        >
-                          {deck.slide_count}
-                        </button>
-                      ) : (
-                        <p className="font-medium">{deck.slide_count}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Interactive Pages</p>
-                      {deck.interactive_count > 0 ? (
-                        <button 
-                          onClick={() => handleShowInteractiveImage(deck.slug)} 
-                          className="hover:underline text-primary font-medium cursor-pointer"
-                        >
-                          {deck.interactive_count}
-                        </button>
-                      ) : (
-                        <p className="font-medium">{deck.interactive_count}</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleExportPDF(deck.slug)}
-                    title="Export to PDF"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                  <div className="flex gap-2">
-                    {deck.interactive_count > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleRemoveInteractive(deck.slug)}
-                        title="Remove interactive pages"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDelete(deck.slug)}
-                      title="Delete deck"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>}
+          </div> : <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={decks.map(d => d.slug)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {decks.map(deck => (
+                  <SortableDeckCard key={deck.slug} deck={deck} onExportPDF={handleExportPDF} onRemoveInteractive={handleRemoveInteractive} onDelete={handleDelete} onShowInteractiveImage={handleShowInteractiveImage} onShowImageSlides={handleShowImageSlides} formatDate={formatDate} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>}
       </main>
 
       <Dialog open={interactiveImageDialog} onOpenChange={setInteractiveImageDialog}>
@@ -582,4 +498,150 @@ const Index = () => {
       </Dialog>
     </div>;
 };
+
+interface SortableDeckCardProps {
+  deck: DeckWithSlides;
+  onExportPDF: (slug: string) => void;
+  onRemoveInteractive: (slug: string) => void;
+  onDelete: (slug: string) => void;
+  onShowInteractiveImage: (slug: string) => void;
+  onShowImageSlides: (slug: string) => void;
+  formatDate: (date: string) => string;
+}
+
+const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, onShowInteractiveImage, onShowImageSlides, formatDate }: SortableDeckCardProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: deck.slug });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <Link to={`/deck-editor/${deck.slug}`} className="hover:underline flex-1">
+            {deck.slug}
+          </Link>
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent rounded">
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    Deck Slug: {deck.slug}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-start gap-2 text-sm">
+                    <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="text-muted-foreground">Created on:</p>
+                      <p className="font-medium">{formatDate(deck.created_at)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="text-muted-foreground">Last Update:</p>
+                      <p className="font-medium">{formatDate(deck.updated_at)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="text-muted-foreground"># Mobilize Orgs:</p>
+                      <p className="font-medium">{deck.mobilize_org_count}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm">
+                    <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p className="text-muted-foreground">Campaigns using this deck:</p>
+                      {deck.campaigns.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {deck.campaigns.map(campaign => (
+                            <Badge key={campaign.id} variant="secondary" className="text-xs">
+                              {campaign.code}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="font-medium text-muted-foreground">None</p>
+                      )}
+                    </div>
+                  </div>
+                  <Separator className="my-3" />
+                  <div className="flex gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Image Slides</p>
+                      {deck.slide_count > 0 ? (
+                        <button 
+                          onClick={() => onShowImageSlides(deck.slug)} 
+                          className="hover:underline text-primary font-medium cursor-pointer"
+                        >
+                          {deck.slide_count}
+                        </button>
+                      ) : (
+                        <p className="font-medium">{deck.slide_count}</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Interactive Pages</p>
+                      {deck.interactive_count > 0 ? (
+                        <button 
+                          onClick={() => onShowInteractiveImage(deck.slug)} 
+                          className="hover:underline text-primary font-medium cursor-pointer"
+                        >
+                          {deck.interactive_count}
+                        </button>
+                      ) : (
+                        <p className="font-medium">{deck.interactive_count}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onExportPDF(deck.slug)}
+                    title="Export to PDF"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                  <div className="flex gap-2">
+                    {deck.interactive_count > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => onRemoveInteractive(deck.slug)}
+                        title="Remove interactive pages"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => onDelete(deck.slug)}
+                      title="Delete deck"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+        </CardFooter>
+      </Card>
+  );
+};
+
 export default Index;
