@@ -21,6 +21,7 @@ interface DeckWithSlides {
   slug: string;
   created_at: string;
   updated_at: string;
+  display_order: number;
   slide_count: number;
   interactive_count: number;
   mobilize_org_count: number;
@@ -65,7 +66,7 @@ const Index = () => {
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
@@ -73,7 +74,17 @@ const Index = () => {
         const oldIndex = items.findIndex((item) => item.slug === active.id);
         const newIndex = items.findIndex((item) => item.slug === over.id);
         
-        return arrayMove(items, oldIndex, newIndex);
+        const reorderedItems = arrayMove(items, oldIndex, newIndex);
+        
+        // Save the new order to database
+        reorderedItems.forEach(async (deck, index) => {
+          await supabase
+            .from('decks')
+            .update({ display_order: index })
+            .eq('slug', deck.slug);
+        });
+        
+        return reorderedItems;
       });
     }
   };
@@ -88,7 +99,9 @@ const Index = () => {
       const {
         data: decksData,
         error: decksError
-      } = await supabase.from("decks").select("slug, created_at, updated_at").order("created_at", {
+      } = await supabase.from("decks").select("slug, created_at, updated_at, display_order").order("display_order", {
+        ascending: true
+      }).order("created_at", {
         ascending: false
       });
       if (decksError) throw decksError;
@@ -152,6 +165,7 @@ const Index = () => {
           slug: deck.slug,
           created_at: deck.created_at,
           updated_at: deck.updated_at,
+          display_order: deck.display_order,
           slide_count: count || 0,
           interactive_count: interactiveCount || 0,
           mobilize_org_count: uniqueMobilizeCodes.size,
