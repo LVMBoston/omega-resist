@@ -380,7 +380,7 @@ export default function QrDebugTool() {
               <Slider
                 id="size"
                 min={256}
-                max={4800}
+                max={9600}
                 step={128}
                 value={[size]}
                 onValueChange={(values) => setSize(values[0])}
@@ -420,6 +420,13 @@ export default function QrDebugTool() {
                   onClick={() => setSize(4800)}
                 >
                   Large Print (8" @ 600 DPI)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSize(9600)}
+                >
+                  Extra Large (16" @ 600 DPI)
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
