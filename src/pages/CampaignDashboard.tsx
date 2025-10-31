@@ -959,7 +959,7 @@ export default function CampaignDashboard({
                             </TableHead>
                             <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location')}>
                               <div className="flex items-center gap-1">
-                                City, State
+                                City/Region
                                 {sortConfig.column === 'location' && <ArrowUpDown className="w-3 h-3" />}
                               </div>
                             </TableHead>
