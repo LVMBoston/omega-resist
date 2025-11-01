@@ -450,11 +450,40 @@ export const InteractiveSlideOverlay = ({
           imageDimensions
         });
         
+        // Use anchor tag for external links to avoid share sheet on mobile
+        if (hotspot.type === 'external_link' && hotspot.url) {
+          return (
+            <a
+              key={hotspot.id}
+              href={hotspot.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+              style={{
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${buttonWidth}px`,
+                height: `${buttonHeight}px`,
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                textDecoration: 'none',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log(`📱 External link clicked: ${hotspot.url}`);
+              }}
+            >
+              {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            </a>
+          );
+        }
+        
+        // Use button for other hotspot types
         const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
-          // Don't preventDefault for external links - let browser handle navigation
-          if (hotspot.type !== 'external_link') {
-            e.preventDefault();
-          }
+          e.preventDefault();
           e.stopPropagation();
           console.log(`📱 Hotspot ${hotspot.type} clicked/touched`);
           getHotspotAction(hotspot.type, hotspot.url)();
