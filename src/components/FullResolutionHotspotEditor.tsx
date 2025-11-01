@@ -18,7 +18,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social";
+  type: "sms" | "email" | "social" | "external_link";
   icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
   imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
@@ -28,13 +28,14 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social";
+  type: "sms" | "email" | "social" | "external_link";
   label: string;
   x: number;
   y: number;
   width: number;
   height: number;
   labelPosition?: "top" | "bottom";
+  url?: string;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
@@ -56,9 +57,12 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "social-whatsapp", label: "WhatsApp (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-share", label: "Share (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-share-filled", label: "Share Filled (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  
+  // External link variants
+  { id: "link-icon", label: "External Link", type: "external_link", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
 ];
 
-type IconCategory = "sms" | "email" | "social";
+type IconCategory = "sms" | "email" | "social" | "external_link";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -91,19 +95,22 @@ export const FullResolutionHotspotEditor = ({
   const categoryImages: Record<IconCategory, string> = {
     sms: textIcon,
     email: mailIcon,
-    social: "" // Will use icon component for social
+    social: "", // Will use icon component for social
+    external_link: ""
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
     sms: null,
     email: null,
-    social: BsShare
+    social: BsShare,
+    external_link: BsShare
   };
 
   const categoryLabels: Record<IconCategory, string> = {
     sms: "SMS/Text",
     email: "Email",
-    social: "Social Share"
+    social: "Social Share",
+    external_link: "External Link"
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -581,6 +588,20 @@ export const FullResolutionHotspotEditor = ({
                           maxLength={10}
                         />
                       </div>
+
+                      {selectedHotspotData.type === "external_link" && (
+                        <div>
+                          <Label>URL</Label>
+                          <Input
+                            value={selectedHotspotData.url || ""}
+                            onChange={(e) =>
+                              updateHotspot(selectedHotspotData.id, { url: e.target.value })
+                            }
+                            placeholder="https://example.com"
+                            type="url"
+                          />
+                        </div>
+                      )}
 
                       <div>
                         <Label>Label Position</Label>

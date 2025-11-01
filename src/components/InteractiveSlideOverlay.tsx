@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2 } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -379,6 +379,8 @@ export const InteractiveSlideOverlay = ({
         return iconWrapper(<BsShare style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-share-filled":
         return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+      case "link-icon":
+        return iconWrapper(<ExternalLink style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
@@ -387,14 +389,19 @@ export const InteractiveSlideOverlay = ({
     }
   };
 
-  const getHotspotAction = (type: string) => {
+  const getHotspotAction = (type: string, url?: string) => {
     switch (type) {
       case "sms":
         return handleSMS;
       case "email":
         return handleEmail;
-      case "social":
       case "external_link":
+        return () => {
+          if (url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
+        };
+      case "social":
       case "form_trigger":
       case "custom":
         return handleSocial;
@@ -434,7 +441,7 @@ export const InteractiveSlideOverlay = ({
           e.preventDefault();
           e.stopPropagation();
           console.log(`📱 Hotspot ${hotspot.type} clicked/touched`);
-          getHotspotAction(hotspot.type)();
+          getHotspotAction(hotspot.type, hotspot.url)();
         };
         
         return (

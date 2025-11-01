@@ -67,6 +67,7 @@ export interface Hotspot {
   width: number;    // percentage
   height: number;   // percentage
   labelPosition?: 'top' | 'bottom';
+  url?: string;     // For external_link type
 }
 
 // Hotspot action types (can expand for custom_action)
