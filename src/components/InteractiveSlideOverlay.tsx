@@ -389,6 +389,19 @@ export const InteractiveSlideOverlay = ({
     }
   };
 
+  const handleExternalLink = (url: string) => {
+    // Create a temporary anchor element to open the link
+    // This works better on mobile than window.open
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getHotspotAction = (type: string, url?: string) => {
     switch (type) {
       case "sms":
@@ -398,7 +411,7 @@ export const InteractiveSlideOverlay = ({
       case "external_link":
         return () => {
           if (url) {
-            window.open(url, '_blank', 'noopener,noreferrer');
+            handleExternalLink(url);
           }
         };
       case "social":
@@ -438,7 +451,10 @@ export const InteractiveSlideOverlay = ({
         });
         
         const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
-          e.preventDefault();
+          // Don't preventDefault for external links - let browser handle navigation
+          if (hotspot.type !== 'external_link') {
+            e.preventDefault();
+          }
           e.stopPropagation();
           console.log(`📱 Hotspot ${hotspot.type} clicked/touched`);
           getHotspotAction(hotspot.type, hotspot.url)();
