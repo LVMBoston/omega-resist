@@ -610,7 +610,7 @@ export default function InteractiveTemplates() {
               {formData.image_url && formData.template_type === 'interactive_share' && (
                 <div>
                   <Label>Configure Hotspots</Label>
-                  <div className="border rounded-lg p-4 bg-muted">
+                  <div className="border rounded-lg p-4 bg-muted max-h-[50vh] overflow-y-auto">
                     <FullResolutionHotspotEditor
                       imageUrl={formData.image_url}
                       initialHotspots={formData.hotspots}
