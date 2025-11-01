@@ -143,6 +143,7 @@ export const FullResolutionHotspotEditor = ({
       width: selectedIconPreset.width,
       height: selectedIconPreset.height,
       labelPosition: "bottom",
+      ...(selectedIconPreset.type === "external_link" && { url: "" }),
     };
 
     const updatedHotspots = [...hotspots, newHotspot];
