@@ -104,13 +104,18 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           
           // Map iconId to type for backward compatibility and ensure all fields are present
           const mappedHotspots = Array.isArray(legacyData.hotspots) 
-            ? legacyData.hotspots.map((h: any) => ({
-                ...h,
-                iconId: h.iconId || `${h.type}-default`,
-                type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social'),
-                url: h.url, // Explicitly preserve URL for external_link type
-                labelPosition: h.labelPosition || 'bottom'
-              }))
+            ? legacyData.hotspots.map((h: any) => {
+                console.log("🔍 ViralSlideV2 - Raw hotspot from DB (legacy):", JSON.stringify(h, null, 2));
+                const mapped = {
+                  ...h,
+                  iconId: h.iconId || `${h.type}-default`,
+                  type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social'),
+                  url: h.url, // Explicitly preserve URL for external_link type
+                  labelPosition: h.labelPosition || 'bottom'
+                };
+                console.log("✅ ViralSlideV2 - Mapped hotspot (legacy):", JSON.stringify(mapped, null, 2));
+                return mapped;
+              })
             : [];
           
           setConfig({
@@ -146,13 +151,18 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         
         // Map iconId to type for backward compatibility and ensure all fields are present
         const mappedHotspots = Array.isArray(templateData.hotspots) 
-          ? templateData.hotspots.map((h: any) => ({
-              ...h,
-              iconId: h.iconId || `${h.type}-default`,
-              type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social'),
-              url: h.url, // Explicitly preserve URL for external_link type
-              labelPosition: h.labelPosition || 'bottom'
-            }))
+          ? templateData.hotspots.map((h: any) => {
+              console.log("🔍 ViralSlideV2 - Raw hotspot from DB:", JSON.stringify(h, null, 2));
+              const mapped = {
+                ...h,
+                iconId: h.iconId || `${h.type}-default`,
+                type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social'),
+                url: h.url, // Explicitly preserve URL for external_link type
+                labelPosition: h.labelPosition || 'bottom'
+              };
+              console.log("✅ ViralSlideV2 - Mapped hotspot:", JSON.stringify(mapped, null, 2));
+              return mapped;
+            })
           : [];
         
         setConfig({
