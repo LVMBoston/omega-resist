@@ -319,8 +319,8 @@ export const FullResolutionHotspotEditor = ({
               
               {!selectedCategory ? (
                 // Step 1: Category selection
-                <div className="grid grid-cols-3 gap-3">
-                  {(["sms", "email", "social"] as IconCategory[]).map((category) => {
+                <div className="grid grid-cols-4 gap-2">
+                  {(["sms", "email", "social", "external_link"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
                     return (
@@ -328,14 +328,14 @@ export const FullResolutionHotspotEditor = ({
                         key={category}
                         onClick={() => setSelectedCategory(category)}
                         variant="outline"
-                        className="flex flex-col items-center gap-2 h-auto py-4"
+                        className="flex flex-col items-center gap-1.5 h-auto py-3 px-2"
                       >
                         {categoryImageUrl ? (
-                          <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-8 h-8 object-contain" />
+                          <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-6 h-6 object-contain" />
                         ) : CategoryIcon ? (
-                          <CategoryIcon className="w-8 h-8" />
+                          <CategoryIcon className="w-6 h-6" />
                         ) : null}
-                        <span className="text-sm font-medium">{categoryLabels[category]}</span>
+                        <span className="text-xs font-medium text-center leading-tight">{categoryLabels[category]}</span>
                       </Button>
                     );
                   })}
