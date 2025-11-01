@@ -319,7 +319,7 @@ export const FullResolutionHotspotEditor = ({
               
               {!selectedCategory ? (
                 // Step 1: Category selection
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {(["sms", "email", "social", "external_link"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
@@ -328,12 +328,12 @@ export const FullResolutionHotspotEditor = ({
                         key={category}
                         onClick={() => setSelectedCategory(category)}
                         variant="outline"
-                        className="flex flex-col items-center gap-1.5 h-auto py-3 px-2"
+                        className="flex flex-col items-center gap-1.5 h-auto py-2 px-2"
                       >
                         {categoryImageUrl ? (
-                          <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-6 h-6 object-contain" />
+                          <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-5 h-5 object-contain" />
                         ) : CategoryIcon ? (
-                          <CategoryIcon className="w-6 h-6" />
+                          <CategoryIcon className="w-5 h-5" />
                         ) : null}
                         <span className="text-xs font-medium text-center leading-tight">{categoryLabels[category]}</span>
                       </Button>
@@ -342,7 +342,7 @@ export const FullResolutionHotspotEditor = ({
                 </div>
               ) : (
                 // Step 2: Icon variant selection
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {ICON_PRESETS.filter(p => p.type === selectedCategory).map((preset) => {
                     const PresetIcon = preset.icon;
                     return (
@@ -353,12 +353,12 @@ export const FullResolutionHotspotEditor = ({
                           setIsPlacing(true);
                         }}
                         variant={selectedIconPreset?.id === preset.id ? "default" : "outline"}
-                        className="flex flex-col items-center gap-2 h-auto py-3"
+                        className="flex flex-col items-center gap-2 h-auto py-2"
                       >
                         {preset.imageUrl ? (
-                          <img src={preset.imageUrl} alt={preset.label} className="w-8 h-8 object-contain" />
+                          <img src={preset.imageUrl} alt={preset.label} className="w-6 h-6 object-contain" />
                         ) : PresetIcon ? (
-                          <PresetIcon className="w-8 h-8" />
+                          <PresetIcon className="w-6 h-6" />
                         ) : null}
                         <span className="text-xs">{preset.label}</span>
                       </Button>
