@@ -12,5 +12,8 @@ verify_jwt = false
 [functions.import-google-slides]
 verify_jwt = true
 
+[functions.import-powerpoint]
+verify_jwt = true
+
 [functions.fetch-mobilize-event]
 verify_jwt = false
