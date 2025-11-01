@@ -38,7 +38,7 @@ serve(async (req) => {
 
     // PowerPoint slides are stored in ppt/slides/ and ppt/media/
     // We need to match slide images
-    const slideImagePattern = /^ppt\/slides\/media\//;
+    const slideImagePattern = /^ppt\/media\//;
     const slideXmlPattern = /^ppt\/slides\/slide(\d+)\.xml$/;
 
     // First, get all slide XML files to determine slide count and order
