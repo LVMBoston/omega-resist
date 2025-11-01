@@ -15,6 +15,7 @@ export const InteractiveShareSlide = ({
   deckSlug, 
   viralToken 
 }: InteractiveShareSlideProps) => {
+  console.log("🎨 InteractiveShareSlide - Received hotspots:", JSON.stringify(hotspots, null, 2));
   const [imageLoaded, setImageLoaded] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);

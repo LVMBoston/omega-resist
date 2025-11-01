@@ -426,7 +426,13 @@ export const InteractiveSlideOverlay = ({
   console.log("🎯 InteractiveSlideOverlay render:", {
     hotspotsCount: hotspots.length,
     imageDimensions,
-    hotspots: hotspots.map(h => ({ id: h.id, type: h.type, x: h.x, y: h.y }))
+    hotspots: hotspots.map(h => ({ 
+      id: h.id, 
+      type: h.type, 
+      url: h.url,
+      x: h.x, 
+      y: h.y 
+    }))
   });
 
   return (
@@ -451,7 +457,9 @@ export const InteractiveSlideOverlay = ({
         });
         
         // Use anchor tag for external links to avoid share sheet on mobile
+        console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}, condition=${hotspot.type === 'external_link' && hotspot.url}`);
         if (hotspot.type === 'external_link' && hotspot.url) {
+          console.log(`✅ Rendering as anchor tag for external_link: ${hotspot.url}`);
           return (
             <a
               key={hotspot.id}
