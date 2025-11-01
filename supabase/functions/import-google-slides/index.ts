@@ -98,19 +98,35 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Starting Google Slides import...');
+    
     const { presentationId, deckSlug } = await req.json();
     
     if (!presentationId || !deckSlug) {
       throw new Error('presentationId and deckSlug are required');
     }
 
+    console.log(`Processing presentation: ${presentationId} for deck: ${deckSlug}`);
+
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase credentials not configured');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log('Getting access token...');
-    const accessToken = await getAccessToken();
+    let accessToken;
+    try {
+      accessToken = await getAccessToken();
+      console.log('Access token obtained successfully');
+    } catch (tokenError) {
+      console.error('Failed to get access token:', tokenError);
+      throw new Error(`Authentication failed: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
+    }
 
     console.log('Fetching presentation:', presentationId);
 
@@ -226,9 +242,18 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error importing Google Slides:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to import slides';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('Full error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      type: error?.constructor?.name
+    });
+    
     return new Response(
       JSON.stringify({
-        error: errorMessage
+        error: errorMessage,
+        details: errorStack
       }),
       {
         status: 500,
