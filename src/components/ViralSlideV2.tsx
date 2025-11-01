@@ -17,12 +17,14 @@ interface ViralSlideProps {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social";
+  type: "sms" | "email" | "social" | "external_link";
   label: string;
   x: number;
   y: number;
   width: number;
   height: number;
+  url?: string;
+  labelPosition?: 'top' | 'bottom';
 }
 
 interface ViralConfig {
