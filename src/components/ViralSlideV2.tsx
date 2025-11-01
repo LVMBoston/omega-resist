@@ -107,7 +107,9 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
             ? legacyData.hotspots.map((h: any) => ({
                 ...h,
                 iconId: h.iconId || `${h.type}-default`,
-                type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
+                type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social'),
+                url: h.url, // Explicitly preserve URL for external_link type
+                labelPosition: h.labelPosition || 'bottom'
               }))
             : [];
           
@@ -147,7 +149,9 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
           ? templateData.hotspots.map((h: any) => ({
               ...h,
               iconId: h.iconId || `${h.type}-default`,
-              type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social')
+              type: h.type || (h.iconId?.includes('sms') ? 'sms' : h.iconId?.includes('email') ? 'email' : 'social'),
+              url: h.url, // Explicitly preserve URL for external_link type
+              labelPosition: h.labelPosition || 'bottom'
             }))
           : [];
         
