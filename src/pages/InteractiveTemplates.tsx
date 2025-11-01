@@ -485,7 +485,7 @@ export default function InteractiveTemplates() {
               Create Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>{editingTemplate ? "Edit Template" : "Create New Template"}</DialogTitle>
               <DialogDescription>
@@ -496,7 +496,7 @@ export default function InteractiveTemplates() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-1 pr-2">
               <div>
                 <Label>Template Type</Label>
                 <RadioGroup
