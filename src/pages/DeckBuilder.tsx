@@ -446,7 +446,7 @@ export default function DeckBuilder() {
                     <FormField control={zipForm.control} name="slug" render={({
                     field
                   }) => <FormItem>
-                          <FormLabel>Deck Name</FormLabel>
+                          <FormLabel className="text-lg font-semibold">Step 2: Enter Deck Name</FormLabel>
                           <FormControl>
                             <Input placeholder="my-deck-2024" {...field} disabled={uploading} />
                           </FormControl>
@@ -501,7 +501,7 @@ export default function DeckBuilder() {
                     <FormField control={googleSlidesForm.control} name="slug" render={({
                     field
                   }) => <FormItem>
-                          <FormLabel>Deck Name</FormLabel>
+                          <FormLabel className="text-lg font-semibold">Step 2: Enter Deck Name</FormLabel>
                           <FormControl>
                             <Input placeholder="my-deck-2024" {...field} disabled={uploading} />
                           </FormControl>
@@ -549,7 +549,7 @@ export default function DeckBuilder() {
                     <FormField control={pptxForm.control} name="slug" render={({
                     field
                   }) => <FormItem>
-                          <FormLabel>Deck Name</FormLabel>
+                          <FormLabel className="text-lg font-semibold">Step 2: Enter Deck Name</FormLabel>
                           <FormControl>
                             <Input placeholder="my-deck-2024" {...field} disabled={uploading} />
                           </FormControl>
