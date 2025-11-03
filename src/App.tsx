@@ -61,7 +61,7 @@ const App = () => (
           <Routes>
             {/* Routes without sidebar */}
             <Route path="/deck/:slug?" element={<DeckViewer />} />
-            <Route path="/s/:code" element={<ShortUrlRedirect />} />
+            <Route path="/r/:code" element={<ShortUrlRedirect />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
             
             {/* Routes with sidebar */}
