@@ -9,6 +9,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
+import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
 import Player from "@vimeo/player";
 
@@ -415,6 +416,8 @@ const InteractiveSlideOverlay = ({
         return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "link-icon":
         return iconWrapper(<ExternalLink style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+      case "play-button":
+        return iconWrapper(<img src={playButton} alt="Play Video" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
@@ -442,8 +445,8 @@ const InteractiveSlideOverlay = ({
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        // Use Vimeo's embed player with playsinline to prevent native fullscreen on mobile
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&dnt=1&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        // Use Vimeo's embed player with enhanced parameters for proper display
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
     return url; // Fallback to original URL if parsing fails
@@ -495,6 +498,10 @@ const InteractiveSlideOverlay = ({
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
+      iframe.style.backgroundColor = '#000';
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('webkitallowfullscreen', '');
+      iframe.setAttribute('mozallowfullscreen', '');
       
       videoContainerRef.current.appendChild(iframe);
       
@@ -628,6 +635,8 @@ const InteractiveSlideOverlay = ({
           
           // If it's a Vimeo URL, intercept and use handleExternalLink for inline playback
           if (isVimeo) {
+            // Use play-button icon for Vimeo videos instead of the iconId
+            const videoIconId = 'play-button';
             return (
               <button
                 key={hotspot.id}
@@ -650,7 +659,7 @@ const InteractiveSlideOverlay = ({
                   padding: 0,
                 }}
               >
-                {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+                {getHotspotIcon(videoIconId, buttonWidth, buttonHeight)}
               </button>
             );
           }
