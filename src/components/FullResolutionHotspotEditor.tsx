@@ -605,6 +605,25 @@ export const FullResolutionHotspotEditor = ({
                       )}
 
                       <div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full mb-4"
+                          onClick={async () => {
+                            const testUrl = `${window.location.origin}/deck/test-deck?v=TEST-TOKEN-123`;
+                            await navigator.clipboard.writeText(testUrl);
+                            toast({
+                              title: "Test URL Copied",
+                              description: "Test share link copied to clipboard",
+                            });
+                          }}
+                        >
+                          Test Share URL
+                        </Button>
+                      </div>
+
+                      <div>
                         <Label>Label Position</Label>
                         <RadioGroup
                           value={selectedHotspotData.labelPosition || "bottom"}
