@@ -15,8 +15,14 @@ export const InteractiveShareSlide = ({
   deckSlug, 
   viralToken 
 }: InteractiveShareSlideProps) => {
-  console.log("🎨 InteractiveShareSlide - Received hotspots:", JSON.stringify(hotspots, null, 2));
+  console.log("🎨 InteractiveShareSlide - Props:", {
+    imageUrl,
+    hotspots: JSON.stringify(hotspots, null, 2),
+    deckSlug,
+    viralToken
+  });
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -32,17 +38,37 @@ export const InteractiveShareSlide = ({
 
   return (
     <div className="relative w-full h-full bg-black flex items-center justify-center">
-      <img
-        ref={imageRef}
-        src={imageUrl}
-        alt="Interactive viral slide"
-        className="max-w-full max-h-full object-contain"
-        onLoad={() => {
-          console.log("🖼️ InteractiveShareSlide image loaded");
-          setImageLoaded(true);
-        }}
-      />
-      {overlayReady && hotspots.length > 0 && (
+      {imageError ? (
+        <div className="text-white text-center p-4">
+          <p className="text-lg font-semibold mb-2">Image failed to load</p>
+          <p className="text-sm text-gray-400 break-all">{imageUrl}</p>
+        </div>
+      ) : !imageUrl ? (
+        <div className="text-white text-center p-4">
+          <p className="text-lg font-semibold mb-2">No image URL provided</p>
+          <p className="text-sm text-gray-400">Missing imageUrl prop</p>
+        </div>
+      ) : (
+        <img
+          ref={imageRef}
+          src={imageUrl}
+          alt="Interactive viral slide"
+          className="max-w-full max-h-full object-contain"
+          onLoad={() => {
+            console.log("✅ InteractiveShareSlide image loaded successfully:", imageUrl);
+            setImageLoaded(true);
+            setImageError(false);
+          }}
+          onError={(e) => {
+            console.error("❌ InteractiveShareSlide image failed to load:", {
+              imageUrl,
+              error: e
+            });
+            setImageError(true);
+          }}
+        />
+      )}
+      {overlayReady && hotspots.length > 0 && !imageError && (
         <InteractiveSlideOverlay
           hotspots={hotspots}
           deckSlug={deckSlug}
