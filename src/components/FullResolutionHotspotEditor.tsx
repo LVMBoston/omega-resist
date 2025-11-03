@@ -60,7 +60,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "social-share-filled", label: "Share Filled (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   
   // External link variants
-  { id: "link-icon", label: "External Link", type: "external_link", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
+  { id: "link-icon", label: "External Link", type: "external_link", imageUrl: playButton, width: 5, height: 4 },
 ];
 
 type IconCategory = "sms" | "email" | "social" | "external_link";
@@ -97,7 +97,7 @@ export const FullResolutionHotspotEditor = ({
     sms: textIcon,
     email: mailIcon,
     social: "", // Will use icon component for social
-    external_link: ""
+    external_link: playButton
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
