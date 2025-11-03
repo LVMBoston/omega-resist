@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
 import { Hotspot } from "@/types/viralTemplates";
+import Player from "@vimeo/player";
 
 interface InteractiveSlideOverlayProps {
   hotspots: Hotspot[];
@@ -33,6 +34,10 @@ export const InteractiveSlideOverlay = ({
   });
   const [emailTemplate, setEmailTemplate] = useState<{subject: string; body: string} | null>(null);
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const vimeoPlayerRef = useRef<Player | null>(null);
 
   // Fetch email and SMS templates
   useEffect(() => {
@@ -418,18 +423,83 @@ export const InteractiveSlideOverlay = ({
     }
   };
 
-  const handleExternalLink = (url: string) => {
-    // Create a temporary anchor element to open the link
-    // This works better on mobile than window.open
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const isVimeoUrl = (url: string) => {
+    return url.includes('vimeo.com');
   };
+
+  const handleExternalLink = (url: string) => {
+    // Check if it's a Vimeo URL
+    if (isVimeoUrl(url)) {
+      setVideoUrl(url);
+      setIsVideoOpen(true);
+    } else {
+      // For non-Vimeo URLs, open in new tab
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const closeVideo = () => {
+    if (vimeoPlayerRef.current) {
+      vimeoPlayerRef.current.destroy();
+      vimeoPlayerRef.current = null;
+    }
+    setIsVideoOpen(false);
+    setVideoUrl(null);
+  };
+
+  // Initialize Vimeo player when video opens
+  useEffect(() => {
+    if (isVideoOpen && videoUrl && videoContainerRef.current) {
+      const iframe = document.createElement('iframe');
+      iframe.src = videoUrl;
+      iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+      iframe.style.position = 'absolute';
+      iframe.style.top = '0';
+      iframe.style.left = '0';
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.border = 'none';
+      
+      videoContainerRef.current.appendChild(iframe);
+      
+      const player = new Player(iframe, {
+        muted: false,
+        autoplay: true,
+      });
+      
+      vimeoPlayerRef.current = player;
+      
+      // Close video when it ends
+      player.on('ended', () => {
+        closeVideo();
+      });
+      
+      return () => {
+        if (vimeoPlayerRef.current) {
+          vimeoPlayerRef.current.destroy();
+        }
+      };
+    }
+  }, [isVideoOpen, videoUrl]);
+
+  // Handle Escape key to close video
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isVideoOpen) {
+        closeVideo();
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isVideoOpen]);
 
   const getHotspotAction = (type: string, url?: string) => {
     switch (type) {
@@ -465,7 +535,32 @@ export const InteractiveSlideOverlay = ({
   });
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-50">
+    <>
+      {/* Video Overlay - Full Screen */}
+      {isVideoOpen && videoUrl && (
+        <div 
+          className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
+          onClick={closeVideo}
+        >
+          {/* Close button */}
+          <button
+            onClick={closeVideo}
+            className="absolute top-4 right-4 z-[101] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+            aria-label="Close video"
+          >
+            <X size={24} />
+          </button>
+          
+          {/* Video container */}
+          <div 
+            ref={videoContainerRef}
+            className="relative w-full h-full"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      <div className="absolute inset-0 pointer-events-none z-50">
       {imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
         // Calculate hotspot position relative to rendered image
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
@@ -548,6 +643,7 @@ export const InteractiveSlideOverlay = ({
           </button>
         );
       })}
-    </div>
+      </div>
+    </>
   );
 };
