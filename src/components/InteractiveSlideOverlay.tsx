@@ -492,13 +492,11 @@ const InteractiveSlideOverlay = ({
       const iframe = document.createElement('iframe');
       iframe.src = getVimeoEmbedUrl(videoUrl);
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-      iframe.style.position = 'absolute';
-      iframe.style.top = '0';
-      iframe.style.left = '0';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
       iframe.style.backgroundColor = '#000';
+      iframe.style.display = 'block';
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('webkitallowfullscreen', '');
       iframe.setAttribute('mozallowfullscreen', '');
@@ -597,6 +595,7 @@ const InteractiveSlideOverlay = ({
             ref={videoContainerRef}
             className="relative bg-black mx-auto"
             style={{ 
+              position: 'relative',
               maxWidth: 'min(90vw, 1280px)', 
               maxHeight: '90vh',
               aspectRatio: '16/9',
