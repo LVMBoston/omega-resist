@@ -708,3 +708,5 @@ export const InteractiveSlideOverlay = ({
     </>
   );
 };
+
+export default InteractiveSlideOverlay;
