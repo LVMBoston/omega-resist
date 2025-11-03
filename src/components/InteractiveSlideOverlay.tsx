@@ -427,6 +427,18 @@ export const InteractiveSlideOverlay = ({
     return url.includes('vimeo.com');
   };
 
+  const getVimeoEmbedUrl = (url: string) => {
+    // Extract video ID from various Vimeo URL formats
+    // Handles: vimeo.com/123456789, vimeo.com/123456789?params, etc.
+    const match = url.match(/vimeo\.com\/(\d+)/);
+    if (match && match[1]) {
+      const videoId = match[1];
+      // Use Vimeo's embed player with parameters to hide UI elements
+      return `https://player.vimeo.com/video/${videoId}?autoplay=1&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+    }
+    return url; // Fallback to original URL if parsing fails
+  };
+
   const handleExternalLink = (url: string) => {
     // Check if it's a Vimeo URL
     if (isVimeoUrl(url)) {
@@ -458,7 +470,7 @@ export const InteractiveSlideOverlay = ({
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
       const iframe = document.createElement('iframe');
-      iframe.src = videoUrl;
+      iframe.src = getVimeoEmbedUrl(videoUrl);
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
       iframe.style.position = 'absolute';
       iframe.style.top = '0';
