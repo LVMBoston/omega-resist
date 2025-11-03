@@ -433,8 +433,8 @@ export const InteractiveSlideOverlay = ({
     const match = url.match(/vimeo\.com\/(\d+)/);
     if (match && match[1]) {
       const videoId = match[1];
-      // Use Vimeo's embed player with parameters to hide all UI elements including controls
-      return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+      // Use Vimeo's embed player with minimal controls
+      return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&dnt=1&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
     }
     return url; // Fallback to original URL if parsing fails
   };
@@ -478,6 +478,7 @@ export const InteractiveSlideOverlay = ({
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
+      iframe.style.objectFit = 'contain';
       
       videoContainerRef.current.appendChild(iframe);
       
@@ -566,8 +567,13 @@ export const InteractiveSlideOverlay = ({
           {/* Video container with letterbox */}
           <div 
             ref={videoContainerRef}
-            className="relative w-full max-w-6xl"
-            style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 2rem)' }}
+            className="relative overflow-hidden mx-auto"
+            style={{ 
+              maxWidth: 'min(90vw, 1280px)', 
+              maxHeight: '90vh',
+              aspectRatio: '16/9',
+              width: '100%'
+            }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
