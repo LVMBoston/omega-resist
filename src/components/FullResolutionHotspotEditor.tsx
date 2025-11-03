@@ -610,12 +610,11 @@ export const FullResolutionHotspotEditor = ({
                           variant="outline"
                           size="sm"
                           className="w-full mb-4"
-                          onClick={async () => {
-                            const testUrl = `${window.location.origin}/deck/test-deck?v=TEST-TOKEN-123`;
-                            await navigator.clipboard.writeText(testUrl);
+                          onClick={() => {
+                            window.open("https://vimeo.com/1133027713?fl=ml&fe=ec", "_blank");
                             toast({
-                              title: "Test URL Copied",
-                              description: "Test share link copied to clipboard",
+                              title: "Test URL Launched",
+                              description: "Opening Vimeo test link",
                             });
                           }}
                         >
