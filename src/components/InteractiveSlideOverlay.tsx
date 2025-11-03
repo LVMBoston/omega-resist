@@ -433,8 +433,8 @@ export const InteractiveSlideOverlay = ({
     const match = url.match(/vimeo\.com\/(\d+)/);
     if (match && match[1]) {
       const videoId = match[1];
-      // Use Vimeo's embed player with parameters to hide UI elements
-      return `https://player.vimeo.com/video/${videoId}?autoplay=1&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+      // Use Vimeo's embed player with parameters to hide all UI elements including controls
+      return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
     }
     return url; // Fallback to original URL if parsing fails
   };
@@ -551,7 +551,7 @@ export const InteractiveSlideOverlay = ({
       {/* Video Overlay - Full Screen */}
       {isVideoOpen && videoUrl && (
         <div 
-          className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
+          className="fixed inset-0 bg-black z-[100] flex items-center justify-center p-4"
           onClick={closeVideo}
         >
           {/* Close button */}
@@ -563,10 +563,11 @@ export const InteractiveSlideOverlay = ({
             <X size={24} />
           </button>
           
-          {/* Video container */}
+          {/* Video container with letterbox */}
           <div 
             ref={videoContainerRef}
-            className="relative w-full max-w-[90vw] aspect-video max-h-[90vh]"
+            className="relative w-full max-w-6xl"
+            style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 2rem)' }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
