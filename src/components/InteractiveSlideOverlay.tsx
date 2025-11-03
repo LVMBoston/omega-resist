@@ -25,6 +25,15 @@ const InteractiveSlideOverlay = ({
   imageRef,
   viralToken,
 }: InteractiveSlideOverlayProps) => {
+  console.log("🎯 InteractiveSlideOverlay initialized:", {
+    hotspotsCount: hotspots.length,
+    deckSlug,
+    viralToken,
+    viralTokenType: typeof viralToken,
+    currentUrl: window.location.href,
+    searchParams: Object.fromEntries(new URLSearchParams(window.location.search))
+  });
+  
   const { toast } = useToast();
   const [imageDimensions, setImageDimensions] = useState({ 
     offsetX: 0,
@@ -450,11 +459,16 @@ const InteractiveSlideOverlay = ({
   };
 
   const handleExternalLink = (url: string) => {
+    console.log('🔗 External link clicked:', url);
+    console.log('🎬 Is Vimeo URL?', isVimeoUrl(url));
+    
     // Check if it's a Vimeo URL
     if (isVimeoUrl(url)) {
+      console.log('📹 Opening Vimeo video overlay');
       setVideoUrl(url);
       setIsVideoOpen(true);
     } else {
+      console.log('🌐 Opening external URL in new tab');
       // For non-Vimeo URLs, open in new tab
       const link = document.createElement('a');
       link.href = url;
@@ -482,12 +496,17 @@ const InteractiveSlideOverlay = ({
 
   // Initialize Vimeo player when video opens
   useEffect(() => {
+    console.log('🎬 Video effect triggered:', { isVideoOpen, hasUrl: !!videoUrl, hasContainer: !!videoContainerRef.current });
+    
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
+      console.log('📹 Setting up Vimeo player...');
+      
       // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
       
       const iframe = document.createElement('iframe');
-      iframe.src = getVimeoEmbedUrl(videoUrl);
+      const embedUrl = getVimeoEmbedUrl(videoUrl);
+      iframe.src = embedUrl;
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
       iframe.style.position = 'absolute';
       iframe.style.top = '0';
@@ -495,9 +514,19 @@ const InteractiveSlideOverlay = ({
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
+      iframe.style.backgroundColor = '#000';
       
-      console.log('📹 Creating Vimeo iframe:', iframe.src);
+      console.log('📹 Vimeo iframe config:', {
+        src: embedUrl,
+        containerElement: videoContainerRef.current,
+        containerDimensions: {
+          width: videoContainerRef.current.offsetWidth,
+          height: videoContainerRef.current.offsetHeight
+        }
+      });
+      
       videoContainerRef.current.appendChild(iframe);
+      console.log('✅ Iframe appended to container');
       
       const player = new Player(iframe, {
         muted: false,
@@ -505,13 +534,16 @@ const InteractiveSlideOverlay = ({
       });
       
       vimeoPlayerRef.current = player;
+      console.log('✅ Vimeo player initialized');
       
       // Close video when it ends
       player.on('ended', () => {
+        console.log('🎬 Video ended, closing overlay');
         closeVideo();
       });
       
       return () => {
+        console.log('🧹 Cleaning up video player');
         if (vimeoPlayerRef.current) {
           vimeoPlayerRef.current.destroy();
           vimeoPlayerRef.current = null;
@@ -574,29 +606,39 @@ const InteractiveSlideOverlay = ({
       {/* Video Overlay - Full Screen */}
       {isVideoOpen && videoUrl && (
         <div 
-          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black flex items-center justify-center p-4"
           onClick={closeVideo}
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            zIndex: 99999,
+            backgroundColor: 'black'
+          }}
         >
           {/* Close button */}
           <button
             onClick={closeVideo}
-            className="absolute top-4 right-4 z-[10000] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+            className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+            style={{ zIndex: 100000 }}
             aria-label="Close video"
           >
             <X size={24} />
           </button>
-          
+
           {/* Video container with letterbox */}
           <div 
             ref={videoContainerRef}
-            className="relative bg-black mx-auto"
+            className="relative bg-red-500 mx-auto"
             style={{ 
               maxWidth: 'min(90vw, 1280px)', 
               maxHeight: '90vh',
               aspectRatio: '16/9',
               width: '100%',
-              position: 'relative'
+              position: 'relative',
+              border: '2px solid yellow'
             }}
             onClick={(e) => e.stopPropagation()}
           />
