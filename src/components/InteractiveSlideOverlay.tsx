@@ -19,7 +19,7 @@ interface InteractiveSlideOverlayProps {
   viralToken: string | null;
 }
 
-export const InteractiveSlideOverlay = ({
+const InteractiveSlideOverlay = ({
   hotspots,
   deckSlug,
   imageRef,
@@ -709,4 +709,5 @@ export const InteractiveSlideOverlay = ({
   );
 };
 
+export { InteractiveSlideOverlay };
 export default InteractiveSlideOverlay;
