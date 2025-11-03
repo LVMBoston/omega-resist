@@ -597,7 +597,7 @@ const InteractiveSlideOverlay = ({
             style={{ 
               position: 'relative',
               width: 'min(90vw, 1280px)',
-              height: 'min(calc(90vw * 9/16), calc(90vh), calc(1280px * 9/16))',
+              height: 'min(calc(min(90vw, 1280px) * 9 / 16), 90vh)',
               maxWidth: '1280px',
               maxHeight: '90vh'
             }}
