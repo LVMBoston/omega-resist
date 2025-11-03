@@ -596,10 +596,10 @@ const InteractiveSlideOverlay = ({
             className="relative bg-black mx-auto"
             style={{ 
               position: 'relative',
-              maxWidth: 'min(90vw, 1280px)', 
-              maxHeight: '90vh',
-              aspectRatio: '16/9',
-              width: '100%'
+              width: 'min(90vw, 1280px)',
+              height: 'min(calc(90vw * 9/16), calc(90vh), calc(1280px * 9/16))',
+              maxWidth: '1280px',
+              maxHeight: '90vh'
             }}
             onClick={(e) => e.stopPropagation()}
           />
