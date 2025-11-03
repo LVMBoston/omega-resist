@@ -428,13 +428,23 @@ export const InteractiveSlideOverlay = ({
   };
 
   const getVimeoEmbedUrl = (url: string) => {
-    // Extract video ID from various Vimeo URL formats
-    // Handles: vimeo.com/123456789, vimeo.com/123456789?params, etc.
-    const match = url.match(/vimeo\.com\/(\d+)/);
-    if (match && match[1]) {
-      const videoId = match[1];
-      // Use Vimeo's embed player with playsinline to prevent native fullscreen on mobile
-      return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&dnt=1&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+    // Match multiple Vimeo URL formats:
+    // - vimeo.com/{id}
+    // - player.vimeo.com/video/{id}
+    // - vimeo.com/channels/{channel}/{id}
+    // - vimeo.com/{id}/{hash}
+    const patterns = [
+      /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,  // Main site with optional channel/hash
+      /player\.vimeo\.com\/video\/(\d+)/,                        // Player embed URLs
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        const videoId = match[1];
+        // Use Vimeo's embed player with playsinline to prevent native fullscreen on mobile
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&dnt=1&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+      }
     }
     return url; // Fallback to original URL if parsing fails
   };
@@ -599,10 +609,42 @@ export const InteractiveSlideOverlay = ({
           imageDimensions
         });
         
-        // Use anchor tag for external links to avoid share sheet on mobile
-        console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}, condition=${hotspot.type === 'external_link' && hotspot.url}`);
+        // Check if this is a Vimeo link that should use the overlay
+        console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}`);
         if (hotspot.type === 'external_link' && hotspot.url) {
-          console.log(`✅ Rendering as anchor tag for external_link: ${hotspot.url}`);
+          const isVimeo = isVimeoUrl(hotspot.url);
+          console.log(`✅ External link detected: ${hotspot.url}, isVimeo: ${isVimeo}`);
+          
+          // If it's a Vimeo URL, intercept and use handleExternalLink for inline playback
+          if (isVimeo) {
+            return (
+              <button
+                key={hotspot.id}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log(`📱 Vimeo link intercepted for inline playback: ${hotspot.url}`);
+                  handleExternalLink(hotspot.url);
+                }}
+                className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+                style={{
+                  left: `${left}px`,
+                  top: `${top}px`,
+                  width: `${buttonWidth}px`,
+                  height: `${buttonHeight}px`,
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                }}
+              >
+                {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+              </button>
+            );
+          }
+          
+          // For non-Vimeo external links, use anchor tag
           return (
             <a
               key={hotspot.id}
