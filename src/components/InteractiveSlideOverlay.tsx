@@ -302,29 +302,58 @@ export const InteractiveSlideOverlay = ({
   };
 
   const handleSocial = async () => {
-    const shareUrl = `${window.location.origin}/deck/${deckSlug}`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Check out this deck",
-          text: "I thought you might be interested in this presentation",
-          url: shareUrl,
-        });
+    try {
+      console.log("🔗 SOCIAL SHARE INITIATED");
+      console.log("Parent Token:", viralToken);
+      
+      if (!viralToken) {
+        console.error("❌ ERROR: No viral token found in URL");
         toast({
-          title: "Shared successfully",
-          description: "Thanks for spreading the word!",
+          variant: "destructive",
+          title: "Share Link Required",
+          description: "This slide needs to be accessed via a viral share link to enable sharing.",
         });
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          console.error("Share failed:", err);
-        }
+        return;
       }
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
+
+      // Mint new share token with social medium
+      const result = await mintShare({ 
+        parentToken: viralToken, 
+        utmMedium: "social" as const
+      });
+      
+      console.log("mintShare Response:", result);
+      const { full_url } = result;
+      
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: "Check out this deck",
+            text: "I thought you might be interested in this presentation",
+            url: full_url,
+          });
+          toast({
+            title: "Shared successfully",
+            description: "Thanks for spreading the word!",
+          });
+        } catch (err) {
+          if ((err as Error).name !== "AbortError") {
+            console.error("Share failed:", err);
+          }
+        }
+      } else {
+        await navigator.clipboard.writeText(full_url);
+        toast({
+          title: "Link copied",
+          description: "Share link copied to clipboard",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Social share error:", error);
       toast({
-        title: "Link copied",
-        description: "Share link copied to clipboard",
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate share link",
       });
     }
   };
