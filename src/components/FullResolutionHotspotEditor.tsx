@@ -13,6 +13,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.png";
+import playButton from "@/assets/play-button.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
@@ -609,7 +610,7 @@ export const FullResolutionHotspotEditor = ({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="w-full mb-4"
+                          className="w-full mb-4 flex items-center gap-2"
                           onClick={() => {
                             window.open("https://vimeo.com/1133027713?fl=ml&fe=ec", "_blank");
                             toast({
@@ -618,6 +619,7 @@ export const FullResolutionHotspotEditor = ({
                             });
                           }}
                         >
+                          <img src={playButton} alt="Play" className="w-4 h-4" />
                           Test Share URL
                         </Button>
                       </div>
