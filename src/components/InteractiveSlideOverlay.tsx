@@ -566,7 +566,7 @@ export const InteractiveSlideOverlay = ({
           {/* Video container */}
           <div 
             ref={videoContainerRef}
-            className="relative w-full h-full"
+            className="relative w-full max-w-[90vw] aspect-video max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
