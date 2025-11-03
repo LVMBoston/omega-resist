@@ -486,12 +486,22 @@ const InteractiveSlideOverlay = ({
   // Initialize Vimeo player when video opens
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
+      // Calculate explicit dimensions first
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const maxWidth = 1280;
+      const containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
+      const containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
+
+      videoContainerRef.current.style.width = `${containerWidth}px`;
+      videoContainerRef.current.style.height = `${containerHeight}px`;
+
       // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
       
       const iframe = document.createElement('iframe');
       iframe.src = getVimeoEmbedUrl(videoUrl);
-      iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+      iframe.allow = 'autoplay; fullscreen'; // Removed picture-in-picture
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
@@ -505,10 +515,21 @@ const InteractiveSlideOverlay = ({
       
       const player = new Player(iframe, {
         muted: false,
-        autoplay: true,
+        autoplay: false, // Delayed until mounted
+        controls: true, // Explicitly enable controls
       });
       
       vimeoPlayerRef.current = player;
+
+      // Delay playback slightly to ensure overlay is fully visible
+      setTimeout(() => {
+        if (vimeoPlayerRef.current) {
+          console.log('🎬 Starting Vimeo playback');
+          vimeoPlayerRef.current.play().catch(err => {
+            console.error('❌ Autoplay failed:', err);
+          });
+        }
+      }, 300);
       
       // Close video when it ends
       player.on('ended', () => {
@@ -596,8 +617,6 @@ const InteractiveSlideOverlay = ({
             className="relative bg-black mx-auto"
             style={{ 
               position: 'relative',
-              width: 'min(90vw, 1280px)',
-              height: 'min(calc(min(90vw, 1280px) * 9 / 16), 90vh)',
               maxWidth: '1280px',
               maxHeight: '90vh'
             }}
