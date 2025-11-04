@@ -458,8 +458,10 @@ const InteractiveSlideOverlay = ({
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        // Use Vimeo's embed player with muted=1 for iPhone autoplay compatibility
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        // iPhone requires muted=1 for autoplay; iPad works with muted=0
+        const mutedValue = isIPhone() ? '1' : '0';
+        console.log(`🎬 Building Vimeo URL for ${isIPhone() ? 'iPhone' : isIPad() ? 'iPad' : 'Desktop'}, muted=${mutedValue}`);
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=${mutedValue}&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
     return url; // Fallback to original URL if parsing fails
@@ -508,8 +510,8 @@ const InteractiveSlideOverlay = ({
   // Initialize Vimeo player when video opens
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
-      console.log('🎬 Vimeo Player: Initializing with URL:', videoUrl);
-      console.log('📱 Device detection:', { isIPhone: isIPhone(), isIPad: isIPad() });
+      const device = isIPhone() ? 'iPhone' : isIPad() ? 'iPad' : 'Desktop';
+      console.log(`🎬 Vimeo Player: Initializing on ${device}`, { videoUrl, viewportSize: { w: window.innerWidth, h: window.innerHeight } });
 
       // Calculate explicit dimensions based on device
       const viewportWidth = window.innerWidth;
@@ -519,29 +521,38 @@ const InteractiveSlideOverlay = ({
       let containerHeight: number;
 
       if (isIPhone()) {
-        // iPhone: Use more of the screen with safe area consideration
+        // iPhone: Use full width and most of height for better experience
         containerWidth = viewportWidth;
-        containerHeight = viewportHeight * 0.85; // Leave room for safe areas
+        containerHeight = viewportHeight; // Full height, safe areas handled by parent
+        console.log('📱 iPhone: Using full viewport dimensions');
       } else if (isIPad()) {
-        // iPad: Larger frame
+        // iPad: Larger frame with aspect ratio
         const maxWidth = 1280;
-        containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
+        containerWidth = Math.min(viewportWidth * 0.95, maxWidth);
         containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
+        console.log('📱 iPad: Using 95% width, 16:9 aspect ratio');
       } else {
         // Desktop/other
         const maxWidth = 1280;
         containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
         containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
+        console.log('🖥️ Desktop: Using 90% width, 16:9 aspect ratio');
       }
 
+      console.log(`📐 Calculated container dimensions: ${containerWidth}px × ${containerHeight}px`);
       videoContainerRef.current.style.width = `${containerWidth}px`;
       videoContainerRef.current.style.height = `${containerHeight}px`;
+      videoContainerRef.current.style.maxWidth = '100%';
+      videoContainerRef.current.style.maxHeight = '100%';
 
       // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
       
       const iframe = document.createElement('iframe');
-      iframe.src = getVimeoEmbedUrl(videoUrl);
+      const embedUrl = getVimeoEmbedUrl(videoUrl);
+      console.log('🔗 Vimeo embed URL:', embedUrl);
+      
+      iframe.src = embedUrl;
       iframe.allow = 'autoplay; fullscreen';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
@@ -555,38 +566,68 @@ const InteractiveSlideOverlay = ({
       iframe.setAttribute('webkit-playsinline', '');
       
       videoContainerRef.current.appendChild(iframe);
+      console.log('✅ Iframe appended to container');
       
-      const player = new Player(iframe, {
-        muted: true,
+      // Device-specific player initialization
+      const playerOptions = {
+        muted: isIPhone() ? true : false, // iPhone must start muted, iPad can have sound
         autoplay: true,
         controls: true,
-      });
+      };
+      
+      console.log('🎮 Creating Vimeo Player with options:', playerOptions);
+      const player = new Player(iframe, playerOptions);
       
       vimeoPlayerRef.current = player;
+      setIsMuted(isIPhone()); // Track actual mute state
       
-      // Aggressive play attempt for iPhone
+      // Monitor player state
       player.ready().then(() => {
-        console.log('🎬 Player ready, attempting play...');
-        return player.play();
+        console.log('✅ Player ready');
+        
+        // For iPhone, attempt aggressive play
+        if (isIPhone()) {
+          console.log('📱 iPhone: Attempting muted autoplay');
+          return player.setMuted(true).then(() => player.play());
+        }
+        
+        // For iPad/Desktop, rely on URL autoplay parameter
+        console.log('🎬 Non-iPhone: Relying on URL autoplay parameter');
+        return Promise.resolve();
       }).then(() => {
-        console.log('✅ Video playing successfully');
-        setIsMuted(true);
+        console.log('✅ Playback initiated successfully');
       }).catch(err => {
-        console.log('⚠️ Autoplay blocked:', err.name);
-        // If autoplay is blocked, ensure muted state
-        player.setMuted(true).then(() => {
-          return player.play();
-        }).catch(e => {
-          console.log('❌ Play failed even when muted:', e);
-        });
+        console.error('❌ Playback error:', err.name, err.message);
+        
+        // Final fallback: Try muted play
+        if (!isIPhone()) {
+          console.log('🔄 Fallback: Attempting muted play');
+          player.setMuted(true).then(() => {
+            setIsMuted(true);
+            return player.play();
+          }).catch(e => {
+            console.error('❌ Final fallback failed:', e);
+          });
+        }
+      });
+      
+      // Monitor play events
+      player.on('play', () => {
+        console.log('▶️ Video started playing');
+      });
+      
+      player.on('pause', () => {
+        console.log('⏸️ Video paused');
       });
       
       // Close video when it ends
       player.on('ended', () => {
+        console.log('🏁 Video ended');
         closeVideo();
       });
       
       return () => {
+        console.log('🧹 Cleaning up Vimeo player');
         if (vimeoPlayerRef.current) {
           vimeoPlayerRef.current.destroy();
           vimeoPlayerRef.current = null;
