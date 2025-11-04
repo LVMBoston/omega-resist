@@ -1,6 +1,7 @@
 import { MessageSquare, Mail, Share2, ExternalLink, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { mintShare } from "@/lib/virality/mint";
 import { useSearchParams } from "react-router-dom";
@@ -596,8 +597,8 @@ const InteractiveSlideOverlay = ({
 
   return (
     <>
-      {/* Video Overlay - Full Screen */}
-      {isVideoOpen && videoUrl && (
+      {/* Video Overlay - Full Screen - Rendered via Portal to document.body */}
+      {isVideoOpen && videoUrl && createPortal(
         <div 
           className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
           onClick={closeVideo}
@@ -622,7 +623,8 @@ const InteractiveSlideOverlay = ({
             }}
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="absolute inset-0 pointer-events-none z-50">
