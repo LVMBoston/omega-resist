@@ -513,37 +513,7 @@ const InteractiveSlideOverlay = ({
       const device = isIPhone() ? 'iPhone' : isIPad() ? 'iPad' : 'Desktop';
       console.log(`🎬 Vimeo Player: Initializing on ${device}`, { videoUrl, viewportSize: { w: window.innerWidth, h: window.innerHeight } });
 
-      // Calculate explicit dimensions based on device
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      let containerWidth: number;
-      let containerHeight: number;
-
-      if (isIPhone()) {
-        // iPhone: Use full width and most of height for better experience
-        containerWidth = viewportWidth;
-        containerHeight = viewportHeight; // Full height, safe areas handled by parent
-        console.log('📱 iPhone: Using full viewport dimensions');
-      } else if (isIPad()) {
-        // iPad: Larger frame with aspect ratio
-        const maxWidth = 1280;
-        containerWidth = Math.min(viewportWidth * 0.95, maxWidth);
-        containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
-        console.log('📱 iPad: Using 95% width, 16:9 aspect ratio');
-      } else {
-        // Desktop/other
-        const maxWidth = 1280;
-        containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
-        containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
-        console.log('🖥️ Desktop: Using 90% width, 16:9 aspect ratio');
-      }
-
-      console.log(`📐 Calculated container dimensions: ${containerWidth}px × ${containerHeight}px`);
-      videoContainerRef.current.style.width = `${containerWidth}px`;
-      videoContainerRef.current.style.height = `${containerHeight}px`;
-      videoContainerRef.current.style.maxWidth = '100%';
-      videoContainerRef.current.style.maxHeight = '100%';
+      console.log(`📐 Viewport dimensions: ${window.innerWidth}px × ${window.innerHeight}px`);
 
       // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
@@ -585,30 +555,28 @@ const InteractiveSlideOverlay = ({
       player.ready().then(() => {
         console.log('✅ Player ready');
         
-        // For iPhone, attempt aggressive play
+        // For iPhone, attempt aggressive muted play
         if (isIPhone()) {
           console.log('📱 iPhone: Attempting muted autoplay');
           return player.setMuted(true).then(() => player.play());
         }
         
-        // For iPad/Desktop, rely on URL autoplay parameter
-        console.log('🎬 Non-iPhone: Relying on URL autoplay parameter');
-        return Promise.resolve();
+        // For iPad/Desktop, attempt explicit play
+        console.log('🎬 iPad/Desktop: Attempting explicit play');
+        return player.play();
       }).then(() => {
         console.log('✅ Playback initiated successfully');
       }).catch(err => {
         console.error('❌ Playback error:', err.name, err.message);
         
-        // Final fallback: Try muted play
-        if (!isIPhone()) {
-          console.log('🔄 Fallback: Attempting muted play');
-          player.setMuted(true).then(() => {
-            setIsMuted(true);
-            return player.play();
-          }).catch(e => {
-            console.error('❌ Final fallback failed:', e);
-          });
-        }
+        // Final fallback: Try muted play for all devices
+        console.log('🔄 Fallback: Attempting muted play');
+        player.setMuted(true).then(() => {
+          setIsMuted(true);
+          return player.play();
+        }).catch(e => {
+          console.error('❌ Final fallback failed:', e);
+        });
       });
       
       // Monitor play events
@@ -690,7 +658,7 @@ const InteractiveSlideOverlay = ({
       {/* Video Overlay - Full Screen - Rendered via Portal to document.body */}
       {isVideoOpen && videoUrl && createPortal(
         <div 
-          className="fixed bg-black z-[9999] flex items-center justify-center"
+          className="fixed bg-black z-[9999] flex flex-col items-center justify-center"
           style={{
             top: 0,
             left: 0,
@@ -698,14 +666,11 @@ const InteractiveSlideOverlay = ({
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            // Use dynamic viewport height for better iOS support
             minHeight: '100dvh',
-            // Account for safe areas on iOS
             paddingTop: 'env(safe-area-inset-top)',
             paddingBottom: 'env(safe-area-inset-bottom)',
             paddingLeft: 'env(safe-area-inset-left)',
             paddingRight: 'env(safe-area-inset-right)',
-            // Improve iOS scrolling behavior
             WebkitOverflowScrolling: 'touch',
           }}
           onClick={closeVideo}
@@ -740,14 +705,16 @@ const InteractiveSlideOverlay = ({
             </button>
           )}
 
-          {/* Video container with letterbox */}
+          {/* Video container with aspect ratio */}
           <div 
             ref={videoContainerRef}
             className="relative bg-black"
             style={{ 
               position: 'relative',
-              maxWidth: '100%',
-              maxHeight: '100%',
+              width: '90vw',
+              maxWidth: '90vw',
+              maxHeight: '85vh',
+              aspectRatio: '16/9',
             }}
             onClick={(e) => e.stopPropagation()}
           />
