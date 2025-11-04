@@ -511,6 +511,8 @@ const InteractiveSlideOverlay = ({
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('webkitallowfullscreen', '');
       iframe.setAttribute('mozallowfullscreen', '');
+      iframe.setAttribute('playsinline', '');
+      iframe.setAttribute('webkit-playsinline', '');
       
       videoContainerRef.current.appendChild(iframe);
       
@@ -521,6 +523,13 @@ const InteractiveSlideOverlay = ({
       });
       
       vimeoPlayerRef.current = player;
+      
+      // iOS-specific: Ensure play after ready
+      player.ready().then(() => {
+        return player.play();
+      }).catch(err => {
+        console.log('Autoplay blocked, user interaction required:', err);
+      });
       
       // Close video when it ends
       player.on('ended', () => {
