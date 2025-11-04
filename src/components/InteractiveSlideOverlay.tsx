@@ -515,22 +515,12 @@ const InteractiveSlideOverlay = ({
       videoContainerRef.current.appendChild(iframe);
       
       const player = new Player(iframe, {
-        muted: false,
-        autoplay: false, // Delayed until mounted
-        controls: true, // Explicitly enable controls
+        muted: true,
+        autoplay: true,
+        controls: true,
       });
       
       vimeoPlayerRef.current = player;
-
-      // Delay playback slightly to ensure overlay is fully visible
-      setTimeout(() => {
-        if (vimeoPlayerRef.current) {
-          console.log('🎬 Starting Vimeo playback');
-          vimeoPlayerRef.current.play().catch(err => {
-            console.error('❌ Autoplay failed:', err);
-          });
-        }
-      }, 300);
       
       // Close video when it ends
       player.on('ended', () => {
@@ -615,11 +605,11 @@ const InteractiveSlideOverlay = ({
           {/* Video container with letterbox */}
           <div 
             ref={videoContainerRef}
-            className="relative bg-black mx-auto"
+            className="relative bg-black"
             style={{ 
               position: 'relative',
-              maxWidth: '1280px',
-              maxHeight: '90vh'
+              width: '100vw',
+              height: '100vh'
             }}
             onClick={(e) => e.stopPropagation()}
           />
