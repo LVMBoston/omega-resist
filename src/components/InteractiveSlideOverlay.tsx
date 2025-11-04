@@ -38,8 +38,20 @@ const InteractiveSlideOverlay = ({
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const vimeoPlayerRef = useRef<Player | null>(null);
+
+  // Device detection
+  const isIPhone = () => {
+    const ua = navigator.userAgent.toLowerCase();
+    return /iphone/.test(ua);
+  };
+
+  const isIPad = () => {
+    const ua = navigator.userAgent.toLowerCase();
+    return /ipad/.test(ua) || (navigator.maxTouchPoints > 2 && /macintosh/.test(ua));
+  };
 
   // Fetch email and SMS templates
   useEffect(() => {
@@ -446,8 +458,8 @@ const InteractiveSlideOverlay = ({
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        // Use Vimeo's embed player with enhanced parameters for proper display
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        // Use Vimeo's embed player with muted=1 for iPhone autoplay compatibility
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
     return url; // Fallback to original URL if parsing fails
@@ -471,11 +483,20 @@ const InteractiveSlideOverlay = ({
     }
   };
 
+  const toggleMute = () => {
+    if (vimeoPlayerRef.current) {
+      const newMutedState = !isMuted;
+      vimeoPlayerRef.current.setMuted(newMutedState);
+      setIsMuted(newMutedState);
+    }
+  };
+
   const closeVideo = () => {
     if (vimeoPlayerRef.current) {
       vimeoPlayerRef.current.destroy();
       vimeoPlayerRef.current = null;
     }
+    setIsMuted(true); // Reset mute state
     // Clear the video container
     if (videoContainerRef.current) {
       videoContainerRef.current.innerHTML = '';
@@ -487,12 +508,31 @@ const InteractiveSlideOverlay = ({
   // Initialize Vimeo player when video opens
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
-      // Calculate explicit dimensions first
+      console.log('🎬 Vimeo Player: Initializing with URL:', videoUrl);
+      console.log('📱 Device detection:', { isIPhone: isIPhone(), isIPad: isIPad() });
+
+      // Calculate explicit dimensions based on device
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const maxWidth = 1280;
-      const containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
-      const containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
+      
+      let containerWidth: number;
+      let containerHeight: number;
+
+      if (isIPhone()) {
+        // iPhone: Use more of the screen with safe area consideration
+        containerWidth = viewportWidth;
+        containerHeight = viewportHeight * 0.85; // Leave room for safe areas
+      } else if (isIPad()) {
+        // iPad: Larger frame
+        const maxWidth = 1280;
+        containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
+        containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
+      } else {
+        // Desktop/other
+        const maxWidth = 1280;
+        containerWidth = Math.min(viewportWidth * 0.9, maxWidth);
+        containerHeight = Math.min(containerWidth * (9/16), viewportHeight * 0.9);
+      }
 
       videoContainerRef.current.style.width = `${containerWidth}px`;
       videoContainerRef.current.style.height = `${containerHeight}px`;
@@ -502,7 +542,7 @@ const InteractiveSlideOverlay = ({
       
       const iframe = document.createElement('iframe');
       iframe.src = getVimeoEmbedUrl(videoUrl);
-      iframe.allow = 'autoplay; fullscreen'; // Removed picture-in-picture
+      iframe.allow = 'autoplay; fullscreen';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
@@ -524,11 +564,21 @@ const InteractiveSlideOverlay = ({
       
       vimeoPlayerRef.current = player;
       
-      // iOS-specific: Ensure play after ready
+      // Aggressive play attempt for iPhone
       player.ready().then(() => {
+        console.log('🎬 Player ready, attempting play...');
         return player.play();
+      }).then(() => {
+        console.log('✅ Video playing successfully');
+        setIsMuted(true);
       }).catch(err => {
-        console.log('Autoplay blocked, user interaction required:', err);
+        console.log('⚠️ Autoplay blocked:', err.name);
+        // If autoplay is blocked, ensure muted state
+        player.setMuted(true).then(() => {
+          return player.play();
+        }).catch(e => {
+          console.log('❌ Play failed even when muted:', e);
+        });
       });
       
       // Close video when it ends
@@ -599,17 +649,55 @@ const InteractiveSlideOverlay = ({
       {/* Video Overlay - Full Screen - Rendered via Portal to document.body */}
       {isVideoOpen && videoUrl && createPortal(
         <div 
-          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
+          className="fixed bg-black z-[9999] flex items-center justify-center"
+          style={{
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            // Use dynamic viewport height for better iOS support
+            minHeight: '100dvh',
+            // Account for safe areas on iOS
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            paddingLeft: 'env(safe-area-inset-left)',
+            paddingRight: 'env(safe-area-inset-right)',
+            // Improve iOS scrolling behavior
+            WebkitOverflowScrolling: 'touch',
+          }}
           onClick={closeVideo}
         >
           {/* Close button */}
           <button
             onClick={closeVideo}
             className="absolute top-4 right-4 z-[10000] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+            style={{
+              top: 'max(1rem, env(safe-area-inset-top))',
+              right: 'max(1rem, env(safe-area-inset-right))',
+            }}
             aria-label="Close video"
           >
             <X size={24} />
           </button>
+
+          {/* Unmute button for iOS fallback */}
+          {isMuted && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleMute();
+              }}
+              className="absolute bottom-8 right-4 z-[10000] text-white bg-black/70 hover:bg-black/90 rounded-lg px-4 py-2 transition-colors text-sm font-medium"
+              style={{
+                bottom: 'max(2rem, env(safe-area-inset-bottom))',
+                right: 'max(1rem, env(safe-area-inset-right))',
+              }}
+            >
+              🔇 Tap to Unmute
+            </button>
+          )}
 
           {/* Video container with letterbox */}
           <div 
@@ -617,8 +705,8 @@ const InteractiveSlideOverlay = ({
             className="relative bg-black"
             style={{ 
               position: 'relative',
-              width: '100vw',
-              height: '100vh'
+              maxWidth: '100%',
+              maxHeight: '100%',
             }}
             onClick={(e) => e.stopPropagation()}
           />
