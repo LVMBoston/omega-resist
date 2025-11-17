@@ -36,7 +36,10 @@ export function GeoipDebugPanel() {
       console.log("📍 Testing geoip edge function...");
 
       const { data, error: functionError } = await supabase.functions.invoke('geoip', {
-        method: 'GET'
+        body: {},
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
       const endTime = performance.now();
