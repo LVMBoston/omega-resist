@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { logEvent } from "@/lib/virality/mint";
 import { Loader2 } from "lucide-react";
 
 const ShortUrlRedirect = () => {
@@ -24,23 +25,46 @@ const ShortUrlRedirect = () => {
       console.log("📞 Calling track_redirect with code:", code);
 
       try {
-        // Call the track_redirect function to get full URL and increment clicks
-        const { data, error: rpcError } = await supabase.rpc("track_redirect", {
-          _short_code: code,
-        });
+        // Get full URL
+        const { data: urlData, error: fetchError } = await supabase
+          .from("shortened_urls")
+          .select("full_url, clicks")
+          .eq("short_code", code)
+          .single();
 
-        console.log("📥 track_redirect response:", { data, error: rpcError });
-
-        if (rpcError || !data) {
-          console.error("❌ Redirect error:", rpcError);
+        if (fetchError || !urlData) {
+          console.error("❌ Short URL not found:", fetchError);
           setError("Short URL not found");
           return;
         }
 
-        console.log("✅ Redirecting to:", data);
+        // Increment click count
+        await supabase
+          .from("shortened_urls")
+          .update({ clicks: (urlData.clicks || 0) + 1 })
+          .eq("short_code", code);
+
+        // Extract token from URL to log event with geolocation
+        const url = new URL(urlData.full_url);
+        const token = url.searchParams.get("t");
+
+        if (token) {
+          console.log("📍 Logging view event with geolocation for token:", token);
+          
+          // Log event with geolocation (this will call the geoip edge function)
+          await logEvent({
+            token,
+            eventType: "view",
+            utmSnapshot: Object.fromEntries(url.searchParams.entries()),
+          });
+          
+          console.log("✅ View event logged with geolocation");
+        }
+
+        console.log("✅ Redirecting to:", urlData.full_url);
         
         // Redirect to the full URL
-        window.location.href = data;
+        window.location.href = urlData.full_url;
       } catch (err) {
         console.error("Redirect error:", err);
         setError("Failed to redirect");
