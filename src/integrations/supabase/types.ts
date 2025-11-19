@@ -331,24 +331,6 @@ export type Database = {
           },
         ]
       }
-      migration_test: {
-        Row: {
-          created_at: string | null
-          id: string
-          test_field: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          test_field: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          test_field?: string
-        }
-        Relationships: []
-      }
       settings: {
         Row: {
           category: string
