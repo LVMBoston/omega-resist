@@ -137,9 +137,16 @@ interface GeoLocationData {
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
     console.log("📍 Fetching geolocation from geoip edge function");
+    console.log("📍 Environment check:", {
+      hasUrl: !!import.meta.env.VITE_SUPABASE_URL,
+      hasKey: !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      url: import.meta.env.VITE_SUPABASE_URL
+    });
     
     // Use direct fetch instead of supabase.functions.invoke due to client issues
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/geoip`;
+    console.log("📍 Calling geoip at:", url);
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -148,13 +155,17 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       }
     });
     
+    console.log("📍 Response status:", response.status, response.statusText);
+    
     if (!response.ok) {
-      console.error("📍 Geoip function error:", response.status, response.statusText);
-      throw new Error(`Geoip function failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error("📍 Geoip function error response:", errorText);
+      throw new Error(`Geoip function failed: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
     console.log("📍 Geolocation data received:", data);
+    console.log("📍 Zip code specifically:", data.zip_code, "Type:", typeof data.zip_code);
     
     return {
       latitude: data.latitude,
@@ -166,7 +177,11 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       zip_code: data.zip_code
     };
   } catch (error) {
-    console.error("📍 Failed to fetch geolocation:", error);
+    console.error("📍 Failed to fetch geolocation - FULL ERROR:", error);
+    console.error("📍 Error type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("📍 Error message:", error instanceof Error ? error.message : String(error));
+    console.error("📍 Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    
     // Return null values on error instead of hardcoded data
     return {
       latitude: null,
