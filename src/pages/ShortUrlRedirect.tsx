@@ -13,7 +13,7 @@ const ShortUrlRedirect = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("🔄 Redirect useEffect running");
+    console.log("🔀🔀🔀 ShortUrlRedirect useEffect running - START");
     
     const redirect = async () => {
       if (!code) {
@@ -22,7 +22,7 @@ const ShortUrlRedirect = () => {
         return;
       }
 
-      console.log("📞 Calling track_redirect with code:", code);
+      console.log("🔀 Calling track_redirect with code:", code);
 
       try {
         // Get full URL
@@ -49,19 +49,26 @@ const ShortUrlRedirect = () => {
         const token = url.searchParams.get("t");
 
         if (token) {
-          console.log("📍 Logging view event with geolocation for token:", token);
+          console.log("🔀🔀 BEFORE logEvent - Token found:", token);
           
-          // Log event with geolocation (this will call the geoip edge function)
-          await logEvent({
-            token,
-            eventType: "view",
-            utmSnapshot: Object.fromEntries(url.searchParams.entries()),
-          });
-          
-          console.log("✅ View event logged with geolocation");
+          try {
+            // Log event with geolocation (this will call the geoip edge function)
+            await logEvent({
+              token,
+              eventType: "view",
+              utmSnapshot: Object.fromEntries(url.searchParams.entries()),
+            });
+            
+            console.log("🔀🔀 AFTER logEvent - Success");
+          } catch (logError) {
+            console.error("🔀🔀 logEvent FAILED:", logError);
+            // Continue with redirect even if logging fails
+          }
+        } else {
+          console.log("🔀🔀 NO TOKEN found in URL:", urlData.full_url);
         }
 
-        console.log("✅ Redirecting to:", urlData.full_url);
+        console.log("🔀🔀 About to redirect to:", urlData.full_url);
         
         // Redirect to the full URL
         window.location.href = urlData.full_url;
