@@ -138,15 +138,22 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
     console.log("📍 Fetching geolocation from geoip edge function");
     
-    const { data, error } = await supabase.functions.invoke('geoip', {
-      method: 'GET'
+    // Use direct fetch instead of supabase.functions.invoke due to client issues
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/geoip`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        'Content-Type': 'application/json'
+      }
     });
     
-    if (error) {
-      console.error("📍 Geoip function error:", error);
-      throw error;
+    if (!response.ok) {
+      console.error("📍 Geoip function error:", response.status, response.statusText);
+      throw new Error(`Geoip function failed: ${response.status}`);
     }
     
+    const data = await response.json();
     console.log("📍 Geolocation data received:", data);
     
     return {
