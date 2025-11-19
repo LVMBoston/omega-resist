@@ -16,21 +16,54 @@ const GeoipTest = () => {
     try {
       console.log("🧪 Testing geoip function from browser...");
       console.log("📍 Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
+      console.log("📍 Supabase Anon Key:", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.substring(0, 20) + "...");
       
+      // Test 1: Try with supabase client
+      console.log("Test 1: Using Supabase client invoke");
       const { data, error: invokeError } = await supabase.functions.invoke('geoip', {
         method: 'GET'
       });
 
       if (invokeError) {
         console.error("❌ Invoke error:", invokeError);
-        setError(invokeError);
+        
+        // Test 2: Try with direct fetch
+        console.log("Test 2: Trying direct fetch");
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/geoip`;
+        console.log("Fetching:", url);
+        
+        const fetchResponse = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log("Fetch status:", fetchResponse.status);
+        const fetchData = await fetchResponse.json();
+        console.log("Fetch data:", fetchData);
+        
+        setResult({
+          method: 'fetch',
+          status: fetchResponse.status,
+          data: fetchData
+        });
       } else {
         console.log("✅ Success:", data);
-        setResult(data);
+        setResult({
+          method: 'supabase-client',
+          data
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Catch error:", err);
-      setError(err);
+      setError({
+        name: err?.name || 'Unknown',
+        message: err?.message || 'Unknown error',
+        stack: err?.stack,
+        context: err?.context
+      });
     } finally {
       setLoading(false);
     }
