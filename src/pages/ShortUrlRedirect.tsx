@@ -48,27 +48,31 @@ const ShortUrlRedirect = () => {
         const url = new URL(urlData.full_url);
         const token = url.searchParams.get("t");
 
+        // CRITICAL: Log the event with geolocation BEFORE redirecting
         if (token) {
-          console.log("🔀🔀 BEFORE logEvent - Token found:", token);
+          console.log("REDIRECT: Token found, logging event with geolocation:", token);
           
           try {
-            // Log event with geolocation (this will call the geoip edge function)
+            // Wait for the event to be logged before redirecting
             await logEvent({
               token,
               eventType: "view",
               utmSnapshot: Object.fromEntries(url.searchParams.entries()),
             });
             
-            console.log("🔀🔀 AFTER logEvent - Success");
+            console.log("REDIRECT: Event logged successfully, now redirecting");
           } catch (logError) {
-            console.error("🔀🔀 logEvent FAILED:", logError);
+            console.error("REDIRECT: Event logging failed:", logError);
             // Continue with redirect even if logging fails
           }
         } else {
-          console.log("🔀🔀 NO TOKEN found in URL:", urlData.full_url);
+          console.log("REDIRECT: No token found in URL");
         }
 
-        console.log("🔀🔀 About to redirect to:", urlData.full_url);
+        console.log("REDIRECT: Final step - redirecting to:", urlData.full_url);
+        
+        // Add a small delay to ensure logs are visible
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Redirect to the full URL
         window.location.href = urlData.full_url;
