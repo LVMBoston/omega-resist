@@ -5,24 +5,24 @@ import { logEvent } from "@/lib/virality/mint";
 import { Loader2 } from "lucide-react";
 
 const ShortUrlRedirect = () => {
-  console.log("🔀 ShortUrlRedirect component mounted");
+  console.log("🚨🚨🚨 ShortUrlRedirect component MOUNTED");
   
   const { code } = useParams<{ code: string }>();
-  console.log("🔑 Short code from URL:", code);
+  console.log("🚨🚨🚨 Short code from URL:", code);
   
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("🔀🔀🔀 ShortUrlRedirect useEffect running - START");
+    console.log("🚨🚨🚨 ShortUrlRedirect useEffect RUNNING");
     
     const redirect = async () => {
       if (!code) {
-        console.log("❌ No short code provided");
+        console.log("🚨 ERROR: No short code provided");
         setError("No redirect code provided");
         return;
       }
 
-      console.log("🔀 Calling track_redirect with code:", code);
+      console.log("🚨 Starting redirect process for code:", code);
 
       try {
         // Get full URL
