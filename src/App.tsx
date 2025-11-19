@@ -29,6 +29,7 @@ import ZipCodeImporter from "./pages/ZipCodeImporter";
 import ActivityMonitor from "./pages/ActivityMonitor";
 import InteractiveTemplates from "./pages/InteractiveTemplates";
 import DevTools from "./pages/DevTools";
+import GeoipTest from "./pages/GeoipTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -165,6 +166,7 @@ const App = () => (
               } 
             />
             <Route path="/dev-tools" element={<LayoutWithSidebar><DevTools /></LayoutWithSidebar>} />
+            <Route path="/geoip-test" element={<LayoutWithSidebar><GeoipTest /></LayoutWithSidebar>} />
             <Route path="*" element={<LayoutWithSidebar><NotFound /></LayoutWithSidebar>} />
           </Routes>
         </AuthProvider>
