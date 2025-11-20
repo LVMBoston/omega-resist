@@ -92,19 +92,39 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
     }
   };
 
-  // Initialize map
+  // Initialize map with iOS-specific fixes
   useEffect(() => {
     if (!mapboxToken || !mapContainer.current || map.current) return;
+
+    // iOS Safari requires explicit container dimensions before initialization
+    const container = mapContainer.current;
+    const containerRect = container.getBoundingClientRect();
+    
+    if (containerRect.width === 0 || containerRect.height === 0) {
+      console.warn("Container has no dimensions, waiting...");
+      return;
+    }
 
     try {
       mapboxgl.accessToken = mapboxToken;
 
+      // Check WebGL support
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) {
+        setError("WebGL is not supported on this device. Map visualization requires WebGL.");
+        return;
+      }
+
       map.current = new mapboxgl.Map({
-        container: mapContainer.current,
+        container: container,
         style: "mapbox://styles/mapbox/light-v11",
         zoom: 1,
         center: [0, 20],
-        projection: "mercator" as any,
+        projection: { name: "mercator" } as any,
+        preserveDrawingBuffer: true, // Important for iOS Safari
+        failIfMajorPerformanceCaveat: false, // Allow map on slower devices
+        trackResize: true,
       });
 
       // Disable scroll zoom to prevent unwanted zoom on scroll
@@ -116,15 +136,26 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
       );
 
       map.current.on("load", () => {
+        console.log("Map loaded successfully");
         updateMapData();
       });
+
+      map.current.on("error", (e) => {
+        console.error("Map error:", e);
+        setError("Map failed to load properly");
+      });
+
     } catch (err) {
       console.error("Error initializing map:", err);
-      setError("Failed to initialize map");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
     }
 
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
   }, [mapboxToken]);
 
