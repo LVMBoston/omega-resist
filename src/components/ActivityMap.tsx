@@ -57,6 +57,8 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         
         if (data?.token) {
           console.log("Mapbox token fetched from backend");
+          // Set token globally once
+          mapboxgl.accessToken = data.token;
           setMapboxToken(data.token);
           localStorage.setItem("mapbox_token", data.token);
         } else {
@@ -64,6 +66,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
           const savedToken = localStorage.getItem("mapbox_token");
           if (savedToken) {
             console.log("Using Mapbox token from localStorage");
+            mapboxgl.accessToken = savedToken;
             setMapboxToken(savedToken);
           }
         }
@@ -73,6 +76,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         const savedToken = localStorage.getItem("mapbox_token");
         if (savedToken) {
           console.log("Using Mapbox token from localStorage after error");
+          mapboxgl.accessToken = savedToken;
           setMapboxToken(savedToken);
         }
       } finally {
@@ -108,37 +112,39 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
     console.log("Initializing Mapbox map with token");
 
-    try {
-      mapboxgl.accessToken = mapboxToken;
+    // Add small delay for iOS to release previous WebGL contexts
+    const timer = setTimeout(() => {
+      try {
+        // Token already set globally in token fetch useEffect
 
-      // Restore saved position or use default
-      const savedPosition = localStorage.getItem('activityMapPosition');
-      let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
-      let zoom = 4; // Default zoom
+        // Restore saved position or use default
+        const savedPosition = localStorage.getItem('activityMapPosition');
+        let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
+        let zoom = 4; // Default zoom
 
-      if (savedPosition) {
-        try {
-          const parsed = JSON.parse(savedPosition);
-          center = parsed.center;
-          zoom = parsed.zoom;
-          console.log("Restored map position:", center, "zoom:", zoom);
-        } catch (e) {
-          console.warn("Failed to parse saved map position:", e);
+        if (savedPosition) {
+          try {
+            const parsed = JSON.parse(savedPosition);
+            center = parsed.center;
+            zoom = parsed.zoom;
+            console.log("Restored map position:", center, "zoom:", zoom);
+          } catch (e) {
+            console.warn("Failed to parse saved map position:", e);
+          }
         }
-      }
 
-      map.current = new mapboxgl.Map({
-        container: container,
-        style: "mapbox://styles/mapbox/light-v11",
-        center,
-        zoom,
-        projection: { name: "mercator" } as any,
-        preserveDrawingBuffer: true, // Important for iOS Safari
-        failIfMajorPerformanceCaveat: false, // Allow map on slower devices
-        trackResize: true,
-      });
+        map.current = new mapboxgl.Map({
+          container: container,
+          style: "mapbox://styles/mapbox/light-v11",
+          center,
+          zoom,
+          projection: { name: "mercator" } as any,
+          preserveDrawingBuffer: true, // Important for iOS Safari
+          failIfMajorPerformanceCaveat: false, // Allow map on slower devices
+          trackResize: true,
+        });
 
-      console.log("Map instance created");
+        console.log("Map instance created");
 
       // Add navigation controls
       map.current.addControl(
@@ -172,13 +178,15 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         setError("Map failed to load properly");
       });
 
-    } catch (err) {
-      console.error("Error initializing map:", err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
-    }
+      } catch (err) {
+        console.error("Error initializing map:", err);
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
+      }
+    }, 100); // 100ms delay for iOS WebGL context cleanup
 
     return () => {
+      clearTimeout(timer);
       console.log("Cleaning up map");
       if (map.current) {
         map.current.remove();

@@ -62,12 +62,15 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
         if (error) throw error;
         
         if (data?.token) {
+          // Set token globally once
+          mapboxgl.accessToken = data.token;
           setMapboxToken(data.token);
           localStorage.setItem("mapbox_token", data.token);
         } else {
           // Fallback to localStorage
           const savedToken = localStorage.getItem("mapbox_token");
           if (savedToken) {
+            mapboxgl.accessToken = savedToken;
             setMapboxToken(savedToken);
           }
         }
@@ -76,6 +79,7 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
         // Fallback to localStorage
         const savedToken = localStorage.getItem("mapbox_token");
         if (savedToken) {
+          mapboxgl.accessToken = savedToken;
           setMapboxToken(savedToken);
         }
       }
@@ -105,45 +109,49 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
       return;
     }
 
-    try {
-      mapboxgl.accessToken = mapboxToken;
+    // Add small delay for iOS to release previous WebGL contexts
+    const timer = setTimeout(() => {
+      try {
+        // Token already set globally in token fetch useEffect
+        
+        map.current = new mapboxgl.Map({
+          container: container,
+          style: "mapbox://styles/mapbox/light-v11",
+          zoom: 1,
+          center: [0, 20],
+          projection: { name: "mercator" } as any,
+          preserveDrawingBuffer: true, // Important for iOS Safari
+          failIfMajorPerformanceCaveat: false, // Allow map on slower devices
+          trackResize: true,
+        });
 
-      map.current = new mapboxgl.Map({
-        container: container,
-        style: "mapbox://styles/mapbox/light-v11",
-        zoom: 1,
-        center: [0, 20],
-        projection: { name: "mercator" } as any,
-        preserveDrawingBuffer: true, // Important for iOS Safari
-        failIfMajorPerformanceCaveat: false, // Allow map on slower devices
-        trackResize: true,
-      });
+        // Disable scroll zoom to prevent unwanted zoom on scroll
+        map.current.scrollZoom.disable();
 
-      // Disable scroll zoom to prevent unwanted zoom on scroll
-      map.current.scrollZoom.disable();
+        map.current.addControl(
+          new mapboxgl.NavigationControl({ visualizePitch: true }),
+          "top-right"
+        );
 
-      map.current.addControl(
-        new mapboxgl.NavigationControl({ visualizePitch: true }),
-        "top-right"
-      );
+        map.current.on("load", () => {
+          console.log("Map loaded successfully");
+          updateMapData();
+        });
 
-      map.current.on("load", () => {
-        console.log("Map loaded successfully");
-        updateMapData();
-      });
+        map.current.on("error", (e) => {
+          console.error("Map error:", e);
+          setError("Map failed to load properly");
+        });
 
-      map.current.on("error", (e) => {
-        console.error("Map error:", e);
-        setError("Map failed to load properly");
-      });
-
-    } catch (err) {
-      console.error("Error initializing map:", err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
-    }
+      } catch (err) {
+        console.error("Error initializing map:", err);
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
+      }
+    }, 100); // 100ms delay for iOS WebGL context cleanup
 
     return () => {
+      clearTimeout(timer);
       if (map.current) {
         map.current.remove();
         map.current = null;
