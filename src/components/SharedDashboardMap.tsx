@@ -108,14 +108,6 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
     try {
       mapboxgl.accessToken = mapboxToken;
 
-      // Check WebGL support
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) {
-        setError("WebGL is not supported on this device. Map visualization requires WebGL.");
-        return;
-      }
-
       map.current = new mapboxgl.Map({
         container: container,
         style: "mapbox://styles/mapbox/light-v11",

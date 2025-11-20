@@ -111,14 +111,6 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     try {
       mapboxgl.accessToken = mapboxToken;
 
-      // Check WebGL support (important for iOS)
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) {
-        setError("WebGL is not supported on this device. Map visualization requires WebGL.");
-        return;
-      }
-
       // Restore saved position or use default
       const savedPosition = localStorage.getItem('activityMapPosition');
       let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
