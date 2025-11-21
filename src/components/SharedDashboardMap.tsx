@@ -284,8 +284,8 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
   }
 
   return (
-    <div className="relative w-full h-[calc(100vh-16rem)] rounded-lg overflow-hidden border">
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div className="relative w-full h-[600px] rounded-lg overflow-hidden border">
+      <div ref={mapContainer} className="absolute inset-0" style={{ width: '100%', height: '100%' }} />
       
       {/* U.S. View Reset Button and Zoom Control */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-3">
