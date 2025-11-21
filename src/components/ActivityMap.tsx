@@ -50,31 +50,34 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     console.log("ActivityMap mounted, fetching Mapbox token");
     
     const fetchToken = async () => {
-      // Try localStorage first for faster load
-      const savedToken = localStorage.getItem("mapbox_token");
-      
       try {
         const { data, error } = await supabase.functions.invoke('get-mapbox-token');
         
-        if (!error && data?.token) {
+        if (error) throw error;
+        
+        if (data?.token) {
           console.log("Mapbox token fetched from backend");
-          mapboxgl.accessToken = data.token;
           setMapboxToken(data.token);
           localStorage.setItem("mapbox_token", data.token);
-          setLoading(false);
-          return;
+        } else {
+          // Fallback to localStorage
+          const savedToken = localStorage.getItem("mapbox_token");
+          if (savedToken) {
+            console.log("Using Mapbox token from localStorage");
+            setMapboxToken(savedToken);
+          }
         }
       } catch (err) {
-        console.error("Error fetching Mapbox token from edge function:", err);
+        console.error("Error fetching Mapbox token:", err);
+        // Fallback to localStorage
+        const savedToken = localStorage.getItem("mapbox_token");
+        if (savedToken) {
+          console.log("Using Mapbox token from localStorage after error");
+          setMapboxToken(savedToken);
+        }
+      } finally {
+        setLoading(false);
       }
-      
-      // Fallback to localStorage if edge function fails
-      if (savedToken) {
-        console.log("Using Mapbox token from localStorage");
-        mapboxgl.accessToken = savedToken;
-        setMapboxToken(savedToken);
-      }
-      setLoading(false);
     };
     
     fetchToken();
@@ -94,50 +97,36 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     
     if (!mapboxToken || !mapContainer.current || map.current) return;
 
-    // iOS Safari requires explicit container dimensions before initialization
-    const container = mapContainer.current;
-    const containerRect = container.getBoundingClientRect();
-    
-    if (containerRect.width === 0 || containerRect.height === 0) {
-      console.warn("Container has no dimensions, waiting...");
-      return;
-    }
-
     console.log("Initializing Mapbox map with token");
 
-    // Add small delay for iOS to release previous WebGL contexts
-    const timer = setTimeout(() => {
-      try {
-        // Token already set globally in token fetch useEffect
+    try {
+      mapboxgl.accessToken = mapboxToken;
 
-        // Restore saved position or use default
-        const savedPosition = localStorage.getItem('activityMapPosition');
-        let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
-        let zoom = 4; // Default zoom
+      // Restore saved position or use default
+      const savedPosition = localStorage.getItem('activityMapPosition');
+      let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
+      let zoom = 4; // Default zoom
 
-        if (savedPosition) {
-          try {
-            const parsed = JSON.parse(savedPosition);
-            center = parsed.center;
-            zoom = parsed.zoom;
-            console.log("Restored map position:", center, "zoom:", zoom);
-          } catch (e) {
-            console.warn("Failed to parse saved map position:", e);
-          }
+      if (savedPosition) {
+        try {
+          const parsed = JSON.parse(savedPosition);
+          center = parsed.center;
+          zoom = parsed.zoom;
+          console.log("Restored map position:", center, "zoom:", zoom);
+        } catch (e) {
+          console.warn("Failed to parse saved map position:", e);
         }
+      }
 
-        map.current = new mapboxgl.Map({
-          container: container,
-          style: "mapbox://styles/mapbox/light-v11",
-          center,
-          zoom,
-          projection: { name: "mercator" } as any,
-          preserveDrawingBuffer: true, // Important for iOS Safari
-          failIfMajorPerformanceCaveat: false, // Allow map on slower devices
-          trackResize: true,
-        });
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/light-v11",
+        center,
+        zoom,
+        projection: "mercator" as any,
+      });
 
-        console.log("Map instance created");
+      console.log("Map instance created");
 
       // Add navigation controls
       map.current.addControl(
@@ -165,26 +154,14 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
           zoom
         }));
       });
-
-      map.current.on("error", (e) => {
-        console.error("Map error:", e);
-        setError("Map failed to load properly");
-      });
-
-      } catch (err) {
-        console.error("Error initializing map:", err);
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
-        setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
-      }
-    }, 300); // 300ms delay for iOS WebGL context cleanup
+    } catch (err) {
+      console.error("Error initializing map:", err);
+      setError("Failed to initialize map");
+    }
 
     return () => {
-      clearTimeout(timer);
       console.log("Cleaning up map");
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
+      map.current?.remove();
     };
   }, [mapboxToken]);
 

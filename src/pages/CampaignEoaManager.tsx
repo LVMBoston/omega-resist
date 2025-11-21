@@ -689,30 +689,6 @@ export default function CampaignEoaManager() {
       enableHiding: false,
     },
     {
-      id: "test_link",
-      header: "Test-LINK",
-      cell: ({ row }) => {
-        const eoaId = row.original.id;
-        const tokenData = l00Tokens[eoaId];
-        
-        if (tokenData?.shortUrl) {
-          return (
-            <a 
-              href={tokenData.shortUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Test Link
-            </a>
-          );
-        }
-        
-        return "—";
-      },
-      enableSorting: false,
-    },
-    {
       accessorKey: "mobilize_code",
       header: "Mobilize Code",
       cell: ({ row }) => row.original.mobilize_code || "—",

@@ -135,64 +135,17 @@ interface GeoLocationData {
 }
 
 async function fetchGeolocation(): Promise<GeoLocationData> {
-  try {
-    console.log("📍 Fetching geolocation from geoip edge function");
-    console.log("📍 Environment check:", {
-      hasUrl: !!import.meta.env.VITE_SUPABASE_URL,
-      hasKey: !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      url: import.meta.env.VITE_SUPABASE_URL
-    });
-    
-    // Use direct fetch instead of supabase.functions.invoke due to client issues
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/geoip`;
-    console.log("📍 Calling geoip at:", url);
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    console.log("📍 Response status:", response.status, response.statusText);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("📍 Geoip function error response:", errorText);
-      throw new Error(`Geoip function failed: ${response.status} - ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log("📍 Geolocation data received:", data);
-    console.log("📍 Zip code specifically:", data.zip_code, "Type:", typeof data.zip_code);
-    
-    return {
-      latitude: data.latitude,
-      longitude: data.longitude,
-      city: data.city,
-      region: data.region,
-      country: data.country,
-      country_code: data.country_code,
-      zip_code: data.zip_code
-    };
-  } catch (error) {
-    console.error("📍 Failed to fetch geolocation - FULL ERROR:", error);
-    console.error("📍 Error type:", error instanceof Error ? error.constructor.name : typeof error);
-    console.error("📍 Error message:", error instanceof Error ? error.message : String(error));
-    console.error("📍 Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-    
-    // Return null values on error instead of hardcoded data
-    return {
-      latitude: null,
-      longitude: null,
-      city: null,
-      region: null,
-      country: null,
-      country_code: null,
-      zip_code: null
-    };
-  }
+  // TEMPORARY: Bypassing API call with hardcoded London data for testing
+  console.log("📍 Using hardcoded geolocation (London, UK)");
+  return {
+    latitude: 51.5125,
+    longitude: -0.1225,
+    city: "London",
+    region: "England",
+    country: "United Kingdom",
+    country_code: "GB",
+    zip_code: "EC4"
+  };
 }
 
 export async function logEvent(input: z.infer<typeof LogEventInput>) {

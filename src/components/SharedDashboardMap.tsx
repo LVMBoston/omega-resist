@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { supabase } from "@/integrations/supabase/client";
 
 interface GeographicPoint {
   latitude: number;
@@ -55,26 +54,30 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
   // Load Mapbox token from backend or localStorage
   useEffect(() => {
     const fetchToken = async () => {
-      // Try localStorage first for faster load
-      const savedToken = localStorage.getItem("mapbox_token");
-      
       try {
+        // Import supabase client
+        const { supabase } = await import("@/integrations/supabase/client");
         const { data, error } = await supabase.functions.invoke('get-mapbox-token');
         
-        if (!error && data?.token) {
-          mapboxgl.accessToken = data.token;
+        if (error) throw error;
+        
+        if (data?.token) {
           setMapboxToken(data.token);
           localStorage.setItem("mapbox_token", data.token);
-          return;
+        } else {
+          // Fallback to localStorage
+          const savedToken = localStorage.getItem("mapbox_token");
+          if (savedToken) {
+            setMapboxToken(savedToken);
+          }
         }
       } catch (err) {
-        console.error("Error fetching Mapbox token from edge function:", err);
-      }
-      
-      // Fallback to localStorage if edge function fails
-      if (savedToken) {
-        mapboxgl.accessToken = savedToken;
-        setMapboxToken(savedToken);
+        console.error("Error fetching Mapbox token:", err);
+        // Fallback to localStorage
+        const savedToken = localStorage.getItem("mapbox_token");
+        if (savedToken) {
+          setMapboxToken(savedToken);
+        }
       }
     };
     
@@ -89,64 +92,39 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
     }
   };
 
-  // Initialize map with iOS-specific fixes
+  // Initialize map
   useEffect(() => {
     if (!mapboxToken || !mapContainer.current || map.current) return;
 
-    // iOS Safari requires explicit container dimensions before initialization
-    const container = mapContainer.current;
-    const containerRect = container.getBoundingClientRect();
-    
-    if (containerRect.width === 0 || containerRect.height === 0) {
-      console.warn("Container has no dimensions, waiting...");
-      return;
+    try {
+      mapboxgl.accessToken = mapboxToken;
+
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/light-v11",
+        zoom: 1,
+        center: [0, 20],
+        projection: "mercator" as any,
+      });
+
+      // Disable scroll zoom to prevent unwanted zoom on scroll
+      map.current.scrollZoom.disable();
+
+      map.current.addControl(
+        new mapboxgl.NavigationControl({ visualizePitch: true }),
+        "top-right"
+      );
+
+      map.current.on("load", () => {
+        updateMapData();
+      });
+    } catch (err) {
+      console.error("Error initializing map:", err);
+      setError("Failed to initialize map");
     }
 
-    // Add delay for iOS to release previous WebGL contexts
-    const timer = setTimeout(() => {
-      try {
-        map.current = new mapboxgl.Map({
-          container: container,
-          style: "mapbox://styles/mapbox/light-v11",
-          zoom: 1,
-          center: [0, 20],
-          projection: { name: "mercator" } as any,
-          preserveDrawingBuffer: true,
-          failIfMajorPerformanceCaveat: false,
-          trackResize: true,
-        });
-
-        // Disable scroll zoom to prevent unwanted zoom on scroll
-        map.current.scrollZoom.disable();
-
-        map.current.addControl(
-          new mapboxgl.NavigationControl({ visualizePitch: true }),
-          "top-right"
-        );
-
-        map.current.on("load", () => {
-          console.log("Map loaded successfully");
-          updateMapData();
-        });
-
-        map.current.on("error", (e) => {
-          console.error("Map error:", e);
-          setError("Map failed to load properly");
-        });
-
-      } catch (err) {
-        console.error("Error initializing map:", err);
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
-        setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
-      }
-    }, 300); // 300ms delay for iOS WebGL context cleanup
-
     return () => {
-      clearTimeout(timer);
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
+      map.current?.remove();
     };
   }, [mapboxToken]);
 

@@ -1,7 +1,6 @@
 import { MessageSquare, Mail, Share2, ExternalLink, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { mintShare } from "@/lib/virality/mint";
 import { useSearchParams } from "react-router-dom";
@@ -38,20 +37,8 @@ const InteractiveSlideOverlay = ({
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const vimeoPlayerRef = useRef<Player | null>(null);
-
-  // Device detection
-  const isIPhone = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /iphone/.test(ua);
-  };
-
-  const isIPad = () => {
-    const ua = navigator.userAgent.toLowerCase();
-    return /ipad/.test(ua) || (navigator.maxTouchPoints > 2 && /macintosh/.test(ua));
-  };
 
   // Fetch email and SMS templates
   useEffect(() => {
@@ -458,10 +445,8 @@ const InteractiveSlideOverlay = ({
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        // iPhone requires muted=1 for autoplay; iPad works with muted=0
-        const mutedValue = isIPhone() ? '1' : '0';
-        console.log(`🎬 Building Vimeo URL for ${isIPhone() ? 'iPhone' : isIPad() ? 'iPad' : 'Desktop'}, muted=${mutedValue}`);
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=${mutedValue}&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        // Use Vimeo's embed player with enhanced parameters for proper display
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
     return url; // Fallback to original URL if parsing fails
@@ -485,20 +470,11 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-  const toggleMute = () => {
-    if (vimeoPlayerRef.current) {
-      const newMutedState = !isMuted;
-      vimeoPlayerRef.current.setMuted(newMutedState);
-      setIsMuted(newMutedState);
-    }
-  };
-
   const closeVideo = () => {
     if (vimeoPlayerRef.current) {
       vimeoPlayerRef.current.destroy();
       vimeoPlayerRef.current = null;
     }
-    setIsMuted(true); // Reset mute state
     // Clear the video container
     if (videoContainerRef.current) {
       videoContainerRef.current.innerHTML = '';
@@ -510,20 +486,12 @@ const InteractiveSlideOverlay = ({
   // Initialize Vimeo player when video opens
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
-      const device = isIPhone() ? 'iPhone' : isIPad() ? 'iPad' : 'Desktop';
-      console.log(`🎬 Vimeo Player: Initializing on ${device}`, { videoUrl, viewportSize: { w: window.innerWidth, h: window.innerHeight } });
-
-      console.log(`📐 Viewport dimensions: ${window.innerWidth}px × ${window.innerHeight}px`);
-
       // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
       
       const iframe = document.createElement('iframe');
-      const embedUrl = getVimeoEmbedUrl(videoUrl);
-      console.log('🔗 Vimeo embed URL:', embedUrl);
-      
-      iframe.src = embedUrl;
-      iframe.allow = 'autoplay; fullscreen';
+      iframe.src = getVimeoEmbedUrl(videoUrl);
+      iframe.allow = 'autoplay; fullscreen; picture-in-picture';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
@@ -532,70 +500,22 @@ const InteractiveSlideOverlay = ({
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('webkitallowfullscreen', '');
       iframe.setAttribute('mozallowfullscreen', '');
-      iframe.setAttribute('playsinline', '');
-      iframe.setAttribute('webkit-playsinline', '');
       
       videoContainerRef.current.appendChild(iframe);
-      console.log('✅ Iframe appended to container');
       
-      // Device-specific player initialization
-      const playerOptions = {
-        muted: isIPhone() ? true : false, // iPhone must start muted, iPad can have sound
+      const player = new Player(iframe, {
+        muted: false,
         autoplay: true,
-        controls: true,
-      };
-      
-      console.log('🎮 Creating Vimeo Player with options:', playerOptions);
-      const player = new Player(iframe, playerOptions);
+      });
       
       vimeoPlayerRef.current = player;
-      setIsMuted(isIPhone()); // Track actual mute state
-      
-      // Monitor player state
-      player.ready().then(() => {
-        console.log('✅ Player ready');
-        
-        // For iPhone, attempt aggressive muted play
-        if (isIPhone()) {
-          console.log('📱 iPhone: Attempting muted autoplay');
-          return player.setMuted(true).then(() => player.play());
-        }
-        
-        // For iPad/Desktop, attempt explicit play
-        console.log('🎬 iPad/Desktop: Attempting explicit play');
-        return player.play();
-      }).then(() => {
-        console.log('✅ Playback initiated successfully');
-      }).catch(err => {
-        console.error('❌ Playback error:', err.name, err.message);
-        
-        // Final fallback: Try muted play for all devices
-        console.log('🔄 Fallback: Attempting muted play');
-        player.setMuted(true).then(() => {
-          setIsMuted(true);
-          return player.play();
-        }).catch(e => {
-          console.error('❌ Final fallback failed:', e);
-        });
-      });
-      
-      // Monitor play events
-      player.on('play', () => {
-        console.log('▶️ Video started playing');
-      });
-      
-      player.on('pause', () => {
-        console.log('⏸️ Video paused');
-      });
       
       // Close video when it ends
       player.on('ended', () => {
-        console.log('🏁 Video ended');
         closeVideo();
       });
       
       return () => {
-        console.log('🧹 Cleaning up Vimeo player');
         if (vimeoPlayerRef.current) {
           vimeoPlayerRef.current.destroy();
           vimeoPlayerRef.current = null;
@@ -655,71 +575,35 @@ const InteractiveSlideOverlay = ({
 
   return (
     <>
-      {/* Video Overlay - Full Screen - Rendered via Portal to document.body */}
-      {isVideoOpen && videoUrl && createPortal(
+      {/* Video Overlay - Full Screen */}
+      {isVideoOpen && videoUrl && (
         <div 
-          className="fixed bg-black z-[9999] flex flex-col items-center justify-center"
-          style={{
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            height: '100vh',
-            minHeight: '100dvh',
-            paddingTop: 'env(safe-area-inset-top)',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-            paddingLeft: 'env(safe-area-inset-left)',
-            paddingRight: 'env(safe-area-inset-right)',
-            WebkitOverflowScrolling: 'touch',
-          }}
+          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
           onClick={closeVideo}
         >
           {/* Close button */}
           <button
             onClick={closeVideo}
             className="absolute top-4 right-4 z-[10000] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
-            style={{
-              top: 'max(1rem, env(safe-area-inset-top))',
-              right: 'max(1rem, env(safe-area-inset-right))',
-            }}
             aria-label="Close video"
           >
             <X size={24} />
           </button>
 
-          {/* Unmute button for iOS fallback */}
-          {isMuted && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMute();
-              }}
-              className="absolute bottom-8 right-4 z-[10000] text-white bg-black/70 hover:bg-black/90 rounded-lg px-4 py-2 transition-colors text-sm font-medium"
-              style={{
-                bottom: 'max(2rem, env(safe-area-inset-bottom))',
-                right: 'max(1rem, env(safe-area-inset-right))',
-              }}
-            >
-              🔇 Tap to Unmute
-            </button>
-          )}
-
-          {/* Video container with aspect ratio */}
+          {/* Video container with letterbox */}
           <div 
             ref={videoContainerRef}
-            className="relative bg-black"
+            className="relative bg-black mx-auto"
             style={{ 
               position: 'relative',
-              width: '90vw',
-              maxWidth: '90vw',
-              maxHeight: '85vh',
-              aspectRatio: '16/9',
+              width: 'min(90vw, 1280px)',
+              height: 'min(calc(90vw * 9/16), calc(90vh), calc(1280px * 9/16))',
+              maxWidth: '1280px',
+              maxHeight: '90vh'
             }}
             onClick={(e) => e.stopPropagation()}
           />
-        </div>,
-        document.body
+        </div>
       )}
 
       <div className="absolute inset-0 pointer-events-none z-50">

@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserCog, LogOut, Trash2, Database, Share2, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { GeoipDebugPanel } from "@/components/GeoipDebugPanel";
 
 interface UserWithRole {
   user_id: string;
@@ -346,11 +345,10 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full max-w-3xl grid-cols-4">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="data">Data Management</TabsTrigger>
             <TabsTrigger value="shares">Dashboard Shares</TabsTrigger>
-            <TabsTrigger value="debug">Debug Tools</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -619,10 +617,6 @@ export default function Admin() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          <TabsContent value="debug">
-            <GeoipDebugPanel />
           </TabsContent>
         </Tabs>
       </div>

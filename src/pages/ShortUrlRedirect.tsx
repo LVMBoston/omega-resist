@@ -1,81 +1,46 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { logEvent } from "@/lib/virality/mint";
 import { Loader2 } from "lucide-react";
 
 const ShortUrlRedirect = () => {
-  console.log("🚨🚨🚨 ShortUrlRedirect component MOUNTED");
+  console.log("🔀 ShortUrlRedirect component mounted");
   
   const { code } = useParams<{ code: string }>();
-  console.log("🚨🚨🚨 Short code from URL:", code);
+  console.log("🔑 Short code from URL:", code);
   
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("🚨🚨🚨 ShortUrlRedirect useEffect RUNNING");
+    console.log("🔄 Redirect useEffect running");
     
     const redirect = async () => {
       if (!code) {
-        console.log("🚨 ERROR: No short code provided");
+        console.log("❌ No short code provided");
         setError("No redirect code provided");
         return;
       }
 
-      console.log("🚨 Starting redirect process for code:", code);
+      console.log("📞 Calling track_redirect with code:", code);
 
       try {
-        // Get full URL
-        const { data: urlData, error: fetchError } = await supabase
-          .from("shortened_urls")
-          .select("full_url, clicks")
-          .eq("short_code", code)
-          .single();
+        // Call the track_redirect function to get full URL and increment clicks
+        const { data, error: rpcError } = await supabase.rpc("track_redirect", {
+          _short_code: code,
+        });
 
-        if (fetchError || !urlData) {
-          console.error("❌ Short URL not found:", fetchError);
+        console.log("📥 track_redirect response:", { data, error: rpcError });
+
+        if (rpcError || !data) {
+          console.error("❌ Redirect error:", rpcError);
           setError("Short URL not found");
           return;
         }
 
-        // Increment click count
-        await supabase
-          .from("shortened_urls")
-          .update({ clicks: (urlData.clicks || 0) + 1 })
-          .eq("short_code", code);
-
-        // Extract token from URL to log event with geolocation
-        const url = new URL(urlData.full_url);
-        const token = url.searchParams.get("t");
-
-        // CRITICAL: Log the event with geolocation BEFORE redirecting
-        if (token) {
-          console.log("REDIRECT: Token found, logging event with geolocation:", token);
-          
-          try {
-            // Wait for the event to be logged before redirecting
-            await logEvent({
-              token,
-              eventType: "view",
-              utmSnapshot: Object.fromEntries(url.searchParams.entries()),
-            });
-            
-            console.log("REDIRECT: Event logged successfully, now redirecting");
-          } catch (logError) {
-            console.error("REDIRECT: Event logging failed:", logError);
-            // Continue with redirect even if logging fails
-          }
-        } else {
-          console.log("REDIRECT: No token found in URL");
-        }
-
-        console.log("REDIRECT: Final step - redirecting to:", urlData.full_url);
-        
-        // Add a small delay to ensure logs are visible
-        await new Promise(resolve => setTimeout(resolve, 100));
+        console.log("✅ Redirecting to:", data);
         
         // Redirect to the full URL
-        window.location.href = urlData.full_url;
+        window.location.href = data;
       } catch (err) {
         console.error("Redirect error:", err);
         setError("Failed to redirect");

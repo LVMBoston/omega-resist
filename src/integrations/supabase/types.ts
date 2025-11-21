@@ -727,14 +727,6 @@ export type Database = {
       generate_share_code: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
       generate_token: { Args: never; Returns: string }
-      get_all_users_with_roles: {
-        Args: never
-        Returns: {
-          email: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }[]
-      }
       get_coordinates_from_zip: {
         Args: { p_zip_code: string }
         Returns: {
