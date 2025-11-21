@@ -473,7 +473,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
   return (
     <div className="relative">
-      <div ref={mapContainer} className="w-full h-[600px] rounded-lg" />
+      <div ref={mapContainer} className="w-full h-[600px] rounded-lg" style={{ width: '100%', height: '600px' }} />
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
           <div className="bg-background px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
