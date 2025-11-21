@@ -50,38 +50,31 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     console.log("ActivityMap mounted, fetching Mapbox token");
     
     const fetchToken = async () => {
+      // Try localStorage first for faster load
+      const savedToken = localStorage.getItem("mapbox_token");
+      
       try {
         const { data, error } = await supabase.functions.invoke('get-mapbox-token');
         
-        if (error) throw error;
-        
-        if (data?.token) {
+        if (!error && data?.token) {
           console.log("Mapbox token fetched from backend");
-          // Set token globally once
           mapboxgl.accessToken = data.token;
           setMapboxToken(data.token);
           localStorage.setItem("mapbox_token", data.token);
-        } else {
-          // Fallback to localStorage
-          const savedToken = localStorage.getItem("mapbox_token");
-          if (savedToken) {
-            console.log("Using Mapbox token from localStorage");
-            mapboxgl.accessToken = savedToken;
-            setMapboxToken(savedToken);
-          }
+          setLoading(false);
+          return;
         }
       } catch (err) {
-        console.error("Error fetching Mapbox token:", err);
-        // Fallback to localStorage
-        const savedToken = localStorage.getItem("mapbox_token");
-        if (savedToken) {
-          console.log("Using Mapbox token from localStorage after error");
-          mapboxgl.accessToken = savedToken;
-          setMapboxToken(savedToken);
-        }
-      } finally {
-        setLoading(false);
+        console.error("Error fetching Mapbox token from edge function:", err);
       }
+      
+      // Fallback to localStorage if edge function fails
+      if (savedToken) {
+        console.log("Using Mapbox token from localStorage");
+        mapboxgl.accessToken = savedToken;
+        setMapboxToken(savedToken);
+      }
+      setLoading(false);
     };
     
     fetchToken();
@@ -183,7 +176,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         setError(`Failed to initialize map: ${errorMessage}. Your device may not support map visualization.`);
       }
-    }, 100); // 100ms delay for iOS WebGL context cleanup
+    }, 300); // 300ms delay for iOS WebGL context cleanup
 
     return () => {
       clearTimeout(timer);
