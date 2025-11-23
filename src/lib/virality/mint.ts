@@ -135,17 +135,44 @@ interface GeoLocationData {
 }
 
 async function fetchGeolocation(): Promise<GeoLocationData> {
-  // TEMPORARY: Bypassing API call with hardcoded London data for testing
-  console.log("📍 Using hardcoded geolocation (London, UK)");
-  return {
-    latitude: 51.5125,
-    longitude: -0.1225,
-    city: "London",
-    region: "England",
-    country: "United Kingdom",
-    country_code: "GB",
-    zip_code: "EC4"
-  };
+  try {
+    const { data, error } = await supabase.functions.invoke('geoip');
+    
+    if (error) {
+      console.error("Geoip function error:", error);
+      return {
+        latitude: null,
+        longitude: null,
+        city: null,
+        region: null,
+        country: null,
+        country_code: null,
+        zip_code: null
+      };
+    }
+    
+    console.log("📍 Geolocation fetched:", data);
+    return {
+      latitude: data?.latitude || null,
+      longitude: data?.longitude || null,
+      city: data?.city || null,
+      region: data?.region || null,
+      country: data?.country || null,
+      country_code: data?.country_code || null,
+      zip_code: data?.zip || null
+    };
+  } catch (error) {
+    console.error("Failed to fetch geolocation:", error);
+    return {
+      latitude: null,
+      longitude: null,
+      city: null,
+      region: null,
+      country: null,
+      country_code: null,
+      zip_code: null
+    };
+  }
 }
 
 export async function logEvent(input: z.infer<typeof LogEventInput>) {
