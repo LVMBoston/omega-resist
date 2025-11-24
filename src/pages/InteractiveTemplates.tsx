@@ -337,7 +337,17 @@ export default function InteractiveTemplates() {
         .from('slides')
         .getPublicUrl(filePath);
 
-      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      // Generate name and slug from original filename
+      const baseName = slide.fileName.replace(/\.[^/.]+$/, ""); // Remove extension
+      const defaultName = baseName || `Slide ${slide.index + 1}`;
+      const defaultSlug = defaultName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+      setFormData(prev => ({ 
+        ...prev, 
+        image_url: publicUrl,
+        name: prev.name || defaultName,
+        slug: prev.slug || defaultSlug
+      }));
       setShowPowerPointPicker(false);
       setPowerPointSlides([]);
       
