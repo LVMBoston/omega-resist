@@ -159,7 +159,7 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       region: data?.region || null,
       country: data?.country || null,
       country_code: data?.country_code || null,
-      zip_code: data?.zip || null
+      zip_code: data?.zip_code || null
     };
   } catch (error) {
     console.error("Failed to fetch geolocation:", error);
