@@ -136,10 +136,15 @@ interface GeoLocationData {
 
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
-    const { data, error } = await supabase.functions.invoke('geoip');
+    console.log("📍 Calling geoip function...");
+    const { data, error } = await supabase.functions.invoke('geoip', {
+      method: 'GET'
+    });
+    
+    console.log("📍 Geoip response:", { data, error });
     
     if (error) {
-      console.error("Geoip function error:", error);
+      console.error("❌ Geoip function error:", error);
       return {
         latitude: null,
         longitude: null,
@@ -151,7 +156,7 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       };
     }
     
-    console.log("📍 Geolocation fetched:", data);
+    console.log("✅ Geolocation fetched successfully:", data);
     return {
       latitude: data?.latitude || null,
       longitude: data?.longitude || null,
@@ -162,7 +167,7 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       zip_code: data?.zip_code || null
     };
   } catch (error) {
-    console.error("Failed to fetch geolocation:", error);
+    console.error("❌ Failed to fetch geolocation:", error);
     return {
       latitude: null,
       longitude: null,
