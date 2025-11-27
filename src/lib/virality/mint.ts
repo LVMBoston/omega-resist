@@ -137,9 +137,7 @@ interface GeoLocationData {
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
     console.log("📍 Calling geoip function...");
-    const { data, error } = await supabase.functions.invoke('geoip', {
-      method: 'GET'
-    });
+    const { data, error } = await supabase.functions.invoke('geoip');
     
     console.log("📍 Geoip response:", { data, error });
     
