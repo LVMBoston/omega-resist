@@ -15,6 +15,7 @@ import {
   FlaskConical,
   Cog,
   Globe,
+  Map,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -69,6 +70,7 @@ const navigation = [
       { title: "Zip Code Importer", url: "/zip-code-importer", icon: MapPin },
       { title: "QR Debug Tool", url: "/qr-debug", icon: QrCode },
       { title: "GeoIP Test", url: "/geoip-test", icon: Globe },
+      { title: "Map Debug", url: "/map-debug", icon: Map },
       { title: "Simulator", url: "/simulator", icon: FlaskConical },
     ],
   },
