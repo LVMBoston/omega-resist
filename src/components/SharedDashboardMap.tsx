@@ -98,6 +98,13 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
 
     try {
       mapboxgl.accessToken = mapboxToken;
+      
+      // Check if Mapbox GL is supported
+      if (!mapboxgl.supported()) {
+        console.error("Mapbox GL JS is not supported in this browser");
+        setError("Your browser doesn't support Mapbox GL. Please try a different browser or enable WebGL 2.0 in Safari settings.");
+        return;
+      }
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,

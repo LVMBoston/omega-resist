@@ -234,6 +234,28 @@ export default function MapDebugTest() {
       addLog("info", `[${Date.now() - initStart}ms] Setting access token...`);
       mapboxgl.accessToken = token;
       
+      // Check if Mapbox GL is supported
+      if (!mapboxgl.supported()) {
+        addLog("error", `[${Date.now() - initStart}ms] ❌ Mapbox GL JS is not supported in this browser`);
+        addLog("info", "This device may not support WebGL 2.0, which is required for Mapbox GL JS v2+");
+        setWebglInfo({
+          webgl1: false,
+          webgl2: false,
+          renderer: "Not supported",
+          vendor: "Not supported",
+          maxTextureSize: 0,
+          maxViewportDims: [0, 0],
+          extensions: 0,
+          supported: false
+        });
+        setMapStatus({ 
+          initialized: false, 
+          loadTime: 0,
+          status: "UNSUPPORTED" 
+        });
+        return;
+      }
+      
       addLog("info", `[${Date.now() - initStart}ms] Creating map instance...`);
       
       map.current = new mapboxgl.Map({
