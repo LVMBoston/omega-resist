@@ -14,6 +14,7 @@ import {
   QrCode,
   FlaskConical,
   Cog,
+  Globe,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -67,6 +68,7 @@ const navigation = [
       { title: "Admin Panel", url: "/admin", icon: Shield },
       { title: "Zip Code Importer", url: "/zip-code-importer", icon: MapPin },
       { title: "QR Debug Tool", url: "/qr-debug", icon: QrCode },
+      { title: "GeoIP Test", url: "/geoip-test", icon: Globe },
       { title: "Simulator", url: "/simulator", icon: FlaskConical },
     ],
   },
