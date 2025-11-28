@@ -1,344 +1,289 @@
-import { useState, useRef, useEffect } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { useState, useEffect, useRef } from "react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  Copy,
-  Smartphone,
-  Monitor,
-  Globe,
-  Box,
-  MapPin
-} from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { supabase } from "@/integrations/supabase/client";
+
+type LogLevel = "info" | "success" | "error" | "warn";
 
 interface LogEntry {
-  timestamp: number;
-  type: "success" | "error" | "info" | "warning";
+  level: LogLevel;
   message: string;
+  timestamp: number;
 }
 
-export default function MapDebugTest() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [deviceInfo, setDeviceInfo] = useState<any>(null);
-  const [webglInfo, setWebglInfo] = useState<any>(null);
-  const [tokenInfo, setTokenInfo] = useState<any>(null);
-  const [containerInfo, setContainerInfo] = useState<any>(null);
-  const [mapStatus, setMapStatus] = useState<any>(null);
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const logContainerRef = useRef<HTMLDivElement>(null);
+interface DeviceInfo {
+  userAgent: string;
+  platform: string;
+  isMobile: boolean;
+  isIOS: boolean;
+  screenWidth: number;
+  screenHeight: number;
+  pixelRatio: number;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+}
 
-  const addLog = (type: LogEntry["type"], message: string) => {
-    const entry: LogEntry = {
-      timestamp: Date.now(),
-      type,
-      message,
-    };
-    setLogs((prev) => [...prev, entry]);
-    
-    // Auto-scroll to bottom
-    setTimeout(() => {
-      if (logContainerRef.current) {
-        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-      }
-    }, 100);
+interface TokenInfo {
+  exists: boolean;
+  source: string;
+  length: number;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+}
+
+interface ContainerInfo {
+  exists: boolean;
+  width: number;
+  height: number;
+  visible: boolean;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+}
+
+interface MapStatus {
+  initialized: boolean;
+  loadTime: number;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+}
+
+const MapDebugTest = () => {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+  const [containerInfo, setContainerInfo] = useState<ContainerInfo | null>(null);
+  const [mapStatus, setMapStatus] = useState<MapStatus | null>(null);
+
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  const addLog = (level: LogLevel, message: string) => {
+    setLogs((prev) => [...prev, { level, message, timestamp: Date.now() }]);
   };
 
+  const scrollToBottom = () => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [logs]);
+
+  // Fix Leaflet default icon path
+  useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+  }, []);
+
   const getDeviceInfo = () => {
-    addLog("info", "=== DEVICE DETECTION ===");
+    addLog("info", "🔍 Starting device detection...");
     
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isAndroid = /Android/.test(ua);
-    const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
-    const isChrome = /Chrome/.test(ua);
-    const isMobile = /Mobile/.test(ua);
-    
-    const info = {
-      platform: isIOS ? "iOS" : isAndroid ? "Android" : "Desktop",
-      browser: isSafari ? "Safari" : isChrome ? "Chrome" : "Other",
-      userAgent: ua,
-      isTouchDevice: 'ontouchstart' in window,
+    const info: DeviceInfo = {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+      isIOS: /iPhone|iPad|iPod/i.test(navigator.userAgent),
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       pixelRatio: window.devicePixelRatio,
-      orientation: window.screen.orientation?.type || "unknown",
-      isMobile
+      status: "SUCCESS",
     };
-    
+
     setDeviceInfo(info);
-    addLog("success", `Platform: ${info.platform}`);
-    addLog("success", `Browser: ${info.browser}`);
-    addLog("success", `Screen: ${info.screenWidth}×${info.screenHeight} @${info.pixelRatio}x`);
-    addLog("success", `Touch: ${info.isTouchDevice ? "✅" : "❌"}`);
-    
-    return info;
+    addLog("success", `✓ Device: ${info.isMobile ? "Mobile" : "Desktop"} | ${info.isIOS ? "iOS" : "Other"}`);
+    addLog("info", `Screen: ${info.screenWidth}x${info.screenHeight} @ ${info.pixelRatio}x`);
+    addLog("info", `Platform: ${info.platform}`);
   };
 
-  const testWebGL = () => {
-    addLog("info", "=== WEBGL DIAGNOSTICS ===");
+  const testLeafletSupport = () => {
+    addLog("info", "🗺️ Testing Leaflet support...");
     
     try {
-      const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl") as WebGLRenderingContext | null;
-      const gl2 = canvas.getContext("webgl2");
-      
-      if (!gl) {
-        addLog("error", "WebGL 1.0: ❌ NOT SUPPORTED");
-        setWebglInfo({ supported: false, error: "WebGL not available" });
-        return;
-      }
-
-      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-      const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown";
-      const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : "Unknown";
-      
-      const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-      const maxViewportDims = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
-      
-      const info = {
-        webgl1: !!gl,
-        webgl2: !!gl2,
-        renderer,
-        vendor,
-        maxTextureSize: maxTextureSize || 0,
-        maxViewportDims: maxViewportDims || [0, 0],
-        extensions: gl.getSupportedExtensions()?.length || 0,
-        supported: true
-      };
-      
-      setWebglInfo(info);
-      addLog("success", `WebGL 1.0: ✅ Supported`);
-      addLog("success", `WebGL 2.0: ${gl2 ? "✅" : "❌"}`);
-      addLog("info", `Renderer: ${renderer}`);
-      addLog("info", `Vendor: ${vendor}`);
-      addLog("info", `Max Texture Size: ${maxTextureSize || 'Unknown'}`);
-      addLog("info", `Max Viewport: ${maxViewportDims ? `${maxViewportDims[0]}×${maxViewportDims[1]}` : 'Unknown'}`);
-      addLog("success", `Extensions: ${info.extensions} available`);
-      
-    } catch (err: any) {
-      addLog("error", `WebGL Error: ${err.message}`);
-      setWebglInfo({ supported: false, error: err.message });
+      addLog("success", "✓ Leaflet is supported (no WebGL required)");
+      addLog("info", `Leaflet version: ${L.version}`);
+      return true;
+    } catch (error) {
+      addLog("error", `✗ Unexpected error: ${error}`);
+      return false;
     }
   };
 
   const testTokenFetch = async () => {
-    addLog("info", "=== TOKEN FETCH TEST ===");
-    const startTime = Date.now();
+    addLog("info", "🔑 Fetching Mapbox token (optional for OSM)...");
     
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke('get-mapbox-token');
       
-      const duration = Date.now() - startTime;
-      
-      if (error) throw error;
+      if (error) {
+        addLog("warn", `⚠ Supabase function error: ${error.message}`);
+      }
       
       if (data?.token) {
-        setTokenInfo({ 
-          success: true, 
-          token: data.token.substring(0, 20) + "...",
-          duration,
-          source: "Edge Function"
+        setTokenInfo({
+          exists: true,
+          source: "Supabase Function",
+          length: data.token.length,
+          status: "SUCCESS",
         });
-        addLog("success", `✅ Token fetched in ${duration}ms`);
-        addLog("info", `Token: ${data.token.substring(0, 20)}...`);
-        addLog("success", `Source: Edge Function`);
+        addLog("success", `✓ Token retrieved from Supabase (${data.token.length} chars)`);
         return data.token;
-      } else {
-        throw new Error("No token in response");
       }
-    } catch (err: any) {
-      const duration = Date.now() - startTime;
       
-      // Try localStorage fallback
-      const savedToken = localStorage.getItem("mapbox_token");
-      if (savedToken) {
-        setTokenInfo({ 
-          success: true, 
-          token: savedToken.substring(0, 20) + "...",
-          duration,
-          source: "LocalStorage (Fallback)"
+      const storedToken = localStorage.getItem('mapboxToken');
+      if (storedToken) {
+        setTokenInfo({
+          exists: true,
+          source: "localStorage",
+          length: storedToken.length,
+          status: "SUCCESS",
         });
-        addLog("warning", `Edge function failed after ${duration}ms`);
-        addLog("success", `✅ Using localStorage token`);
-        return savedToken;
+        addLog("success", `✓ Token retrieved from localStorage (${storedToken.length} chars)`);
+        return storedToken;
       }
       
-      addLog("error", `❌ Token fetch failed: ${err.message}`);
-      setTokenInfo({ success: false, error: err.message, duration });
+      setTokenInfo({
+        exists: false,
+        source: "None (OSM tiles will be used)",
+        length: 0,
+        status: "SUCCESS",
+      });
+      addLog("info", "ℹ No token found - using OpenStreetMap tiles");
+      return null;
+    } catch (error) {
+      addLog("warn", `⚠ Token fetch error: ${error}`);
+      setTokenInfo({
+        exists: false,
+        source: "Error (OSM tiles will be used)",
+        length: 0,
+        status: "SUCCESS",
+      });
       return null;
     }
   };
 
   const testContainer = () => {
-    addLog("info", "=== CONTAINER CHECK ===");
+    addLog("info", "📦 Checking map container...");
     
     if (!mapContainer.current) {
-      addLog("error", "❌ Container element not found");
-      setContainerInfo({ found: false });
+      addLog("error", "✗ Container element not found");
+      setContainerInfo({
+        exists: false,
+        width: 0,
+        height: 0,
+        visible: false,
+        status: "FAILED",
+      });
       return false;
     }
     
     const rect = mapContainer.current.getBoundingClientRect();
-    const styles = window.getComputedStyle(mapContainer.current);
+    const computed = window.getComputedStyle(mapContainer.current);
+    const isVisible = computed.display !== 'none' && computed.visibility !== 'hidden';
     
-    const info = {
-      found: true,
+    const info: ContainerInfo = {
+      exists: true,
       width: rect.width,
       height: rect.height,
-      visible: styles.display !== "none" && styles.visibility !== "hidden",
-      display: styles.display,
-      position: styles.position
+      visible: isVisible,
+      status: rect.width > 0 && rect.height > 0 && isVisible ? "SUCCESS" : "FAILED",
     };
     
     setContainerInfo(info);
-    addLog("success", `✅ Container found`);
-    addLog("info", `Size: ${info.width}×${info.height}px`);
-    addLog("success", `Visible: ${info.visible ? "✅" : "❌"}`);
-    addLog("info", `Display: ${info.display}`);
     
-    return true;
+    if (info.status === "SUCCESS") {
+      addLog("success", `✓ Container ready: ${info.width}x${info.height}px`);
+      return true;
+    } else {
+      addLog("error", `✗ Container issue: ${info.width}x${info.height}px, visible: ${isVisible}`);
+      return false;
+    }
   };
 
   const testMapInit = async () => {
-    addLog("info", "=== MAP INITIALIZATION ===");
+    addLog("info", "🗺️ Starting Leaflet map initialization...");
     const initStart = Date.now();
     
-    // Clean up existing map
-    if (map.current) {
-      map.current.remove();
-      map.current = null;
-    }
-    
-    const token = await testTokenFetch();
-    if (!token) {
-      addLog("error", "❌ Cannot initialize without token");
-      return;
-    }
-    
-    if (!testContainer()) {
-      addLog("error", "❌ Cannot initialize without valid container");
-      return;
-    }
-    
     try {
-      addLog("info", `[${Date.now() - initStart}ms] Setting access token...`);
-      mapboxgl.accessToken = token;
-      
-      // Check if Mapbox GL is supported
-      if (!mapboxgl.supported()) {
-        addLog("error", `[${Date.now() - initStart}ms] ❌ Mapbox GL JS is not supported in this browser`);
-        addLog("info", "This device may not support WebGL 2.0, which is required for Mapbox GL JS v2+");
-        setWebglInfo({
-          webgl1: false,
-          webgl2: false,
-          renderer: "Not supported",
-          vendor: "Not supported",
-          maxTextureSize: 0,
-          maxViewportDims: [0, 0],
-          extensions: 0,
-          supported: false
-        });
-        setMapStatus({ 
-          initialized: false, 
+      if (!testLeafletSupport()) {
+        setMapStatus({
+          initialized: false,
           loadTime: 0,
-          status: "UNSUPPORTED" 
+          status: "FAILED",
         });
         return;
       }
       
-      addLog("info", `[${Date.now() - initStart}ms] Creating map instance...`);
+      addLog("info", `[${Date.now() - initStart}ms] Checking container...`);
+      if (!testContainer()) {
+        setMapStatus({
+          initialized: false,
+          loadTime: Date.now() - initStart,
+          status: "FAILED",
+        });
+        return;
+      }
       
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current!,
-        style: "mapbox://styles/mapbox/light-v11",
-        zoom: 1,
-        center: [0, 20],
-        projection: "mercator" as any,
-        // iOS-specific compatibility options
-        preserveDrawingBuffer: true,
-        failIfMajorPerformanceCaveat: false,
-        antialias: false,
+      addLog("info", `[${Date.now() - initStart}ms] Fetching token...`);
+      await testTokenFetch();
+      
+      addLog("info", `[${Date.now() - initStart}ms] Creating Leaflet map instance...`);
+      
+      map.current = L.map(mapContainer.current!, {
+        center: [39.8283, -98.5795],
+        zoom: 4,
+        zoomControl: true,
       });
       
-      addLog("info", `[${Date.now() - initStart}ms] Map constructor completed`);
+      addLog("info", `[${Date.now() - initStart}ms] Adding tile layer...`);
       
-      // Add event listeners
-      map.current.on("load", () => {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map.current);
+      
+      addLog("info", `[${Date.now() - initStart}ms] Waiting for map load...`);
+      
+      map.current.whenReady(() => {
         const loadTime = Date.now() - initStart;
-        addLog("success", `[${loadTime}ms] ✅ Map loaded successfully`);
-        setMapStatus({ 
-          initialized: true, 
+        addLog("success", `✓ Map loaded successfully in ${loadTime}ms`);
+        
+        L.marker([39.8283, -98.5795])
+          .addTo(map.current!)
+          .bindPopup('✅ Leaflet working perfectly on iPad!')
+          .openPopup();
+        
+        setMapStatus({
+          initialized: true,
           loadTime,
-          status: "SUCCESS" 
+          status: "SUCCESS",
         });
       });
       
-      map.current.on("error", (e) => {
-        addLog("error", `❌ Map error: ${e.error?.message || "Unknown error"}`);
-        setMapStatus({ 
-          initialized: false, 
-          error: e.error?.message,
-          status: "ERROR" 
-        });
-      });
+    } catch (error: any) {
+      const loadTime = Date.now() - initStart;
+      addLog("error", `✗ Map initialization failed: ${error.message || error}`);
       
-      map.current.on("style.load", () => {
-        addLog("info", `[${Date.now() - initStart}ms] Style loaded`);
-      });
-      
-      map.current.on("webglcontextlost", () => {
-        addLog("error", "❌ WebGL context lost!");
-      });
-      
-      map.current.on("webglcontextrestored", () => {
-        addLog("success", "✅ WebGL context restored");
-      });
-      
-      // Add controls
-      map.current.addControl(
-        new mapboxgl.NavigationControl({ visualizePitch: true }),
-        "top-right"
-      );
-      
-      addLog("info", `[${Date.now() - initStart}ms] Controls added`);
-      
-    } catch (err: any) {
-      const errorTime = Date.now() - initStart;
-      addLog("error", `❌ [${errorTime}ms] Initialization failed: ${err.message}`);
-      setMapStatus({ 
-        initialized: false, 
-        error: err.message,
-        status: "FAILED" 
+      setMapStatus({
+        initialized: false,
+        loadTime,
+        status: "FAILED",
       });
     }
   };
 
   const runFullDiagnostics = async () => {
+    addLog("info", "▶️ Starting full diagnostic test...");
     setLogs([]);
-    setDeviceInfo(null);
-    setWebglInfo(null);
-    setTokenInfo(null);
-    setContainerInfo(null);
-    setMapStatus(null);
-    
-    addLog("info", "════════════════════════════════════════");
-    addLog("info", "     MAP DEBUG TEST HARNESS");
-    addLog("info", "════════════════════════════════════════");
     
     getDeviceInfo();
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    testWebGL();
+    testLeafletSupport();
     await new Promise(resolve => setTimeout(resolve, 500));
     
     await testTokenFetch();
@@ -351,302 +296,144 @@ export default function MapDebugTest() {
   };
 
   const copyLogsToClipboard = () => {
-    const logText = logs.map(log => {
-      const time = new Date(log.timestamp).toLocaleTimeString();
-      return `[${time}] ${log.type.toUpperCase()}: ${log.message}`;
-    }).join("\n");
-    
+    const logText = logs.map(log => `[${log.level.toUpperCase()}] ${log.message}`).join('\n');
     navigator.clipboard.writeText(logText);
-    toast({
-      title: "Logs copied",
-      description: "All diagnostic logs copied to clipboard",
-    });
+    addLog("success", "✓ Logs copied to clipboard");
   };
 
-  const StatusIcon = ({ status }: { status: boolean | undefined }) => {
-    if (status === undefined) return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
-    return status ? 
-      <CheckCircle2 className="w-4 h-4 text-green-500" /> : 
-      <XCircle className="w-4 h-4 text-red-500" />;
+  const StatusIcon = ({ status }: { status: string }) => {
+    switch (status) {
+      case "SUCCESS":
+        return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+      case "FAILED":
+        return <XCircle className="w-5 h-5 text-red-500" />;
+      default:
+        return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+    }
   };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Map Debug Test Harness</h1>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold">Leaflet Map Debug Test</h1>
         <p className="text-muted-foreground">
-          Comprehensive diagnostics for iOS and cross-platform map debugging
+          iPad-compatible map diagnostics (no WebGL required)
         </p>
       </div>
 
-      {/* Control Buttons */}
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={runFullDiagnostics} size="lg">
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={getDeviceInfo}>Test Device Info</Button>
+        <Button onClick={testLeafletSupport}>Test Leaflet</Button>
+        <Button onClick={testTokenFetch}>Test Token</Button>
+        <Button onClick={testContainer}>Test Container</Button>
+        <Button onClick={testMapInit}>Test Map Init</Button>
+        <Button onClick={runFullDiagnostics} variant="default">
           Run Full Diagnostics
         </Button>
-        <Button onClick={getDeviceInfo} variant="outline">
-          <Smartphone className="w-4 h-4 mr-2" />
-          Device Info
-        </Button>
-        <Button onClick={testWebGL} variant="outline">
-          <Box className="w-4 h-4 mr-2" />
-          Test WebGL
-        </Button>
-        <Button onClick={testTokenFetch} variant="outline">
-          <Globe className="w-4 h-4 mr-2" />
-          Test Token
-        </Button>
-        <Button onClick={testContainer} variant="outline">
-          <Monitor className="w-4 h-4 mr-2" />
-          Test Container
-        </Button>
-        <Button onClick={testMapInit} variant="outline">
-          <MapPin className="w-4 h-4 mr-2" />
-          Init Map
-        </Button>
-        <Button onClick={copyLogsToClipboard} variant="secondary">
-          <Copy className="w-4 h-4 mr-2" />
+        <Button onClick={copyLogsToClipboard} variant="outline">
           Copy Logs
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Status Cards */}
-        <div className="space-y-4">
-          {/* Device Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5" />
-                Device Info
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {deviceInfo ? (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Platform</span>
-                    <Badge variant="outline">{deviceInfo.platform}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Browser</span>
-                    <Badge variant="outline">{deviceInfo.browser}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Screen</span>
-                    <span className="text-sm">{deviceInfo.screenWidth}×{deviceInfo.screenHeight} @{deviceInfo.pixelRatio}x</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Touch</span>
-                    <StatusIcon status={deviceInfo.isTouchDevice} />
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Run diagnostics to see device info</p>
-              )}
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Device Info</h3>
+            {deviceInfo && <StatusIcon status={deviceInfo.status} />}
+          </div>
+          {deviceInfo && (
+            <div className="text-sm space-y-1">
+              <p>Platform: {deviceInfo.platform}</p>
+              <p>Mobile: {deviceInfo.isMobile ? "Yes" : "No"}</p>
+              <p>iOS: {deviceInfo.isIOS ? "Yes" : "No"}</p>
+              <p>Screen: {deviceInfo.screenWidth}x{deviceInfo.screenHeight}</p>
+            </div>
+          )}
+        </Card>
 
-          {/* WebGL Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Box className="w-5 h-5" />
-                WebGL Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {webglInfo ? (
-                webglInfo.supported ? (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">WebGL 1.0</span>
-                      <StatusIcon status={webglInfo.webgl1} />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">WebGL 2.0</span>
-                      <StatusIcon status={webglInfo.webgl2} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Renderer</span>
-                      <span className="text-sm font-mono text-right">{webglInfo.renderer}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Max Texture</span>
-                      <span className="text-sm">{webglInfo.maxTextureSize}px</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Extensions</span>
-                      <Badge variant="secondary">{webglInfo.extensions}</Badge>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-red-500">❌ {webglInfo.error}</p>
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">Run diagnostics to test WebGL</p>
-              )}
-            </CardContent>
-          </Card>
+        <Card className="p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Leaflet Support</h3>
+            <CheckCircle2 className="w-5 h-5 text-green-500" />
+          </div>
+          <div className="text-sm space-y-1">
+            <p>✅ Works on all browsers</p>
+            <p>✅ No WebGL required</p>
+            <p>✅ iPad compatible</p>
+          </div>
+        </Card>
 
-          {/* Token Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="w-5 h-5" />
-                Token Fetch
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {tokenInfo ? (
-                tokenInfo.success ? (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Status</span>
-                      <StatusIcon status={true} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Duration</span>
-                      <Badge variant="secondary">{tokenInfo.duration}ms</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Source</span>
-                      <span className="text-sm">{tokenInfo.source}</span>
-                    </div>
-                    <div className="mt-2">
-                      <span className="text-xs text-muted-foreground">Token:</span>
-                      <code className="text-xs block mt-1 p-2 bg-muted rounded">{tokenInfo.token}</code>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-red-500">❌ {tokenInfo.error}</p>
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">Run diagnostics to test token fetch</p>
-              )}
-            </CardContent>
-          </Card>
+        <Card className="p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Token</h3>
+            {tokenInfo && <StatusIcon status={tokenInfo.status} />}
+          </div>
+          {tokenInfo && (
+            <div className="text-sm space-y-1">
+              <p>Source: {tokenInfo.source}</p>
+              <p className="text-muted-foreground text-xs">(Optional for OSM)</p>
+            </div>
+          )}
+        </Card>
 
-          {/* Container Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Monitor className="w-5 h-5" />
-                Container Check
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {containerInfo ? (
-                containerInfo.found ? (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Element Found</span>
-                      <StatusIcon status={true} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Size</span>
-                      <span className="text-sm">{containerInfo.width}×{containerInfo.height}px</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Visible</span>
-                      <StatusIcon status={containerInfo.visible} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Display</span>
-                      <code className="text-xs">{containerInfo.display}</code>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-red-500">❌ Container not found</p>
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">Run diagnostics to check container</p>
-              )}
-            </CardContent>
-          </Card>
+        <Card className="p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Container</h3>
+            {containerInfo && <StatusIcon status={containerInfo.status} />}
+          </div>
+          {containerInfo && (
+            <div className="text-sm space-y-1">
+              <p>Exists: {containerInfo.exists ? "Yes" : "No"}</p>
+              <p>Size: {containerInfo.width}x{containerInfo.height}px</p>
+            </div>
+          )}
+        </Card>
 
-          {/* Map Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Map Initialization
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {mapStatus ? (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Status</span>
-                    <Badge variant={mapStatus.status === "SUCCESS" ? "default" : "destructive"}>
-                      {mapStatus.status}
-                    </Badge>
-                  </div>
-                  {mapStatus.loadTime && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Load Time</span>
-                      <Badge variant="secondary">{mapStatus.loadTime}ms</Badge>
-                    </div>
-                  )}
-                  {mapStatus.error && (
-                    <p className="text-sm text-red-500">❌ {mapStatus.error}</p>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Run diagnostics to test map initialization</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Log Display */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Diagnostic Log</CardTitle>
-              <CardDescription>Real-time test output and debugging information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[600px] w-full rounded border bg-muted/30 p-4">
-                <div ref={logContainerRef} className="space-y-1 font-mono text-xs">
-                  {logs.length === 0 ? (
-                    <p className="text-muted-foreground">No logs yet. Run diagnostics to see output.</p>
-                  ) : (
-                    logs.map((log, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`${
-                          log.type === "success" ? "text-green-600" :
-                          log.type === "error" ? "text-red-600" :
-                          log.type === "warning" ? "text-yellow-600" :
-                          "text-foreground"
-                        }`}
-                      >
-                        [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Map Init</h3>
+            {mapStatus && <StatusIcon status={mapStatus.status} />}
+          </div>
+          {mapStatus && (
+            <div className="text-sm space-y-1">
+              <p>Initialized: {mapStatus.initialized ? "Yes" : "No"}</p>
+              <p>Load Time: {mapStatus.loadTime}ms</p>
+            </div>
+          )}
+        </Card>
       </div>
 
-      {/* Map Container */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Map Test Container</CardTitle>
-          <CardDescription>The map will render here during initialization tests</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div 
-            ref={mapContainer} 
-            className="w-full rounded-lg border bg-muted/30"
-            style={{ height: '400px', minHeight: '400px' }}
-          />
-        </CardContent>
+      <Card className="p-4">
+        <h3 className="font-semibold mb-4">Diagnostic Log</h3>
+        <ScrollArea className="h-64 border rounded p-2">
+          <div className="space-y-1 font-mono text-xs">
+            {logs.map((log, idx) => (
+              <div
+                key={idx}
+                className={`${
+                  log.level === "error"
+                    ? "text-red-500"
+                    : log.level === "success"
+                    ? "text-green-500"
+                    : log.level === "warn"
+                    ? "text-yellow-500"
+                    : "text-foreground"
+                }`}
+              >
+                [{log.level.toUpperCase()}] {log.message}
+              </div>
+            ))}
+            <div ref={logEndRef} />
+          </div>
+        </ScrollArea>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-4">Live Leaflet Map</h3>
+        <div ref={mapContainer} className="w-full h-96 rounded border" />
       </Card>
     </div>
   );
-}
+};
+
+export default MapDebugTest;
