@@ -101,13 +101,16 @@ export default function MapDebugTest() {
       const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown";
       const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : "Unknown";
       
+      const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+      const maxViewportDims = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+      
       const info = {
         webgl1: !!gl,
         webgl2: !!gl2,
         renderer,
         vendor,
-        maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
-        maxViewportDims: gl.getParameter(gl.MAX_VIEWPORT_DIMS),
+        maxTextureSize: maxTextureSize || 0,
+        maxViewportDims: maxViewportDims || [0, 0],
         extensions: gl.getSupportedExtensions()?.length || 0,
         supported: true
       };
@@ -117,8 +120,8 @@ export default function MapDebugTest() {
       addLog("success", `WebGL 2.0: ${gl2 ? "✅" : "❌"}`);
       addLog("info", `Renderer: ${renderer}`);
       addLog("info", `Vendor: ${vendor}`);
-      addLog("info", `Max Texture Size: ${info.maxTextureSize}px`);
-      addLog("info", `Max Viewport: ${info.maxViewportDims[0]}×${info.maxViewportDims[1]}`);
+      addLog("info", `Max Texture Size: ${maxTextureSize || 'Unknown'}`);
+      addLog("info", `Max Viewport: ${maxViewportDims ? `${maxViewportDims[0]}×${maxViewportDims[1]}` : 'Unknown'}`);
       addLog("success", `Extensions: ${info.extensions} available`);
       
     } catch (err: any) {
@@ -617,7 +620,8 @@ export default function MapDebugTest() {
         <CardContent>
           <div 
             ref={mapContainer} 
-            className="w-full h-[400px] rounded-lg border bg-muted/30"
+            className="w-full rounded-lg border bg-muted/30"
+            style={{ height: '400px', minHeight: '400px' }}
           />
         </CardContent>
       </Card>
