@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.markercluster';
+import { format } from "date-fns";
 
 interface UrlEvent {
   id: string;
   token: string;
   event_type: string;
   occurred_at: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   city: string | null;
   region: string | null;
   country: string | null;
@@ -22,11 +23,6 @@ interface UrlEvent {
     level: number;
     deck_slug: string;
     utm_campaign: string;
-    events_actions?: {
-      title: string;
-      city: string;
-      state: string;
-    };
   };
 }
 
@@ -35,123 +31,63 @@ interface ActivityMapProps {
 }
 
 export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
-  const [tokenInput, setTokenInput] = useState("");
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const markerClusterGroup = useRef<L.MarkerClusterGroup | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
 
-  console.log("ActivityMap component rendering, eventTypeFilter:", eventTypeFilter);
-
-  // Load Mapbox token from backend or localStorage
+  // Fix Leaflet default icon path
   useEffect(() => {
-    console.log("ActivityMap mounted, fetching Mapbox token");
-    
-    const fetchToken = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
-        
-        if (error) throw error;
-        
-        if (data?.token) {
-          console.log("Mapbox token fetched from backend");
-          setMapboxToken(data.token);
-          localStorage.setItem("mapbox_token", data.token);
-        } else {
-          // Fallback to localStorage
-          const savedToken = localStorage.getItem("mapbox_token");
-          if (savedToken) {
-            console.log("Using Mapbox token from localStorage");
-            setMapboxToken(savedToken);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching Mapbox token:", err);
-        // Fallback to localStorage
-        const savedToken = localStorage.getItem("mapbox_token");
-        if (savedToken) {
-          console.log("Using Mapbox token from localStorage after error");
-          setMapboxToken(savedToken);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchToken();
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
   }, []);
 
-  const handleSaveToken = () => {
-    if (tokenInput.trim()) {
-      localStorage.setItem("mapbox_token", tokenInput.trim());
-      setMapboxToken(tokenInput.trim());
-      setTokenInput("");
-    }
-  };
-
-  // Initialize map when token is available
+  // Initialize map
   useEffect(() => {
-    console.log("Map initialization effect triggered, mapboxToken:", mapboxToken ? "present" : "null", "mapContainer:", mapContainer.current ? "present" : "null", "map:", map.current ? "present" : "null");
-    
-    if (!mapboxToken || !mapContainer.current || map.current) return;
-
-    console.log("Initializing Mapbox map with token");
+    if (!mapContainer.current || map.current) return;
 
     try {
-      mapboxgl.accessToken = mapboxToken;
-      
-      // Check if Mapbox GL is supported
-      if (!mapboxgl.supported()) {
-        console.error("Mapbox GL JS is not supported in this browser");
-        setError("Your browser doesn't support Mapbox GL. Please try a different browser or enable WebGL.");
-        return;
-      }
-
-      // Restore saved position or use default
       const savedPosition = localStorage.getItem('activityMapPosition');
-      let center: [number, number] = [-98.5795, 39.8283]; // Default: Center of USA
-      let zoom = 4; // Default zoom
+      let center: [number, number] = [39.8283, -98.5795];
+      let zoom = 4;
 
       if (savedPosition) {
         try {
           const parsed = JSON.parse(savedPosition);
-          center = parsed.center;
+          center = [parsed.center[1], parsed.center[0]];
           zoom = parsed.zoom;
-          console.log("Restored map position:", center, "zoom:", zoom);
         } catch (e) {
-          console.warn("Failed to parse saved map position:", e);
+          console.warn("Failed to parse saved position:", e);
         }
       }
 
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/light-v11",
+      map.current = L.map(mapContainer.current, {
         center,
         zoom,
-        projection: "mercator" as any,
+        zoomControl: true,
       });
 
-      console.log("Map instance created");
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map.current);
 
-      // Add navigation controls
-      map.current.addControl(
-        new mapboxgl.NavigationControl({
-          visualizePitch: true,
-        }),
-        "top-right"
-      );
-
-      console.log("Navigation controls added");
-
-      // Wait for map to load before adding data
-      map.current.on("load", () => {
-        console.log("Map loaded, fetching events");
-        fetchEvents();
+      markerClusterGroup.current = L.markerClusterGroup({
+        chunkedLoading: true,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
       });
+      
+      map.current.addLayer(markerClusterGroup.current);
 
-      // Save position on move end
       map.current.on("moveend", () => {
         if (!map.current) return;
         const center = map.current.getCenter();
@@ -161,39 +97,41 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
           zoom
         }));
       });
-    } catch (err) {
+
+      setMapReady(true);
+    } catch (err: any) {
       console.error("Error initializing map:", err);
-      setError("Failed to initialize map");
+      setError(`Failed to initialize map: ${err.message}`);
     }
 
     return () => {
-      console.log("Cleaning up map");
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+        markerClusterGroup.current = null;
+      }
     };
-  }, [mapboxToken]);
+  }, []);
 
-  // Fetch events and update map when filter changes
   useEffect(() => {
-    if (map.current && map.current.loaded()) {
-      fetchEvents();
-    }
-  }, [eventTypeFilter]);
+    if (!mapReady) return;
+    fetchEvents();
+  }, [eventTypeFilter, mapReady]);
 
-  // Subscribe to realtime updates
   useEffect(() => {
+    if (!mapReady) return;
+
     const channel = supabase
-      .channel("map_events")
+      .channel('url_events_changes')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "*",
-          schema: "public",
-          table: "url_events",
+          event: '*',
+          schema: 'public',
+          table: 'url_events',
         },
         () => {
-          if (map.current && map.current.loaded()) {
-            fetchEvents();
-          }
+          fetchEvents();
         }
       )
       .subscribe();
@@ -201,27 +139,21 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventTypeFilter]);
-
+  }, [mapReady, eventTypeFilter]);
 
   const fetchEvents = async () => {
-    console.log("fetchEvents called, loading:", loading);
     setLoading(true);
-
     try {
       let query = supabase
         .from("url_events")
-        .select(
-          `
+        .select(`
           *,
           tokens(
             level,
             deck_slug,
-            utm_campaign,
-            eoa_id
+            utm_campaign
           )
-        `
-        )
+        `)
         .not("latitude", "is", null)
         .not("longitude", "is", null)
         .order("occurred_at", { ascending: false })
@@ -231,273 +163,121 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
         query = query.eq("event_type", eventTypeFilter);
       }
 
-      console.log("Executing query for events...");
       const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching events:", error);
-        throw error;
+        setError(`Failed to fetch events: ${error.message}`);
+        return;
       }
-
-      console.log("Fetched events for map:", data?.length);
 
       const eventsData = (data || []) as UrlEvent[];
       setEvents(eventsData);
       updateMapData(eventsData);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error in fetchEvents:", err);
-      setError("Failed to load events");
+      setError(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const updateMapData = (eventsData: UrlEvent[]) => {
-    if (!map.current || !map.current.loaded()) return;
+    if (!map.current || !markerClusterGroup.current) return;
 
-    // Convert events to GeoJSON
-    const geojsonData: GeoJSON.FeatureCollection<GeoJSON.Point> = {
-      type: "FeatureCollection",
-      features: eventsData.map((event) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [event.longitude, event.latitude],
-        },
-        properties: {
-          id: event.id,
-          token: event.token,
-          eventType: event.event_type,
-          level: event.tokens?.level || 0,
-          occurredAt: event.occurred_at,
-          city: event.city,
-          region: event.region,
-          country: event.country,
-          deckSlug: event.tokens?.deck_slug,
-          campaign: event.tokens?.utm_campaign,
-        },
-      })),
-    };
+    markerClusterGroup.current.clearLayers();
 
-    // Remove existing layers and source if they exist
-    if (map.current.getLayer("unclustered-point")) {
-      map.current.removeLayer("unclustered-point");
-    }
-    if (map.current.getLayer("cluster-count")) {
-      map.current.removeLayer("cluster-count");
-    }
-    if (map.current.getLayer("clusters")) {
-      map.current.removeLayer("clusters");
-    }
-    if (map.current.getSource("events")) {
-      map.current.removeSource("events");
-    }
-
-    // Add source with clustering
-    map.current.addSource("events", {
-      type: "geojson",
-      data: geojsonData,
-      cluster: true,
-      clusterMaxZoom: 14,
-      clusterRadius: 50,
-    });
-
-    // Add cluster circles
-    map.current.addLayer({
-      id: "clusters",
-      type: "circle",
-      source: "events",
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          "#51bbd6",
-          20,
-          "#f1f075",
-          50,
-          "#f28cb1",
-        ],
-        "circle-radius": ["step", ["get", "point_count"], 20, 20, 30, 50, 40],
-      },
-    });
-
-    // Add cluster count labels
-    map.current.addLayer({
-      id: "cluster-count",
-      type: "symbol",
-      source: "events",
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": ["get", "point_count_abbreviated"],
-        "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-        "text-size": 12,
-      },
-    });
-
-    // Add unclustered points - colored by level
-    map.current.addLayer({
-      id: "unclustered-point",
-      type: "circle",
-      source: "events",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": [
-          "match",
-          ["get", "level"],
-          0,
-          "#3b82f6", // L00 - Blue
-          1,
-          "#10b981", // L01 - Green
-          2,
-          "#f59e0b", // L02 - Amber
-          3,
-          "#a855f7", // L03 - Purple
-          "#6b7280", // Default - Gray
-        ],
-        "circle-radius": 8,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#fff",
-      },
-    });
-
-    // Add click handlers
-    map.current.on("click", "clusters", (e) => {
-      if (!map.current) return;
-      const features = map.current.queryRenderedFeatures(e.point, {
-        layers: ["clusters"],
-      });
-      const clusterId = features[0].properties?.cluster_id;
-      const source = map.current.getSource("events") as mapboxgl.GeoJSONSource;
-
-      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-        if (err || !map.current) return;
-
-        const coordinates = (features[0].geometry as GeoJSON.Point).coordinates;
-        map.current.easeTo({
-          center: [coordinates[0], coordinates[1]],
-          zoom: zoom || 10,
+    eventsData.forEach((event) => {
+      if (event.latitude && event.longitude) {
+        const level = event.tokens?.level || 0;
+        
+        const iconColor = level === 0 ? '#3b82f6' : level === 1 ? '#10b981' : '#f59e0b';
+        const iconHtml = `
+          <div style="
+            background-color: ${iconColor};
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 4px rgba(0,0,0,0.4);
+          "></div>
+        `;
+        
+        const customIcon = L.divIcon({
+          html: iconHtml,
+          className: 'custom-marker',
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
         });
-      });
-    });
 
-    map.current.on("click", "unclustered-point", (e) => {
-      if (!map.current || !e.features?.[0]) return;
+        const marker = L.marker([event.latitude, event.longitude], {
+          icon: customIcon,
+        });
 
-      const coordinates = (e.features[0].geometry as GeoJSON.Point).coordinates.slice() as [number, number];
-      const props = e.features[0].properties;
+        const eventColor = event.event_type === "scan" ? "#3b82f6" : event.event_type === "view" ? "#10b981" : "#a855f7";
 
-      if (!props) return;
-
-      const levelBadge = `L${props.level.toString().padStart(2, "0")}`;
-      const eventColor =
-        props.eventType === "scan"
-          ? "#3b82f6"
-          : props.eventType === "view"
-          ? "#10b981"
-          : "#a855f7";
-
-      const popup = new mapboxgl.Popup()
-        .setLngLat(coordinates)
-        .setHTML(
-          `
-          <div class="p-3 min-w-[250px]">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold" style="background-color: ${eventColor}20; color: ${eventColor}">
-                ${props.eventType.toUpperCase()}
+        const popupContent = `
+          <div style="min-width: 250px; font-family: system-ui, -apple-system, sans-serif;">
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <span style="display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background-color: ${eventColor}20; color: ${eventColor};">
+                ${event.event_type.toUpperCase()}
               </span>
-              <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold border">
-                ${levelBadge}
+              <span style="display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid #ddd;">
+                L${level < 10 ? '0' + level : level}
               </span>
             </div>
-            <div class="space-y-1 text-sm">
-              <div><strong>Location:</strong> ${props.city || "Unknown"}, ${props.region || ""}</div>
-              <div><strong>Time:</strong> ${format(new Date(props.occurredAt), "PPp")}</div>
-              <div><strong>Deck:</strong> <code class="text-xs">${props.deckSlug}</code></div>
-              <div><strong>Token:</strong> <code class="text-xs">${props.token}</code></div>
+            <div style="font-size: 14px; line-height: 1.6;">
+              ${event.city ? `<div><strong>Location:</strong> ${event.city}, ${event.region}</div>` : ''}
+              <div><strong>Time:</strong> ${format(new Date(event.occurred_at), "PPp")}</div>
+              <div><strong>Deck:</strong> <code style="font-size: 12px;">${event.tokens?.deck_slug || 'N/A'}</code></div>
+              <div><strong>Token:</strong> <code style="font-size: 12px;">${event.token}</code></div>
             </div>
           </div>
-        `
-        )
-        .addTo(map.current);
-    });
-
-    // Change cursor on hover
-    map.current.on("mouseenter", "clusters", () => {
-      if (map.current) map.current.getCanvas().style.cursor = "pointer";
-    });
-    map.current.on("mouseleave", "clusters", () => {
-      if (map.current) map.current.getCanvas().style.cursor = "";
-    });
-    map.current.on("mouseenter", "unclustered-point", () => {
-      if (map.current) map.current.getCanvas().style.cursor = "pointer";
-    });
-    map.current.on("mouseleave", "unclustered-point", () => {
-      if (map.current) map.current.getCanvas().style.cursor = "";
+        `;
+        
+        marker.bindPopup(popupContent);
+        markerClusterGroup.current!.addLayer(marker);
+      }
     });
   };
 
   if (error) {
     return (
-      <Alert variant="destructive" className="m-4">
-        <AlertCircle className="h-4 w-4" />
+      <Alert variant="destructive">
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
   }
 
-  if (!mapboxToken) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[600px] gap-4 p-6 border rounded-lg m-4">
-        <AlertCircle className="w-8 h-8 text-muted-foreground" />
-        <div className="text-center space-y-2">
-          <p className="font-medium">Mapbox Token Required</p>
-          <p className="text-sm text-muted-foreground">
-            Enter your Mapbox public token to view the activity map.{" "}
-            <a
-              href="https://account.mapbox.com/access-tokens/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Get your token here
-            </a>
-          </p>
-        </div>
-        <div className="flex gap-2 w-full max-w-md">
-          <Input
-            type="text"
-            placeholder="pk.eyJ1IjoieW91cnVzZXJuYW1lIi..."
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSaveToken()}
-          />
-          <Button onClick={handleSaveToken}>Save</Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative">
-      <div ref={mapContainer} className="w-full h-[600px] rounded-lg" style={{ width: '100%', height: '600px' }} />
+    <Card className="relative w-full h-full">
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
-          <div className="bg-background px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Loading map...</span>
-          </div>
+        <div className="absolute top-4 right-4 z-[1000] bg-background/90 px-3 py-2 rounded-md shadow">
+          Loading events...
         </div>
       )}
       {!loading && events.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-background/90 backdrop-blur px-6 py-4 rounded-lg shadow-lg">
-            <p className="text-muted-foreground">
-              No events with location data yet. Start sharing to see activity on the map!
-            </p>
-          </div>
+        <div className="absolute top-4 right-4 z-[1000] bg-background/90 px-3 py-2 rounded-md shadow">
+          No events with location data
         </div>
       )}
-    </div>
+      <div ref={mapContainer} className="w-full h-full min-h-[400px] rounded" />
+      
+      <div className="absolute bottom-4 left-4 z-[1000] bg-background/90 p-3 rounded-md shadow space-y-2">
+        <div className="text-sm font-semibold">Event Levels</div>
+        <div className="flex items-center gap-2 text-xs">
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3b82f6', border: '2px solid white' }}></div>
+          <span>Level 0</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981', border: '2px solid white' }}></div>
+          <span>Level 1+</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f59e0b', border: '2px solid white' }}></div>
+          <span>Level 2+</span>
+        </div>
+      </div>
+    </Card>
   );
 }
