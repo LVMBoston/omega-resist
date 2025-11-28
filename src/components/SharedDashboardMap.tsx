@@ -105,6 +105,10 @@ export default function SharedDashboardMap({ geoData, levelFilter = "0,1,2,3" }:
         zoom: 1,
         center: [0, 20],
         projection: "mercator" as any,
+        // iOS Safari WebGL compatibility options
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false,
+        antialias: false, // Reduce WebGL context load on iOS
       });
 
       // Disable scroll zoom to prevent unwanted zoom on scroll
