@@ -101,6 +101,13 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
 
     try {
       mapboxgl.accessToken = mapboxToken;
+      
+      // Check if Mapbox GL is supported
+      if (!mapboxgl.supported()) {
+        console.error("Mapbox GL JS is not supported in this browser");
+        setError("Your browser doesn't support Mapbox GL. Please try a different browser or enable WebGL.");
+        return;
+      }
 
       // Restore saved position or use default
       const savedPosition = localStorage.getItem('activityMapPosition');
