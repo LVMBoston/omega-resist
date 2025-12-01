@@ -194,13 +194,13 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       });
     }
     
-    // Call geoip edge function with optional GPS coordinates
+    // Call geoip edge function with GPS coordinates (always send body for proper POST request)
     console.log("📍 Calling geoip function with GPS coords:", gpsCoords);
     const { data, error } = await supabase.functions.invoke('geoip', {
-      body: gpsCoords ? {
-        lat: gpsCoords.latitude.toString(),
-        lng: gpsCoords.longitude.toString()
-      } : undefined
+      body: {
+        lat: gpsCoords?.latitude?.toString() || null,
+        lng: gpsCoords?.longitude?.toString() || null
+      }
     });
     
     console.log("📍 Geoip response:", { data, error });
