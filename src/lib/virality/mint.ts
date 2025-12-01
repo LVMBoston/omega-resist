@@ -134,8 +134,49 @@ interface GeoLocationData {
   zip_code: string | null;
 }
 
+async function getGPSLocation(): Promise<{ latitude: number; longitude: number } | null> {
+  // Check if geolocation is available
+  if (!navigator.geolocation) {
+    console.log("📍 GPS not available on this device");
+    return null;
+  }
+
+  try {
+    console.log("📍 Requesting GPS permission...");
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        resolve,
+        reject,
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+    });
+
+    console.log("✅ GPS coordinates obtained:", {
+      lat: position.coords.latitude,
+      lon: position.coords.longitude,
+      accuracy: position.coords.accuracy
+    });
+
+    return {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude
+    };
+  } catch (error) {
+    console.log("📍 GPS permission denied or failed:", error);
+    return null;
+  }
+}
+
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
+    // Try to get GPS coordinates first (mobile devices)
+    const gpsCoords = await getGPSLocation();
+    
+    // Fetch IP-based geolocation for city/region/zip data
     console.log("📍 Calling geoip function...");
     const { data, error } = await supabase.functions.invoke('geoip');
     
@@ -143,6 +184,18 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
     
     if (error) {
       console.error("❌ Geoip function error:", error);
+      // If we have GPS coords but geoip failed, still use GPS coords
+      if (gpsCoords) {
+        return {
+          latitude: gpsCoords.latitude,
+          longitude: gpsCoords.longitude,
+          city: null,
+          region: null,
+          country: null,
+          country_code: null,
+          zip_code: null
+        };
+      }
       return {
         latitude: null,
         longitude: null,
@@ -154,16 +207,24 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       };
     }
     
-    console.log("✅ Geolocation fetched successfully:", data);
-    return {
-      latitude: data?.latitude || null,
-      longitude: data?.longitude || null,
+    // Merge GPS coordinates (if available) with IP-based location data
+    const result = {
+      latitude: gpsCoords?.latitude ?? data?.latitude ?? null,
+      longitude: gpsCoords?.longitude ?? data?.longitude ?? null,
       city: data?.city || null,
       region: data?.region || null,
       country: data?.country || null,
       country_code: data?.country_code || null,
       zip_code: data?.zip_code || null
     };
+    
+    if (gpsCoords) {
+      console.log("✅ Using GPS coordinates with IP-based location metadata:", result);
+    } else {
+      console.log("✅ Using IP-based geolocation:", result);
+    }
+    
+    return result;
   } catch (error) {
     console.error("❌ Failed to fetch geolocation:", error);
     return {
