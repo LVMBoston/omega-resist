@@ -14,12 +14,21 @@ serve(async (req) => {
   }
 
   try {
-    // Extract optional GPS coordinates from query params
-    const url = new URL(req.url);
-    const gpsLat = url.searchParams.get('lat');
-    const gpsLng = url.searchParams.get('lng');
+    // Extract optional GPS coordinates from request body
+    let gpsLat: string | null = null;
+    let gpsLng: string | null = null;
     
-    console.log('📍 GPS coordinates from request:', { gpsLat, gpsLng });
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        gpsLat = body?.lat || null;
+        gpsLng = body?.lng || null;
+      } catch {
+        // No body or invalid JSON, continue without GPS
+      }
+    }
+    
+    console.log('📍 GPS coordinates from request body:', { gpsLat, gpsLng });
     
     // Extract IP from request headers
     const ip = 
