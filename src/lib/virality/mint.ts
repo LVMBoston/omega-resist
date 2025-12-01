@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { shortenUrl } from "./shortener";
+import { toast } from "sonner";
 
 /**
  * Input schema for minting L00 tokens.
@@ -234,6 +235,19 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
     const gpsCoords = await getGPSLocation();
     console.log("🔍 [DEBUG] gpsCoords result:", gpsCoords);
     
+    // Visual debug alert for GPS
+    if (gpsCoords) {
+      toast.success("📍 GPS OBTAINED", {
+        description: `Lat: ${gpsCoords.latitude.toFixed(6)}, Lng: ${gpsCoords.longitude.toFixed(6)}`,
+        duration: 5000
+      });
+    } else {
+      toast.info("📍 No GPS", {
+        description: "Using IP-based location",
+        duration: 3000
+      });
+    }
+    
     // Fetch IP-based geolocation for city/region/zip data
     console.log("📍 Calling geoip function...");
     const { data, error } = await supabase.functions.invoke('geoip');
@@ -291,6 +305,12 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
         console.log("🔍 [DEBUG] gpsZipCode result:", gpsZipCode);
         finalZipCode = gpsZipCode || data?.zip_code || null;
         console.log("🔍 [DEBUG] finalZipCode (GPS path):", finalZipCode);
+        
+        // Visual debug alert for zip lookup
+        toast.success("📮 ZIP CODE LOOKUP", {
+          description: `GPS Zip: ${gpsZipCode || 'Not found'} | IP Zip: ${data?.zip_code || 'None'} | Final: ${finalZipCode}`,
+          duration: 8000
+        });
       } else {
         // Fall back to IP-based zip code
         console.log("🔍 [DEBUG] No GPS - using IP-based zip");
@@ -324,6 +344,12 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
     };
     
     console.log("🔍 [DEBUG] Final result object:", JSON.stringify(result, null, 2));
+    
+    // Visual debug alert for final result
+    toast.success("✅ FINAL LOCATION DATA", {
+      description: `Source: ${result.location_source} | Zip: ${result.zip_code || 'None'} | City: ${result.city || 'Unknown'}`,
+      duration: 10000
+    });
     
     if (gpsCoords) {
       console.log("✅ Using GPS coordinates with IP-based location metadata:", result);
