@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Wifi } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function GeoipTest() {
   const [loading, setLoading] = useState(false);
@@ -239,14 +240,32 @@ export default function GeoipTest() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button 
-            onClick={testGPS} 
-            disabled={gpsLoading}
-            className="w-full"
-            variant="secondary"
-          >
-            {gpsLoading ? "Requesting GPS Permission..." : "Test GPS Permission"}
-          </Button>
+          <div className="grid md:grid-cols-[1fr_auto] gap-4 items-start">
+            <div className="space-y-4">
+              <Button 
+                onClick={testGPS} 
+                disabled={gpsLoading}
+                className="w-full"
+                variant="secondary"
+              >
+                {gpsLoading ? "Requesting GPS Permission..." : "Test GPS Permission"}
+              </Button>
+            </div>
+            
+            <Card className="bg-background border-2">
+              <CardContent className="p-4 flex flex-col items-center gap-2">
+                <QRCodeSVG 
+                  value={window.location.href}
+                  size={128}
+                  level="M"
+                  includeMargin={true}
+                />
+                <p className="text-xs text-center text-muted-foreground max-w-[140px]">
+                  Scan to test GPS on your phone
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
           {gpsError && (
             <Alert variant="destructive">
