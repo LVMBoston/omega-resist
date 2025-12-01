@@ -24,24 +24,29 @@ const ShortUrlRedirect = () => {
       console.log("📞 Calling track_redirect with code:", code);
 
       try {
-        // Call the track_redirect function to get full URL and increment clicks
-        // Note: track_redirect returns a string directly, not {data, error}
-        const { data: fullUrl, error: rpcError } = await supabase.rpc("track_redirect", {
+        // Call the track_redirect function - it returns a text string directly in data
+        const { data, error } = await supabase.rpc("track_redirect", {
           _short_code: code,
         });
 
-        console.log("📥 track_redirect response:", { fullUrl, error: rpcError });
+        console.log("📥 track_redirect response:", { data, error });
 
-        if (rpcError || !fullUrl) {
-          console.error("❌ Redirect error:", rpcError);
+        if (error) {
+          console.error("❌ RPC error:", error);
           setError("Short URL not found");
           return;
         }
 
-        console.log("✅ Redirecting to:", fullUrl);
+        if (!data) {
+          console.error("❌ No URL returned for code:", code);
+          setError("Short URL not found");
+          return;
+        }
+
+        console.log("✅ Redirecting to:", data);
         
         // Redirect to the full URL
-        window.location.href = fullUrl;
+        window.location.href = data;
       } catch (err) {
         console.error("Redirect error:", err);
         setError("Failed to redirect");
