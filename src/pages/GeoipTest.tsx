@@ -59,24 +59,89 @@ export default function GeoipTest() {
 
     try {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           console.log("📍 GPS TEST: Permission granted! Position:", position);
           
-          const gpsData = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            altitude: position.coords.altitude,
-            altitudeAccuracy: position.coords.altitudeAccuracy,
-            heading: position.coords.heading,
-            speed: position.coords.speed,
-            timestamp: new Date(position.timestamp).toISOString(),
-            permission: "granted"
-          };
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
           
-          console.log("📍 GPS TEST: Success! Data:", gpsData);
-          setGpsResult(gpsData);
-          setGpsLoading(false);
+          // Find nearest zip code using Haversine distance formula
+          console.log("📍 GPS TEST: Looking up nearest zip code...");
+          
+          try {
+            // Query zip_codes table to find closest match
+            const { data: zipCodes, error: zipError } = await supabase
+              .from('zip_codes')
+              .select('zip_code, city, state_name, latitude, longitude')
+              .limit(1000); // Get subset to search through
+            
+            if (zipError) {
+              console.error("📍 GPS TEST: Error fetching zip codes:", zipError);
+            }
+            
+            let nearestZip = null;
+            let minDistance = Infinity;
+            
+            if (zipCodes) {
+              // Calculate distance to each zip code using Haversine formula
+              zipCodes.forEach((zip: any) => {
+                const R = 6371; // Earth's radius in km
+                const dLat = (zip.latitude - lat) * Math.PI / 180;
+                const dLng = (zip.longitude - lng) * Math.PI / 180;
+                const a = 
+                  Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat * Math.PI / 180) * Math.cos(zip.latitude * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c; // Distance in km
+                
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  nearestZip = {
+                    zip_code: zip.zip_code,
+                    city: zip.city,
+                    state: zip.state_name,
+                    distance_km: distance.toFixed(2)
+                  };
+                }
+              });
+            }
+            
+            const gpsData = {
+              latitude: lat,
+              longitude: lng,
+              accuracy: position.coords.accuracy,
+              altitude: position.coords.altitude,
+              altitudeAccuracy: position.coords.altitudeAccuracy,
+              heading: position.coords.heading,
+              speed: position.coords.speed,
+              timestamp: new Date(position.timestamp).toISOString(),
+              permission: "granted",
+              nearest_zip: nearestZip
+            };
+            
+            console.log("📍 GPS TEST: Success! Data:", gpsData);
+            setGpsResult(gpsData);
+            setGpsLoading(false);
+          } catch (err) {
+            console.error("📍 GPS TEST: Error looking up zip:", err);
+            // Still show GPS data even if zip lookup fails
+            const gpsData = {
+              latitude: lat,
+              longitude: lng,
+              accuracy: position.coords.accuracy,
+              altitude: position.coords.altitude,
+              altitudeAccuracy: position.coords.altitudeAccuracy,
+              heading: position.coords.heading,
+              speed: position.coords.speed,
+              timestamp: new Date(position.timestamp).toISOString(),
+              permission: "granted",
+              nearest_zip: null,
+              zip_lookup_error: err instanceof Error ? err.message : String(err)
+            };
+            setGpsResult(gpsData);
+            setGpsLoading(false);
+          }
         },
         (error) => {
           console.error("📍 GPS TEST: Error:", error);
@@ -192,21 +257,79 @@ export default function GeoipTest() {
           )}
 
           {gpsResult && (
-            <Card className="bg-muted">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">GPS Data</CardTitle>
-                  <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                    GPS
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <pre className="text-xs overflow-auto">
-                  {JSON.stringify(gpsResult, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
+            <>
+              <Card className="bg-muted">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">GPS Data</CardTitle>
+                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                      GPS
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <pre className="text-xs overflow-auto">
+                    {JSON.stringify(gpsResult, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
+              
+              {gpsResult.nearest_zip && result && (
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardHeader>
+                    <CardTitle className="text-sm">IP vs GPS Comparison</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                            IP
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">Network-based</span>
+                        </div>
+                        <div className="text-sm space-y-1">
+                          <div><strong>Zip:</strong> {result.zip_code || 'N/A'}</div>
+                          <div><strong>City:</strong> {result.city || 'N/A'}</div>
+                          <div><strong>State:</strong> {result.region || 'N/A'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Lat: {result.latitude?.toFixed(4)}<br/>
+                            Lng: {result.longitude?.toFixed(4)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                            GPS
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">Satellite-based</span>
+                        </div>
+                        <div className="text-sm space-y-1">
+                          <div><strong>Zip:</strong> {gpsResult.nearest_zip.zip_code}</div>
+                          <div><strong>City:</strong> {gpsResult.nearest_zip.city}</div>
+                          <div><strong>State:</strong> {gpsResult.nearest_zip.state}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Lat: {gpsResult.latitude.toFixed(4)}<br/>
+                            Lng: {gpsResult.longitude.toFixed(4)}<br/>
+                            Distance: {gpsResult.nearest_zip.distance_km} km
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-3 border-t">
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Match:</strong> {result.zip_code === gpsResult.nearest_zip.zip_code ? 
+                          '✅ Zip codes match!' : 
+                          '⚠️ Different zip codes - GPS is more precise'}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           <Card className="bg-muted">
