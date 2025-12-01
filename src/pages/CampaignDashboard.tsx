@@ -404,6 +404,7 @@ export default function CampaignDashboard({
           city,
           region,
           zip_code,
+          location_source,
           token,
           tokens!inner(
             level,
@@ -556,6 +557,10 @@ export default function CampaignDashboard({
       case 'event_type':
         aVal = a.event_type;
         bVal = b.event_type;
+        break;
+      case 'location_source':
+        aVal = a.location_source || '';
+        bVal = b.location_source || '';
         break;
       default:
         return 0;
@@ -963,6 +968,12 @@ export default function CampaignDashboard({
                                 {sortConfig.column === 'location' && <ArrowUpDown className="w-3 h-3" />}
                               </div>
                             </TableHead>
+                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location_source')}>
+                              <div className="flex items-center gap-1">
+                                Loc Source
+                                {sortConfig.column === 'location_source' && <ArrowUpDown className="w-3 h-3" />}
+                              </div>
+                            </TableHead>
                             <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('zip')}>
                               <div className="flex items-center gap-1">
                                 Cell Tower Zip
@@ -1003,6 +1014,18 @@ export default function CampaignDashboard({
               <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
               <TableCell>
                 {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
+              </TableCell>
+              <TableCell>
+                <Badge 
+                  variant="outline" 
+                  className={
+                    event.location_source === 'gps' ? 'bg-green-100 text-green-700 border-green-300' :
+                    event.location_source === 'ip' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                    'bg-gray-100 text-gray-500 border-gray-300'
+                  }
+                >
+                  {event.location_source?.toUpperCase() || 'N/A'}
+                </Badge>
               </TableCell>
               <TableCell>{formatZipCode(event.zip_code)}</TableCell>
               <TableCell>{formatZipCode(event.tokens?.events_actions?.zip_code)}</TableCell>
