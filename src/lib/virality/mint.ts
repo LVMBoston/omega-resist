@@ -187,9 +187,11 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       console.error("❌ Geoip function error:", error);
       // If we have GPS coords but geoip failed, still use GPS coords
       if (gpsCoords) {
+        // Check if non-US based on lack of country_code (since geoip failed)
+        // Round coordinates for privacy (non-US assumed)
         return {
-          latitude: gpsCoords.latitude,
-          longitude: gpsCoords.longitude,
+          latitude: Math.round(gpsCoords.latitude * 10) / 10,
+          longitude: Math.round(gpsCoords.longitude * 10) / 10,
           city: null,
           region: null,
           country: null,
@@ -210,15 +212,39 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       };
     }
     
-    // Merge GPS coordinates (if available) with IP-based location data
+    const isUS = data?.country_code === 'US';
+    
+    // For US: use GPS with zip lookup OR IP-based location
+    // For non-US: round GPS coordinates to 1 decimal place (~11km precision)
+    let finalLat: number | null = null;
+    let finalLng: number | null = null;
+    
+    if (isUS) {
+      // US: Prefer GPS coords, fallback to IP
+      finalLat = gpsCoords?.latitude ?? data?.latitude ?? null;
+      finalLng = gpsCoords?.longitude ?? data?.longitude ?? null;
+    } else {
+      // Non-US: Round GPS or IP coordinates to 1 decimal place
+      const lat = gpsCoords?.latitude ?? data?.latitude;
+      const lng = gpsCoords?.longitude ?? data?.longitude;
+      
+      finalLat = lat ? Math.round(lat * 10) / 10 : null;
+      finalLng = lng ? Math.round(lng * 10) / 10 : null;
+      
+      console.log("🌍 Non-US location - rounded coordinates for privacy:", {
+        original: { lat, lng },
+        rounded: { lat: finalLat, lng: finalLng }
+      });
+    }
+    
     const result = {
-      latitude: gpsCoords?.latitude ?? data?.latitude ?? null,
-      longitude: gpsCoords?.longitude ?? data?.longitude ?? null,
+      latitude: finalLat,
+      longitude: finalLng,
       city: data?.city || null,
       region: data?.region || null,
       country: data?.country || null,
       country_code: data?.country_code || null,
-      zip_code: data?.zip_code || null,
+      zip_code: isUS ? data?.zip_code || null : null, // Only store zip for US
       location_source: (gpsCoords ? 'gps' : 'ip') as 'gps' | 'ip' | 'unknown'
     };
     
