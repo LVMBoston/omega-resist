@@ -14,6 +14,13 @@ serve(async (req) => {
   }
 
   try {
+    // Extract optional GPS coordinates from query params
+    const url = new URL(req.url);
+    const gpsLat = url.searchParams.get('lat');
+    const gpsLng = url.searchParams.get('lng');
+    
+    console.log('📍 GPS coordinates from request:', { gpsLat, gpsLng });
+    
     // Extract IP from request headers
     const ip = 
       req.headers.get('x-forwarded-for')?.split(',')[0] ||
@@ -68,7 +75,70 @@ serve(async (req) => {
       zip_code: geoData.postal || null,
     };
 
-    // If we have a US zip code but missing coordinates, enhance with our local data
+    // If GPS coordinates provided, look up zip code for US locations
+    if (isUS && gpsLat && gpsLng) {
+      console.log('📍 GPS coordinates provided for US location - looking up zip code');
+      
+      const latitude = parseFloat(gpsLat);
+      const longitude = parseFloat(gpsLng);
+      
+      if (!isNaN(latitude) && !isNaN(longitude)) {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Query zip codes within ~0.5 degree radius (roughly 35 miles)
+        const { data: zipData, error: zipError } = await supabase
+          .from('zip_codes')
+          .select('zip_code, city, state_name, latitude, longitude')
+          .gte('latitude', latitude - 0.5)
+          .lte('latitude', latitude + 0.5)
+          .gte('longitude', longitude - 0.5)
+          .lte('longitude', longitude + 0.5);
+
+        if (!zipError && zipData && zipData.length > 0) {
+          // Calculate Haversine distance to find nearest zip
+          const R = 3959; // Earth's radius in miles
+          let nearestZip = null;
+          let minDistance = Infinity;
+          
+          for (const zip of zipData) {
+            const dLat = (zip.latitude - latitude) * Math.PI / 180;
+            const dLon = (zip.longitude - longitude) * Math.PI / 180;
+            const a = 
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(latitude * Math.PI / 180) * Math.cos(zip.latitude * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+            
+            if (distance < minDistance) {
+              minDistance = distance;
+              nearestZip = zip;
+            }
+          }
+          
+          if (nearestZip) {
+            console.log('📍 GPS zip code lookup successful:', {
+              zip: nearestZip.zip_code,
+              distance: minDistance.toFixed(2) + ' miles'
+            });
+            
+            // Use GPS-derived zip and city/state from our database
+            locationData = {
+              ...locationData,
+              zip_code: nearestZip.zip_code,
+              city: nearestZip.city || locationData.city,
+              region: nearestZip.state_name || locationData.region,
+            };
+          }
+        } else if (zipError) {
+          console.error('📍 Error looking up GPS zip code:', zipError);
+        }
+      }
+    }
+    
+    // If we have a US zip code from IP but missing coordinates, enhance with our local data
     if (isUS && geoData.postal && (!geoData.latitude || !geoData.longitude)) {
       console.log('📍 Enhancing US location with local zip code data:', geoData.postal);
       
