@@ -136,60 +136,6 @@ interface GeoLocationData {
   location_source: 'gps' | 'ip' | 'unknown';
 }
 
-/**
- * Calculate Haversine distance between two points in miles
- */
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3959; // Earth's radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/**
- * Look up the nearest zip code from GPS coordinates
- */
-async function lookupNearestZipCode(lat: number, lng: number): Promise<string | null> {
-  try {
-    // Query zip codes within ~0.5 degree radius (roughly 35 miles)
-    const { data, error } = await supabase
-      .from("zip_codes")
-      .select("zip_code, city, state_name, latitude, longitude")
-      .gte("latitude", lat - 0.5)
-      .lte("latitude", lat + 0.5)
-      .gte("longitude", lng - 0.5)
-      .lte("longitude", lng + 0.5);
-    
-    if (error || !data || data.length === 0) {
-      console.log("📍 No zip codes found near GPS coordinates");
-      return null;
-    }
-    
-    // Find the nearest zip code using Haversine distance
-    let nearestZip = null;
-    let minDistance = Infinity;
-    
-    for (const zip of data) {
-      const distance = haversineDistance(lat, lng, zip.latitude, zip.longitude);
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestZip = zip.zip_code;
-      }
-    }
-    
-    console.log(`📍 GPS zip code lookup: ${nearestZip} (${minDistance.toFixed(2)} miles away)`);
-    return nearestZip;
-  } catch (error) {
-    console.error("❌ Failed to lookup zip code:", error);
-    return null;
-  }
-}
-
 async function getGPSLocation(): Promise<{ latitude: number; longitude: number } | null> {
   // Check if geolocation is available
   if (!navigator.geolocation) {
@@ -248,9 +194,14 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       });
     }
     
-    // Fetch IP-based geolocation for city/region/zip data
-    console.log("📍 Calling geoip function...");
-    const { data, error } = await supabase.functions.invoke('geoip');
+    // Call geoip edge function with optional GPS coordinates
+    console.log("📍 Calling geoip function with GPS coords:", gpsCoords);
+    const { data, error } = await supabase.functions.invoke('geoip', {
+      body: gpsCoords ? {
+        lat: gpsCoords.latitude.toString(),
+        lng: gpsCoords.longitude.toString()
+      } : undefined
+    });
     
     console.log("📍 Geoip response:", { data, error });
     
@@ -286,39 +237,34 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
     const isUS = data?.country_code === 'US';
     console.log("🔍 [DEBUG] isUS:", isUS, "country_code:", data?.country_code);
     
-    // For US: use GPS with zip lookup OR IP-based location
-    // For non-US: round GPS coordinates to 1 decimal place (~11km precision)
+    // The geoip edge function now handles GPS zip lookup for US locations
+    // Just use the data it returns
     let finalLat: number | null = null;
     let finalLng: number | null = null;
     let finalZipCode: string | null = null;
     
     if (isUS) {
-      // US: Prefer GPS coords, fallback to IP
+      // US: Use coordinates and zip code from geoip (which may be GPS-derived)
       finalLat = gpsCoords?.latitude ?? data?.latitude ?? null;
       finalLng = gpsCoords?.longitude ?? data?.longitude ?? null;
-      console.log("🔍 [DEBUG] US branch - finalLat:", finalLat, "finalLng:", finalLng);
+      finalZipCode = data?.zip_code || null;
       
-      // If we have GPS coordinates, look up the nearest zip code
+      console.log("🔍 [DEBUG] US location data from geoip:", {
+        lat: finalLat,
+        lng: finalLng,
+        zip: finalZipCode,
+        source: gpsCoords ? 'GPS coords with edge function zip lookup' : 'IP-based'
+      });
+      
+      // Visual debug alert
       if (gpsCoords) {
-        console.log("🔍 [DEBUG] GPS coords available - calling lookupNearestZipCode");
-        const gpsZipCode = await lookupNearestZipCode(gpsCoords.latitude, gpsCoords.longitude);
-        console.log("🔍 [DEBUG] gpsZipCode result:", gpsZipCode);
-        finalZipCode = gpsZipCode || data?.zip_code || null;
-        console.log("🔍 [DEBUG] finalZipCode (GPS path):", finalZipCode);
-        
-        // Visual debug alert for zip lookup
-        toast.success("📮 ZIP CODE LOOKUP", {
-          description: `GPS Zip: ${gpsZipCode || 'Not found'} | IP Zip: ${data?.zip_code || 'None'} | Final: ${finalZipCode}`,
-          duration: 8000
+        toast.success("📮 GPS ZIP LOOKUP", {
+          description: `Edge function returned zip: ${finalZipCode || 'Not found'}`,
+          duration: 5000
         });
-      } else {
-        // Fall back to IP-based zip code
-        console.log("🔍 [DEBUG] No GPS - using IP-based zip");
-        finalZipCode = data?.zip_code || null;
-        console.log("🔍 [DEBUG] finalZipCode (IP path):", finalZipCode);
       }
     } else {
-      // Non-US: Round GPS or IP coordinates to 1 decimal place
+      // Non-US: Round GPS or IP coordinates to 1 decimal place (~11km precision)
       const lat = gpsCoords?.latitude ?? data?.latitude;
       const lng = gpsCoords?.longitude ?? data?.longitude;
       
