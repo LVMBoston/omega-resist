@@ -260,6 +260,7 @@ export async function logEventWithLocation(
       country: location.country,
       country_code: location.country_code,
       zip_code: location.zip_code,
+      location_source: 'ip', // Simulator uses IP-based coordinates from zip code database
       is_simulated: true,
       user_agent: "Simulator/1.0",
       occurred_at: new Date().toISOString(),
