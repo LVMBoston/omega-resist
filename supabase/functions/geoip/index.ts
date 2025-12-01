@@ -54,6 +54,8 @@ serve(async (req) => {
 
     console.log('📍 Geolocation data:', geoData);
 
+    const isUS = geoData.country_code === 'US';
+    
     // Initialize location data from ipapi.co
     let locationData = {
       ip,
@@ -67,7 +69,7 @@ serve(async (req) => {
     };
 
     // If we have a US zip code but missing coordinates, enhance with our local data
-    if (geoData.country_code === 'US' && geoData.postal && (!geoData.latitude || !geoData.longitude)) {
+    if (isUS && geoData.postal && (!geoData.latitude || !geoData.longitude)) {
       console.log('📍 Enhancing US location with local zip code data:', geoData.postal);
       
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -92,6 +94,21 @@ serve(async (req) => {
       } else if (zipError) {
         console.error('📍 Error fetching local zip data:', zipError);
       }
+    }
+    
+    // For non-US locations, round coordinates to 1 decimal place (~11km precision)
+    if (!isUS && locationData.latitude && locationData.longitude) {
+      console.log('🌍 Non-US location - rounding coordinates:', {
+        original: { lat: locationData.latitude, lng: locationData.longitude },
+        rounded: { 
+          lat: Math.round(locationData.latitude * 10) / 10,
+          lng: Math.round(locationData.longitude * 10) / 10
+        }
+      });
+      
+      locationData.latitude = Math.round(locationData.latitude * 10) / 10;
+      locationData.longitude = Math.round(locationData.longitude * 10) / 10;
+      locationData.zip_code = null; // Clear zip code for non-US
     }
 
     return new Response(
