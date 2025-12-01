@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { shortenUrl } from "./shortener";
-import { toast } from "sonner";
 
 /**
  * Input schema for minting L00 tokens.
@@ -175,33 +174,12 @@ async function getGPSLocation(): Promise<{ latitude: number; longitude: number }
 
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
-    console.log("🔍 [DEBUG] fetchGeolocation START");
-    
     // Try to get GPS coordinates first (mobile devices)
     const gpsCoords = await getGPSLocation();
-    console.log("🔍 [DEBUG] gpsCoords result:", gpsCoords);
     
-    // Visual debug alert for GPS
-    if (gpsCoords) {
-      toast.success("📍 GPS OBTAINED", {
-        description: `Lat: ${gpsCoords.latitude.toFixed(6)}, Lng: ${gpsCoords.longitude.toFixed(6)}`,
-        duration: 5000
-      });
-    } else {
-      toast.info("📍 No GPS", {
-        description: "Using IP-based location",
-        duration: 3000
-      });
-    }
-    
-    // Call geoip edge function with GPS coordinates (always send body for proper POST request)
-    console.log("📍 Calling geoip function with GPS coords:", gpsCoords);
-    const { data, error } = await supabase.functions.invoke('geoip', {
-      body: {
-        lat: gpsCoords?.latitude?.toString() || null,
-        lng: gpsCoords?.longitude?.toString() || null
-      }
-    });
+    // Fetch IP-based geolocation for city/region/zip data
+    console.log("📍 Calling geoip function...");
+    const { data, error } = await supabase.functions.invoke('geoip');
     
     console.log("📍 Geoip response:", { data, error });
     
@@ -235,42 +213,23 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
     }
     
     const isUS = data?.country_code === 'US';
-    console.log("🔍 [DEBUG] isUS:", isUS, "country_code:", data?.country_code);
     
-    // The geoip edge function now handles GPS zip lookup for US locations
-    // Just use the data it returns
+    // For US: use GPS with zip lookup OR IP-based location
+    // For non-US: round GPS coordinates to 1 decimal place (~11km precision)
     let finalLat: number | null = null;
     let finalLng: number | null = null;
-    let finalZipCode: string | null = null;
     
     if (isUS) {
-      // US: Use coordinates and zip code from geoip (which may be GPS-derived)
+      // US: Prefer GPS coords, fallback to IP
       finalLat = gpsCoords?.latitude ?? data?.latitude ?? null;
       finalLng = gpsCoords?.longitude ?? data?.longitude ?? null;
-      finalZipCode = data?.zip_code || null;
-      
-      console.log("🔍 [DEBUG] US location data from geoip:", {
-        lat: finalLat,
-        lng: finalLng,
-        zip: finalZipCode,
-        source: gpsCoords ? 'GPS coords with edge function zip lookup' : 'IP-based'
-      });
-      
-      // Visual debug alert
-      if (gpsCoords) {
-        toast.success("📮 GPS ZIP LOOKUP", {
-          description: `Edge function returned zip: ${finalZipCode || 'Not found'}`,
-          duration: 5000
-        });
-      }
     } else {
-      // Non-US: Round GPS or IP coordinates to 1 decimal place (~11km precision)
+      // Non-US: Round GPS or IP coordinates to 1 decimal place
       const lat = gpsCoords?.latitude ?? data?.latitude;
       const lng = gpsCoords?.longitude ?? data?.longitude;
       
       finalLat = lat ? Math.round(lat * 10) / 10 : null;
       finalLng = lng ? Math.round(lng * 10) / 10 : null;
-      finalZipCode = null; // Don't store zip for non-US
       
       console.log("🌍 Non-US location - rounded coordinates for privacy:", {
         original: { lat, lng },
@@ -285,17 +244,9 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       region: data?.region || null,
       country: data?.country || null,
       country_code: data?.country_code || null,
-      zip_code: finalZipCode,
+      zip_code: isUS ? data?.zip_code || null : null, // Only store zip for US
       location_source: (gpsCoords ? 'gps' : 'ip') as 'gps' | 'ip' | 'unknown'
     };
-    
-    console.log("🔍 [DEBUG] Final result object:", JSON.stringify(result, null, 2));
-    
-    // Visual debug alert for final result
-    toast.success("✅ FINAL LOCATION DATA", {
-      description: `Source: ${result.location_source} | Zip: ${result.zip_code || 'None'} | City: ${result.city || 'Unknown'}`,
-      duration: 10000
-    });
     
     if (gpsCoords) {
       console.log("✅ Using GPS coordinates with IP-based location metadata:", result);
@@ -346,9 +297,5 @@ export async function logEvent(input: z.infer<typeof LogEventInput>) {
     throw new Error("DECK_VIRAL_LOG_EVENT_FAILED: " + error.message);
   }
   
-  // Return both event_id and geo data for debugging
-  return { 
-    event_id: data, 
-    geo_data: geoData 
-  };
+  return data; // event_id
 }

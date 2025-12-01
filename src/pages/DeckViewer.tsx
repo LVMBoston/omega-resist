@@ -44,7 +44,6 @@ export default function DeckViewer() {
   
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [eventLogged, setEventLogged] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   // Set page title
   useEffect(() => {
@@ -171,8 +170,6 @@ export default function DeckViewer() {
       }
 
       try {
-        setDebugInfo(prev => [...prev, "🔍 Starting geolocation capture..."]);
-        
         // Extract UTM parameters for snapshot
         const utmSnapshot = {
           utm_campaign: searchParams.get("utm_campaign") || undefined,
@@ -194,22 +191,6 @@ export default function DeckViewer() {
         });
 
         console.log("✅ View event logged successfully:", result);
-        
-        // Display geo data in debug overlay
-        if (result.geo_data) {
-          const { latitude, longitude, city, region, country_code, zip_code, location_source } = result.geo_data;
-          setDebugInfo(prev => [
-            ...prev,
-            `✅ Event logged successfully`,
-            `📍 Source: ${location_source}`,
-            `📮 Zip Code: ${zip_code || 'Not found'}`,
-            `🌍 Location: ${city || 'Unknown'}, ${region || 'Unknown'} ${country_code || ''}`,
-            `🎯 Coords: ${latitude ? latitude.toFixed(6) : 'N/A'}, ${longitude ? longitude.toFixed(6) : 'N/A'}`
-          ]);
-        } else {
-          setDebugInfo(prev => [...prev, "✅ Event logged successfully"]);
-        }
-        
         setEventLogged(true);
       } catch (err) {
         console.error("❌ Failed to log view event:", err);
@@ -217,7 +198,6 @@ export default function DeckViewer() {
           message: err instanceof Error ? err.message : String(err),
           viralToken,
         });
-        setDebugInfo(prev => [...prev, `❌ Error: ${err instanceof Error ? err.message : String(err)}`]);
       }
     };
 
@@ -392,15 +372,6 @@ export default function DeckViewer() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Debug overlay - visible on top of deck */}
-      {viralToken && debugInfo.length > 0 && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-black/90 text-white p-4 rounded-lg max-w-2xl mx-auto text-xs space-y-1 max-h-[200px] overflow-y-auto">
-          <div className="font-bold mb-2">🔧 Debug Info:</div>
-          {debugInfo.map((info, i) => (
-            <div key={i}>{info}</div>
-          ))}
-        </div>
-      )}
       <main className="h-screen flex items-center justify-center bg-black">
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
