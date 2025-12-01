@@ -132,6 +132,7 @@ interface GeoLocationData {
   country: string | null;
   country_code: string | null;
   zip_code: string | null;
+  location_source: 'gps' | 'ip' | 'unknown';
 }
 
 async function getGPSLocation(): Promise<{ latitude: number; longitude: number } | null> {
@@ -193,7 +194,8 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
           region: null,
           country: null,
           country_code: null,
-          zip_code: null
+          zip_code: null,
+          location_source: 'gps'
         };
       }
       return {
@@ -203,7 +205,8 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
         region: null,
         country: null,
         country_code: null,
-        zip_code: null
+        zip_code: null,
+        location_source: 'unknown'
       };
     }
     
@@ -215,7 +218,8 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       region: data?.region || null,
       country: data?.country || null,
       country_code: data?.country_code || null,
-      zip_code: data?.zip_code || null
+      zip_code: data?.zip_code || null,
+      location_source: (gpsCoords ? 'gps' : 'ip') as 'gps' | 'ip' | 'unknown'
     };
     
     if (gpsCoords) {
@@ -234,7 +238,8 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       region: null,
       country: null,
       country_code: null,
-      zip_code: null
+      zip_code: null,
+      location_source: 'unknown'
     };
   }
 }
@@ -257,7 +262,8 @@ export async function logEvent(input: z.infer<typeof LogEventInput>) {
     _region: geoData.region,
     _country: geoData.country,
     _country_code: geoData.country_code,
-    _zip_code: geoData.zip_code
+    _zip_code: geoData.zip_code,
+    _location_source: geoData.location_source
   });
   
   if (error) {

@@ -545,6 +545,7 @@ export type Database = {
           ip_address: unknown
           is_simulated: boolean
           latitude: number | null
+          location_source: string | null
           longitude: number | null
           occurred_at: string
           region: string | null
@@ -563,6 +564,7 @@ export type Database = {
           ip_address?: unknown
           is_simulated?: boolean
           latitude?: number | null
+          location_source?: string | null
           longitude?: number | null
           occurred_at?: string
           region?: string | null
@@ -581,6 +583,7 @@ export type Database = {
           ip_address?: unknown
           is_simulated?: boolean
           latitude?: number | null
+          location_source?: string | null
           longitude?: number | null
           occurred_at?: string
           region?: string | null
@@ -754,6 +757,24 @@ export type Database = {
       }
       is_token_valid: { Args: { p_token: string }; Returns: boolean }
       log_event:
+        | {
+            Args: {
+              _city?: string
+              _country?: string
+              _country_code?: string
+              _event_type: string
+              _ip_address?: unknown
+              _latitude?: number
+              _location_source?: string
+              _longitude?: number
+              _region?: string
+              _token: string
+              _user_agent?: string
+              _utm_snapshot?: Json
+              _zip_code?: string
+            }
+            Returns: string
+          }
         | {
             Args: {
               _city?: string
