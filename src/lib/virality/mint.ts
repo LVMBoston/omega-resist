@@ -228,8 +228,11 @@ async function getGPSLocation(): Promise<{ latitude: number; longitude: number }
 
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
+    console.log("🔍 [DEBUG] fetchGeolocation START");
+    
     // Try to get GPS coordinates first (mobile devices)
     const gpsCoords = await getGPSLocation();
+    console.log("🔍 [DEBUG] gpsCoords result:", gpsCoords);
     
     // Fetch IP-based geolocation for city/region/zip data
     console.log("📍 Calling geoip function...");
@@ -267,6 +270,7 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
     }
     
     const isUS = data?.country_code === 'US';
+    console.log("🔍 [DEBUG] isUS:", isUS, "country_code:", data?.country_code);
     
     // For US: use GPS with zip lookup OR IP-based location
     // For non-US: round GPS coordinates to 1 decimal place (~11km precision)
@@ -278,14 +282,20 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       // US: Prefer GPS coords, fallback to IP
       finalLat = gpsCoords?.latitude ?? data?.latitude ?? null;
       finalLng = gpsCoords?.longitude ?? data?.longitude ?? null;
+      console.log("🔍 [DEBUG] US branch - finalLat:", finalLat, "finalLng:", finalLng);
       
       // If we have GPS coordinates, look up the nearest zip code
       if (gpsCoords) {
+        console.log("🔍 [DEBUG] GPS coords available - calling lookupNearestZipCode");
         const gpsZipCode = await lookupNearestZipCode(gpsCoords.latitude, gpsCoords.longitude);
+        console.log("🔍 [DEBUG] gpsZipCode result:", gpsZipCode);
         finalZipCode = gpsZipCode || data?.zip_code || null;
+        console.log("🔍 [DEBUG] finalZipCode (GPS path):", finalZipCode);
       } else {
         // Fall back to IP-based zip code
+        console.log("🔍 [DEBUG] No GPS - using IP-based zip");
         finalZipCode = data?.zip_code || null;
+        console.log("🔍 [DEBUG] finalZipCode (IP path):", finalZipCode);
       }
     } else {
       // Non-US: Round GPS or IP coordinates to 1 decimal place
@@ -312,6 +322,8 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       zip_code: finalZipCode,
       location_source: (gpsCoords ? 'gps' : 'ip') as 'gps' | 'ip' | 'unknown'
     };
+    
+    console.log("🔍 [DEBUG] Final result object:", JSON.stringify(result, null, 2));
     
     if (gpsCoords) {
       console.log("✅ Using GPS coordinates with IP-based location metadata:", result);
