@@ -70,8 +70,6 @@ serve(async (req) => {
 
     console.log('📍 Geolocation data:', geoData);
 
-    const isUS = geoData.country_code === 'US';
-    
     // Initialize location data from ipapi.co
     let locationData = {
       ip,
@@ -84,9 +82,9 @@ serve(async (req) => {
       zip_code: geoData.postal || null,
     };
 
-    // If GPS coordinates provided, look up zip code for US locations
-    if (isUS && gpsLat && gpsLng) {
-      console.log('📍 GPS coordinates provided for US location - looking up zip code');
+    // Try GPS zip code lookup FIRST if coordinates provided (regardless of IP country)
+    if (gpsLat && gpsLng) {
+      console.log('📍 GPS coordinates provided - looking up nearest US zip code');
       
       const latitude = parseFloat(gpsLat);
       const longitude = parseFloat(gpsLng);
@@ -128,24 +126,30 @@ serve(async (req) => {
           }
           
           if (nearestZip) {
-            console.log('📍 GPS zip code lookup successful:', {
+            console.log('📍 GPS zip code lookup successful - location is in US:', {
               zip: nearestZip.zip_code,
               distance: minDistance.toFixed(2) + ' miles'
             });
             
-            // Use GPS-derived zip and city/state from our database
+            // GPS found a US zip - override IP-based location with GPS data
             locationData = {
               ...locationData,
               zip_code: nearestZip.zip_code,
               city: nearestZip.city || locationData.city,
               region: nearestZip.state_name || locationData.region,
+              country: 'United States',
+              country_code: 'US',
             };
+          } else {
+            console.log('📍 GPS coordinates provided but no nearby US zip found');
           }
         } else if (zipError) {
           console.error('📍 Error looking up GPS zip code:', zipError);
         }
       }
     }
+    
+    const isUS = locationData.country_code === 'US';
     
     // If we have a US zip code from IP but missing coordinates, enhance with our local data
     if (isUS && geoData.postal && (!geoData.latitude || !geoData.longitude)) {
