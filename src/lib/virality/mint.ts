@@ -400,5 +400,9 @@ export async function logEvent(input: z.infer<typeof LogEventInput>) {
     throw new Error("DECK_VIRAL_LOG_EVENT_FAILED: " + error.message);
   }
   
-  return data; // event_id
+  // Return both event_id and geo data for debugging
+  return { 
+    event_id: data, 
+    geo_data: geoData 
+  };
 }
