@@ -11,7 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ActivityMap from "@/components/ActivityMap";
@@ -84,6 +88,14 @@ export default function CampaignDashboard({
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
+  const startDateParam = searchParams.get("startDate");
+  const endDateParam = searchParams.get("endDate");
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    startDateParam ? new Date(startDateParam) : undefined
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    endDateParam ? new Date(endDateParam) : undefined
+  );
 
   // Sync filters across tabs using localStorage
   useEffect(() => {
@@ -96,6 +108,20 @@ export default function CampaignDashboard({
         params.set("eventType", filters.eventType);
         params.set("dataSource", filters.dataSource);
         params.set("levels", filters.levels);
+        if (filters.startDate) {
+          params.set("startDate", filters.startDate);
+          setStartDate(new Date(filters.startDate));
+        } else {
+          params.delete("startDate");
+          setStartDate(undefined);
+        }
+        if (filters.endDate) {
+          params.set("endDate", filters.endDate);
+          setEndDate(new Date(filters.endDate));
+        } else {
+          params.delete("endDate");
+          setEndDate(undefined);
+        }
         setSearchParams(params, {
           replace: true
         });
@@ -113,11 +139,13 @@ export default function CampaignDashboard({
         campaignId: selectedCampaignId,
         eventType: eventTypeFilter,
         dataSource: dataSourceFilter,
-        levels: levelFilter
+        levels: levelFilter,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString()
       };
       localStorage.setItem("campaign-dashboard-filters", JSON.stringify(filters));
     }
-  }, [selectedCampaign, selectedCampaignId, eventTypeFilter, dataSourceFilter, levelFilter]);
+  }, [selectedCampaign, selectedCampaignId, eventTypeFilter, dataSourceFilter, levelFilter, startDate, endDate]);
 
   // Fetch campaigns
   const {
@@ -190,7 +218,7 @@ export default function CampaignDashboard({
     if (selectedCampaign) {
       fetchEvents();
     }
-  }, [selectedCampaign, eventTypeFilter, dataSourceFilter]);
+  }, [selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate]);
   const fetchEvents = async () => {
     setEventsLoading(true);
     let query = supabase.from("url_events").select(`
@@ -217,6 +245,15 @@ export default function CampaignDashboard({
     } else if (dataSourceFilter === "simulated") {
       query = query.eq("is_simulated", true);
     }
+    if (startDate) {
+      query = query.gte("occurred_at", startDate.toISOString());
+    }
+    if (endDate) {
+      // Set end date to end of day
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      query = query.lte("occurred_at", endOfDay.toISOString());
+    }
     const {
       data,
       error
@@ -233,49 +270,49 @@ export default function CampaignDashboard({
   const {
     data: viralCoefficient
   } = useQuery({
-    queryKey: ["viralCoefficient", selectedCampaign, dataSourceFilter],
+    queryKey: ["viralCoefficient", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getViralCoefficient(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign
   });
   const {
     data: funnelData
   } = useQuery({
-    queryKey: ["conversionFunnel", selectedCampaign, dataSourceFilter],
+    queryKey: ["conversionFunnel", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getConversionFunnel(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign
   });
   const {
     data: amplificationData
   } = useQuery({
-    queryKey: ["amplification", selectedCampaign, dataSourceFilter],
+    queryKey: ["amplification", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getAmplificationByLevel(selectedCampaign, dataSourceFilter),
     enabled: !!selectedCampaign
   });
   const {
     data: engagementData
   } = useQuery({
-    queryKey: ["engagement", selectedCampaign, dataSourceFilter],
+    queryKey: ["engagement", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getEngagementByLevel(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign
   });
   const {
     data: cycleTimeData
   } = useQuery({
-    queryKey: ["cycleTime", selectedCampaign, dataSourceFilter],
+    queryKey: ["cycleTime", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getViralCycleTime(selectedCampaign, dataSourceFilter),
     enabled: !!selectedCampaign
   });
   const {
     data: contentData
   } = useQuery({
-    queryKey: ["contentPerformance", selectedCampaign, dataSourceFilter],
+    queryKey: ["contentPerformance", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getTopPerformingContent(selectedCampaign, "shares", dataSourceFilter),
     enabled: !!selectedCampaign
   });
   const {
     data: geoData
   } = useQuery({
-    queryKey: ["geographic", selectedCampaign, dataSourceFilter],
+    queryKey: ["geographic", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: () => getGeographicSpread(selectedCampaign, undefined, dataSourceFilter),
     enabled: !!selectedCampaign
   });
@@ -359,9 +396,9 @@ export default function CampaignDashboard({
   const {
     data: eventCounts
   } = useQuery({
-    queryKey: ["eventCounts", selectedCampaign, dataSourceFilter],
+    queryKey: ["eventCounts", selectedCampaign, dataSourceFilter, startDate, endDate],
     queryFn: async () => {
-      let baseQuery = supabase.from("url_events").select("event_type, tokens!inner(utm_campaign)", {
+      let baseQuery = supabase.from("url_events").select("event_type, occurred_at, tokens!inner(utm_campaign)", {
         count: "exact",
         head: false
       }).eq("tokens.utm_campaign", selectedCampaign);
@@ -369,6 +406,14 @@ export default function CampaignDashboard({
         baseQuery = baseQuery.eq("is_simulated", false);
       } else if (dataSourceFilter === "simulated") {
         baseQuery = baseQuery.eq("is_simulated", true);
+      }
+      if (startDate) {
+        baseQuery = baseQuery.gte("occurred_at", startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        baseQuery = baseQuery.lte("occurred_at", endOfDay.toISOString());
       }
       const {
         data,
@@ -395,7 +440,7 @@ export default function CampaignDashboard({
     data: eventsV2Data,
     isLoading: eventsV2Loading
   } = useQuery({
-    queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter],
+    queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate],
     queryFn: async () => {
       let query = supabase.from("url_events").select(`
           id,
@@ -430,6 +475,14 @@ export default function CampaignDashboard({
         query = query.eq("is_simulated", false);
       } else if (dataSourceFilter === "simulated") {
         query = query.eq("is_simulated", true);
+      }
+      if (startDate) {
+        query = query.gte("occurred_at", startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.lte("occurred_at", endOfDay.toISOString());
       }
       const {
         data,
@@ -827,6 +880,97 @@ export default function CampaignDashboard({
                   })}
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Start Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "PPP") : <span>Pick start date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => {
+                            setStartDate(date);
+                            const params = new URLSearchParams(searchParams);
+                            if (date) {
+                              params.set("startDate", date.toISOString());
+                            } else {
+                              params.delete("startDate");
+                            }
+                            setSearchParams(params);
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">End Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "PPP") : <span>Pick end date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => {
+                            setEndDate(date);
+                            const params = new URLSearchParams(searchParams);
+                            if (date) {
+                              params.set("endDate", date.toISOString());
+                            } else {
+                              params.delete("endDate");
+                            }
+                            setSearchParams(params);
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {(startDate || endDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setStartDate(undefined);
+                      setEndDate(undefined);
+                      const params = new URLSearchParams(searchParams);
+                      params.delete("startDate");
+                      params.delete("endDate");
+                      setSearchParams(params);
+                    }}
+                  >
+                    Clear Date Filters
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
