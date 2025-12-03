@@ -1,4 +1,4 @@
-# Product Requirements Document (PRD)
+# Product Requirements Document (PRD) — December 3, 2025
 # Democracy Forge
 
 **Version**: 1.0  
