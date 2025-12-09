@@ -177,7 +177,12 @@ export default function DeckBuilder() {
         });
         uploadBlob = await compressImage(imageFile);
         isCompressed = true;
+      } else {
+        // For GIFs and other non-compressed files, recreate blob with correct MIME type
+        // JSZip returns blobs with type "application/octet-stream" regardless of actual file type
+        uploadBlob = new Blob([data], { type: mimeType });
       }
+
       // GIFs are never compressed to preserve animation
       if (isGif) {
         isCompressed = false;
