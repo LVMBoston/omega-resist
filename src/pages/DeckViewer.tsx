@@ -402,12 +402,19 @@ export default function DeckViewer() {
                             viralToken={viralToken} 
                           />
                         ) : (
-                          <img
-                            src={slide.content_url}
-                            alt={`Slide ${index + 1}`}
-                            className="w-full h-full object-contain"
-                            loading="lazy"
-                          />
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            <img
+                              src={slide.content_url}
+                              alt={`Slide ${index + 1}`}
+                              className="w-full h-full object-contain"
+                              loading="lazy"
+                            />
+                            {slide.content_url.toLowerCase().endsWith('.gif') && (
+                              <div className="absolute bottom-4 left-4 bg-purple-600/90 text-white text-sm font-bold px-3 py-1 rounded-full">
+                                GIF
+                              </div>
+                            )}
+                          </div>
                         )}
                         {(userRole === "admin" || userRole === "manager") && slide.type === "spread-word" && (
                           <Button
