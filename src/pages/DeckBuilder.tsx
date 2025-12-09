@@ -78,6 +78,8 @@ export default function DeckBuilder() {
       case 'jpg':
       case 'jpeg':
         return 'image/jpeg';
+      case 'gif':
+        return 'image/gif';
       default:
         return 'application/octet-stream';
     }
@@ -94,7 +96,7 @@ export default function DeckBuilder() {
     }[] = [];
     const filePromises: Promise<void>[] = [];
     zip.forEach((relativePath, file) => {
-      if (!file.dir && /\.(png|jpg|jpeg)$/i.test(relativePath)) {
+      if (!file.dir && /\.(png|jpg|jpeg|gif)$/i.test(relativePath)) {
         filePromises.push(file.async("blob").then(blob => {
           const mimeType = getMimeType(relativePath);
           imageFiles.push({
@@ -107,7 +109,7 @@ export default function DeckBuilder() {
     });
     await Promise.all(filePromises);
     if (imageFiles.length === 0) {
-      throw new Error("No PNG or JPG images found in ZIP file");
+      throw new Error("No PNG, JPG, or GIF images found in ZIP file");
     }
 
     // Sort files by name
@@ -165,8 +167,9 @@ export default function DeckBuilder() {
       setProgress(`Uploading slide ${i + 1} of ${imageFiles.length}...`);
       let uploadBlob: Blob = data;
       let isCompressed = false;
+      const isGif = /\.gif$/i.test(name);
 
-      // Compress if enabled
+      // Compress if enabled (skip GIFs to preserve animation)
       if (compress && /\.(png|jpg|jpeg)$/i.test(name)) {
         setProgress(`Compressing slide ${i + 1}...`);
         const imageFile = new File([data], name, {
@@ -174,6 +177,10 @@ export default function DeckBuilder() {
         });
         uploadBlob = await compressImage(imageFile);
         isCompressed = true;
+      }
+      // GIFs are never compressed to preserve animation
+      if (isGif) {
+        isCompressed = false;
       }
       const fileName = `${slug}/${i.toString().padStart(3, "0")}-${name}`;
 
@@ -438,7 +445,7 @@ export default function DeckBuilder() {
                             <Input type="file" accept=".zip" onChange={e => onChange(e.target.files)} disabled={uploading} {...field} />
                           </FormControl>
                           <p className="text-sm text-muted-foreground">
-                            ZIP file containing PNG or JPG images as slides
+                            ZIP file containing PNG, JPG, or GIF images as slides
                           </p>
                           <FormMessage />
                         </FormItem>} />

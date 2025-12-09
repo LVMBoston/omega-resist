@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 import { DeploymentConfirmDialog } from "@/components/DeploymentConfirmDialog";
 import { mintL00 } from "@/lib/virality/mint";
+import { isAnimatedGif } from "@/lib/gifUtils";
 
 interface Slide {
   id: string;
@@ -95,6 +96,11 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
       {slide.is_compressed && (
         <div className="absolute bottom-1 right-1 bg-green-500 text-white px-2 py-1 rounded text-xs">
           Compressed
+        </div>
+      )}
+      {slide.content_url.toLowerCase().endsWith('.gif') && (
+        <div className="absolute bottom-1 left-1 bg-purple-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+          GIF
         </div>
       )}
     </div>
@@ -329,8 +335,8 @@ export default function DeckEditor() {
 
   const validateImage = async (file: File | Blob): Promise<{ valid: boolean; error?: string; dimensions?: { width: number; height: number }; resizedFile?: Blob }> => {
     // File type validation
-    if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
-      return { valid: false, error: 'Only PNG and JPG images are allowed' };
+    if (file.type !== 'image/png' && file.type !== 'image/jpeg' && file.type !== 'image/gif') {
+      return { valid: false, error: 'Only PNG, JPG, and GIF images are allowed' };
     }
 
     // Size validation (5MB)
@@ -369,6 +375,16 @@ export default function DeckEditor() {
           
           if (aspectRatioDiff <= 0.07) {
             // Aspect ratio is close enough, resize automatically
+            // Skip resize for GIFs to preserve animation
+            if (file.type === 'image/gif') {
+              console.log('🎬 Skipping resize for GIF to preserve animation');
+              const animated = await isAnimatedGif(file);
+              if (!animated) {
+                console.warn('⚠️ Static GIF detected - consider using PNG for better compression');
+              }
+              resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
+              return;
+            }
             try {
               const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
               resolve({ 
@@ -416,12 +432,13 @@ export default function DeckEditor() {
     // Add to pending uploads and create temp slide preview
     const targetPosition = insertPosition !== undefined ? insertPosition : (slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1);
     const tempId = `temp-${Date.now()}`;
+    const isGif = fileToUpload.type === 'image/gif';
     const tempSlide: Slide = {
       id: tempId,
       position: targetPosition,
       type: 'image',
       content_url: URL.createObjectURL(fileToUpload),
-      is_compressed: true,
+      is_compressed: !isGif, // GIFs are never compressed
       deck_slug: slug!,
     };
 
@@ -613,7 +630,12 @@ export default function DeckEditor() {
       // Path B: Uploaded temp slides (need file upload)
       const processedTempIds = new Set<string>();
       for (const { file, position } of pendingUploads) {
-        const compressedBlob = await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
+        const isGif = file.type === 'image/gif';
+        
+        // Skip compression for GIFs to preserve animation
+        const uploadBlob = isGif 
+          ? file 
+          : await compressImage(file instanceof File ? file : new File([file], 'uploaded.png', { type: file.type }));
         
         // Find an unprocessed temp slide that's NOT a template slide
         const tempSlide = slides.find(s => 
@@ -629,9 +651,14 @@ export default function DeckEditor() {
         
         processedTempIds.add(tempSlide.id);
         const targetPos = tempSlide.position;
-        const fileName = `${slug}/${targetPos.toString().padStart(3, "0")}-${Date.now()}.${file.type === 'image/png' ? 'png' : 'jpg'}`;
         
-        const { data: uploadData } = await supabase.storage.from('slides').upload(fileName, compressedBlob, {
+        // Determine file extension based on MIME type
+        const fileExtension = file.type === 'image/png' ? 'png' 
+          : file.type === 'image/gif' ? 'gif' 
+          : 'jpg';
+        const fileName = `${slug}/${targetPos.toString().padStart(3, "0")}-${Date.now()}.${fileExtension}`;
+        
+        const { data: uploadData } = await supabase.storage.from('slides').upload(fileName, uploadBlob, {
           contentType: file.type,
           upsert: true,
         });
@@ -647,7 +674,7 @@ export default function DeckEditor() {
               position: targetPos,
               content_url: publicUrl,
               type: tempSlide.type,
-              is_compressed: true,
+              is_compressed: !isGif, // GIFs are never compressed
               template_id: tempSlide.template_id,
             })
             .select()
@@ -867,7 +894,7 @@ export default function DeckEditor() {
               <input
                 id="file-upload"
                 type="file"
-                accept="image/png,image/jpeg"
+                accept="image/png,image/jpeg,image/gif"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -904,11 +931,18 @@ export default function DeckEditor() {
             <CardContent className="p-6">
               {selectedSlide ? (
                 <div className="space-y-4">
-                  <img
-                    src={selectedSlide.content_url}
-                    alt={`Slide ${selectedSlide.position}`}
-                    className="w-full rounded-lg border"
-                  />
+                  <div className="relative">
+                    <img
+                      src={selectedSlide.content_url}
+                      alt={`Slide ${selectedSlide.position}`}
+                      className="w-full rounded-lg border"
+                    />
+                    {selectedSlide.content_url.toLowerCase().endsWith('.gif') && (
+                      <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
+                        GIF
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
