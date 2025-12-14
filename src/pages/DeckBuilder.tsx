@@ -113,7 +113,7 @@ export default function DeckBuilder() {
     }
 
     // Sort files by name
-    imageFiles.sort((a, b) => a.name.localeCompare(b.name));
+    imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     setProgress(`Found ${imageFiles.length} images. Creating deck...`);
 
     // Check if deck exists and delete it if so
@@ -208,7 +208,7 @@ export default function DeckBuilder() {
       // Create slide_item record
       await supabase.from("slide_items").insert({
         deck_slug: slug,
-        position: i,
+          position: i + 1,
         type: "image",
         content_url: urlData.publicUrl,
         is_compressed: isCompressed

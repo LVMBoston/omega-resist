@@ -759,6 +759,33 @@ export type Database = {
       log_event:
         | {
             Args: {
+              _event_type: string
+              _ip_address?: unknown
+              _token: string
+              _user_agent?: string
+              _utm_snapshot?: Json
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _city?: string
+              _country?: string
+              _country_code?: string
+              _event_type: string
+              _ip_address?: unknown
+              _latitude?: number
+              _longitude?: number
+              _region?: string
+              _token: string
+              _user_agent?: string
+              _utm_snapshot?: Json
+              _zip_code?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
               _city?: string
               _country?: string
               _country_code?: string
@@ -772,33 +799,6 @@ export type Database = {
               _user_agent?: string
               _utm_snapshot?: Json
               _zip_code?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _city?: string
-              _country?: string
-              _country_code?: string
-              _event_type: string
-              _ip_address?: unknown
-              _latitude?: number
-              _longitude?: number
-              _region?: string
-              _token: string
-              _user_agent?: string
-              _utm_snapshot?: Json
-              _zip_code?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _event_type: string
-              _ip_address?: unknown
-              _token: string
-              _user_agent?: string
-              _utm_snapshot?: Json
             }
             Returns: string
           }
