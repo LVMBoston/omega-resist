@@ -98,6 +98,8 @@ export default function CampaignEoaManager() {
   const { columnVisibility, setColumnVisibility } = useColumnVisibility();
   const [bulkDeckDialogOpen, setBulkDeckDialogOpen] = useState(false);
   const [bulkDeckInput, setBulkDeckInput] = useState("");
+  const [bulkStartDate, setBulkStartDate] = useState("");
+  const [bulkEndDate, setBulkEndDate] = useState("");
   const [availableDecks, setAvailableDecks] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; slug: string }>>([]);
@@ -307,6 +309,8 @@ export default function CampaignEoaManager() {
     setShowBulkActions(false);
     setBulkDeckSlug("");
     setBulkUtmId("");
+    setBulkStartDate("");
+    setBulkEndDate("");
   };
 
   const handleGenerateL00 = async (eoa: EventAction) => {
@@ -944,18 +948,21 @@ export default function CampaignEoaManager() {
   });
 
   const applyBulkUpdate = async () => {
-    // If both fields are empty, mint L00 tokens instead
-    if (!bulkDeckSlug && !bulkUtmId) {
+    // If all fields are empty, mint L00 tokens instead
+    if (!bulkDeckSlug && !bulkUtmId && !bulkStartDate && !bulkEndDate) {
       await handleBulkGenerateL00();
       return;
     }
 
-    const updates: { id: string; data: Partial<EventAction> }[] = [];
+    const updates: { id: string; data: Record<string, string | null> }[] = [];
     
     selectedRowsSet.forEach(id => {
-      const updateData: Partial<EventAction> = {};
+      const updateData: Record<string, string | null> = {};
       if (bulkDeckSlug) updateData.assigned_deck_slug = bulkDeckSlug;
       if (bulkUtmId) updateData.utm_id = bulkUtmId;
+      // Store as floating local time (same wall-clock everywhere)
+      if (bulkStartDate) updateData.start_date = `${bulkStartDate}:00.000Z`;
+      if (bulkEndDate) updateData.end_date = `${bulkEndDate}:00.000Z`;
       
       if (Object.keys(updateData).length > 0) {
         updates.push({ id, data: updateData });
@@ -1151,8 +1158,8 @@ export default function CampaignEoaManager() {
 
             {selectedRowsSet.size > 0 && (
               <div className="space-y-4 border-t pt-4 mt-4">
-                <div className="flex gap-3 items-end">
-                  <div className="flex-1 space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
                     <Label htmlFor="bulk-deck">Assign Deck</Label>
                     <Input
                       id="bulk-deck"
@@ -1161,7 +1168,7 @@ export default function CampaignEoaManager() {
                       onChange={(e) => setBulkDeckSlug(e.target.value)}
                     />
                   </div>
-                  <div className="flex-1 space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="bulk-utm">Assign UTM ID</Label>
                     <Input
                       id="bulk-utm"
@@ -1169,26 +1176,44 @@ export default function CampaignEoaManager() {
                       value={bulkUtmId}
                       onChange={(e) => setBulkUtmId(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Leave both empty to mint L00 tokens for selected rows
-                    </p>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bulk-start">Start Date/Time</Label>
+                    <Input
+                      id="bulk-start"
+                      type="datetime-local"
+                      value={bulkStartDate}
+                      onChange={(e) => setBulkStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bulk-end">End Date/Time</Label>
+                    <Input
+                      id="bulk-end"
+                      type="datetime-local"
+                      value={bulkEndDate}
+                      onChange={(e) => setBulkEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Leave all fields empty to mint L00 tokens for selected rows
+                </p>
+                <div className="flex gap-3 mt-3">
                   <Button
                     variant="outline"
                     onClick={selectedRowsSet.size > 0 ? handleBulkGenerateL00 : handleGenerateAllL00}
                     className="flex-1"
                   >
                     <QrCode className="h-4 w-4 mr-2" />
-                    {selectedRowsSet.size > 0 
-                      ? `Generate short URLs and Mint L00 tokens for selected rows (${selectedRowsSet.size})`
-                      : "Generate short URLs and Mint L00 tokens for ALL rows"}
+                    Mint L00 ({selectedRowsSet.size})
+                  </Button>
+                  <Button onClick={applyBulkUpdate} className="flex-1">
+                    {!bulkDeckSlug && !bulkUtmId && !bulkStartDate && !bulkEndDate
+                      ? `Mint L00 for ${selectedRowsSet.size} Selected`
+                      : `Apply to ${selectedRowsSet.size} Selected`}
                   </Button>
                 </div>
-                <Button onClick={applyBulkUpdate} className="w-full">
-                  {!bulkDeckSlug && !bulkUtmId 
-                    ? `Mint L00 for ${selectedRowsSet.size} Selected`
-                    : `Apply to ${selectedRowsSet.size} Selected`}
-                </Button>
               </div>
             )}
           </CardContent>
