@@ -46,11 +46,13 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
   const [loading, setLoading] = useState(false);
   const [fetchingMobilize, setFetchingMobilize] = useState(false);
   
-  // Helper to convert ISO timestamp to datetime-local format
+  // Helper to convert stored timestamp to datetime-local format
+  // For floating local times, we store dates without timezone conversion
   const toDatetimeLocal = (isoString: string | undefined) => {
     if (!isoString) return "";
-    // Remove timezone info and milliseconds for datetime-local input
-    return isoString.slice(0, 16);
+    // Parse and extract local components (stored value represents wall-clock time)
+    // Remove timezone suffix and milliseconds, keep YYYY-MM-DDTHH:MM
+    return isoString.replace(/:\d{2}\.\d{3}Z$/, '').replace(/:\d{2}Z$/, '').slice(0, 16);
   };
 
   const [formData, setFormData] = useState({
@@ -174,11 +176,12 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     setLoading(true);
 
-    // Convert datetime-local format back to ISO timestamp
+    // Store datetime-local as-is (floating local time - same wall-clock everywhere)
+    // Format: YYYY-MM-DDTHH:MM:00.000Z (the Z is nominal, treat as naive datetime)
     const payload = {
       ...formData,
-      start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
-      end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
+      start_date: formData.start_date ? `${formData.start_date}:00.000Z` : null,
+      end_date: formData.end_date ? `${formData.end_date}:00.000Z` : null,
       assigned_deck_slug: formData.assigned_deck_slug === "none" ? null : formData.assigned_deck_slug,
       campaign_id: campaignId,
     };
