@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -79,15 +82,20 @@ const DEFAULT_COLOR = "#64748b"; // slate-500
 const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.CircleMarker[]>([]);
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const zipMarkersRef = useRef<L.Marker[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
   const [eoaNames, setEoaNames] = useState<Record<string, string>>({});
   const [eoaStartDates, setEoaStartDates] = useState<Record<string, string>>({});
   const [showZipCounts, setShowZipCounts] = useState(false);
+  const [enableClustering, setEnableClustering] = useState(true);
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
+
+  // Store eoaNames in ref for cluster popup access
+  const eoaNamesRef = useRef(eoaNames);
+  eoaNamesRef.current = eoaNames;
 
   // Filter events based on selected time window
   const filteredEventPoints = useMemo(() => {
@@ -336,38 +344,107 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     updateViewportStats();
   }, [filteredEventPoints, eoaIds, updateViewportStats]);
 
-  // Update markers when filtered data changes - one marker per event
+  // Update markers when filtered data or clustering toggle changes
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+    // Remove existing cluster group if present
+    if (clusterGroupRef.current) {
+      mapRef.current.removeLayer(clusterGroupRef.current);
+      clusterGroupRef.current = null;
+    }
 
-    // Add one marker per filtered event point (no aggregation)
-    filteredEventPoints.forEach((event) => {
-      const fillColor = EOA_COLORS[event.eoaId] || DEFAULT_COLOR;
-      // Darken border slightly
-      const borderColor = fillColor.replace(/^#/, "");
-      const r = Math.max(0, parseInt(borderColor.slice(0, 2), 16) - 30);
-      const g = Math.max(0, parseInt(borderColor.slice(2, 4), 16) - 30);
-      const b = Math.max(0, parseInt(borderColor.slice(4, 6), 16) - 30);
-      const darkerColor = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+    if (filteredEventPoints.length === 0) return;
 
-      const marker = L.circleMarker([event.latitude, event.longitude], {
-        radius: 6,
-        fillColor,
-        color: darkerColor,
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.7,
-      }).addTo(mapRef.current!);
+    // Create cluster group with custom icon creator
+    const clusterGroup = L.markerClusterGroup({
+      disableClusteringAtZoom: enableClustering ? undefined : 0, // Disable clustering when toggle is off
+      maxClusterRadius: enableClustering ? 50 : 0,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        // Build EoA breakdown for popup
+        const markers = cluster.getAllChildMarkers();
+        const eoaCounts: Record<string, number> = {};
+        markers.forEach((m) => {
+          const eoaId = (m as any).eoaId;
+          if (eoaId) {
+            eoaCounts[eoaId] = (eoaCounts[eoaId] || 0) + 1;
+          }
+        });
+        
+        // Build breakdown HTML for popup
+        const breakdownLines = Object.entries(eoaCounts)
+          .map(([eoaId, cnt]) => {
+            const name = eoaNamesRef.current[eoaId] || eoaId.slice(0, 8);
+            const color = EOA_COLORS[eoaId] || DEFAULT_COLOR;
+            return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${name}: ${cnt}</div>`;
+          })
+          .join("");
+        
+        const popupContent = `
+          <div style="font-family:system-ui;font-size:13px;line-height:1.4;">
+            <div style="font-weight:600;margin-bottom:4px;">Cluster: ${count} activations</div>
+            <div style="border-top:1px solid #e2e8f0;padding-top:6px;">
+              ${breakdownLines}
+            </div>
+          </div>
+        `;
+        
+        // Store popup content on cluster for later binding
+        (cluster as any).popupContent = popupContent;
 
-      markersRef.current.push(marker);
+        // Neutral, calm cluster styling
+        return L.divIcon({
+          html: `<div class="samizdat-cluster">${count}</div>`,
+          className: "samizdat-cluster-icon",
+          iconSize: L.point(40, 40),
+        });
+      },
     });
 
+    // Add popup to clusters on click
+    clusterGroup.on("clusterclick", (e: any) => {
+      const cluster = e.layer;
+      if (cluster.popupContent) {
+        L.popup()
+          .setLatLng(cluster.getLatLng())
+          .setContent(cluster.popupContent)
+          .openOn(mapRef.current!);
+      }
+    });
+
+    // Add individual markers with colored divIcons
+    filteredEventPoints.forEach((event) => {
+      const fillColor = EOA_COLORS[event.eoaId] || DEFAULT_COLOR;
+      
+      const dotIcon = L.divIcon({
+        html: `<div style="
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: ${fillColor};
+          border: 1px solid rgba(0,0,0,0.2);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        "></div>`,
+        className: "samizdat-dot-icon",
+        iconSize: L.point(12, 12),
+        iconAnchor: L.point(6, 6),
+      });
+
+      const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
+      // Store eoaId for cluster breakdown
+      (marker as any).eoaId = event.eoaId;
+      clusterGroup.addLayer(marker);
+    });
+
+    clusterGroupRef.current = clusterGroup;
+    mapRef.current.addLayer(clusterGroup);
+
     // User controls zoom - no auto-fitting
-  }, [filteredEventPoints]);
+  }, [filteredEventPoints, enableClustering]);
 
   // ZIP count overlay markers (uses filtered events)
   useEffect(() => {
@@ -518,16 +595,28 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
       {/* Map container */}
       <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
-        {/* ZIP count toggle */}
-        <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex items-center gap-2 shadow-sm border border-border">
-          <Switch
-            id="zip-counts"
-            checked={showZipCounts}
-            onCheckedChange={setShowZipCounts}
-          />
-          <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
-            Show ZIP counts
-          </Label>
+        {/* Map controls */}
+        <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex flex-col gap-2 shadow-sm border border-border">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="clustering"
+              checked={enableClustering}
+              onCheckedChange={setEnableClustering}
+            />
+            <Label htmlFor="clustering" className="text-sm cursor-pointer">
+              Clustering
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="zip-counts"
+              checked={showZipCounts}
+              onCheckedChange={setShowZipCounts}
+            />
+            <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
+              Show ZIP counts
+            </Label>
+          </div>
         </div>
 
         {loading && (
@@ -546,7 +635,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           </div>
         )}
 
-        {/* Custom tooltip styles */}
+        {/* Custom styles */}
         <style>{`
           .zip-count-tooltip {
             background: white;
@@ -557,6 +646,40 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           }
           .zip-count-tooltip::before {
             border-top-color: #e2e8f0 !important;
+          }
+          /* Neutral cluster styling */
+          .samizdat-cluster-icon {
+            background: transparent !important;
+          }
+          .samizdat-cluster {
+            width: 40px;
+            height: 40px;
+            background: #475569;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            border: 2px solid rgba(255,255,255,0.3);
+          }
+          .samizdat-dot-icon {
+            background: transparent !important;
+            border: none !important;
+          }
+          /* Override default markercluster styles */
+          .marker-cluster-small,
+          .marker-cluster-medium,
+          .marker-cluster-large {
+            background-color: rgba(71, 85, 105, 0.6) !important;
+          }
+          .marker-cluster-small div,
+          .marker-cluster-medium div,
+          .marker-cluster-large div {
+            background-color: #475569 !important;
+            color: white !important;
           }
         `}</style>
       </div>
