@@ -14,7 +14,7 @@ interface SamizdatEoaSelectorProps {
 
 interface EoaOption {
   id: string;
-  title: string;
+  utm_id: string;
   start_date: string;
 }
 
@@ -30,7 +30,7 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
 
       const { data, error } = await supabase
         .from("events_actions")
-        .select("id, title, start_date")
+        .select("id, utm_id, start_date")
         .eq("campaign_id", campaignId)
         .not("start_date", "is", null)
         .order("start_date", { ascending: false });
@@ -136,7 +136,7 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
           <SelectContent className="bg-popover">
             {eoas.map((eoa) => (
               <SelectItem key={eoa.id} value={eoa.id}>
-                {eoa.title} (Starts {formatStartDate(eoa.start_date)})
+                {eoa.utm_id} (Starts {formatStartDate(eoa.start_date)})
               </SelectItem>
             ))}
           </SelectContent>
