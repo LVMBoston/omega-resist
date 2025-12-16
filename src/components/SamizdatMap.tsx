@@ -3,6 +3,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 // Fix Leaflet default icon paths
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -27,6 +29,14 @@ interface EventPoint {
   occurredAt: string;
 }
 
+interface ZipAggregate {
+  zipCode: string;
+  latitude: number;
+  longitude: number;
+  total: number;
+  byEoa: Record<string, number>;
+}
+
 // Non-evaluative, distinct colors for EoAs
 const EOA_COLORS: Record<string, string> = {
   "81050b93-f0f7-4943-99ad-9becb622110f": "#3b82f6", // blue
@@ -41,8 +51,11 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.CircleMarker[]>([]);
+  const zipMarkersRef = useRef<L.Marker[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
+  const [eoaNames, setEoaNames] = useState<Record<string, string>>({});
+  const [showZipCounts, setShowZipCounts] = useState(false);
 
   // Fetch event-level data (no aggregation)
   useEffect(() => {
@@ -55,10 +68,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
       setLoading(true);
 
-      // Step 1: Get EoA start dates
+      // Step 1: Get EoA start dates and names
       const { data: eoas, error: eoasError } = await supabase
         .from("events_actions")
-        .select("id, start_date")
+        .select("id, start_date, title")
         .in("id", eoaIds);
 
       if (eoasError || !eoas?.length) {
@@ -69,9 +82,12 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       }
 
       const eoaStartDates: Record<string, string | null> = {};
+      const names: Record<string, string> = {};
       eoas.forEach((eoa) => {
         eoaStartDates[eoa.id] = eoa.start_date;
+        names[eoa.id] = eoa.title || eoa.id.slice(0, 8);
       });
+      setEoaNames(names);
 
       // Step 2: Get tokens for selected EoAs
       const { data: tokens, error: tokensError } = await supabase
@@ -219,8 +235,106 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     // User controls zoom - no auto-fitting
   }, [eventPoints]);
 
+  // ZIP count overlay markers
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear existing ZIP count markers
+    zipMarkersRef.current.forEach((marker) => marker.remove());
+    zipMarkersRef.current = [];
+
+    if (!showZipCounts || eventPoints.length === 0) return;
+
+    // Aggregate events by ZIP code
+    const zipAggregates: Record<string, ZipAggregate> = {};
+    eventPoints.forEach((event) => {
+      if (!zipAggregates[event.zipCode]) {
+        zipAggregates[event.zipCode] = {
+          zipCode: event.zipCode,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          total: 0,
+          byEoa: {},
+        };
+      }
+      zipAggregates[event.zipCode].total++;
+      zipAggregates[event.zipCode].byEoa[event.eoaId] = 
+        (zipAggregates[event.zipCode].byEoa[event.eoaId] || 0) + 1;
+    });
+
+    // Create ZIP count markers with tooltips
+    Object.values(zipAggregates).forEach((agg) => {
+      // Build EoA breakdown HTML
+      const breakdownLines = Object.entries(agg.byEoa)
+        .map(([eoaId, count]) => {
+          const name = eoaNames[eoaId] || eoaId.slice(0, 8);
+          const color = EOA_COLORS[eoaId] || DEFAULT_COLOR;
+          return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${name}: ${count}</div>`;
+        })
+        .join("");
+
+      const tooltipContent = `
+        <div style="font-family:system-ui;font-size:13px;line-height:1.4;">
+          <div style="font-weight:600;margin-bottom:4px;">ZIP ${agg.zipCode}</div>
+          <div style="margin-bottom:6px;">Activations: ${agg.total}</div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:6px;">
+            ${breakdownLines}
+          </div>
+        </div>
+      `;
+
+      // Create a DivIcon with the count number
+      const countIcon = L.divIcon({
+        className: "zip-count-marker",
+        html: `<div style="
+          background:#1e293b;
+          color:white;
+          border-radius:9999px;
+          min-width:24px;
+          height:24px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:11px;
+          font-weight:600;
+          padding:0 6px;
+          box-shadow:0 2px 4px rgba(0,0,0,0.2);
+          cursor:pointer;
+        ">${agg.total}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      const marker = L.marker([agg.latitude, agg.longitude], {
+        icon: countIcon,
+        zIndexOffset: 1000, // Above event markers
+      }).addTo(mapRef.current!);
+
+      marker.bindTooltip(tooltipContent, {
+        permanent: false,
+        direction: "top",
+        offset: [0, -12],
+        className: "zip-count-tooltip",
+      });
+
+      zipMarkersRef.current.push(marker);
+    });
+  }, [showZipCounts, eventPoints, eoaNames]);
+
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
+      {/* ZIP count toggle */}
+      <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex items-center gap-2 shadow-sm border border-border">
+        <Switch
+          id="zip-counts"
+          checked={showZipCounts}
+          onCheckedChange={setShowZipCounts}
+        />
+        <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
+          Show ZIP counts
+        </Label>
+      </div>
+
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -232,6 +346,20 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           <p className="text-muted-foreground">No activation events found for selected EoAs</p>
         </div>
       )}
+
+      {/* Custom tooltip styles */}
+      <style>{`
+        .zip-count-tooltip {
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 8px 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .zip-count-tooltip::before {
+          border-top-color: #e2e8f0 !important;
+        }
+      `}</style>
     </div>
   );
 };
