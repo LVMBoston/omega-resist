@@ -27,6 +27,7 @@ import { EngagementByLevelChart } from "@/components/virality/EngagementByLevelC
 import { ContentPerformanceTable } from "@/components/virality/ContentPerformanceTable";
 import SharedDashboardMap from "@/components/SharedDashboardMap";
 import { SimulatorControls } from "@/components/SimulatorControls";
+import SamizdatMap from "@/components/SamizdatMap";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -756,12 +757,13 @@ export default function CampaignDashboard({
 
         {/* Tabbed Content */}
         <Tabs defaultValue="filters" className="w-full">
-          <TabsList className="grid w-full max-w-4xl grid-cols-5">
+          <TabsList className="grid w-full max-w-4xl grid-cols-6">
             <TabsTrigger value="filters">Filters</TabsTrigger>
             <TabsTrigger value="eventsv2">EventsV2</TabsTrigger>
             <TabsTrigger value="map">Map</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="simulator">Simulator</TabsTrigger>
+            <TabsTrigger value="samizdat">Samizdat</TabsTrigger>
           </TabsList>
 
           {/* Filters Tab - Single Source of Truth */}
@@ -1275,6 +1277,10 @@ export default function CampaignDashboard({
               setSearchParams(params);
             }
           }} />
+          </TabsContent>
+
+          <TabsContent value="samizdat" className="mt-6 animate-fade-in">
+            <SamizdatMap campaignId={selectedCampaign} />
           </TabsContent>
         </Tabs>
       </div>
