@@ -295,7 +295,11 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     fetchEventData();
   }, [eoaIds]);
 
-  // Initialize map
+  // Store updateViewportStats in a ref to avoid map recreation
+  const updateViewportStatsRef = useRef(updateViewportStats);
+  updateViewportStatsRef.current = updateViewportStats;
+
+  // Initialize map - only once, no dependencies that would cause recreation
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -312,19 +316,20 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       maxZoom: 19,
     }).addTo(mapRef.current);
 
-    // Listen for map movement to update viewport stats
-    mapRef.current.on("moveend", updateViewportStats);
-    mapRef.current.on("zoomend", updateViewportStats);
+    // Listen for map movement to update viewport stats (use ref to get latest callback)
+    const handleMoveEnd = () => updateViewportStatsRef.current();
+    mapRef.current.on("moveend", handleMoveEnd);
+    mapRef.current.on("zoomend", handleMoveEnd);
 
     return () => {
       if (mapRef.current) {
-        mapRef.current.off("moveend", updateViewportStats);
-        mapRef.current.off("zoomend", updateViewportStats);
+        mapRef.current.off("moveend", handleMoveEnd);
+        mapRef.current.off("zoomend", handleMoveEnd);
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [updateViewportStats]);
+  }, []); // Empty deps - map initializes once
 
   // Update viewport stats when filtered events or EoA selection changes
   useEffect(() => {
