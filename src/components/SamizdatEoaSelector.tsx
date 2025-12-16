@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin } from "lucide-react";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 interface SamizdatEoaSelectorProps {
   campaignId: string;
@@ -15,6 +15,7 @@ interface EoaOption {
   id: string;
   utm_id: string;
   start_date: string;
+  timezone: string | null;
 }
 
 const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorProps) => {
@@ -28,7 +29,7 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
 
       const { data, error } = await supabase
         .from("events_actions")
-        .select("id, utm_id, start_date")
+        .select("id, utm_id, start_date, timezone")
         .eq("campaign_id", campaignId)
         .not("start_date", "is", null)
         .order("start_date", { ascending: false });
@@ -62,9 +63,10 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     });
   };
 
-  const formatStartDate = (dateString: string) => {
+  const formatStartDate = (dateString: string, timezone: string | null) => {
     try {
-      return format(new Date(dateString), "MMM d, yyyy h:mm a");
+      const tz = timezone || "America/New_York";
+      return formatInTimeZone(new Date(dateString), tz, "MMM d, yyyy h:mm a");
     } catch {
       return dateString;
     }
@@ -129,7 +131,7 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
                 htmlFor={eoa.id}
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
               >
-                {eoa.utm_id} <span className="text-muted-foreground">(Starts {formatStartDate(eoa.start_date)})</span>
+                {eoa.utm_id} <span className="text-muted-foreground">(Starts {formatStartDate(eoa.start_date, eoa.timezone)})</span>
               </label>
             </div>
           ))}
