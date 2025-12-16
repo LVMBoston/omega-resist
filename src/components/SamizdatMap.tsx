@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -54,6 +55,17 @@ interface ViewportStats {
   color: string;
 }
 
+// Time window options for "time since go-live" filter
+type TimeWindow = "0-15" | "15-60" | "1-6h" | "6-24h" | "all";
+
+const TIME_WINDOW_OPTIONS: { value: TimeWindow; label: string; minMs: number; maxMs: number }[] = [
+  { value: "0-15", label: "0–15 min", minMs: 0, maxMs: 15 * 60 * 1000 },
+  { value: "15-60", label: "15–60 min", minMs: 15 * 60 * 1000, maxMs: 60 * 60 * 1000 },
+  { value: "1-6h", label: "1–6 hours", minMs: 60 * 60 * 1000, maxMs: 6 * 60 * 60 * 1000 },
+  { value: "6-24h", label: "6–24 hours", minMs: 6 * 60 * 60 * 1000, maxMs: 24 * 60 * 60 * 1000 },
+  { value: "all", label: "All (since go-live)", minMs: 0, maxMs: Infinity },
+];
+
 // Non-evaluative, distinct colors for EoAs
 const EOA_COLORS: Record<string, string> = {
   "81050b93-f0f7-4943-99ad-9becb622110f": "#3b82f6", // blue
@@ -72,12 +84,54 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
   const [eoaNames, setEoaNames] = useState<Record<string, string>>({});
+  const [eoaStartDates, setEoaStartDates] = useState<Record<string, string>>({});
   const [showZipCounts, setShowZipCounts] = useState(false);
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
 
-  // Calculate viewport stats based on current map bounds
+  // Filter events based on selected time window
+  const filteredEventPoints = useMemo(() => {
+    if (timeWindow === "all") return eventPoints;
+
+    const windowConfig = TIME_WINDOW_OPTIONS.find((w) => w.value === timeWindow);
+    if (!windowConfig) return eventPoints;
+
+    return eventPoints.filter((event) => {
+      const startDateStr = eoaStartDates[event.eoaId];
+      if (!startDateStr) return false; // No start date, exclude
+
+      // Parse floating local time: extract wall-clock components directly
+      const startMatch = startDateStr.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
+      const eventMatch = event.occurredAt.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
+      
+      if (!startMatch || !eventMatch) return false;
+
+      // Create dates from wall-clock components (treating them as local time for comparison)
+      const startDate = new Date(
+        parseInt(startMatch[1]),
+        parseInt(startMatch[2]) - 1,
+        parseInt(startMatch[3]),
+        parseInt(startMatch[4] || "0"),
+        parseInt(startMatch[5] || "0"),
+        parseInt(startMatch[6] || "0")
+      );
+      const eventDate = new Date(
+        parseInt(eventMatch[1]),
+        parseInt(eventMatch[2]) - 1,
+        parseInt(eventMatch[3]),
+        parseInt(eventMatch[4] || "0"),
+        parseInt(eventMatch[5] || "0"),
+        parseInt(eventMatch[6] || "0")
+      );
+
+      const diffMs = eventDate.getTime() - startDate.getTime();
+      return diffMs >= windowConfig.minMs && diffMs < windowConfig.maxMs;
+    });
+  }, [eventPoints, timeWindow, eoaStartDates]);
+
+  // Calculate viewport stats based on current map bounds (uses filtered events)
   const updateViewportStats = useCallback(() => {
-    if (!mapRef.current || eventPoints.length === 0) {
+    if (!mapRef.current || filteredEventPoints.length === 0) {
       setViewportStats([]);
       return;
     }
@@ -91,7 +145,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       statsMap[eoaId] = { total: 0, visible: 0 };
     });
 
-    eventPoints.forEach((event) => {
+    filteredEventPoints.forEach((event) => {
       if (!statsMap[event.eoaId]) {
         statsMap[event.eoaId] = { total: 0, visible: 0 };
       }
@@ -116,7 +170,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       }));
 
     setViewportStats(stats);
-  }, [eventPoints, eoaIds, eoaNames]);
+  }, [filteredEventPoints, eoaIds, eoaNames]);
 
   // Fetch event-level data (no aggregation)
   useEffect(() => {
@@ -142,13 +196,16 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
         return;
       }
 
-      const eoaStartDates: Record<string, string | null> = {};
+      const startDates: Record<string, string> = {};
       const names: Record<string, string> = {};
       eoas.forEach((eoa) => {
-        eoaStartDates[eoa.id] = eoa.start_date;
+        if (eoa.start_date) {
+          startDates[eoa.id] = eoa.start_date;
+        }
         names[eoa.id] = eoa.title || eoa.id.slice(0, 8);
       });
       setEoaNames(names);
+      setEoaStartDates(startDates);
 
       // Step 2: Get tokens for selected EoAs
       const { data: tokens, error: tokensError } = await supabase
@@ -206,11 +263,11 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
         zipCoords[z.zip_code] = { lat: z.latitude, lng: z.longitude };
       });
 
-      // Step 5: Build event points, filtering by start_date
+      // Step 5: Build event points, filtering by start_date (basic go-live filter)
       const points: EventPoint[] = [];
       events.forEach((event) => {
         const eoaId = tokenToEoa[event.token];
-        const startDate = eoaStartDates[eoaId];
+        const startDate = startDates[eoaId];
         const coords = zipCoords[event.zip_code!];
 
         // Skip if no coordinates for this ZIP
@@ -269,12 +326,12 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     };
   }, [updateViewportStats]);
 
-  // Update viewport stats when event points or EoA selection changes
+  // Update viewport stats when filtered events or EoA selection changes
   useEffect(() => {
     updateViewportStats();
-  }, [eventPoints, eoaIds, updateViewportStats]);
+  }, [filteredEventPoints, eoaIds, updateViewportStats]);
 
-  // Update markers when data changes - one marker per event
+  // Update markers when filtered data changes - one marker per event
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -282,8 +339,8 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
-    // Add one marker per event point (no aggregation)
-    eventPoints.forEach((event) => {
+    // Add one marker per filtered event point (no aggregation)
+    filteredEventPoints.forEach((event) => {
       const fillColor = EOA_COLORS[event.eoaId] || DEFAULT_COLOR;
       // Darken border slightly
       const borderColor = fillColor.replace(/^#/, "");
@@ -305,9 +362,9 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     });
 
     // User controls zoom - no auto-fitting
-  }, [eventPoints]);
+  }, [filteredEventPoints]);
 
-  // ZIP count overlay markers
+  // ZIP count overlay markers (uses filtered events)
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -315,11 +372,11 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     zipMarkersRef.current.forEach((marker) => marker.remove());
     zipMarkersRef.current = [];
 
-    if (!showZipCounts || eventPoints.length === 0) return;
+    if (!showZipCounts || filteredEventPoints.length === 0) return;
 
-    // Aggregate events by ZIP code
+    // Aggregate filtered events by ZIP code
     const zipAggregates: Record<string, ZipAggregate> = {};
-    eventPoints.forEach((event) => {
+    filteredEventPoints.forEach((event) => {
       if (!zipAggregates[event.zipCode]) {
         zipAggregates[event.zipCode] = {
           zipCode: event.zipCode,
@@ -391,10 +448,30 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
       zipMarkersRef.current.push(marker);
     });
-  }, [showZipCounts, eventPoints, eoaNames]);
+  }, [showZipCounts, filteredEventPoints, eoaNames]);
 
   return (
     <div className="space-y-4">
+      {/* Time since go-live filter */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-foreground">Time since go-live</span>
+          <div className="flex flex-wrap gap-2">
+            {TIME_WINDOW_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                variant={timeWindow === option.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeWindow(option.value)}
+                className="text-xs"
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Viewport Activity Report */}
       {viewportStats.length > 0 && (
         <div className="rounded-lg border border-border bg-card">
@@ -454,9 +531,13 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           </div>
         )}
         <div ref={mapContainerRef} className="w-full h-full" />
-        {!loading && eventPoints.length === 0 && (
+        {!loading && filteredEventPoints.length === 0 && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-            <p className="text-muted-foreground">No activation events found for selected EoAs</p>
+            <p className="text-muted-foreground">
+              {eventPoints.length === 0 
+                ? "No activation events found for selected EoAs" 
+                : "No events in selected time window"}
+            </p>
           </div>
         )}
 
