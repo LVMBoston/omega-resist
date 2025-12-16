@@ -358,14 +358,17 @@ export default function CampaignDashboard({
       });
 
       // Wait for refetch to complete
-      const result = await queryClient.fetchQuery({
+      const result = await queryClient.refetchQueries({
         queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter]
       });
+      
+      // Get the refreshed data from cache
+      const refreshedData = queryClient.getQueryData(["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter]);
 
       // Compare and highlight new events
-      if (result && Array.isArray(result)) {
+      if (refreshedData && Array.isArray(refreshedData)) {
         const newEventIds = new Set<string>();
-        result.forEach((event: any) => {
+        refreshedData.forEach((event: any) => {
           if (!currentEventIds.has(event.id)) {
             newEventIds.add(event.id);
           }
