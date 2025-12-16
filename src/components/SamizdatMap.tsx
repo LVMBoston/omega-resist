@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Fix Leaflet default icon paths
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -37,6 +45,15 @@ interface ZipAggregate {
   byEoa: Record<string, number>;
 }
 
+interface ViewportStats {
+  eoaId: string;
+  name: string;
+  total: number;
+  visible: number;
+  offscreen: number;
+  color: string;
+}
+
 // Non-evaluative, distinct colors for EoAs
 const EOA_COLORS: Record<string, string> = {
   "81050b93-f0f7-4943-99ad-9becb622110f": "#3b82f6", // blue
@@ -56,6 +73,50 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
   const [eoaNames, setEoaNames] = useState<Record<string, string>>({});
   const [showZipCounts, setShowZipCounts] = useState(false);
+  const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
+
+  // Calculate viewport stats based on current map bounds
+  const updateViewportStats = useCallback(() => {
+    if (!mapRef.current || eventPoints.length === 0) {
+      setViewportStats([]);
+      return;
+    }
+
+    const bounds = mapRef.current.getBounds();
+    
+    // Group events by EoA and count visible/total
+    const statsMap: Record<string, { total: number; visible: number }> = {};
+    
+    eoaIds.forEach((eoaId) => {
+      statsMap[eoaId] = { total: 0, visible: 0 };
+    });
+
+    eventPoints.forEach((event) => {
+      if (!statsMap[event.eoaId]) {
+        statsMap[event.eoaId] = { total: 0, visible: 0 };
+      }
+      statsMap[event.eoaId].total++;
+      
+      // Check if point is within current viewport bounds
+      if (bounds.contains([event.latitude, event.longitude])) {
+        statsMap[event.eoaId].visible++;
+      }
+    });
+
+    // Convert to array with names and colors
+    const stats: ViewportStats[] = Object.entries(statsMap)
+      .filter(([_, counts]) => counts.total > 0)
+      .map(([eoaId, counts]) => ({
+        eoaId,
+        name: eoaNames[eoaId] || eoaId.slice(0, 8),
+        total: counts.total,
+        visible: counts.visible,
+        offscreen: counts.total - counts.visible,
+        color: EOA_COLORS[eoaId] || DEFAULT_COLOR,
+      }));
+
+    setViewportStats(stats);
+  }, [eventPoints, eoaIds, eoaNames]);
 
   // Fetch event-level data (no aggregation)
   useEffect(() => {
@@ -194,13 +255,24 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       maxZoom: 19,
     }).addTo(mapRef.current);
 
+    // Listen for map movement to update viewport stats
+    mapRef.current.on("moveend", updateViewportStats);
+    mapRef.current.on("zoomend", updateViewportStats);
+
     return () => {
       if (mapRef.current) {
+        mapRef.current.off("moveend", updateViewportStats);
+        mapRef.current.off("zoomend", updateViewportStats);
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [updateViewportStats]);
+
+  // Update viewport stats when event points or EoA selection changes
+  useEffect(() => {
+    updateViewportStats();
+  }, [eventPoints, eoaIds, updateViewportStats]);
 
   // Update markers when data changes - one marker per event
   useEffect(() => {
@@ -322,44 +394,86 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   }, [showZipCounts, eventPoints, eoaNames]);
 
   return (
-    <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
-      {/* ZIP count toggle */}
-      <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex items-center gap-2 shadow-sm border border-border">
-        <Switch
-          id="zip-counts"
-          checked={showZipCounts}
-          onCheckedChange={setShowZipCounts}
-        />
-        <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
-          Show ZIP counts
-        </Label>
+    <div className="space-y-4">
+      {/* Viewport Activity Report */}
+      {viewportStats.length > 0 && (
+        <div className="rounded-lg border border-border bg-card">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-medium text-foreground">Viewport Activity Report</h3>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[200px]">EoA</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Visible</TableHead>
+                <TableHead className="text-right">Offscreen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {viewportStats.map((stat) => (
+                <TableRow key={stat.eoaId}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: stat.color }}
+                      />
+                      <span className="truncate">{stat.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{stat.total}</TableCell>
+                  <TableCell className="text-right tabular-nums">{stat.visible}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {stat.offscreen}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Map container */}
+      <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
+        {/* ZIP count toggle */}
+        <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex items-center gap-2 shadow-sm border border-border">
+          <Switch
+            id="zip-counts"
+            checked={showZipCounts}
+            onCheckedChange={setShowZipCounts}
+          />
+          <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
+            Show ZIP counts
+          </Label>
+        </div>
+
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        <div ref={mapContainerRef} className="w-full h-full" />
+        {!loading && eventPoints.length === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+            <p className="text-muted-foreground">No activation events found for selected EoAs</p>
+          </div>
+        )}
+
+        {/* Custom tooltip styles */}
+        <style>{`
+          .zip-count-tooltip {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          }
+          .zip-count-tooltip::before {
+            border-top-color: #e2e8f0 !important;
+          }
+        `}</style>
       </div>
-
-      {loading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-      <div ref={mapContainerRef} className="w-full h-full" />
-      {!loading && eventPoints.length === 0 && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-          <p className="text-muted-foreground">No activation events found for selected EoAs</p>
-        </div>
-      )}
-
-      {/* Custom tooltip styles */}
-      <style>{`
-        .zip-count-tooltip {
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 8px 12px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .zip-count-tooltip::before {
-          border-top-color: #e2e8f0 !important;
-        }
-      `}</style>
     </div>
   );
 };
