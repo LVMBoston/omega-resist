@@ -1,15 +1,14 @@
-import { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin } from "lucide-react";
 import { format } from "date-fns";
 
 interface SamizdatEoaSelectorProps {
   campaignId: string;
-  onEoaChange?: (eoaId: string | null) => void;
+  onEoaChange?: (eoaIds: string[]) => void;
 }
 
 interface EoaOption {
@@ -19,8 +18,7 @@ interface EoaOption {
 }
 
 const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorProps) => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedEoaId = searchParams.get("eoa");
+  const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
 
   // Query EoAs for this campaign where start_date IS NOT NULL
   const { data: eoas, isLoading } = useQuery({
@@ -45,33 +43,23 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     enabled: !!campaignId,
   });
 
-  // Auto-select first EoA if none selected or selection is invalid
+  // Select all EoAs by default when data loads
   useEffect(() => {
-    if (!eoas?.length) return;
-
-    const isValidSelection = selectedEoaId && eoas.some((e) => e.id === selectedEoaId);
-
-    if (!isValidSelection) {
-      // Default to first EoA
-      const firstEoaId = eoas[0].id;
-      setSearchParams((prev) => {
-        const newParams = new URLSearchParams(prev);
-        newParams.set("eoa", firstEoaId);
-        return newParams;
-      });
-      onEoaChange?.(firstEoaId);
-    } else {
-      onEoaChange?.(selectedEoaId);
+    if (eoas?.length) {
+      const allIds = eoas.map((e) => e.id);
+      setSelectedEoaIds(allIds);
+      onEoaChange?.(allIds);
     }
-  }, [eoas, selectedEoaId, setSearchParams, onEoaChange]);
+  }, [eoas, onEoaChange]);
 
-  const handleEoaChange = (value: string) => {
-    setSearchParams((prev) => {
-      const newParams = new URLSearchParams(prev);
-      newParams.set("eoa", value);
-      return newParams;
+  const toggleEoa = (eoaId: string) => {
+    setSelectedEoaIds((prev) => {
+      const newSelection = prev.includes(eoaId)
+        ? prev.filter((id) => id !== eoaId)
+        : [...prev, eoaId];
+      onEoaChange?.(newSelection);
+      return newSelection;
     });
-    onEoaChange?.(value);
   };
 
   const formatStartDate = (dateString: string) => {
@@ -129,18 +117,23 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Select value={selectedEoaId || ""} onValueChange={handleEoaChange}>
-          <SelectTrigger className="w-full max-w-md">
-            <SelectValue placeholder="Select an EoA" />
-          </SelectTrigger>
-          <SelectContent className="bg-popover">
-            {eoas.map((eoa) => (
-              <SelectItem key={eoa.id} value={eoa.id}>
-                {eoa.utm_id} (Starts {formatStartDate(eoa.start_date)})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-3">
+          {eoas.map((eoa) => (
+            <div key={eoa.id} className="flex items-center space-x-3">
+              <Checkbox
+                id={eoa.id}
+                checked={selectedEoaIds.includes(eoa.id)}
+                onCheckedChange={() => toggleEoa(eoa.id)}
+              />
+              <label
+                htmlFor={eoa.id}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                {eoa.utm_id} <span className="text-muted-foreground">(Starts {formatStartDate(eoa.start_date)})</span>
+              </label>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
