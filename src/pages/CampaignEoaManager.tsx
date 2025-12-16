@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { formatFloatingLocalTime } from "@/lib/dateUtils";
 import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
@@ -285,18 +286,10 @@ export default function CampaignEoaManager() {
       fetchEoas();
     }
   };
-  // Format floating local time (stored as naive datetime with nominal Z suffix)
+  // Format floating local time using shared utility
   const formatDateTime = (date: string | null) => {
     if (!date) return "—";
-    // Parse as naive datetime - extract components directly without timezone conversion
-    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-    if (!match) return "—";
-    const [, year, month, day, hour, minute] = match;
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const h = parseInt(hour, 10);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const h12 = h % 12 || 12;
-    return `${monthNames[parseInt(month, 10) - 1]} ${parseInt(day, 10)}, ${year}, ${h12}:${minute} ${ampm}`;
+    return formatFloatingLocalTime(date);
   };
 
   // Derive selectedRows from rowSelection (one-way sync to avoid circular dependency)

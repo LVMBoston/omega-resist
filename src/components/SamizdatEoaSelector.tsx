@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, MapPin } from "lucide-react";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatFloatingLocalTime } from "@/lib/dateUtils";
 
 interface SamizdatEoaSelectorProps {
   campaignId: string;
@@ -63,13 +63,8 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     });
   };
 
-  const formatStartDate = (dateString: string, timezone: string | null) => {
-    try {
-      const tz = timezone || "America/New_York";
-      return formatInTimeZone(new Date(dateString), tz, "MMM d, yyyy h:mm a");
-    } catch {
-      return dateString;
-    }
+  const formatStartDate = (dateString: string) => {
+    return formatFloatingLocalTime(dateString);
   };
 
   if (isLoading) {
@@ -131,7 +126,7 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
                 htmlFor={eoa.id}
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
               >
-                {eoa.utm_id} <span className="text-muted-foreground">(Starts {formatStartDate(eoa.start_date, eoa.timezone)})</span>
+                {eoa.utm_id} <span className="text-muted-foreground">(Starts {formatStartDate(eoa.start_date)})</span>
               </label>
             </div>
           ))}
