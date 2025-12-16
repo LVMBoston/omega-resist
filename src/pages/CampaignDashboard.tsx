@@ -28,6 +28,7 @@ import { ContentPerformanceTable } from "@/components/virality/ContentPerformanc
 import SharedDashboardMap from "@/components/SharedDashboardMap";
 import { SimulatorControls } from "@/components/SimulatorControls";
 import SamizdatMap from "@/components/SamizdatMap";
+import SamizdatEoaSelector from "@/components/SamizdatEoaSelector";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -1280,7 +1281,19 @@ export default function CampaignDashboard({
           </TabsContent>
 
           <TabsContent value="samizdat" className="mt-6 animate-fade-in">
-            <SamizdatMap campaignId={selectedCampaign} />
+            <div className="space-y-6">
+              {/* Header */}
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Samizdat</h2>
+                <p className="text-muted-foreground">Mode 1: Spark</p>
+              </div>
+
+              {/* EoA Selector */}
+              <SamizdatEoaSelector campaignId={selectedCampaignId} />
+
+              {/* Map placeholder - will be connected in future prompts */}
+              <SamizdatMap campaignId={selectedCampaign} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
