@@ -78,6 +78,7 @@ export default function CampaignDashboard({
   const [showFirstWarning, setShowFirstWarning] = useState(false);
   const [showSecondWarning, setShowSecondWarning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
   const {
     toast
@@ -1292,10 +1293,10 @@ export default function CampaignDashboard({
               </div>
 
               {/* EoA Selector */}
-              <SamizdatEoaSelector campaignId={selectedCampaignId} />
+              <SamizdatEoaSelector campaignId={selectedCampaignId} onEoaChange={setSelectedEoaIds} />
 
-              {/* Map - filters by selected EoA */}
-              <SamizdatMap eoaId={searchParams.get("eoa")} />
+              {/* Map - filters by selected EoAs */}
+              <SamizdatMap eoaIds={selectedEoaIds} />
             </div>
           </TabsContent>
         </Tabs>

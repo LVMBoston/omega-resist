@@ -15,7 +15,7 @@ L.Marker.prototype.options.icon = L.icon({
 });
 
 interface SamizdatMapProps {
-  eoaId: string | null;
+  eoaIds: string[];
 }
 
 interface ZipCoordinate {
@@ -24,17 +24,17 @@ interface ZipCoordinate {
   longitude: number;
 }
 
-const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
+const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.CircleMarker[]>([]);
   const [loading, setLoading] = useState(true);
   const [zipCoordinates, setZipCoordinates] = useState<ZipCoordinate[]>([]);
 
-  // Fetch ZIP coordinates for events associated with this EoA
+  // Fetch ZIP coordinates for events associated with selected EoAs
   useEffect(() => {
     const fetchZipData = async () => {
-      if (!eoaId) {
+      if (!eoaIds.length) {
         setZipCoordinates([]);
         setLoading(false);
         return;
@@ -42,15 +42,15 @@ const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
 
       setLoading(true);
 
-      // Step 1: Get tokens for this EoA
+      // Step 1: Get tokens for selected EoAs
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
         .select("token")
-        .eq("eoa_id", eoaId)
+        .in("eoa_id", eoaIds)
         .eq("is_simulated", false);
 
       if (tokensError || !tokens?.length) {
-        console.log("No tokens found for EoA:", eoaId);
+        console.log("No tokens found for EoAs:", eoaIds);
         setZipCoordinates([]);
         setLoading(false);
         return;
@@ -68,6 +68,7 @@ const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
 
       if (eventsError || !events?.length) {
         console.log("No events with zip codes found");
+        setZipCoordinates([]);
         setLoading(false);
         return;
       }
@@ -76,6 +77,7 @@ const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
       const uniqueZips = [...new Set(events.map((e) => e.zip_code).filter(Boolean))] as string[];
 
       if (!uniqueZips.length) {
+        setZipCoordinates([]);
         setLoading(false);
         return;
       }
@@ -97,7 +99,7 @@ const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
     };
 
     fetchZipData();
-  }, [eoaId]);
+  }, [eoaIds]);
 
   // Initialize map
   useEffect(() => {
@@ -165,7 +167,7 @@ const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
       <div ref={mapContainerRef} className="w-full h-full" />
       {!loading && zipCoordinates.length === 0 && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-          <p className="text-muted-foreground">No ZIP code data available for this campaign</p>
+          <p className="text-muted-foreground">No ZIP code data available for selected EoAs</p>
         </div>
       )}
     </div>
