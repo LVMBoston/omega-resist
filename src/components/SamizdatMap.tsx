@@ -15,7 +15,7 @@ L.Marker.prototype.options.icon = L.icon({
 });
 
 interface SamizdatMapProps {
-  campaignId: string;
+  eoaId: string | null;
 }
 
 interface ZipCoordinate {
@@ -24,32 +24,34 @@ interface ZipCoordinate {
   longitude: number;
 }
 
-const SamizdatMap = ({ campaignId }: SamizdatMapProps) => {
+const SamizdatMap = ({ eoaId }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.CircleMarker[]>([]);
   const [loading, setLoading] = useState(true);
   const [zipCoordinates, setZipCoordinates] = useState<ZipCoordinate[]>([]);
 
-  // Fetch ZIP coordinates for events in this campaign
+  // Fetch ZIP coordinates for events associated with this EoA
   useEffect(() => {
     const fetchZipData = async () => {
-      if (!campaignId) {
+      if (!eoaId) {
+        setZipCoordinates([]);
         setLoading(false);
         return;
       }
 
       setLoading(true);
 
-      // Step 1: Get tokens for this campaign
+      // Step 1: Get tokens for this EoA
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
         .select("token")
-        .eq("utm_campaign", campaignId)
+        .eq("eoa_id", eoaId)
         .eq("is_simulated", false);
 
       if (tokensError || !tokens?.length) {
-        console.log("No tokens found for campaign:", campaignId);
+        console.log("No tokens found for EoA:", eoaId);
+        setZipCoordinates([]);
         setLoading(false);
         return;
       }
@@ -95,7 +97,7 @@ const SamizdatMap = ({ campaignId }: SamizdatMapProps) => {
     };
 
     fetchZipData();
-  }, [campaignId]);
+  }, [eoaId]);
 
   // Initialize map
   useEffect(() => {

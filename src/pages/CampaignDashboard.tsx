@@ -1294,8 +1294,8 @@ export default function CampaignDashboard({
               {/* EoA Selector */}
               <SamizdatEoaSelector campaignId={selectedCampaignId} />
 
-              {/* Map placeholder - will be connected in future prompts */}
-              <SamizdatMap campaignId={selectedCampaign} />
+              {/* Map - filters by selected EoA */}
+              <SamizdatMap eoaId={searchParams.get("eoa")} />
             </div>
           </TabsContent>
         </Tabs>
