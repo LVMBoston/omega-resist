@@ -216,13 +216,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       markersRef.current.push(marker);
     });
 
-    // Fit bounds if we have markers
-    if (eventPoints.length > 0) {
-      const bounds = L.latLngBounds(
-        eventPoints.map((e) => [e.latitude, e.longitude] as [number, number])
-      );
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-    }
+    // User controls zoom - no auto-fitting
   }, [eventPoints]);
 
   return (
