@@ -6,13 +6,13 @@ This document describes a map visualization feature that displays the geographic
 
 ## Terminology
 
-| Term | Definition | Data Source |
-|------|------------|-------------|
-| **Share Intent** | User clicks share button, opening SMS/email composer | `url_events.event_type = 'share'` |
-| **Share Completion** | Recipient opens the shared link | `url_events.event_type = 'view'` for L01+ tokens |
-| **Origin Location** | Geographic location where share intent occurred | Geolocation of the `share` event |
-| **Destination Location** | Geographic location where share was opened | Geolocation of the L01+ `view` event |
-| **Share Chain** | Parent token → child token relationship | `tokens.parent_token` linkage |
+| Term                     | Definition                                           | Data Source                                      |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------------------ |
+| **Share Intent**         | User clicks share button, opening SMS/email composer | `url_events.event_type = 'share'`                |
+| **Share Completion**     | Recipient opens the shared link                      | `url_events.event_type = 'view'` for L01+ tokens |
+| **Origin Location**      | Geographic location where share intent occurred      | Geolocation of the `share` event                 |
+| **Destination Location** | Geographic location where share was opened           | Geolocation of the L01+ `view` event             |
+| **Share Chain**          | Parent token → child token relationship              | `tokens.parent_token` linkage                    |
 
 ## Data Model
 
@@ -27,6 +27,7 @@ View Event logged for L01 (completion)
 ```
 
 **Key relationships:**
+
 - `tokens.parent_token` links child to parent
 - `url_events.token` links events to tokens
 - Share intent location: geolocation from `share` event
@@ -36,7 +37,7 @@ View Event logged for L01 (completion)
 
 ```sql
 -- Get share intent → completion pairs with locations
-SELECT 
+SELECT
   intent.id as intent_event_id,
   intent.latitude as origin_lat,
   intent.longitude as origin_lng,
@@ -67,6 +68,7 @@ WHERE intent.event_type = 'share'
 **Use case:** Real data visualization on campaign dashboard
 
 **Behavior:**
+
 - Curved arcs drawn from share intent location to completion location(s)
 - Arc color matches EoA color coding (consistent with existing point markers)
 - Arcs are static (not animated)
@@ -74,17 +76,20 @@ WHERE intent.event_type = 'share'
 - Click on arc shows popup with share details
 
 **Visual Design:**
+
 - Arc curvature: Bezier curve with apex proportional to distance
 - Arc opacity: 0.6 base, 1.0 on hover
 - Arc stroke width: 2px base, 3px on hover
 - Multiple completions from same intent: multiple arcs radiating from single origin
 
 **Toggle Control:**
+
 - Button: "Show Share Flow" (default: OFF)
 - When enabled, arcs overlay existing point markers
 - Independent of "Show ZIP counts" toggle
 
 **Performance Constraints:**
+
 - Maximum 500 arcs rendered simultaneously
 - Arcs outside viewport are culled
 - Consider clustering origins with >5 completions
@@ -94,12 +99,14 @@ WHERE intent.event_type = 'share'
 **Use case:** Dramatic visualization for demos, internal testing, presentations
 
 **Behavior:**
+
 - Animated particles flow from origin to destination
 - Particles follow curved path (same Bezier as static arcs)
 - Animation speed proportional to time elapsed (compressed timeline)
 - Supports "replay" mode with time controls
 
 **Visual Design:**
+
 - Particle: Small glowing dot (4px radius)
 - Particle trail: Fading gradient tail (20px length)
 - Particle color: Matches EoA color
@@ -107,12 +114,14 @@ WHERE intent.event_type = 'share'
 - Staggered start times based on actual `occurred_at` timestamps
 
 **Time Controls:**
+
 - Play / Pause button
 - Speed selector: 1x, 2x, 5x, 10x
 - Timeline scrubber showing elapsed time since go-live
 - "Jump to" presets: First share, Peak activity, Latest
 
 **Why Simulator Only:**
+
 - Animation is CPU-intensive
 - Not suitable for production with large datasets
 - Accessibility concerns (motion sensitivity)
@@ -124,6 +133,7 @@ WHERE intent.event_type = 'share'
 **Use case:** High-volume campaigns where individual arcs would be overwhelming
 
 **Behavior:**
+
 - Heatmap overlay showing share completion density
 - Separate layer for share intent density
 - No individual arcs, just geographic intensity
@@ -178,23 +188,23 @@ interface ShareArc {
 
 function calculateArcPath(arc: ShareArc): string {
   const { origin, destination } = arc;
-  
+
   // Calculate midpoint
   const midLat = (origin.lat + destination.lat) / 2;
   const midLng = (origin.lng + destination.lng) / 2;
-  
+
   // Calculate distance for curvature
   const distance = Math.sqrt(
-    Math.pow(destination.lat - origin.lat, 2) + 
+    Math.pow(destination.lat - origin.lat, 2) +
     Math.pow(destination.lng - origin.lng, 2)
   );
-  
+
   // Control point offset (perpendicular to line, proportional to distance)
   const curvature = distance * 0.3;
   const angle = Math.atan2(destination.lat - origin.lat, destination.lng - origin.lng);
   const controlLat = midLat + curvature * Math.cos(angle + Math.PI / 2);
   const controlLng = midLng + curvature * Math.sin(angle + Math.PI / 2);
-  
+
   return `M ${origin.lng} ${origin.lat} Q ${controlLng} ${controlLat} ${destination.lng} ${destination.lat}`;
 }
 ```
@@ -227,6 +237,7 @@ arcs.forEach(arc => {
 ### Single Share, Multiple Completions
 
 One share intent can result in multiple completions if:
+
 - User added multiple recipients to SMS/email (group message)
 - Same link was forwarded by recipient
 
@@ -254,17 +265,18 @@ Shares that cross international boundaries.
 
 ### Share Flow Statistics (potential addition to Viewport Activity Report)
 
-| Metric | Definition |
-|--------|------------|
-| Share Intents (Visible) | Share events within current viewport |
-| Share Completions (Visible) | L01+ views within current viewport |
-| Conversion Rate | Completions / Intents |
-| Avg Distance | Average geographic distance of share arcs |
-| Furthest Share | Maximum distance single share traveled |
+| Metric                      | Definition                                |
+| --------------------------- | ----------------------------------------- |
+| Share Intents (Visible)     | Share events within current viewport      |
+| Share Completions (Visible) | L01+ views within current viewport        |
+| Conversion Rate             | Completions / Intents                     |
+| Avg Distance                | Average geographic distance of share arcs |
+| Furthest Share              | Maximum distance single share traveled    |
 
 ## Implementation Phases
 
 ### Phase 1: Static Arcs (MVP)
+
 - [ ] Query share intent → completion pairs
 - [ ] Render Bezier arcs on Samizdat map
 - [ ] Add "Show Share Flow" toggle
@@ -272,17 +284,20 @@ Shares that cross international boundaries.
 - [ ] Respect existing EoA and time filters
 
 ### Phase 2: Arc Interactions
+
 - [ ] Click popup with share details
 - [ ] Highlight full share chain (L00 → L01 → L02 → L03)
 - [ ] Filter arcs by channel (SMS vs Email)
 
 ### Phase 3: Animated Flow (Simulator)
+
 - [ ] Particle animation system
 - [ ] Time-based replay controls
 - [ ] Speed adjustment
 - [ ] Timeline scrubber
 
 ### Phase 4: Analytics Integration
+
 - [ ] Share flow metrics in Viewport Activity Report
 - [ ] Export share flow data
 - [ ] Share distance histogram
@@ -301,5 +316,5 @@ Shares that cross international boundaries.
 
 ---
 
-*Document created: December 2024*
-*Status: Specification — Not Yet Implemented*
+_Document created: December 16,2024_
+_Status: Specification — Not Yet Implemented_
