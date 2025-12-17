@@ -59,13 +59,13 @@ interface ViewportStats {
 }
 
 // Time window options for "time since go-live" filter
-type TimeWindow = "0-15" | "15-60" | "1-6h" | "6-24h" | "all";
+type TimeWindow = "0-1d" | "1-3d" | "3-5d" | "5-7d" | "all";
 
 const TIME_WINDOW_OPTIONS: { value: TimeWindow; label: string; minMs: number; maxMs: number }[] = [
-  { value: "0-15", label: "0–15 min", minMs: 0, maxMs: 15 * 60 * 1000 },
-  { value: "15-60", label: "15–60 min", minMs: 15 * 60 * 1000, maxMs: 60 * 60 * 1000 },
-  { value: "1-6h", label: "1–6 hours", minMs: 60 * 60 * 1000, maxMs: 6 * 60 * 60 * 1000 },
-  { value: "6-24h", label: "6–24 hours", minMs: 6 * 60 * 60 * 1000, maxMs: 24 * 60 * 60 * 1000 },
+  { value: "0-1d", label: "0–1 day", minMs: 0, maxMs: 24 * 60 * 60 * 1000 },
+  { value: "1-3d", label: "1–3 days", minMs: 24 * 60 * 60 * 1000, maxMs: 3 * 24 * 60 * 60 * 1000 },
+  { value: "3-5d", label: "3–5 days", minMs: 3 * 24 * 60 * 60 * 1000, maxMs: 5 * 24 * 60 * 60 * 1000 },
+  { value: "5-7d", label: "5–7 days", minMs: 5 * 24 * 60 * 60 * 1000, maxMs: 7 * 24 * 60 * 60 * 1000 },
   { value: "all", label: "All (since go-live)", minMs: 0, maxMs: Infinity },
 ];
 
