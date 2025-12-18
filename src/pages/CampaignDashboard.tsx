@@ -1362,10 +1362,7 @@ export default function CampaignDashboard({
               <Accordion type="single" collapsible defaultValue="eoa-selector">
                 <AccordionItem value="eoa-selector" className="rounded-lg border border-border bg-card px-4">
                   <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Event or Action (EoA)
-                    </div>
+                    Event or Action (EoA)
                   </AccordionTrigger>
                   <AccordionContent>
                     <SamizdatEoaSelector campaignId={selectedCampaignId} onEoaChange={setSelectedEoaIds} />
