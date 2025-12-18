@@ -1144,7 +1144,7 @@ export default function CampaignDashboard({
                                 {sortConfig.column === 'event_type' && <ArrowUpDown className="w-3 h-3" />}
                               </div>
                             </TableHead>
-                            <TableHead>Short URL</TableHead>
+                            <TableHead>Full URL</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1169,17 +1169,17 @@ export default function CampaignDashboard({
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                {event.short_url ? <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs truncate max-w-[200px]">{event.short_url}</span>
+                                {event.tokens?.full_url ? <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs truncate max-w-[300px]" title={event.tokens.full_url}>{event.tokens.full_url}</span>
                                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
-                              navigator.clipboard.writeText(event.short_url);
+                              navigator.clipboard.writeText(event.tokens.full_url);
                               toast({
-                                title: "Short URL copied!"
+                                title: "Full URL copied!"
                               });
                             }}>
                                       <Copy className="h-3 w-3" />
                                     </Button>
-                                  </div> : <span className="text-muted-foreground text-xs">No short URL</span>}
+                                  </div> : <span className="text-muted-foreground text-xs">No URL</span>}
                               </TableCell>
                             </TableRow>)}
                         </TableBody>
