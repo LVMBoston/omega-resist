@@ -31,6 +31,7 @@ import SamizdatMap from "@/components/SamizdatMap";
 import SamizdatEoaSelector from "@/components/SamizdatEoaSelector";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 interface UrlEvent {
@@ -1350,15 +1351,27 @@ export default function CampaignDashboard({
           </TabsContent>
 
           <TabsContent value="samizdat" className="mt-6 animate-fade-in">
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Header */}
               <div>
                 <h2 className="text-2xl font-bold tracking-tight">Samizdat</h2>
                 <p className="text-muted-foreground">Mode 1: Spark</p>
               </div>
 
-              {/* EoA Selector */}
-              <SamizdatEoaSelector campaignId={selectedCampaignId} onEoaChange={setSelectedEoaIds} />
+              {/* EoA Selector in Accordion */}
+              <Accordion type="single" collapsible defaultValue="eoa-selector">
+                <AccordionItem value="eoa-selector" className="rounded-lg border border-border bg-card px-4">
+                  <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Event or Action (EoA)
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <SamizdatEoaSelector campaignId={selectedCampaignId} onEoaChange={setSelectedEoaIds} />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* Map - filters by selected EoAs */}
               <SamizdatMap eoaIds={selectedEoaIds} />
