@@ -77,11 +77,11 @@ const TIME_WINDOW_OPTIONS: { value: TimeWindow; label: string; minMs: number; ma
 
 // Non-evaluative, distinct colors for EoAs
 const EOA_COLORS: Record<string, string> = {
-  "81050b93-f0f7-4943-99ad-9becb622110f": "#3b82f6", // blue
-  "681bb72e-b221-46e8-b9a8-baa8dd449195": "#8b5cf6", // purple
-  "b5eaa8a9-2011-4173-a3b3-b666a15cc5b9": "#06b6d4", // cyan
-  "69b036da-e620-4068-b2d7-49df6781b7a3": "#f59e0b", // amber
-  "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "#10b981", // emerald
+  "81050b93-f0f7-4943-99ad-9becb622110f": "#0066ff", // email - medium blue
+  "681bb72e-b221-46e8-b9a8-baa8dd449195": "#99ccff", // text - light blue
+  "b5eaa8a9-2011-4173-a3b3-b666a15cc5b9": "#000099", // QR code - dark blue
+  "69b036da-e620-4068-b2d7-49df6781b7a3": "#ff6699", // Facebook placeholder - pink
+  "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "#00ff00", // BlueSky placeholder - green
 };
 const DEFAULT_COLOR = "#64748b"; // slate-500
 
