@@ -17,6 +17,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 // Fix Leaflet default icon paths
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -534,64 +540,71 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Time since go-live filter */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-foreground">Time since go-live</span>
-          <div className="flex flex-wrap gap-2">
-            {TIME_WINDOW_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                variant={timeWindow === option.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTimeWindow(option.value)}
-                className="text-xs"
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Viewport Activity Report */}
-      {viewportStats.length > 0 && (
-        <div className="rounded-lg border border-border bg-card">
-          <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-medium text-foreground">Viewport Activity Report</h3>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[200px]">EoA</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Visible</TableHead>
-                <TableHead className="text-right">Offscreen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {viewportStats.map((stat) => (
-                <TableRow key={stat.eoaId}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: stat.color }}
-                      />
-                      <span className="truncate">{stat.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{stat.total}</TableCell>
-                  <TableCell className="text-right tabular-nums">{stat.visible}</TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {stat.offscreen}
-                  </TableCell>
-                </TableRow>
+      {/* Collapsible Controls */}
+      <Accordion type="multiple" defaultValue={["time-filter"]} className="space-y-2">
+        {/* Time since go-live filter */}
+        <AccordionItem value="time-filter" className="rounded-lg border border-border bg-card px-4">
+          <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
+            Time since go-live
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="flex flex-wrap gap-2 pb-3">
+              {TIME_WINDOW_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={timeWindow === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTimeWindow(option.value)}
+                  className="text-xs"
+                >
+                  {option.label}
+                </Button>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Viewport Activity Report */}
+        {viewportStats.length > 0 && (
+          <AccordionItem value="viewport-report" className="rounded-lg border border-border bg-card">
+            <AccordionTrigger className="text-sm font-medium px-4 py-3 hover:no-underline">
+              Viewport Activity Report
+            </AccordionTrigger>
+            <AccordionContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">EoA</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Visible</TableHead>
+                    <TableHead className="text-right">Offscreen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {viewportStats.map((stat) => (
+                    <TableRow key={stat.eoaId}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: stat.color }}
+                          />
+                          <span className="truncate">{stat.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{stat.total}</TableCell>
+                      <TableCell className="text-right tabular-nums">{stat.visible}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {stat.offscreen}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </AccordionContent>
+          </AccordionItem>
+        )}
+      </Accordion>
 
       {/* Map container */}
       <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
