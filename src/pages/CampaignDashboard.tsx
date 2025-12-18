@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -396,6 +396,67 @@ export default function CampaignDashboard({
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  // Export EventsV2 table to CSV
+  const handleExportCSV = () => {
+    if (!sortedEventsV2 || sortedEventsV2.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Data",
+        description: "No data available to export."
+      });
+      return;
+    }
+
+    const headers = [
+      "Row #",
+      "Timestamp",
+      "Mobilize Code",
+      "City/Region",
+      "Cell Tower Zip",
+      "Event Zip",
+      "Event Level",
+      "utm_content",
+      "Event Type",
+      "Full URL"
+    ];
+
+    const csvRows = sortedEventsV2.map((event: any, index: number) => {
+      const cityRegion = event.city && event.region ? `${event.city}, ${event.region}` : "";
+      const utmContent = event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id
+        ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}`
+        : "";
+      
+      return [
+        index + 1,
+        formatTimestamp(event.occurred_at),
+        event.tokens?.events_actions?.mobilize_code || "",
+        cityRegion,
+        event.zip_code || "",
+        event.tokens?.events_actions?.zip_code || "",
+        formatLevel(event.tokens?.level || 0),
+        utmContent,
+        event.event_type?.toUpperCase() || "",
+        event.tokens?.full_url || ""
+      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `campaign-events-${selectedCampaign}-${format(new Date(), "yyyy-MM-dd-HHmm")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Complete",
+      description: `Exported ${sortedEventsV2.length} rows to CSV.`
+    });
   };
 
   // Fetch total event counts (not limited to last 50)
@@ -1077,6 +1138,10 @@ export default function CampaignDashboard({
                         <Button variant="outline" size="sm" onClick={handleRefreshEventsV2} disabled={isRefreshing}>
                           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                           Refresh
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!sortedEventsV2 || sortedEventsV2.length === 0}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Export CSV
                         </Button>
                       </div>
                     </div>
