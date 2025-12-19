@@ -181,7 +181,8 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
         visible: counts.visible,
         offscreen: counts.total - counts.visible,
         color: EOA_COLORS[eoaId] || DEFAULT_COLOR,
-      }));
+      }))
+      .sort((a, b) => b.name.localeCompare(a.name));
 
     setViewportStats(stats);
   }, [filteredEventPoints, eoaIds, eoaNames]);
