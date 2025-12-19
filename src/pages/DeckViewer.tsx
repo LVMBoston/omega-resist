@@ -7,7 +7,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlideV2";
-import { logEvent } from "@/lib/virality/mint";
+import { logEvent, instantiateL00Token } from "@/lib/virality/mint";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface SlideItem {
@@ -44,6 +44,50 @@ export default function DeckViewer() {
   
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [eventLogged, setEventLogged] = useState(false);
+  const [instanceTokenProcessed, setInstanceTokenProcessed] = useState(false);
+  const [activeToken, setActiveToken] = useState<string | null>(viralToken);
+
+  // Instance token creation for BUGTEST campaign L00 tokens
+  useEffect(() => {
+    const processInstanceToken = async () => {
+      // Skip if already processed or no token
+      if (instanceTokenProcessed || !viralToken) return;
+      
+      // Only process L00 tokens that haven't been instantiated
+      if (!viralToken.startsWith('l00-') || viralToken.includes(':')) {
+        setInstanceTokenProcessed(true);
+        return;
+      }
+
+      // Check if this is a BUGTEST campaign token
+      const utmCampaign = searchParams.get('utm_campaign');
+      if (utmCampaign?.toLowerCase() !== 'bugtest') {
+        console.log('⏭️ Not a BUGTEST campaign, skipping instance token:', utmCampaign);
+        setInstanceTokenProcessed(true);
+        return;
+      }
+
+      console.log('🔄 BUGTEST L00 detected, creating instance token for:', viralToken);
+
+      const result = await instantiateL00Token(viralToken);
+      
+      if (result) {
+        console.log('✅ Instance token created, updating URL:', result.instanceToken);
+        
+        // Update URL with instance token (replace history entry)
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('t', result.instanceToken);
+        navigate(`/deck/${slug}?${newParams.toString()}`, { replace: true });
+        
+        // Update active token for event logging
+        setActiveToken(result.instanceToken);
+      }
+      
+      setInstanceTokenProcessed(true);
+    };
+
+    processInstanceToken();
+  }, [viralToken, searchParams, instanceTokenProcessed, slug, navigate]);
 
   // Set page title
   useEffect(() => {
@@ -150,8 +194,9 @@ export default function DeckViewer() {
       console.log("🔍 LogViewEvent check:", { 
         eventLogged, 
         loading, 
-        viralToken,
-        hasToken: !!viralToken 
+        activeToken,
+        instanceTokenProcessed,
+        hasToken: !!activeToken 
       });
 
       if (eventLogged) {
@@ -163,9 +208,15 @@ export default function DeckViewer() {
         console.log("⏳ Still loading, waiting...");
         return;
       }
+
+      // Wait for instance token processing to complete
+      if (!instanceTokenProcessed) {
+        console.log("⏳ Instance token not yet processed, waiting...");
+        return;
+      }
       
-      if (!viralToken) {
-        console.log("❌ No viral token found in URL");
+      if (!activeToken) {
+        console.log("❌ No active token found");
         return;
       }
 
@@ -181,11 +232,11 @@ export default function DeckViewer() {
           parent_token: searchParams.get("p") || undefined,
         };
 
-        console.log("✅ Logging view event for token:", viralToken);
+        console.log("✅ Logging view event for token:", activeToken);
         console.log("📊 UTM snapshot:", utmSnapshot);
 
         const result = await logEvent({
-          token: viralToken,
+          token: activeToken,
           eventType: "view",
           utmSnapshot,
         });
@@ -196,13 +247,13 @@ export default function DeckViewer() {
         console.error("❌ Failed to log view event:", err);
         console.error("Error details:", {
           message: err instanceof Error ? err.message : String(err),
-          viralToken,
+          activeToken,
         });
       }
     };
 
     logViewEvent();
-  }, [viralToken, searchParams, loading, eventLogged]);
+  }, [activeToken, searchParams, loading, eventLogged, instanceTokenProcessed]);
 
   // Removed auto-fullscreen on load - must be triggered by user gesture
   // Users can press 'f' key to toggle fullscreen manually
@@ -399,7 +450,7 @@ export default function DeckViewer() {
                             key={`viral-${slide.id}`}
                             slideId={slide.id} 
                             deckSlug={slug || ""} 
-                            viralToken={viralToken} 
+                            viralToken={activeToken} 
                           />
                         ) : (
                           <div className="relative w-full h-full flex items-center justify-center">

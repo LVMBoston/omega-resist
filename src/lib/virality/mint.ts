@@ -87,6 +87,97 @@ export async function mintL00(
   }
 }
 
+/**
+ * Generates a 6-character random suffix for instance tokens.
+ */
+function generateInstanceSuffix(): string {
+  return Math.random().toString(36).substring(2, 8);
+}
+
+/**
+ * Instantiates an L00 token by creating a unique instance token.
+ * This creates end-to-end lineage tracking by giving each deck open a unique token.
+ * 
+ * Only used for BUGTEST campaign tokens as a pilot feature.
+ * 
+ * @param baseToken The original L00 token (e.g., "l00-837854-bug-qr")
+ * @returns The new instance token (e.g., "l00-837854-bug-qr:x7f2k9") and its full URL
+ */
+export async function instantiateL00Token(baseToken: string): Promise<{
+  instanceToken: string;
+  fullUrl: string;
+} | null> {
+  // Only process L00 tokens that haven't been instantiated yet
+  if (!baseToken.startsWith('l00-') || baseToken.includes(':')) {
+    console.log('⏭️ Token is not a base L00 or already instantiated:', baseToken);
+    return null;
+  }
+
+  try {
+    // Lookup the base token to get its details
+    const { data: baseData, error: lookupError } = await supabase
+      .rpc('lookup_token', { _token: baseToken });
+
+    if (lookupError || !baseData || baseData.length === 0) {
+      console.error('❌ Failed to lookup base token:', lookupError);
+      return null;
+    }
+
+    const baseTokenData = baseData[0];
+    
+    // Fetch the full token record to get all fields
+    const { data: fullTokenData, error: tokenError } = await supabase
+      .from('tokens')
+      .select('*')
+      .eq('token', baseToken)
+      .single();
+
+    if (tokenError || !fullTokenData) {
+      console.error('❌ Failed to fetch full token data:', tokenError);
+      return null;
+    }
+
+    // Generate instance token
+    const suffix = generateInstanceSuffix();
+    const instanceToken = `${baseToken}:${suffix}`;
+
+    // Build the new URL with instance token
+    const baseUrl = new URL(fullTokenData.full_url);
+    baseUrl.searchParams.set('t', instanceToken);
+    const fullUrl = baseUrl.toString();
+
+    // Insert the instance token
+    const { error: insertError } = await supabase
+      .from('tokens')
+      .insert({
+        token: instanceToken,
+        parent_token: baseToken,
+        root_token: baseToken,
+        level: 0, // Still L00 semantically
+        eoa_id: fullTokenData.eoa_id,
+        deck_slug: fullTokenData.deck_slug,
+        utm_campaign: fullTokenData.utm_campaign,
+        utm_id: fullTokenData.utm_id,
+        utm_content: fullTokenData.utm_content,
+        utm_medium: fullTokenData.utm_medium,
+        utm_source: fullTokenData.utm_source,
+        full_url: fullUrl,
+        deck_version_at_mint: fullTokenData.deck_version_at_mint,
+      });
+
+    if (insertError) {
+      console.error('❌ Failed to insert instance token:', insertError);
+      return null;
+    }
+
+    console.log('✅ Instance token created:', { instanceToken, fullUrl });
+    return { instanceToken, fullUrl };
+  } catch (error) {
+    console.error('❌ Error instantiating L00 token:', error);
+    return null;
+  }
+}
+
 const MintShareInput = z.object({
   parentToken: z.string().min(1),
   utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"])
