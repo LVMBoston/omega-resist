@@ -755,6 +755,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      instantiate_l00_token: {
+        Args: { _base_token: string }
+        Returns: {
+          full_url: string
+          instance_token: string
+        }[]
+      }
       is_token_valid: { Args: { p_token: string }; Returns: boolean }
       log_event:
         | {
