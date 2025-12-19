@@ -87,12 +87,7 @@ export async function mintL00(
   }
 }
 
-/**
- * Generates a 6-character random suffix for instance tokens.
- */
-function generateInstanceSuffix(): string {
-  return Math.random().toString(36).substring(2, 8);
-}
+// Instance suffix generation is now handled server-side in instantiate_l00_token RPC
 
 /**
  * Instantiates an L00 token by creating a unique instance token.
@@ -114,64 +109,30 @@ export async function instantiateL00Token(baseToken: string): Promise<{
   }
 
   try {
-    // Lookup the base token to get its details
-    const { data: baseData, error: lookupError } = await supabase
-      .rpc('lookup_token', { _token: baseToken });
+    // Use RPC function which has SECURITY DEFINER to bypass RLS
+    const { data, error } = await supabase
+      .rpc('instantiate_l00_token', { _base_token: baseToken });
 
-    if (lookupError || !baseData || baseData.length === 0) {
-      console.error('❌ Failed to lookup base token:', lookupError);
+    if (error) {
+      console.error('❌ Failed to instantiate L00 token:', error);
       return null;
     }
 
-    const baseTokenData = baseData[0];
+    if (!data || data.length === 0) {
+      console.error('❌ No data returned from instantiate_l00_token');
+      return null;
+    }
+
+    const result = data[0];
+    console.log('✅ Instance token created:', { 
+      instanceToken: result.instance_token, 
+      fullUrl: result.full_url 
+    });
     
-    // Fetch the full token record to get all fields
-    const { data: fullTokenData, error: tokenError } = await supabase
-      .from('tokens')
-      .select('*')
-      .eq('token', baseToken)
-      .single();
-
-    if (tokenError || !fullTokenData) {
-      console.error('❌ Failed to fetch full token data:', tokenError);
-      return null;
-    }
-
-    // Generate instance token
-    const suffix = generateInstanceSuffix();
-    const instanceToken = `${baseToken}:${suffix}`;
-
-    // Build the new URL with instance token
-    const baseUrl = new URL(fullTokenData.full_url);
-    baseUrl.searchParams.set('t', instanceToken);
-    const fullUrl = baseUrl.toString();
-
-    // Insert the instance token
-    const { error: insertError } = await supabase
-      .from('tokens')
-      .insert({
-        token: instanceToken,
-        parent_token: baseToken,
-        root_token: baseToken,
-        level: 0, // Still L00 semantically
-        eoa_id: fullTokenData.eoa_id,
-        deck_slug: fullTokenData.deck_slug,
-        utm_campaign: fullTokenData.utm_campaign,
-        utm_id: fullTokenData.utm_id,
-        utm_content: fullTokenData.utm_content,
-        utm_medium: fullTokenData.utm_medium,
-        utm_source: fullTokenData.utm_source,
-        full_url: fullUrl,
-        deck_version_at_mint: fullTokenData.deck_version_at_mint,
-      });
-
-    if (insertError) {
-      console.error('❌ Failed to insert instance token:', insertError);
-      return null;
-    }
-
-    console.log('✅ Instance token created:', { instanceToken, fullUrl });
-    return { instanceToken, fullUrl };
+    return { 
+      instanceToken: result.instance_token, 
+      fullUrl: result.full_url 
+    };
   } catch (error) {
     console.error('❌ Error instantiating L00 token:', error);
     return null;
