@@ -684,18 +684,15 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                       <span>📋</span>
                       <span>EoA: {eoaDetails.title} — {eoaDetails.type === 'event' ? 'Event' : 'Action'}</span>
                     </div>
-                    {(eoaDetails.city || eoaDetails.state) && (
-                      <div className="flex items-center gap-2">
-                        <span>📍</span>
-                        <span>
-                          {[eoaDetails.city, eoaDetails.state].filter(Boolean).join(", ")}
-                        </span>
-                      </div>
-                    )}
                     {eoaDetails.mobilize_code && (
                       <div className="flex items-center gap-2">
                         <span>🏷️</span>
-                        <span>Mobilize: {eoaDetails.mobilize_code}</span>
+                        <span>
+                          Mobilize: {eoaDetails.mobilize_code}
+                          {(eoaDetails.city || eoaDetails.state) && (
+                            <span> ({[eoaDetails.city, eoaDetails.state].filter(Boolean).join(", ")})</span>
+                          )}
+                        </span>
                       </div>
                     )}
                     {campaignDetails && (
