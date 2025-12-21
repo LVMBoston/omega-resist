@@ -1163,7 +1163,7 @@ export default function CampaignDashboard({
                       {/* Overlay when Event Story is open */}
                       {selectedEventId && (
                         <div 
-                          className="absolute inset-0 bg-background/5 z-10 cursor-pointer"
+                          className="absolute inset-0 bg-gray-300/5 z-10 cursor-pointer"
                           onClick={() => setSelectedEventId(null)}
                         />
                       )}
