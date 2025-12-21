@@ -264,6 +264,23 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
     });
   };
 
+  // Format date/time for prose (e.g., "on Dec. 15, 2025 at 2:15 PM")
+  const formatProseDateTime = (timestamp: string | null) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const dateStr = date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `on ${dateStr} at ${timeStr}`;
+  };
+
   const getEventIcon = (type: string) => {
     switch (type) {
       case "scan":
@@ -388,8 +405,9 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
           .join(", ");
         spawnNote = ` This scan spawned ${spawnCount} shares (${breakdown}).`;
       }
+      const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
       
-      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location}${locationNote}.${spawnNote}`;
+      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
     }
 
     if (viralChain.length === 0) return null;
@@ -397,6 +415,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
     const originStep = viralChain[0];
     const originLocation = formatShortLocation(originStep.city, originStep.region);
     const originMedium = getMediumLabel(originStep.utm_medium);
+    const originDateTime = formatProseDateTime(originStep.occurredAt);
+    const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
     
     // Format time deltas with precision
     const deltaStr = timeDelta !== null ? formatTimeDelta(timeDelta) : null;
@@ -409,13 +429,13 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
 
     if (tokenDetails.level === 1) {
       let timePhrase = deltaStr 
-        ? `${deltaStr} after being shared`
-        : "after being shared";
+        ? ` (${deltaStr} later)`
+        : "";
       let originPhrase = originDeltaStr 
         ? ` Total time from origin: ${originDeltaStr}.`
         : "";
       
-      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}. It was accessed in ${location} ${timePhrase}${locationNote}.${originPhrase}`;
+      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}. It was accessed in ${location} ${eventDateTime}${timePhrase}${locationNote}.${originPhrase}`;
     }
 
     // Build chain with time details
@@ -425,6 +445,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       const prevStep = viralChain[i - 1];
       const loc = formatShortLocation(step.city, step.region);
       const stepMedium = getMediumLabel(step.utm_medium);
+      const stepDateTime = formatProseDateTime(step.occurredAt);
       
       // Calculate time between this step and previous
       let timeNote = "";
@@ -437,7 +458,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
         }
       }
       
-      chainSteps.push(`shared via ${stepMedium} to ${loc}${timeNote}`);
+      chainSteps.push(`shared via ${stepMedium} to ${loc} ${stepDateTime}${timeNote}`);
     }
 
     const chainNarrative = chainSteps.length > 0
@@ -445,13 +466,13 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       : "";
 
     let finalTimePhrase = deltaStr 
-      ? `${deltaStr} after the last share`
+      ? ` (${deltaStr} after the last share)`
       : "";
     let totalTimePhrase = originDeltaStr 
       ? ` Total journey time from origin: ${originDeltaStr}.`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}.${chainNarrative} Finally, it was accessed in ${location}${finalTimePhrase ? ` ${finalTimePhrase}` : ""}${locationNote}.${totalTimePhrase}`;
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}`;
   };
 
   const instanceTokens = childTokens.filter(c => c.isInstance);
