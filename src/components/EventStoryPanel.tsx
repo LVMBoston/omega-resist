@@ -372,8 +372,10 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
     const originStep = viralChain[0];
     const originLocation = formatShortLocation(originStep.city, originStep.region);
     const originMedium = getMediumLabel(originStep.utm_medium);
-    const deltaStr = timeDelta ? formatTimeDelta(timeDelta) : "some time";
-    const originDeltaStr = originTimeDelta ? ` (${formatTimeDelta(originTimeDelta)} from origin)` : "";
+    
+    // Format time deltas with precision
+    const deltaStr = timeDelta !== null ? formatTimeDelta(timeDelta) : null;
+    const originDeltaStr = originTimeDelta !== null ? formatTimeDelta(originTimeDelta) : null;
 
     const originIsInstance = isInstanceToken(originStep.token);
     const originInstanceNote = originIsInstance 
@@ -381,19 +383,50 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       : "";
 
     if (tokenDetails.level === 1) {
-      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+      let timePhrase = deltaStr 
+        ? `${deltaStr} after being shared`
+        : "after being shared";
+      let originPhrase = originDeltaStr 
+        ? ` Total time from origin: ${originDeltaStr}.`
+        : "";
+      
+      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}. It was accessed in ${location} ${timePhrase}${locationNote}.${originPhrase}`;
     }
 
-    const intermediateHops = viralChain.slice(1).map(step => {
+    // Build chain with time details
+    const chainSteps: string[] = [];
+    for (let i = 1; i < viralChain.length; i++) {
+      const step = viralChain[i];
+      const prevStep = viralChain[i - 1];
       const loc = formatShortLocation(step.city, step.region);
-      return `was shared via ${getMediumLabel(step.utm_medium)} to ${loc}`;
-    });
+      const stepMedium = getMediumLabel(step.utm_medium);
+      
+      // Calculate time between this step and previous
+      let timeNote = "";
+      if (step.occurredAt && prevStep.occurredAt) {
+        const stepTime = new Date(step.occurredAt).getTime();
+        const prevTime = new Date(prevStep.occurredAt).getTime();
+        const stepDelta = stepTime - prevTime;
+        if (stepDelta > 0) {
+          timeNote = ` (${formatTimeDelta(stepDelta)} later)`;
+        }
+      }
+      
+      chainSteps.push(`shared via ${stepMedium} to ${loc}${timeNote}`);
+    }
 
-    const chainNarrative = intermediateHops.length > 0
-      ? `, ${intermediateHops.join(", then ")},`
+    const chainNarrative = chainSteps.length > 0
+      ? ` It was then ${chainSteps.join(", then ")}.`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}${chainNarrative} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+    let finalTimePhrase = deltaStr 
+      ? `${deltaStr} after the last share`
+      : "";
+    let totalTimePhrase = originDeltaStr 
+      ? ` Total journey time from origin: ${originDeltaStr}.`
+      : "";
+
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}.${chainNarrative} Finally, it was accessed in ${location}${finalTimePhrase ? ` ${finalTimePhrase}` : ""}${locationNote}.${totalTimePhrase}`;
   };
 
   const instanceTokens = childTokens.filter(c => c.isInstance);
