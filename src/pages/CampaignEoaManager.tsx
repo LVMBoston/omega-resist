@@ -179,7 +179,8 @@ export default function CampaignEoaManager() {
     const { data, error } = await supabase
       .from("tokens")
       .select("eoa_id, token, full_url")
-      .eq("level", 0);
+      .eq("level", 0)
+      .is("parent_token", null); // Only base L00 tokens, not :legacy instances
 
     if (error) {
       console.error("Failed to fetch tokens:", error);
