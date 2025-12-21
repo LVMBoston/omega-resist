@@ -46,6 +46,7 @@ interface EventPoint {
   latitude: number;
   longitude: number;
   occurredAt: string;
+  utmMedium: string;
 }
 
 interface ZipAggregate {
@@ -53,12 +54,12 @@ interface ZipAggregate {
   latitude: number;
   longitude: number;
   total: number;
-  byEoa: Record<string, number>;
+  byMedium: Record<string, number>;
 }
 
 interface ViewportStats {
-  eoaId: string;
-  name: string;
+  medium: string;
+  label: string;
   total: number;
   visible: number;
   offscreen: number;
@@ -76,14 +77,25 @@ const TIME_WINDOW_OPTIONS: { value: TimeWindow; label: string; minMs: number; ma
   { value: "all", label: "All (since go-live)", minMs: 0, maxMs: Infinity },
 ];
 
-// Non-evaluative, distinct colors for EoAs
-const EOA_COLORS: Record<string, string> = {
-  "81050b93-f0f7-4943-99ad-9becb622110f": "#0066ff", // email - medium blue
-  "681bb72e-b221-46e8-b9a8-baa8dd449195": "#99ccff", // text - light blue
-  "b5eaa8a9-2011-4173-a3b3-b666a15cc5b9": "#000099", // QR code - dark blue
-  "69b036da-e620-4068-b2d7-49df6781b7a3": "#ff6699", // Facebook placeholder - pink
-  "a1b2c3d4-e5f6-7890-abcd-ef1234567890": "#00ff00", // BlueSky placeholder - green
+// Colors by share medium (utm_medium)
+const MEDIUM_COLORS: Record<string, string> = {
+  qr: "#000099",   // QR code - dark blue
+  em: "#0066ff",   // email - medium blue
+  sms: "#00cc66",  // text/SMS - green
+  tx: "#00cc66",   // text alternate code - green
+  fb: "#1877f2",   // Facebook - FB blue
+  bs: "#0085ff",   // BlueSky - sky blue
 };
+
+const MEDIUM_LABELS: Record<string, string> = {
+  qr: "QR Code",
+  em: "Email",
+  sms: "Text (SMS)",
+  tx: "Text (SMS)",
+  fb: "Facebook",
+  bs: "BlueSky",
+};
+
 const DEFAULT_COLOR = "#64748b"; // slate-500
 
 const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
@@ -154,40 +166,37 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
     const bounds = mapRef.current.getBounds();
     
-    // Group events by EoA and count visible/total
+    // Group events by utm_medium and count visible/total
     const statsMap: Record<string, { total: number; visible: number }> = {};
-    
-    eoaIds.forEach((eoaId) => {
-      statsMap[eoaId] = { total: 0, visible: 0 };
-    });
 
     filteredEventPoints.forEach((event) => {
-      if (!statsMap[event.eoaId]) {
-        statsMap[event.eoaId] = { total: 0, visible: 0 };
+      const medium = event.utmMedium || "unknown";
+      if (!statsMap[medium]) {
+        statsMap[medium] = { total: 0, visible: 0 };
       }
-      statsMap[event.eoaId].total++;
+      statsMap[medium].total++;
       
       // Check if point is within current viewport bounds
       if (bounds.contains([event.latitude, event.longitude])) {
-        statsMap[event.eoaId].visible++;
+        statsMap[medium].visible++;
       }
     });
 
-    // Convert to array with names and colors
+    // Convert to array with labels and colors
     const stats: ViewportStats[] = Object.entries(statsMap)
       .filter(([_, counts]) => counts.total > 0)
-      .map(([eoaId, counts]) => ({
-        eoaId,
-        name: eoaNames[eoaId] || eoaId.slice(0, 8),
+      .map(([medium, counts]) => ({
+        medium,
+        label: MEDIUM_LABELS[medium] || medium,
         total: counts.total,
         visible: counts.visible,
         offscreen: counts.total - counts.visible,
-        color: EOA_COLORS[eoaId] || DEFAULT_COLOR,
+        color: MEDIUM_COLORS[medium] || DEFAULT_COLOR,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => b.total - a.total); // Sort by total count descending
 
     setViewportStats(stats);
-  }, [filteredEventPoints, eoaIds, eoaNames]);
+  }, [filteredEventPoints]);
 
   // Fetch event-level data (no aggregation)
   useEffect(() => {
@@ -224,10 +233,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       setEoaNames(names);
       setEoaStartDates(startDates);
 
-      // Step 2: Get tokens for selected EoAs
+      // Step 2: Get tokens for selected EoAs (include utm_medium)
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
-        .select("token, eoa_id")
+        .select("token, eoa_id, utm_medium")
         .in("eoa_id", eoaIds)
         .eq("is_simulated", false);
 
@@ -240,8 +249,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
       const tokenList = tokens.map((t) => t.token);
       const tokenToEoa: Record<string, string> = {};
+      const tokenToMedium: Record<string, string> = {};
       tokens.forEach((t) => {
         tokenToEoa[t.token] = t.eoa_id;
+        tokenToMedium[t.token] = t.utm_medium || "unknown";
       });
 
       // Step 3: Get ALL view events (no deduplication)
@@ -302,6 +313,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           latitude: coords.lat,
           longitude: coords.lng,
           occurredAt: event.occurred_at,
+          utmMedium: tokenToMedium[event.token] || "unknown",
         });
       });
 
@@ -348,10 +360,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     };
   }, []); // Empty deps - map initializes once
 
-  // Update viewport stats when filtered events or EoA selection changes
+  // Update viewport stats when filtered events change
   useEffect(() => {
     updateViewportStats();
-  }, [filteredEventPoints, eoaIds, updateViewportStats]);
+  }, [filteredEventPoints, updateViewportStats]);
 
   // Update markers when filtered data or clustering toggle changes
   useEffect(() => {
@@ -374,22 +386,20 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       zoomToBoundsOnClick: true,
       iconCreateFunction: (cluster) => {
         const count = cluster.getChildCount();
-        // Build EoA breakdown for popup
+        // Build medium breakdown for popup
         const markers = cluster.getAllChildMarkers();
-        const eoaCounts: Record<string, number> = {};
+        const mediumCounts: Record<string, number> = {};
         markers.forEach((m) => {
-          const eoaId = (m as any).eoaId;
-          if (eoaId) {
-            eoaCounts[eoaId] = (eoaCounts[eoaId] || 0) + 1;
-          }
+          const medium = (m as any).utmMedium || "unknown";
+          mediumCounts[medium] = (mediumCounts[medium] || 0) + 1;
         });
         
         // Build breakdown HTML for popup
-        const breakdownLines = Object.entries(eoaCounts)
-          .map(([eoaId, cnt]) => {
-            const name = eoaNamesRef.current[eoaId] || eoaId.slice(0, 8);
-            const color = EOA_COLORS[eoaId] || DEFAULT_COLOR;
-            return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${name}: ${cnt}</div>`;
+        const breakdownLines = Object.entries(mediumCounts)
+          .map(([medium, cnt]) => {
+            const label = MEDIUM_LABELS[medium] || medium;
+            const color = MEDIUM_COLORS[medium] || DEFAULT_COLOR;
+            return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${label}: ${cnt}</div>`;
           })
           .join("");
         
@@ -425,9 +435,9 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       }
     });
 
-    // Add individual markers with colored divIcons
+    // Add individual markers with colored divIcons based on utm_medium
     filteredEventPoints.forEach((event) => {
-      const fillColor = EOA_COLORS[event.eoaId] || DEFAULT_COLOR;
+      const fillColor = MEDIUM_COLORS[event.utmMedium] || DEFAULT_COLOR;
       
       const dotIcon = L.divIcon({
         html: `<div style="
@@ -444,8 +454,8 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       });
 
       const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
-      // Store eoaId and eventId for reference
-      (marker as any).eoaId = event.eoaId;
+      // Store utmMedium and eventId for reference
+      (marker as any).utmMedium = event.utmMedium;
       (marker as any).eventId = event.eventId;
       
       // Add click handler to open Event Story dialog
@@ -481,22 +491,22 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           latitude: event.latitude,
           longitude: event.longitude,
           total: 0,
-          byEoa: {},
+          byMedium: {},
         };
       }
       zipAggregates[event.zipCode].total++;
-      zipAggregates[event.zipCode].byEoa[event.eoaId] = 
-        (zipAggregates[event.zipCode].byEoa[event.eoaId] || 0) + 1;
+      zipAggregates[event.zipCode].byMedium[event.utmMedium] = 
+        (zipAggregates[event.zipCode].byMedium[event.utmMedium] || 0) + 1;
     });
 
     // Create ZIP count markers with tooltips
     Object.values(zipAggregates).forEach((agg) => {
-      // Build EoA breakdown HTML
-      const breakdownLines = Object.entries(agg.byEoa)
-        .map(([eoaId, count]) => {
-          const name = eoaNames[eoaId] || eoaId.slice(0, 8);
-          const color = EOA_COLORS[eoaId] || DEFAULT_COLOR;
-          return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${name}: ${count}</div>`;
+      // Build medium breakdown HTML
+      const breakdownLines = Object.entries(agg.byMedium)
+        .map(([medium, count]) => {
+          const label = MEDIUM_LABELS[medium] || medium;
+          const color = MEDIUM_COLORS[medium] || DEFAULT_COLOR;
+          return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${label}: ${count}</div>`;
         })
         .join("");
 
@@ -546,7 +556,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
       zipMarkersRef.current.push(marker);
     });
-  }, [showZipCounts, filteredEventPoints, eoaNames]);
+  }, [showZipCounts, filteredEventPoints]);
 
   return (
     <div className="space-y-4">
@@ -574,17 +584,17 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Viewport Activity Report */}
+        {/* Viewport Activity Report - by share medium */}
         {viewportStats.length > 0 && (
           <AccordionItem value="viewport-report" className="rounded-lg border border-border bg-card">
             <AccordionTrigger className="text-sm font-medium px-4 py-3 hover:no-underline">
-              Viewport Activity Report
+              Activity by Share Channel
             </AccordionTrigger>
             <AccordionContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">EoA</TableHead>
+                    <TableHead className="w-[150px]">Channel</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Visible</TableHead>
                     <TableHead className="text-right">Offscreen</TableHead>
@@ -592,14 +602,14 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
                 </TableHeader>
                 <TableBody>
                   {viewportStats.map((stat) => (
-                    <TableRow key={stat.eoaId}>
+                    <TableRow key={stat.medium}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <span
                             className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: stat.color }}
                           />
-                          <span className="truncate">{stat.name}</span>
+                          <span className="truncate">{stat.label}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{stat.total}</TableCell>
