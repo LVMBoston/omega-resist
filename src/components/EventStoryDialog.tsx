@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation } from "lucide-react";
+import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation, Link, ArrowDown } from "lucide-react";
 import { formatTimeDelta } from "@/lib/dateUtils";
 import { Separator } from "@/components/ui/separator";
 
@@ -50,11 +50,22 @@ interface EoaDetails {
   zip_code: string | null;
 }
 
-interface ParentShareEvent {
-  occurred_at: string;
+interface ChainStep {
+  token: string;
+  level: number;
   city: string | null;
   region: string | null;
   utm_medium: string | null;
+  occurredAt: string | null;
+}
+
+interface ChildToken {
+  token: string;
+  level: number;
+  utm_medium: string | null;
+  city: string | null;
+  region: string | null;
+  firstEventAt: string | null;
 }
 
 export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDialogProps) {
@@ -62,16 +73,20 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [tokenDetails, setTokenDetails] = useState<TokenDetails | null>(null);
   const [eoaDetails, setEoaDetails] = useState<EoaDetails | null>(null);
-  const [parentShareEvent, setParentShareEvent] = useState<ParentShareEvent | null>(null);
+  const [viralChain, setViralChain] = useState<ChainStep[]>([]);
+  const [childTokens, setChildTokens] = useState<ChildToken[]>([]);
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
+  const [originTimeDelta, setOriginTimeDelta] = useState<number | null>(null);
 
   useEffect(() => {
     if (!eventId || !open) {
       setEventDetails(null);
       setTokenDetails(null);
       setEoaDetails(null);
-      setParentShareEvent(null);
+      setViralChain([]);
+      setChildTokens([]);
       setTimeDelta(null);
+      setOriginTimeDelta(null);
       return;
     }
 
@@ -117,40 +132,123 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
           setEoaDetails(eoa);
         }
 
-        // If L01+, fetch parent's share event for time delta calculation
-        if (token.level > 0 && token.parent_token) {
-          const { data: parentShare, error: parentError } = await supabase
-            .from("url_events")
-            .select("occurred_at, city, region")
-            .eq("token", token.parent_token)
-            .eq("event_type", "share")
-            .order("occurred_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        // If L00, fetch children (viral spread)
+        if (token.level === 0) {
+          await fetchChildTokens(token.token, event.occurred_at);
+        }
 
-          if (!parentError && parentShare) {
-            // Fetch parent token's medium
-            const { data: parentToken } = await supabase
-              .from("tokens")
-              .select("utm_medium")
-              .eq("token", token.parent_token)
-              .maybeSingle();
-
-            setParentShareEvent({
-              ...parentShare,
-              utm_medium: parentToken?.utm_medium || null,
-            });
-
-            // Calculate time delta
-            const parentTime = new Date(parentShare.occurred_at).getTime();
-            const eventTime = new Date(event.occurred_at).getTime();
-            setTimeDelta(eventTime - parentTime);
-          }
+        // If L01+, walk the parent chain back to L00 (viral journey)
+        if (token.level > 0) {
+          await fetchViralChain(token.parent_token, token.level, event.occurred_at, eoa);
         }
       } catch (error) {
         console.error("Error fetching event story:", error);
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchChildTokens = async (parentToken: string, currentEventTime: string) => {
+      const { data: children, error } = await supabase
+        .from("tokens")
+        .select("token, level, utm_medium")
+        .eq("parent_token", parentToken)
+        .eq("is_simulated", false);
+
+      if (error || !children) return;
+
+      // For each child, fetch their first event (if opened)
+      const childrenWithStatus = await Promise.all(
+        children.map(async (child) => {
+          const { data: firstEvent } = await supabase
+            .from("url_events")
+            .select("city, region, occurred_at")
+            .eq("token", child.token)
+            .order("occurred_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          return {
+            token: child.token,
+            level: child.level,
+            utm_medium: child.utm_medium,
+            city: firstEvent?.city || null,
+            region: firstEvent?.region || null,
+            firstEventAt: firstEvent?.occurred_at || null,
+          };
+        })
+      );
+
+      setChildTokens(childrenWithStatus);
+    };
+
+    const fetchViralChain = async (
+      startToken: string | null,
+      currentLevel: number,
+      currentEventTime: string,
+      eoaData: EoaDetails | null
+    ) => {
+      const chain: ChainStep[] = [];
+      let currentToken = startToken;
+      let lastShareTime: string | null = null;
+
+      while (currentToken) {
+        // Fetch parent token info
+        const { data: parentToken } = await supabase
+          .from("tokens")
+          .select("token, level, parent_token, utm_medium")
+          .eq("token", currentToken)
+          .maybeSingle();
+
+        if (!parentToken) break;
+
+        // Fetch parent's share event for location
+        const { data: shareEvent } = await supabase
+          .from("url_events")
+          .select("city, region, occurred_at")
+          .eq("token", parentToken.token)
+          .eq("event_type", "share")
+          .order("occurred_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        chain.unshift({
+          token: parentToken.token,
+          level: parentToken.level,
+          city: shareEvent?.city || null,
+          region: shareEvent?.region || null,
+          utm_medium: parentToken.utm_medium,
+          occurredAt: shareEvent?.occurred_at || null,
+        });
+
+        // Track the immediate parent's share time for time delta
+        if (parentToken.level === currentLevel - 1) {
+          lastShareTime = shareEvent?.occurred_at || null;
+        }
+
+        currentToken = parentToken.parent_token;
+      }
+
+      // Add L00 origin from EoA if we have it and chain starts at L00
+      if (chain.length > 0 && chain[0].level === 0 && eoaData) {
+        chain[0].city = chain[0].city || eoaData.city;
+        chain[0].region = chain[0].region || eoaData.state;
+      }
+
+      setViralChain(chain);
+
+      // Calculate time delta from immediate parent
+      if (lastShareTime) {
+        const parentTime = new Date(lastShareTime).getTime();
+        const eventTime = new Date(currentEventTime).getTime();
+        setTimeDelta(eventTime - parentTime);
+      }
+
+      // Calculate origin time delta (from L00)
+      if (chain.length > 0 && chain[0].occurredAt) {
+        const originTime = new Date(chain[0].occurredAt).getTime();
+        const eventTime = new Date(currentEventTime).getTime();
+        setOriginTimeDelta(eventTime - originTime);
       }
     };
 
@@ -226,9 +324,88 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
     return location || "Unknown location";
   };
 
+  const formatShortLocation = (city: string | null, region: string | null) => {
+    if (city && region) return `${city}, ${region}`;
+    if (city) return city;
+    if (region) return region;
+    return "unknown location";
+  };
+
+  // Generate narrative summary
+  const generateNarrative = (): string | null => {
+    if (!tokenDetails || !eventDetails) return null;
+
+    const location = formatShortLocation(eventDetails.city, eventDetails.region);
+    const locationNote = eventDetails.location_source === "gps"
+      ? " and shared their precise GPS location"
+      : " (location approximated from IP address)";
+    const medium = getMediumLabel(tokenDetails.utm_medium);
+    const eoaTitle = eoaDetails?.title || "an event";
+
+    if (tokenDetails.level === 0) {
+      // L00 origin event
+      const openedCount = childTokens.filter(c => c.firstEventAt).length;
+      const totalShares = childTokens.length;
+
+      if (totalShares === 0) {
+        return `This is an origin event for the "${tokenDetails.deck_slug}" deck, distributed via ${medium} at ${eoaTitle}. The user accessed the content from ${location}${locationNote}. No shares have been made yet.`;
+      }
+
+      const mediumCounts: Record<string, number> = {};
+      childTokens.forEach(c => {
+        const m = getMediumLabel(c.utm_medium);
+        mediumCounts[m] = (mediumCounts[m] || 0) + 1;
+      });
+      const mediumBreakdown = Object.entries(mediumCounts)
+        .map(([m, count]) => `${count} via ${m}`)
+        .join(", ");
+
+      return `This is an origin event for the "${tokenDetails.deck_slug}" deck, distributed via ${medium} at ${eoaTitle}. The user accessed the content from ${location}${locationNote}. From here, the content was shared ${totalShares} times (${mediumBreakdown}). ${openedCount} of those shares have been opened so far.`;
+    }
+
+    // L01+ viral event
+    if (viralChain.length === 0) return null;
+
+    const originStep = viralChain[0];
+    const originLocation = formatShortLocation(originStep.city, originStep.region);
+    const originMedium = getMediumLabel(originStep.utm_medium);
+    const deltaStr = timeDelta ? formatTimeDelta(timeDelta) : "some time";
+    const originDeltaStr = originTimeDelta ? ` (${formatTimeDelta(originTimeDelta)} from origin)` : "";
+
+    if (tokenDetails.level === 1) {
+      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+    }
+
+    // L02+ with full chain
+    const intermediateHops = viralChain.slice(1).map(step => {
+      const loc = formatShortLocation(step.city, step.region);
+      return `was shared via ${getMediumLabel(step.utm_medium)} to ${loc}`;
+    });
+
+    const chainNarrative = intermediateHops.length > 0
+      ? `, ${intermediateHops.join(", then ")},`
+      : "";
+
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${chainNarrative} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+  };
+
+  // Get medium counts for L00 spread
+  const getMediumCounts = () => {
+    const counts: Record<string, number> = {};
+    childTokens.forEach(c => {
+      const m = getMediumLabel(c.utm_medium);
+      counts[m] = (counts[m] || 0) + 1;
+    });
+    return counts;
+  };
+
+  const narrative = generateNarrative();
+  const openedChildren = childTokens.filter(c => c.firstEventAt);
+  const pendingChildren = childTokens.filter(c => !c.firstEventAt);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Navigation className="w-5 h-5" />
@@ -242,6 +419,13 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
           </div>
         ) : eventDetails && tokenDetails ? (
           <div className="space-y-4">
+            {/* Narrative Summary */}
+            {narrative && (
+              <div className="bg-primary/5 border-l-4 border-primary rounded-r-lg p-4 italic text-sm leading-relaxed">
+                {narrative}
+              </div>
+            )}
+
             {/* When */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -305,29 +489,109 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
               </div>
             </div>
 
-            {/* Viral Journey (L01+ only) */}
-            {tokenDetails.level > 0 && parentShareEvent && timeDelta !== null && (
+            {/* Viral Spread (L00 only) */}
+            {tokenDetails.level === 0 && childTokens.length > 0 && (
               <>
                 <Separator />
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Viral Journey</div>
-                  <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                    <div className="flex items-start gap-2 text-sm">
-                      <Share2 className="w-4 h-4 mt-0.5 text-purple-500" />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Share2 className="w-4 h-4" />
+                    <span>Viral Spread</span>
+                  </div>
+
+                  {/* Summary counts */}
+                  <div className="text-sm pl-2">
+                    📤 {childTokens.length} shares sent:
+                    {Object.entries(getMediumCounts()).map(([medium, count], idx) => (
+                      <span key={medium}>
+                        {idx > 0 ? "," : ""} {count} via {medium}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Opened shares */}
+                  {openedChildren.length > 0 && (
+                    <div className="space-y-1 text-sm pl-2">
+                      <div>📬 {openedChildren.length} opened:</div>
+                      <div className="pl-4 space-y-1">
+                        {openedChildren.slice(0, 5).map(child => {
+                          const childDelta = child.firstEventAt && eventDetails
+                            ? new Date(child.firstEventAt).getTime() - new Date(eventDetails.occurred_at).getTime()
+                            : null;
+                          return (
+                            <div key={child.token} className="text-xs text-muted-foreground">
+                              • {formatShortLocation(child.city, child.region)} (L{child.level.toString().padStart(2, "0")})
+                              {childDelta && childDelta > 0 && ` — ${formatTimeDelta(childDelta)} later`}
+                            </div>
+                          );
+                        })}
+                        {openedChildren.length > 5 && (
+                          <div className="text-xs text-muted-foreground">
+                            ... and {openedChildren.length - 5} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pending shares */}
+                  {pendingChildren.length > 0 && (
+                    <div className="text-sm text-muted-foreground pl-2">
+                      📭 {pendingChildren.length} pending (not yet opened)
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Viral Journey (L01+ with full chain) */}
+            {tokenDetails.level > 0 && viralChain.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Link className="w-4 h-4" />
+                    <span>Viral Journey</span>
+                  </div>
+
+                  {/* Visual chain */}
+                  <div className="space-y-1 text-sm pl-2">
+                    {viralChain.map((step, idx) => (
+                      <div key={step.token}>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3 h-3 text-muted-foreground" />
+                          <span>
+                            {formatShortLocation(step.city, step.region)}
+                            {step.level === 0 ? " (origin)" : ` (L${step.level.toString().padStart(2, "0")})`}
+                            {step.level === 0 && `, ${getMediumLabel(step.utm_medium)}`}
+                          </span>
+                        </div>
+                        {idx < viralChain.length && (
+                          <div className="ml-1.5 pl-0.5 text-muted-foreground flex items-center gap-1">
+                            <ArrowDown className="w-3 h-3" />
+                            <span className="text-xs">shared via {getMediumLabel(viralChain[idx + 1]?.utm_medium || tokenDetails.utm_medium)}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Current event marker */}
+                    <div className="flex items-center gap-2 font-medium">
+                      <MapPin className="w-3 h-3 text-primary" />
                       <span>
-                        Shared via {getMediumLabel(parentShareEvent.utm_medium)} from{" "}
-                        {parentShareEvent.city && parentShareEvent.region
-                          ? `${parentShareEvent.city}, ${parentShareEvent.region}`
-                          : "unknown location"}
+                        {formatShortLocation(eventDetails.city, eventDetails.region)} (L{tokenDetails.level.toString().padStart(2, "0")}) ← current
                       </span>
                     </div>
-                    <div className="flex items-start gap-2 text-sm">
-                      <span className="w-4 h-4 flex items-center justify-center">⏱️</span>
-                      <span>
-                        Opened in {eventDetails.city || "unknown"}, {eventDetails.region || ""}{" "}
-                        <strong>{formatTimeDelta(timeDelta)}</strong> later
-                      </span>
-                    </div>
+                  </div>
+
+                  {/* Time deltas */}
+                  <div className="text-sm space-y-1 pl-2">
+                    {timeDelta !== null && (
+                      <div>⏱️ {formatTimeDelta(timeDelta)} since last share</div>
+                    )}
+                    {originTimeDelta !== null && viralChain.length > 0 && (
+                      <div>⏱️ {formatTimeDelta(originTimeDelta)} from origin</div>
+                    )}
                   </div>
                 </div>
               </>
