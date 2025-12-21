@@ -23,7 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { EventStoryDialog } from "@/components/EventStoryDialog";
+import { EventStoryPanel } from "@/components/EventStoryPanel";
 
 // Fix Leaflet default icon paths
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -616,111 +616,115 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
         )}
       </Accordion>
 
-      {/* Map container */}
-      <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-border">
-        {/* Map controls */}
-        <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex flex-col gap-2 shadow-sm border border-border">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="clustering"
-              checked={enableClustering}
-              onCheckedChange={setEnableClustering}
-            />
-            <Label htmlFor="clustering" className="text-sm cursor-pointer">
-              Clustering
-            </Label>
+      {/* Map + Panel container */}
+      <div className="flex rounded-lg overflow-hidden border border-border" style={{ height: '600px' }}>
+        {/* Map container - shrinks when panel is open */}
+        <div className="relative flex-1 min-w-0">
+          {/* Map controls */}
+          <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex flex-col gap-2 shadow-sm border border-border">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="clustering"
+                checked={enableClustering}
+                onCheckedChange={setEnableClustering}
+              />
+              <Label htmlFor="clustering" className="text-sm cursor-pointer">
+                Clustering
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="zip-counts"
+                checked={showZipCounts}
+                onCheckedChange={setShowZipCounts}
+              />
+              <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
+                Show ZIP counts
+              </Label>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="zip-counts"
-              checked={showZipCounts}
-              onCheckedChange={setShowZipCounts}
-            />
-            <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
-              Show ZIP counts
-            </Label>
-          </div>
+
+          {loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          <div ref={mapContainerRef} className="w-full h-full" />
+          {!loading && filteredEventPoints.length === 0 && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+              <p className="text-muted-foreground">
+                {eventPoints.length === 0 
+                  ? "No activation events found for selected EoAs" 
+                  : "No events in selected time window"}
+              </p>
+            </div>
+          )}
+
+          {/* Custom styles */}
+          <style>{`
+            .zip-count-tooltip {
+              background: white;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 8px 12px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            .zip-count-tooltip::before {
+              border-top-color: #e2e8f0 !important;
+            }
+            /* Neutral cluster styling */
+            .samizdat-cluster-icon {
+              background: transparent !important;
+            }
+            .samizdat-cluster {
+              width: 40px;
+              height: 40px;
+              background: #475569;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 13px;
+              font-weight: 600;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+              border: 2px solid rgba(255,255,255,0.3);
+            }
+            .samizdat-dot-icon {
+              background: transparent !important;
+              border: none !important;
+              cursor: pointer;
+              transition: transform 0.15s ease;
+            }
+            .samizdat-dot-icon:hover {
+              transform: scale(1.3);
+            }
+            .samizdat-dot-icon > div {
+              cursor: pointer;
+            }
+            /* Override default markercluster styles */
+            .marker-cluster-small,
+            .marker-cluster-medium,
+            .marker-cluster-large {
+              background-color: rgba(71, 85, 105, 0.6) !important;
+            }
+            .marker-cluster-small div,
+            .marker-cluster-medium div,
+            .marker-cluster-large div {
+              background-color: #475569 !important;
+              color: white !important;
+            }
+          `}</style>
         </div>
 
-        {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          </div>
+        {/* Event Story Panel - inline, shrinks the map */}
+        {selectedEventId && (
+          <EventStoryPanel
+            eventId={selectedEventId}
+            onClose={() => setSelectedEventId(null)}
+          />
         )}
-        <div ref={mapContainerRef} className="w-full h-full" />
-        {!loading && filteredEventPoints.length === 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-            <p className="text-muted-foreground">
-              {eventPoints.length === 0 
-                ? "No activation events found for selected EoAs" 
-                : "No events in selected time window"}
-            </p>
-          </div>
-        )}
-
-        {/* Custom styles */}
-        <style>{`
-          .zip-count-tooltip {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 8px 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          }
-          .zip-count-tooltip::before {
-            border-top-color: #e2e8f0 !important;
-          }
-          /* Neutral cluster styling */
-          .samizdat-cluster-icon {
-            background: transparent !important;
-          }
-          .samizdat-cluster {
-            width: 40px;
-            height: 40px;
-            background: #475569;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 13px;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-            border: 2px solid rgba(255,255,255,0.3);
-          }
-          .samizdat-dot-icon {
-            background: transparent !important;
-            border: none !important;
-            cursor: pointer;
-            transition: transform 0.15s ease;
-          }
-          .samizdat-dot-icon:hover {
-            transform: scale(1.3);
-          }
-          .samizdat-dot-icon > div {
-            cursor: pointer;
-          }
-          /* Override default markercluster styles */
-          .marker-cluster-small,
-          .marker-cluster-medium,
-          .marker-cluster-large {
-            background-color: rgba(71, 85, 105, 0.6) !important;
-          }
-          .marker-cluster-small div,
-          .marker-cluster-medium div,
-          .marker-cluster-large div {
-            background-color: #475569 !important;
-            color: white !important;
-          }
-        `}</style>
       </div>
-
-      {/* Event Story Dialog */}
-      <EventStoryDialog
-        eventId={selectedEventId}
-        open={!!selectedEventId}
-        onOpenChange={(open) => !open && setSelectedEventId(null)}
-      />
     </div>
   );
 };
