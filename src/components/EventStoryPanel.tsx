@@ -131,7 +131,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
         }
         setTokenDetails(token);
 
-        // Fetch EoA details
+        // Fetch EoA details including type for Event/Action designation
         const { data: eoa, error: eoaError } = await supabase
           .from("events_actions")
           .select("id, title, type, mobilize_code, city, state, zip_code, campaign_id")
