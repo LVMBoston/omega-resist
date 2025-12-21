@@ -8,7 +8,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation, Link, ArrowDown } from "lucide-react";
+import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation, Link, ArrowDown, Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { formatTimeDelta } from "@/lib/dateUtils";
 import { Separator } from "@/components/ui/separator";
 
@@ -83,6 +85,7 @@ interface ChildToken {
 }
 
 export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDialogProps) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [tokenDetails, setTokenDetails] = useState<TokenDetails | null>(null);
@@ -533,12 +536,60 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Navigation className="w-5 h-5" />
-            Event Story
-          </SheetTitle>
-          <SheetDescription className="sr-only">Details about the selected event</SheetDescription>
+        <SheetHeader className="flex flex-row items-center justify-between pr-8">
+          <div>
+            <SheetTitle className="flex items-center gap-2">
+              <Navigation className="w-5 h-5" />
+              Event Story
+            </SheetTitle>
+            <SheetDescription className="sr-only">Details about the selected event</SheetDescription>
+          </div>
+          {eventDetails && tokenDetails && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                const debugInfo = [
+                  `=== Event Debug Info ===`,
+                  `Event ID: ${eventDetails.id}`,
+                  `Token: ${tokenDetails.token}`,
+                  `Level: L${tokenDetails.level.toString().padStart(2, "0")}`,
+                  `Event Type: ${eventDetails.event_type}`,
+                  `Occurred: ${eventDetails.occurred_at}`,
+                  ``,
+                  `--- Location ---`,
+                  `City: ${eventDetails.city || "N/A"}`,
+                  `Region: ${eventDetails.region || "N/A"}`,
+                  `Country: ${eventDetails.country || "N/A"}`,
+                  `Zip: ${eventDetails.zip_code || "N/A"}`,
+                  `Source: ${eventDetails.location_source || "unknown"}`,
+                  ``,
+                  `--- Token Details ---`,
+                  `Deck: ${tokenDetails.deck_slug}`,
+                  `EoA ID: ${tokenDetails.eoa_id}`,
+                  `Parent Token: ${tokenDetails.parent_token || "none"}`,
+                  `UTM Campaign: ${tokenDetails.utm_campaign || "N/A"}`,
+                  `UTM Source: ${tokenDetails.utm_source || "N/A"}`,
+                  `UTM Medium: ${tokenDetails.utm_medium || "N/A"}`,
+                  `UTM Content: ${tokenDetails.utm_content || "N/A"}`,
+                  ``,
+                  `--- Viral Chain (${viralChain.length} steps) ---`,
+                  ...viralChain.map((step, i) => `  ${i + 1}. L${step.level.toString().padStart(2, "0")} ${step.token} @ ${step.city || "?"}, ${step.region || "?"}`),
+                  ``,
+                  `--- Campaign/EoA ---`,
+                  `Campaign: ${campaignDetails?.title || "N/A"} (${campaignDetails?.id || "N/A"})`,
+                  `EoA: ${eoaDetails?.title || "N/A"} (${eoaDetails?.type || "N/A"})`,
+                ].join("\n");
+                
+                navigator.clipboard.writeText(debugInfo);
+                toast({ title: "Debug info copied!" });
+              }}
+            >
+              <Copy className="h-3 w-3 mr-1" />
+              Debug
+            </Button>
+          )}
         </SheetHeader>
 
         {loading ? (
