@@ -708,6 +708,12 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                           <span>Mobilize: {eoaDetails.mobilize_code}</span>
                         </div>
                       )}
+                      {tokenDetails.utm_campaign && (
+                        <div className="flex items-center gap-2">
+                          <span>🎯</span>
+                          <span>Campaign: {tokenDetails.utm_campaign}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
