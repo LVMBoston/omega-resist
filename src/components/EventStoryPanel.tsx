@@ -725,7 +725,12 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                       {eoaDetails.mobilize_code && (
                         <div className="flex items-center gap-2">
                           <span>🏷️</span>
-                          <span>Mobilize: {eoaDetails.mobilize_code}</span>
+                          <span>
+                            Mobilize: {eoaDetails.mobilize_code}
+                            {(eoaDetails.city || eoaDetails.state) && (
+                              <span> ({[eoaDetails.city, eoaDetails.state].filter(Boolean).join(", ")})</span>
+                            )}
+                          </span>
                         </div>
                       )}
                       {campaignDetails && (
