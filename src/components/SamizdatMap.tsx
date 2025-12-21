@@ -23,6 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { EventStoryDialog } from "@/components/EventStoryDialog";
 
 // Fix Leaflet default icon paths
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -98,6 +99,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const [enableClustering, setEnableClustering] = useState(true);
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   // Store eoaNames in ref for cluster popup access
   const eoaNamesRef = useRef(eoaNames);
@@ -442,8 +444,15 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       });
 
       const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
-      // Store eoaId for cluster breakdown
+      // Store eoaId and eventId for reference
       (marker as any).eoaId = event.eoaId;
+      (marker as any).eventId = event.eventId;
+      
+      // Add click handler to open Event Story dialog
+      marker.on('click', () => {
+        setSelectedEventId(event.eventId);
+      });
+      
       clusterGroup.addLayer(marker);
     });
 
@@ -682,6 +691,14 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           .samizdat-dot-icon {
             background: transparent !important;
             border: none !important;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+          }
+          .samizdat-dot-icon:hover {
+            transform: scale(1.3);
+          }
+          .samizdat-dot-icon > div {
+            cursor: pointer;
           }
           /* Override default markercluster styles */
           .marker-cluster-small,
@@ -697,6 +714,13 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           }
         `}</style>
       </div>
+
+      {/* Event Story Dialog */}
+      <EventStoryDialog
+        eventId={selectedEventId}
+        open={!!selectedEventId}
+        onOpenChange={(open) => !open && setSelectedEventId(null)}
+      />
     </div>
   );
 };
