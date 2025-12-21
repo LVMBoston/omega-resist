@@ -1159,85 +1159,94 @@ export default function CampaignDashboard({
                     </div>
 
                     {/* Table */}
-                    <ScrollArea className="h-[calc(100vh-300px)] min-h-[600px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[80px]">Row #</TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('timestamp')}>
-                              <div className="flex items-center gap-1">
-                                TimeStamp
-                                {sortConfig.column === 'timestamp' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('mobilize_code')}>
-                              <div className="flex items-center gap-1">
-                                Mobilize Code
-                                {sortConfig.column === 'mobilize_code' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location')}>
-                              <div className="flex items-center gap-1">
-                                City/Region
-                                {sortConfig.column === 'location' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('zip')}>
-                              <div className="flex items-center gap-1">
-                                Cell Tower Zip
-                                {sortConfig.column === 'zip' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('event_zip')}>
-                              <div className="flex items-center gap-1">
-                                Event Zip
-                                {sortConfig.column === 'event_zip' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('level')}>
-                              <div className="flex items-center gap-1">
-                                Event Level
-                                {sortConfig.column === 'level' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_content')}>
-                              <div className="flex items-center gap-1">
-                                utm_content
-                                {sortConfig.column === 'utm_content' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('event_type')}>
-                              <div className="flex items-center gap-1">
-                                Event Type
-                                {sortConfig.column === 'event_type' && <ArrowUpDown className="w-3 h-3" />}
-                              </div>
-                            </TableHead>
-                            <TableHead>Full URL</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sortedEventsV2.map((event: any, index: number) => <TableRow 
-                            key={event.id} 
-                            className={cn(
-                              "cursor-pointer hover:bg-muted/50 transition-colors",
-                              highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''
-                            )}
-                            onClick={() => setSelectedEventId(event.id)}
-                          >
-              <TableCell>{index + 1}</TableCell>
-              <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
-              <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
-              <TableCell>
-                {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
-              </TableCell>
-              <TableCell>{formatZipCode(event.zip_code)}</TableCell>
-              <TableCell>{formatZipCode(event.tokens?.events_actions?.zip_code)}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
-              </TableCell>
-              <TableCell className="font-mono text-xs">
-                {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
-              </TableCell>
+                    <div className="relative">
+                      {/* Overlay when Event Story is open */}
+                      {selectedEventId && (
+                        <div 
+                          className="absolute inset-0 bg-background/20 z-10 cursor-pointer"
+                          onClick={() => setSelectedEventId(null)}
+                        />
+                      )}
+                      <ScrollArea className="h-[calc(100vh-300px)] min-h-[600px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[80px]">Row #</TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('timestamp')}>
+                                <div className="flex items-center gap-1">
+                                  TimeStamp
+                                  {sortConfig.column === 'timestamp' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('mobilize_code')}>
+                                <div className="flex items-center gap-1">
+                                  Mobilize Code
+                                  {sortConfig.column === 'mobilize_code' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location')}>
+                                <div className="flex items-center gap-1">
+                                  City/Region
+                                  {sortConfig.column === 'location' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('zip')}>
+                                <div className="flex items-center gap-1">
+                                  Cell Tower Zip
+                                  {sortConfig.column === 'zip' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('event_zip')}>
+                                <div className="flex items-center gap-1">
+                                  Event Zip
+                                  {sortConfig.column === 'event_zip' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('level')}>
+                                <div className="flex items-center gap-1">
+                                  Event Level
+                                  {sortConfig.column === 'level' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_content')}>
+                                <div className="flex items-center gap-1">
+                                  utm_content
+                                  {sortConfig.column === 'utm_content' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('event_type')}>
+                                <div className="flex items-center gap-1">
+                                  Event Type
+                                  {sortConfig.column === 'event_type' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
+                              <TableHead>Full URL</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sortedEventsV2.map((event: any, index: number) => <TableRow 
+                              key={event.id} 
+                              className={cn(
+                                "cursor-pointer hover:bg-muted/50 transition-colors",
+                                highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : '',
+                                selectedEventId === event.id ? 'bg-primary/30 relative z-20' : ''
+                              )}
+                              onClick={() => setSelectedEventId(event.id)}
+                            >
+                <TableCell>{index + 1}</TableCell>
+                <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
+                <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
+                <TableCell>
+                  {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
+                </TableCell>
+                <TableCell>{formatZipCode(event.zip_code)}</TableCell>
+                <TableCell>{formatZipCode(event.tokens?.events_actions?.zip_code)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
+                </TableCell>
+                <TableCell className="font-mono text-xs">
+                  {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
+                </TableCell>
                               <TableCell>
                                 <Badge className={getEventBadgeColor(event.event_type)}>
                                   {event.event_type.toUpperCase()}
@@ -1258,9 +1267,10 @@ export default function CampaignDashboard({
                                   </div> : <span className="text-muted-foreground text-xs">No URL</span>}
                               </TableCell>
                             </TableRow>)}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </div>
                   </>}
               </CardContent>
             </Card>
