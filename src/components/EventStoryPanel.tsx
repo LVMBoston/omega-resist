@@ -521,19 +521,6 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                 </p>
               </div>
 
-              {/* What */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {getEventIcon(eventDetails.event_type)}
-                  <span>What</span>
-                </div>
-                <div className="flex items-center gap-2 pl-6">
-                  <Badge className={getEventColor(eventDetails.event_type)}>
-                    {eventDetails.event_type.toUpperCase()}
-                  </Badge>
-                  <span className="text-sm">Deck "{tokenDetails.deck_slug}"</span>
-                </div>
-              </div>
 
               {/* Token */}
               <div className="space-y-1">
@@ -687,14 +674,13 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                         <span>📋</span>
                         <span>{eoaDetails.title}</span>
                       </div>
-                      {(eoaDetails.city || eoaDetails.state) && (
-                        <div className="flex items-center gap-2">
-                          <span>📍</span>
-                          <span>
-                            {[eoaDetails.city, eoaDetails.state].filter(Boolean).join(", ")}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {getEventIcon(eventDetails.event_type)}
+                        <Badge className={getEventColor(eventDetails.event_type)}>
+                          {eventDetails.event_type.toUpperCase()}
+                        </Badge>
+                        <span>Deck "{tokenDetails.deck_slug}"</span>
+                      </div>
                       {eoaDetails.mobilize_code && (
                         <div className="flex items-center gap-2">
                           <span>🏷️</span>
