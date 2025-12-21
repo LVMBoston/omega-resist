@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation, Link, ArrowDown } from "lucide-react";
 import { formatTimeDelta } from "@/lib/dateUtils";
@@ -439,14 +440,15 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
   const pendingChildren = childTokens.filter(c => !c.firstEventAt);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
             <Navigation className="w-5 h-5" />
             Event Story
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+          <SheetDescription className="sr-only">Details about the selected event</SheetDescription>
+        </SheetHeader>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -722,7 +724,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
             No event details available.
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
