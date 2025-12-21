@@ -237,14 +237,14 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
         if (!parentToken) break;
 
         // Fetch parent's event for location
-        // For L00 tokens (QR scans), look for view events; for L01+ look for share events
-        const eventTypeToFind = parentToken.level === 0 ? "view" : "share";
+        // For all tokens, look for view events - that's when the person actually saw the content
+        // (share events are when they forward, view events are when they receive)
         const { data: parentEvent } = await supabase
           .from("url_events")
           .select("city, region, occurred_at")
           .eq("token", parentToken.token)
-          .eq("event_type", eventTypeToFind)
-          .order("occurred_at", { ascending: false })
+          .eq("event_type", "view")
+          .order("occurred_at", { ascending: true })  // First view (when they received it)
           .limit(1)
           .maybeSingle();
 
