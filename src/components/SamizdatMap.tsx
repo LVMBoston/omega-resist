@@ -6,6 +6,7 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -112,13 +113,74 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [enabledChannels, setEnabledChannels] = useState<Set<string>>(new Set(["qr", "em", "sms", "tx", "fb", "bs"]));
+
+  // Toggle a channel on/off
+  const toggleChannel = (medium: string) => {
+    setEnabledChannels(prev => {
+      const next = new Set(prev);
+      if (next.has(medium)) {
+        next.delete(medium);
+      } else {
+        next.add(medium);
+      }
+      return next;
+    });
+  };
 
   // Store eoaNames in ref for cluster popup access
   const eoaNamesRef = useRef(eoaNames);
   eoaNamesRef.current = eoaNames;
 
-  // Filter events based on selected time window
+  // Filter events based on selected time window and enabled channels
   const filteredEventPoints = useMemo(() => {
+    let filtered = eventPoints;
+
+    // Filter by enabled channels
+    filtered = filtered.filter(event => enabledChannels.has(event.utmMedium));
+
+    // Filter by time window
+    if (timeWindow !== "all") {
+      const windowConfig = TIME_WINDOW_OPTIONS.find((w) => w.value === timeWindow);
+      if (windowConfig) {
+        filtered = filtered.filter((event) => {
+          const startDateStr = eoaStartDates[event.eoaId];
+          if (!startDateStr) return false;
+
+          const startMatch = startDateStr.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
+          const eventMatch = event.occurredAt.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
+          
+          if (!startMatch || !eventMatch) return false;
+
+          const startDate = new Date(
+            parseInt(startMatch[1]),
+            parseInt(startMatch[2]) - 1,
+            parseInt(startMatch[3]),
+            parseInt(startMatch[4] || "0"),
+            parseInt(startMatch[5] || "0"),
+            parseInt(startMatch[6] || "0")
+          );
+          const eventDate = new Date(
+            parseInt(eventMatch[1]),
+            parseInt(eventMatch[2]) - 1,
+            parseInt(eventMatch[3]),
+            parseInt(eventMatch[4] || "0"),
+            parseInt(eventMatch[5] || "0"),
+            parseInt(eventMatch[6] || "0")
+          );
+
+          const diffMs = eventDate.getTime() - startDate.getTime();
+          return diffMs >= windowConfig.minMs && diffMs < windowConfig.maxMs;
+        });
+      }
+    }
+
+    return filtered;
+  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels]);
+
+  // Calculate viewport stats based on all time-filtered events (before channel filter)
+  // This ensures unchecked channels still show in the table
+  const timeFilteredEvents = useMemo(() => {
     if (timeWindow === "all") return eventPoints;
 
     const windowConfig = TIME_WINDOW_OPTIONS.find((w) => w.value === timeWindow);
@@ -126,15 +188,13 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
     return eventPoints.filter((event) => {
       const startDateStr = eoaStartDates[event.eoaId];
-      if (!startDateStr) return false; // No start date, exclude
+      if (!startDateStr) return false;
 
-      // Parse floating local time: extract wall-clock components directly
       const startMatch = startDateStr.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
       const eventMatch = event.occurredAt.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
       
       if (!startMatch || !eventMatch) return false;
 
-      // Create dates from wall-clock components (treating them as local time for comparison)
       const startDate = new Date(
         parseInt(startMatch[1]),
         parseInt(startMatch[2]) - 1,
@@ -157,9 +217,9 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     });
   }, [eventPoints, timeWindow, eoaStartDates]);
 
-  // Calculate viewport stats based on current map bounds (uses filtered events)
+  // Calculate viewport stats using time-filtered events (all channels)
   const updateViewportStats = useCallback(() => {
-    if (!mapRef.current || filteredEventPoints.length === 0) {
+    if (!mapRef.current || timeFilteredEvents.length === 0) {
       setViewportStats([]);
       return;
     }
@@ -169,7 +229,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     // Group events by utm_medium and count visible/total
     const statsMap: Record<string, { total: number; visible: number }> = {};
 
-    filteredEventPoints.forEach((event) => {
+    timeFilteredEvents.forEach((event) => {
       const medium = event.utmMedium || "unknown";
       if (!statsMap[medium]) {
         statsMap[medium] = { total: 0, visible: 0 };
@@ -196,7 +256,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       .sort((a, b) => b.total - a.total); // Sort by total count descending
 
     setViewportStats(stats);
-  }, [filteredEventPoints]);
+  }, [timeFilteredEvents]);
 
   // Fetch event-level data (no aggregation)
   useEffect(() => {
@@ -360,10 +420,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     };
   }, []); // Empty deps - map initializes once
 
-  // Update viewport stats when filtered events change
+  // Update viewport stats when time-filtered events change
   useEffect(() => {
     updateViewportStats();
-  }, [filteredEventPoints, updateViewportStats]);
+  }, [timeFilteredEvents, updateViewportStats]);
 
   // Update markers when filtered data or clustering toggle changes
   useEffect(() => {
@@ -584,7 +644,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Viewport Activity Report - by share medium */}
+        {/* Viewport Activity Report - by share medium with filter checkboxes */}
         {viewportStats.length > 0 && (
           <AccordionItem value="viewport-report" className="rounded-lg border border-border bg-card">
             <AccordionTrigger className="text-sm font-medium px-4 py-3 hover:no-underline">
@@ -594,7 +654,8 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[150px]">Channel</TableHead>
+                    <TableHead className="w-[40px]">Show</TableHead>
+                    <TableHead className="w-[120px]">Channel</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Visible</TableHead>
                     <TableHead className="text-right">Offscreen</TableHead>
@@ -603,6 +664,12 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
                 <TableBody>
                   {viewportStats.map((stat) => (
                     <TableRow key={stat.medium}>
+                      <TableCell>
+                        <Checkbox
+                          checked={enabledChannels.has(stat.medium)}
+                          onCheckedChange={() => toggleChannel(stat.medium)}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <span
