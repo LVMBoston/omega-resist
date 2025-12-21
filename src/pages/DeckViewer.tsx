@@ -59,15 +59,7 @@ export default function DeckViewer() {
         return;
       }
 
-      // Check if this is a BUGTEST campaign token
-      const utmCampaign = searchParams.get('utm_campaign');
-      if (utmCampaign?.toLowerCase() !== 'bugtest') {
-        console.log('⏭️ Not a BUGTEST campaign, skipping instance token:', utmCampaign);
-        setInstanceTokenProcessed(true);
-        return;
-      }
-
-      console.log('🔄 BUGTEST L00 detected, creating instance token for:', viralToken);
+      console.log('🔄 L00 detected, creating instance token for:', viralToken);
 
       const result = await instantiateL00Token(viralToken);
       
