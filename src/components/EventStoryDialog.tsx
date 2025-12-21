@@ -686,7 +686,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                     </div>
                     <div className="flex items-center gap-2">
                       <span>📋</span>
-                      <span>EoA: {eoaDetails.title} — {eoaDetails.type === 'event' ? 'Event' : 'Action'}</span>
+                      <span>EoA: {eoaDetails.title} ({eoaDetails.type === 'event' ? 'Event' : 'Action'})</span>
                     </div>
                     {eoaDetails.mobilize_code && (
                       <div className="flex items-center gap-2">
