@@ -513,20 +513,6 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
               </p>
             </div>
 
-            {/* What */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {getEventIcon(eventDetails.event_type)}
-                <span>What</span>
-              </div>
-              <div className="flex items-center gap-2 pl-6">
-                <Badge className={getEventColor(eventDetails.event_type)}>
-                  {eventDetails.event_type.toUpperCase()}
-                </Badge>
-                <span className="text-sm">Deck "{tokenDetails.deck_slug}"</span>
-              </div>
-            </div>
-
             {/* Token */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
