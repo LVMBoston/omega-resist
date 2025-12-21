@@ -59,6 +59,11 @@ interface ChainStep {
   occurredAt: string | null;
 }
 
+// Helper functions for instance token detection
+const isInstanceToken = (token: string) => token.includes(':');
+const getBaseToken = (token: string) => token.split(':')[0];
+const getInstanceCode = (token: string) => token.split(':')[1] || null;
+
 interface ChildToken {
   token: string;
   level: number;
@@ -66,6 +71,7 @@ interface ChildToken {
   city: string | null;
   region: string | null;
   firstEventAt: string | null;
+  isInstance?: boolean; // true if this is an instance L00 token (a scan)
 }
 
 export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDialogProps) {
@@ -168,6 +174,9 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
             .limit(1)
             .maybeSingle();
 
+          // Determine if this is an instance token (L00 scan) vs a share (L01+)
+          const isInstance = child.level === 0 && isInstanceToken(child.token);
+
           return {
             token: child.token,
             level: child.level,
@@ -175,6 +184,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
             city: firstEvent?.city || null,
             region: firstEvent?.region || null,
             firstEventAt: firstEvent?.occurred_at || null,
+            isInstance,
           };
         })
       );
@@ -341,26 +351,40 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
       : " (location approximated from IP address)";
     const medium = getMediumLabel(tokenDetails.utm_medium);
     const eoaTitle = eoaDetails?.title || "an event";
+    const mobilizeCode = eoaDetails?.mobilize_code || "unknown";
 
-    if (tokenDetails.level === 0) {
-      // L00 origin event
-      const openedCount = childTokens.filter(c => c.firstEventAt).length;
-      const totalShares = childTokens.length;
+    // Check if this is a base L00 token (no instance code)
+    const isBaseL00 = tokenDetails.level === 0 && !isInstanceToken(tokenDetails.token);
+    // Check if this is an instance L00 token (has instance code)
+    const isInstanceL00 = tokenDetails.level === 0 && isInstanceToken(tokenDetails.token);
 
-      if (totalShares === 0) {
-        return `This is an origin event for the "${tokenDetails.deck_slug}" deck, distributed via ${medium} at ${eoaTitle}. The user accessed the content from ${location}${locationNote}. No shares have been made yet.`;
+    if (isBaseL00) {
+      // Base L00 - show scan count
+      const instanceTokens = childTokens.filter(c => c.isInstance);
+      const directShares = childTokens.filter(c => !c.isInstance && c.level > 0);
+      const scanCount = instanceTokens.length;
+      
+      // Count total shares across all instances
+      // Note: For now, we only have direct children info. Shares from instances would need additional queries.
+      const directShareCount = directShares.length;
+
+      if (scanCount === 0 && directShareCount === 0) {
+        return `This samizdat card (Mobilize code ${mobilizeCode}) has not been scanned yet. It was distributed via ${medium} at ${eoaTitle}.`;
       }
 
-      const mediumCounts: Record<string, number> = {};
-      childTokens.forEach(c => {
-        const m = getMediumLabel(c.utm_medium);
-        mediumCounts[m] = (mediumCounts[m] || 0) + 1;
-      });
-      const mediumBreakdown = Object.entries(mediumCounts)
-        .map(([m, count]) => `${count} via ${m}`)
-        .join(", ");
+      let narrative = `This samizdat card (Mobilize code ${mobilizeCode}) has been scanned ${scanCount} time${scanCount !== 1 ? 's' : ''}.`;
+      
+      if (directShareCount > 0) {
+        narrative += ` There are also ${directShareCount} legacy direct share${directShareCount !== 1 ? 's' : ''} (pre-instance era).`;
+      }
 
-      return `This is an origin event for the "${tokenDetails.deck_slug}" deck, distributed via ${medium} at ${eoaTitle}. The user accessed the content from ${location}${locationNote}. From here, the content was shared ${totalShares} times (${mediumBreakdown}). ${openedCount} of those shares have been opened so far.`;
+      return narrative;
+    }
+
+    if (isInstanceL00) {
+      // Instance L00 - this is a specific scan
+      const instanceCode = getInstanceCode(tokenDetails.token);
+      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location}${locationNote}.`;
     }
 
     // L01+ viral event
@@ -372,8 +396,14 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
     const deltaStr = timeDelta ? formatTimeDelta(timeDelta) : "some time";
     const originDeltaStr = originTimeDelta ? ` (${formatTimeDelta(originTimeDelta)} from origin)` : "";
 
+    // Check if the origin is an instance token
+    const originIsInstance = isInstanceToken(originStep.token);
+    const originInstanceNote = originIsInstance 
+      ? ` (scan instance ${getInstanceCode(originStep.token)})`
+      : "";
+
     if (tokenDetails.level === 1) {
-      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
     }
 
     // L02+ with full chain
@@ -386,18 +416,23 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
       ? `, ${intermediateHops.join(", then ")},`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${chainNarrative} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}${chainNarrative} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
   };
 
-  // Get medium counts for L00 spread
+  // Get medium counts for L00 spread (only for shares, not instances)
   const getMediumCounts = () => {
     const counts: Record<string, number> = {};
-    childTokens.forEach(c => {
+    childTokens.filter(c => !c.isInstance).forEach(c => {
       const m = getMediumLabel(c.utm_medium);
       counts[m] = (counts[m] || 0) + 1;
     });
     return counts;
   };
+
+  // Separate instances (scans) from shares
+  const instanceTokens = childTokens.filter(c => c.isInstance);
+  const shareTokens = childTokens.filter(c => !c.isInstance);
+  const isBaseL00 = tokenDetails?.level === 0 && tokenDetails && !isInstanceToken(tokenDetails.token);
 
   const narrative = generateNarrative();
   const openedChildren = childTokens.filter(c => c.firstEventAt);
@@ -481,6 +516,11 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                   {tokenDetails.token}
                 </code>
                 <Badge variant="secondary">L{tokenDetails.level.toString().padStart(2, "0")}</Badge>
+                {isInstanceToken(tokenDetails.token) && (
+                  <Badge variant="outline" className="text-xs">
+                    Scan: {getInstanceCode(tokenDetails.token)}
+                  </Badge>
+                )}
                 {tokenDetails.utm_medium && (
                   <span className="text-xs text-muted-foreground">
                     via {getMediumLabel(tokenDetails.utm_medium)}
@@ -489,8 +529,8 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
               </div>
             </div>
 
-            {/* Viral Spread (L00 only) */}
-            {tokenDetails.level === 0 && childTokens.length > 0 && (
+            {/* Viral Spread (Base L00 only) */}
+            {isBaseL00 && childTokens.length > 0 && (
               <>
                 <Separator />
                 <div className="space-y-3">
@@ -499,45 +539,50 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                     <span>Viral Spread</span>
                   </div>
 
-                  {/* Summary counts */}
-                  <div className="text-sm pl-2">
-                    📤 {childTokens.length} shares sent:
-                    {Object.entries(getMediumCounts()).map(([medium, count], idx) => (
-                      <span key={medium}>
-                        {idx > 0 ? "," : ""} {count} via {medium}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Opened shares */}
-                  {openedChildren.length > 0 && (
+                  {/* Scans (Instance tokens) */}
+                  {instanceTokens.length > 0 && (
                     <div className="space-y-1 text-sm pl-2">
-                      <div>📬 {openedChildren.length} opened:</div>
+                      <div>📱 {instanceTokens.length} scan{instanceTokens.length !== 1 ? 's' : ''} of this card:</div>
                       <div className="pl-4 space-y-1">
-                        {openedChildren.slice(0, 5).map(child => {
-                          const childDelta = child.firstEventAt && eventDetails
-                            ? new Date(child.firstEventAt).getTime() - new Date(eventDetails.occurred_at).getTime()
-                            : null;
+                        {instanceTokens.slice(0, 5).map(child => {
+                          const instanceCode = getInstanceCode(child.token);
                           return (
                             <div key={child.token} className="text-xs text-muted-foreground">
-                              • {formatShortLocation(child.city, child.region)} (L{child.level.toString().padStart(2, "0")})
-                              {childDelta && childDelta > 0 && ` — ${formatTimeDelta(childDelta)} later`}
+                              • Instance {instanceCode}: {formatShortLocation(child.city, child.region)}
+                              {child.firstEventAt ? " ✓" : " (pending)"}
                             </div>
                           );
                         })}
-                        {openedChildren.length > 5 && (
+                        {instanceTokens.length > 5 && (
                           <div className="text-xs text-muted-foreground">
-                            ... and {openedChildren.length - 5} more
+                            ... and {instanceTokens.length - 5} more scans
                           </div>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {/* Pending shares */}
-                  {pendingChildren.length > 0 && (
-                    <div className="text-sm text-muted-foreground pl-2">
-                      📭 {pendingChildren.length} pending (not yet opened)
+                  {/* Legacy direct shares (pre-instance era) */}
+                  {shareTokens.length > 0 && (
+                    <div className="space-y-1 text-sm pl-2">
+                      <div>📤 {shareTokens.length} legacy share{shareTokens.length !== 1 ? 's' : ''} (pre-instance):</div>
+                      <div className="pl-4 space-y-1">
+                        {shareTokens.filter(c => c.firstEventAt).slice(0, 3).map(child => (
+                          <div key={child.token} className="text-xs text-muted-foreground">
+                            • {formatShortLocation(child.city, child.region)} (L{child.level.toString().padStart(2, "0")})
+                          </div>
+                        ))}
+                        {shareTokens.filter(c => c.firstEventAt).length > 3 && (
+                          <div className="text-xs text-muted-foreground">
+                            ... and {shareTokens.filter(c => c.firstEventAt).length - 3} more opened
+                          </div>
+                        )}
+                        {shareTokens.filter(c => !c.firstEventAt).length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            📭 {shareTokens.filter(c => !c.firstEventAt).length} pending
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -556,24 +601,33 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
 
                   {/* Visual chain */}
                   <div className="space-y-1 text-sm pl-2">
-                    {viralChain.map((step, idx) => (
-                      <div key={step.token}>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3 h-3 text-muted-foreground" />
-                          <span>
-                            {formatShortLocation(step.city, step.region)}
-                            {step.level === 0 ? " (origin)" : ` (L${step.level.toString().padStart(2, "0")})`}
-                            {step.level === 0 && `, ${getMediumLabel(step.utm_medium)}`}
-                          </span>
-                        </div>
-                        {idx < viralChain.length && (
-                          <div className="ml-1.5 pl-0.5 text-muted-foreground flex items-center gap-1">
-                            <ArrowDown className="w-3 h-3" />
-                            <span className="text-xs">shared via {getMediumLabel(viralChain[idx + 1]?.utm_medium || tokenDetails.utm_medium)}</span>
+                    {viralChain.map((step, idx) => {
+                      const stepIsInstance = isInstanceToken(step.token);
+                      const stepInstanceCode = stepIsInstance ? getInstanceCode(step.token) : null;
+                      return (
+                        <div key={step.token}>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                            <span>
+                              {formatShortLocation(step.city, step.region)}
+                              {step.level === 0 
+                                ? stepIsInstance 
+                                  ? ` (origin, scan ${stepInstanceCode})` 
+                                  : " (origin)"
+                                : ` (L${step.level.toString().padStart(2, "0")})`
+                              }
+                              {step.level === 0 && `, ${getMediumLabel(step.utm_medium)}`}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {idx < viralChain.length && (
+                            <div className="ml-1.5 pl-0.5 text-muted-foreground flex items-center gap-1">
+                              <ArrowDown className="w-3 h-3" />
+                              <span className="text-xs">shared via {getMediumLabel(viralChain[idx + 1]?.utm_medium || tokenDetails.utm_medium)}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {/* Current event marker */}
                     <div className="flex items-center gap-2 font-medium">
