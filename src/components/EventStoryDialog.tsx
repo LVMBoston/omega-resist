@@ -49,6 +49,12 @@ interface EoaDetails {
   city: string | null;
   state: string | null;
   zip_code: string | null;
+  campaign_id: string;
+}
+
+interface CampaignDetails {
+  id: string;
+  title: string;
 }
 
 interface ChainStep {
@@ -80,6 +86,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [tokenDetails, setTokenDetails] = useState<TokenDetails | null>(null);
   const [eoaDetails, setEoaDetails] = useState<EoaDetails | null>(null);
+  const [campaignDetails, setCampaignDetails] = useState<CampaignDetails | null>(null);
   const [viralChain, setViralChain] = useState<ChainStep[]>([]);
   const [childTokens, setChildTokens] = useState<ChildToken[]>([]);
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
@@ -90,6 +97,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
       setEventDetails(null);
       setTokenDetails(null);
       setEoaDetails(null);
+      setCampaignDetails(null);
       setViralChain([]);
       setChildTokens([]);
       setTimeDelta(null);
@@ -131,12 +139,23 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
         // Fetch EoA details
         const { data: eoa, error: eoaError } = await supabase
           .from("events_actions")
-          .select("id, title, mobilize_code, city, state, zip_code")
+          .select("id, title, mobilize_code, city, state, zip_code, campaign_id")
           .eq("id", token.eoa_id)
           .maybeSingle();
 
         if (!eoaError && eoa) {
           setEoaDetails(eoa);
+          
+          // Fetch campaign details
+          const { data: campaign } = await supabase
+            .from("campaigns")
+            .select("id, title")
+            .eq("id", eoa.campaign_id)
+            .maybeSingle();
+          
+          if (campaign) {
+            setCampaignDetails(campaign);
+          }
         }
 
         // If L00, fetch children (viral spread)
@@ -676,6 +695,12 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                       <div className="flex items-center gap-2">
                         <span>🏷️</span>
                         <span>Mobilize: {eoaDetails.mobilize_code}</span>
+                      </div>
+                    )}
+                    {campaignDetails && (
+                      <div className="flex items-center gap-2">
+                        <span>🎯</span>
+                        <span>Campaign: {campaignDetails.title}</span>
                       </div>
                     )}
                   </div>
