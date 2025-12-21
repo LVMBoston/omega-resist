@@ -1163,7 +1163,7 @@ export default function CampaignDashboard({
                       {/* Overlay when Event Story is open */}
                       {selectedEventId && (
                         <div 
-                          className="absolute inset-0 bg-background/20 z-10 cursor-pointer"
+                          className="absolute inset-0 bg-background/5 z-10 cursor-pointer"
                           onClick={() => setSelectedEventId(null)}
                         />
                       )}
@@ -1229,7 +1229,7 @@ export default function CampaignDashboard({
                               className={cn(
                                 "cursor-pointer hover:bg-muted/50 transition-colors",
                                 highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : '',
-                                selectedEventId === event.id ? 'bg-primary/30 relative z-20' : ''
+                                selectedEventId === event.id ? 'bg-yellow-200/5 relative z-20' : ''
                               )}
                               onClick={() => setSelectedEventId(event.id)}
                             >
