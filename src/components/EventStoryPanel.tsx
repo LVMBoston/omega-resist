@@ -712,15 +712,12 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                     <div className="text-sm font-medium text-muted-foreground">Event or Action Context</div>
                     <div className="space-y-1 pl-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <span>📋</span>
-                        <span>EoA: {eoaDetails.title} — {eoaDetails.type === 'event' ? 'Event' : 'Action'}</span>
+                        <span>📦</span>
+                        <span>Deck: {tokenDetails.deck_slug}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {getEventIcon(eventDetails.event_type)}
-                        <Badge className={getEventColor(eventDetails.event_type)}>
-                          {eventDetails.event_type.toUpperCase()}
-                        </Badge>
-                        <span>Deck "{tokenDetails.deck_slug}"</span>
+                        <span>📋</span>
+                        <span>EoA: {eoaDetails.title} — {eoaDetails.type === 'event' ? 'Event' : 'Action'}</span>
                       </div>
                       {eoaDetails.mobilize_code && (
                         <div className="flex items-center gap-2">
