@@ -1229,7 +1229,7 @@ export default function CampaignDashboard({
                               className={cn(
                                 "cursor-pointer hover:bg-muted/50 transition-colors",
                                 highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : '',
-                                selectedEventId === event.id ? 'bg-yellow-200/5 relative z-20' : ''
+                                selectedEventId === event.id ? 'bg-yellow-200/30 relative z-20' : ''
                               )}
                               onClick={() => setSelectedEventId(event.id)}
                             >
