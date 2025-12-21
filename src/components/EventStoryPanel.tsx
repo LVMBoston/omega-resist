@@ -133,7 +133,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
           setEoaDetails(eoa);
         }
 
-        // If L00, fetch children (viral spread)
+        // If L00 (base or instance), fetch children (viral spread / spawns)
         if (token.level === 0) {
           await fetchChildTokens(token.token, event.occurred_at);
         }
@@ -364,7 +364,32 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
 
     if (isInstanceL00) {
       const instanceCode = getInstanceCode(tokenDetails.token);
-      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location}${locationNote}.`;
+      // Count spawns (L01+ shares from this instance)
+      const spawns = childTokens.filter(c => c.level > 0);
+      const spawnCount = spawns.length;
+      
+      let spawnNote = "";
+      if (spawnCount === 0) {
+        spawnNote = " No shares have been spawned from this scan yet.";
+      } else if (spawnCount === 1) {
+        const spawn = spawns[0];
+        const spawnMedium = getMediumLabel(spawn.utm_medium);
+        const spawnLoc = formatShortLocation(spawn.city, spawn.region);
+        spawnNote = ` This scan spawned 1 share via ${spawnMedium} to ${spawnLoc}.`;
+      } else {
+        // Group by medium
+        const byMedium: Record<string, number> = {};
+        spawns.forEach(s => {
+          const m = getMediumLabel(s.utm_medium);
+          byMedium[m] = (byMedium[m] || 0) + 1;
+        });
+        const breakdown = Object.entries(byMedium)
+          .map(([m, count]) => `${count} via ${m}`)
+          .join(", ");
+        spawnNote = ` This scan spawned ${spawnCount} shares (${breakdown}).`;
+      }
+      
+      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location}${locationNote}.${spawnNote}`;
     }
 
     if (viralChain.length === 0) return null;
