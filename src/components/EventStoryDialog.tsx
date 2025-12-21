@@ -45,6 +45,7 @@ interface TokenDetails {
 interface EoaDetails {
   id: string;
   title: string;
+  type: string;
   mobilize_code: string | null;
   city: string | null;
   state: string | null;
@@ -136,10 +137,10 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
         }
         setTokenDetails(token);
 
-        // Fetch EoA details
+        // Fetch EoA details including type for Event/Action designation
         const { data: eoa, error: eoaError } = await supabase
           .from("events_actions")
-          .select("id, title, mobilize_code, city, state, zip_code, campaign_id")
+          .select("id, title, type, mobilize_code, city, state, zip_code, campaign_id")
           .eq("id", token.eoa_id)
           .maybeSingle();
 
@@ -677,11 +678,11 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
               <>
                 <Separator />
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">EoA Context</div>
+                  <div className="text-sm font-medium text-muted-foreground">Event or Action Context</div>
                   <div className="space-y-1 pl-2 text-sm">
                     <div className="flex items-center gap-2">
                       <span>📋</span>
-                      <span>{eoaDetails.title}</span>
+                      <span>EoA: {eoaDetails.title} — {eoaDetails.type === 'event' ? 'Event' : 'Action'}</span>
                     </div>
                     {(eoaDetails.city || eoaDetails.state) && (
                       <div className="flex items-center gap-2">
