@@ -233,12 +233,14 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
 
         if (!parentToken) break;
 
-        // Fetch parent's share event for location
-        const { data: shareEvent } = await supabase
+        // Fetch parent's event for location
+        // For L00 tokens (QR scans), look for view events; for L01+ look for share events
+        const eventTypeToFind = parentToken.level === 0 ? "view" : "share";
+        const { data: parentEvent } = await supabase
           .from("url_events")
           .select("city, region, occurred_at")
           .eq("token", parentToken.token)
-          .eq("event_type", "share")
+          .eq("event_type", eventTypeToFind)
           .order("occurred_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -246,15 +248,15 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
         chain.unshift({
           token: parentToken.token,
           level: parentToken.level,
-          city: shareEvent?.city || null,
-          region: shareEvent?.region || null,
+          city: parentEvent?.city || null,
+          region: parentEvent?.region || null,
           utm_medium: parentToken.utm_medium,
-          occurredAt: shareEvent?.occurred_at || null,
+          occurredAt: parentEvent?.occurred_at || null,
         });
 
         // Track the immediate parent's share time for time delta
         if (parentToken.level === currentLevel - 1) {
-          lastShareTime = shareEvent?.occurred_at || null;
+          lastShareTime = parentEvent?.occurred_at || null;
         }
 
         currentToken = parentToken.parent_token;
