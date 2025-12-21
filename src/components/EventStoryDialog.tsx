@@ -298,6 +298,23 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
     });
   };
 
+  // Format date/time for prose (e.g., "on Dec. 15, 2025 at 2:15 PM")
+  const formatProseDateTime = (timestamp: string | null) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const dateStr = date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `on ${dateStr} at ${timeStr}`;
+  };
+
   const getEventIcon = (type: string) => {
     switch (type) {
       case "scan":
@@ -362,7 +379,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
     return "unknown location";
   };
 
-  // Generate narrative summary
+  // Generate narrative summary (synced with EventStoryPanel)
   const generateNarrative = (): string | null => {
     if (!tokenDetails || !eventDetails) return null;
 
@@ -374,19 +391,13 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
     const eoaTitle = eoaDetails?.title || "an event";
     const mobilizeCode = eoaDetails?.mobilize_code || "unknown";
 
-    // Check if this is a base L00 token (no instance code)
     const isBaseL00 = tokenDetails.level === 0 && !isInstanceToken(tokenDetails.token);
-    // Check if this is an instance L00 token (has instance code)
     const isInstanceL00 = tokenDetails.level === 0 && isInstanceToken(tokenDetails.token);
 
     if (isBaseL00) {
-      // Base L00 - show scan count
       const instanceTokens = childTokens.filter(c => c.isInstance);
       const directShares = childTokens.filter(c => !c.isInstance && c.level > 0);
       const scanCount = instanceTokens.length;
-      
-      // Count total shares across all instances
-      // Note: For now, we only have direct children info. Shares from instances would need additional queries.
       const directShareCount = directShares.length;
 
       if (scanCount === 0 && directShareCount === 0) {
@@ -403,41 +414,99 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
     }
 
     if (isInstanceL00) {
-      // Instance L00 - this is a specific scan
       const instanceCode = getInstanceCode(tokenDetails.token);
-      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location}${locationNote}.`;
+      // Count spawns (L01+ shares from this instance)
+      const spawns = childTokens.filter(c => c.level > 0);
+      const spawnCount = spawns.length;
+      
+      let spawnNote = "";
+      if (spawnCount === 0) {
+        spawnNote = " No shares have been spawned from this scan yet.";
+      } else if (spawnCount === 1) {
+        const spawn = spawns[0];
+        const spawnMedium = getMediumLabel(spawn.utm_medium);
+        const spawnLoc = formatShortLocation(spawn.city, spawn.region);
+        spawnNote = ` This scan spawned 1 share via ${spawnMedium} to ${spawnLoc}.`;
+      } else {
+        // Group by medium
+        const byMedium: Record<string, number> = {};
+        spawns.forEach(s => {
+          const m = getMediumLabel(s.utm_medium);
+          byMedium[m] = (byMedium[m] || 0) + 1;
+        });
+        const breakdown = Object.entries(byMedium)
+          .map(([m, count]) => `${count} via ${m}`)
+          .join(", ");
+        spawnNote = ` This scan spawned ${spawnCount} shares (${breakdown}).`;
+      }
+      const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
+      
+      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
     }
 
-    // L01+ viral event
     if (viralChain.length === 0) return null;
 
     const originStep = viralChain[0];
     const originLocation = formatShortLocation(originStep.city, originStep.region);
     const originMedium = getMediumLabel(originStep.utm_medium);
-    const deltaStr = timeDelta ? formatTimeDelta(timeDelta) : "some time";
-    const originDeltaStr = originTimeDelta ? ` (${formatTimeDelta(originTimeDelta)} from origin)` : "";
+    const originDateTime = formatProseDateTime(originStep.occurredAt);
+    const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
+    
+    // Format time deltas with precision
+    const deltaStr = timeDelta !== null ? formatTimeDelta(timeDelta) : null;
+    const originDeltaStr = originTimeDelta !== null ? formatTimeDelta(originTimeDelta) : null;
 
-    // Check if the origin is an instance token
     const originIsInstance = isInstanceToken(originStep.token);
     const originInstanceNote = originIsInstance 
       ? ` (scan instance ${getInstanceCode(originStep.token)})`
       : "";
 
     if (tokenDetails.level === 1) {
-      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+      let timePhrase = deltaStr 
+        ? ` (${deltaStr} later)`
+        : "";
+      let originPhrase = originDeltaStr 
+        ? ` Total time from origin: ${originDeltaStr}.`
+        : "";
+      
+      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}. It was accessed in ${location} ${eventDateTime}${timePhrase}${locationNote}.${originPhrase}`;
     }
 
-    // L02+ with full chain
-    const intermediateHops = viralChain.slice(1).map(step => {
+    // Build chain with time details
+    const chainSteps: string[] = [];
+    for (let i = 1; i < viralChain.length; i++) {
+      const step = viralChain[i];
+      const prevStep = viralChain[i - 1];
       const loc = formatShortLocation(step.city, step.region);
-      return `was shared via ${getMediumLabel(step.utm_medium)} to ${loc}`;
-    });
+      const stepMedium = getMediumLabel(step.utm_medium);
+      const stepDateTime = formatProseDateTime(step.occurredAt);
+      
+      // Calculate time between this step and previous
+      let timeNote = "";
+      if (step.occurredAt && prevStep.occurredAt) {
+        const stepTime = new Date(step.occurredAt).getTime();
+        const prevTime = new Date(prevStep.occurredAt).getTime();
+        const stepDelta = stepTime - prevTime;
+        if (stepDelta > 0) {
+          timeNote = ` (${formatTimeDelta(stepDelta)} later)`;
+        }
+      }
+      
+      chainSteps.push(`shared via ${stepMedium} to ${loc} ${stepDateTime}${timeNote}`);
+    }
 
-    const chainNarrative = intermediateHops.length > 0
-      ? `, ${intermediateHops.join(", then ")},`
+    const chainNarrative = chainSteps.length > 0
+      ? ` It was then ${chainSteps.join(", then ")}.`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote}${chainNarrative} and was accessed in ${location} ${deltaStr} later${originDeltaStr}${locationNote}.`;
+    let finalTimePhrase = deltaStr 
+      ? ` (${deltaStr} after the last share)`
+      : "";
+    let totalTimePhrase = originDeltaStr 
+      ? ` Total journey time from origin: ${originDeltaStr}.`
+      : "";
+
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}`;
   };
 
   // Get medium counts for L00 spread (only for shares, not instances)

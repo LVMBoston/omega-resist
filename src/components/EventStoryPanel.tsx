@@ -740,6 +740,42 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                   </div>
                 </>
               )}
+
+              {/* UTM Details */}
+              {tokenDetails && (tokenDetails.utm_campaign || tokenDetails.utm_source || tokenDetails.utm_medium || tokenDetails.utm_content) && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">UTM Details</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs pl-2">
+                      {tokenDetails.utm_campaign && (
+                        <div>
+                          <span className="text-muted-foreground">Campaign: </span>
+                          <span>{tokenDetails.utm_campaign}</span>
+                        </div>
+                      )}
+                      {tokenDetails.utm_source && (
+                        <div>
+                          <span className="text-muted-foreground">Source: </span>
+                          <span>{tokenDetails.utm_source}</span>
+                        </div>
+                      )}
+                      {tokenDetails.utm_medium && (
+                        <div>
+                          <span className="text-muted-foreground">Medium: </span>
+                          <span>{tokenDetails.utm_medium}</span>
+                        </div>
+                      )}
+                      {tokenDetails.utm_content && (
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Content: </span>
+                          <span>{tokenDetails.utm_content}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground">
