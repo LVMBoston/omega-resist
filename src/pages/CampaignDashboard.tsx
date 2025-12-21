@@ -34,6 +34,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { EventStoryDialog } from "@/components/EventStoryDialog";
 interface UrlEvent {
   id: string;
   token: string;
@@ -81,6 +82,7 @@ export default function CampaignDashboard({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const {
     toast
   } = useToast();
@@ -1214,7 +1216,14 @@ export default function CampaignDashboard({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedEventsV2.map((event: any, index: number) => <TableRow key={event.id} className={highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''}>
+                          {sortedEventsV2.map((event: any, index: number) => <TableRow 
+                            key={event.id} 
+                            className={cn(
+                              "cursor-pointer hover:bg-muted/50 transition-colors",
+                              highlightedRowIds.has(event.id) ? 'bg-primary/10 animate-fade-in' : ''
+                            )}
+                            onClick={() => setSelectedEventId(event.id)}
+                          >
               <TableCell>{index + 1}</TableCell>
               <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
               <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
@@ -1237,7 +1246,8 @@ export default function CampaignDashboard({
                               <TableCell>
                                 {event.tokens?.full_url ? <div className="flex items-center gap-2">
                                     <span className="font-mono text-xs truncate max-w-[300px]" title={event.tokens.full_url}>{event.tokens.full_url}</span>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => {
+                              e.stopPropagation();
                               navigator.clipboard.writeText(event.tokens.full_url);
                               toast({
                                 title: "Full URL copied!"
@@ -1376,5 +1386,12 @@ export default function CampaignDashboard({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Event Story Dialog */}
+      <EventStoryDialog
+        eventId={selectedEventId}
+        open={!!selectedEventId}
+        onOpenChange={(open) => !open && setSelectedEventId(null)}
+      />
     </div>;
 }
