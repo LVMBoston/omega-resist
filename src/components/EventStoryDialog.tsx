@@ -30,6 +30,8 @@ interface EventDetails {
   zip_code: string | null;
   location_source: string | null;
   token: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface TokenDetails {
@@ -115,7 +117,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
         // Fetch event details
         const { data: event, error: eventError } = await supabase
           .from("url_events")
-          .select("id, occurred_at, event_type, city, region, country, zip_code, location_source, token")
+          .select("id, occurred_at, event_type, city, region, country, zip_code, location_source, token, latitude, longitude")
           .eq("id", eventId)
           .maybeSingle();
 
@@ -585,6 +587,9 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                   `Country: ${eventDetails.country || "N/A"}`,
                   `Zip: ${eventDetails.zip_code || "N/A"}`,
                   `Source: ${eventDetails.location_source || "unknown"}`,
+                  ...(eventDetails.location_source === "gps" && eventDetails.latitude && eventDetails.longitude
+                    ? [`GPS Coords: ${eventDetails.latitude}, ${eventDetails.longitude}`]
+                    : []),
                   ``,
                   `--- Token Details ---`,
                   `Deck: ${tokenDetails.deck_slug}`,
@@ -654,6 +659,11 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                   eventDetails.zip_code
                 )}
               </p>
+              {eventDetails.location_source === "gps" && eventDetails.latitude && eventDetails.longitude && (
+                <p className="text-xs text-muted-foreground pl-6 font-mono">
+                  {eventDetails.latitude}, {eventDetails.longitude}
+                </p>
+              )}
             </div>
 
             {/* Token */}

@@ -22,6 +22,8 @@ interface EventDetails {
   zip_code: string | null;
   location_source: string | null;
   token: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface TokenDetails {
@@ -106,7 +108,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
         // Fetch event details
         const { data: event, error: eventError } = await supabase
           .from("url_events")
-          .select("id, occurred_at, event_type, city, region, country, zip_code, location_source, token")
+          .select("id, occurred_at, event_type, city, region, country, zip_code, location_source, token, latitude, longitude")
           .eq("id", eventId)
           .maybeSingle();
 
@@ -560,6 +562,11 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                     eventDetails.zip_code
                   )}
                 </p>
+                {eventDetails.location_source === "gps" && eventDetails.latitude && eventDetails.longitude && (
+                  <p className="text-xs text-muted-foreground pl-6 font-mono">
+                    {eventDetails.latitude}, {eventDetails.longitude}
+                  </p>
+                )}
               </div>
 
 
