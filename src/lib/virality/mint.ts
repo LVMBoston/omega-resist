@@ -226,10 +226,82 @@ async function getGPSLocation(): Promise<{ latitude: number; longitude: number }
   }
 }
 
+async function reverseGeocode(latitude: number, longitude: number): Promise<{
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  country_code: string | null;
+  zip_code: string | null;
+} | null> {
+  try {
+    console.log("🗺️ Reverse geocoding GPS coordinates...");
+    const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+      body: { latitude, longitude }
+    });
+    
+    if (error) {
+      console.error("❌ Reverse geocode error:", error);
+      return null;
+    }
+    
+    console.log("🗺️ Reverse geocode result:", data);
+    return {
+      city: data?.city || null,
+      region: data?.region || null,
+      country: data?.country || null,
+      country_code: data?.country_code || null,
+      zip_code: data?.zip_code || null
+    };
+  } catch (error) {
+    console.error("❌ Failed to reverse geocode:", error);
+    return null;
+  }
+}
+
 async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
     // Try to get GPS coordinates first (mobile devices)
     const gpsCoords = await getGPSLocation();
+    
+    // If we have GPS coordinates, use reverse geocoding to get accurate city/region/zip
+    if (gpsCoords) {
+      console.log("📍 GPS available, using reverse geocoding for location data...");
+      const reverseGeoResult = await reverseGeocode(gpsCoords.latitude, gpsCoords.longitude);
+      
+      if (reverseGeoResult) {
+        const isUS = reverseGeoResult.country_code === 'US';
+        
+        // For non-US, round coordinates for privacy
+        let finalLat = gpsCoords.latitude;
+        let finalLng = gpsCoords.longitude;
+        
+        if (!isUS) {
+          finalLat = Math.round(gpsCoords.latitude * 10) / 10;
+          finalLng = Math.round(gpsCoords.longitude * 10) / 10;
+          console.log("🌍 Non-US GPS location - rounded coordinates for privacy:", {
+            original: { lat: gpsCoords.latitude, lng: gpsCoords.longitude },
+            rounded: { lat: finalLat, lng: finalLng }
+          });
+        }
+        
+        const result = {
+          latitude: finalLat,
+          longitude: finalLng,
+          city: reverseGeoResult.city,
+          region: reverseGeoResult.region,
+          country: reverseGeoResult.country,
+          country_code: reverseGeoResult.country_code,
+          zip_code: isUS ? reverseGeoResult.zip_code : null, // Only store zip for US
+          location_source: 'gps' as const
+        };
+        
+        console.log("✅ Using GPS coordinates with reverse-geocoded location:", result);
+        return result;
+      }
+      
+      // Reverse geocoding failed, fall through to IP-based with GPS coords
+      console.log("⚠️ Reverse geocoding failed, falling back to IP-based with GPS coords");
+    }
     
     // Fetch IP-based geolocation for city/region/zip data
     console.log("📍 Calling geoip function...");
