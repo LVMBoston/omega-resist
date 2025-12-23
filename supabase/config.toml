@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.fetch-mobilize-event]
 verify_jwt = false
+
+[functions.reverse-geocode]
+verify_jwt = false
