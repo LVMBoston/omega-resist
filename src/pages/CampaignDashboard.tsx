@@ -418,7 +418,7 @@ export default function CampaignDashboard({
       "Mobilize Code",
       "City/Region",
       "Message Opened (Zipcode)",
-      "Event Zip",
+      "Location Method",
       "Event Level",
       "utm_content",
       "Event Type",
@@ -437,7 +437,7 @@ export default function CampaignDashboard({
         event.tokens?.events_actions?.mobilize_code || "",
         cityRegion,
         event.zip_code || "",
-        event.tokens?.events_actions?.zip_code || "",
+        event.location_source === 'gps' ? 'GPS' : 'Cell Tower',
         formatLevel(event.tokens?.level || 0),
         utmContent,
         event.event_type?.toUpperCase() || "",
@@ -1196,10 +1196,10 @@ export default function CampaignDashboard({
                                   {sortConfig.column === 'zip' && <ArrowUpDown className="w-3 h-3" />}
                                 </div>
                               </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('event_zip')}>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location_source')}>
                                 <div className="flex items-center gap-1">
-                                  Event Zip
-                                  {sortConfig.column === 'event_zip' && <ArrowUpDown className="w-3 h-3" />}
+                                  Location Method
+                                  {sortConfig.column === 'location_source' && <ArrowUpDown className="w-3 h-3" />}
                                 </div>
                               </TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('level')}>
@@ -1240,7 +1240,7 @@ export default function CampaignDashboard({
                   {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
                 </TableCell>
                 <TableCell>{formatZipCode(event.zip_code)}</TableCell>
-                <TableCell>{formatZipCode(event.tokens?.events_actions?.zip_code)}</TableCell>
+                <TableCell>{event.location_source === 'gps' ? 'GPS' : 'Cell Tower'}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
                 </TableCell>
