@@ -417,7 +417,7 @@ export default function CampaignDashboard({
       "Timestamp",
       "Mobilize Code",
       "City/Region",
-      "Cell Tower Zip",
+      "Message Opened (Zip Code)",
       "Event Zip",
       "Event Level",
       "utm_content",
@@ -1192,7 +1192,7 @@ export default function CampaignDashboard({
                               </TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('zip')}>
                                 <div className="flex items-center gap-1">
-                                  Cell Tower Zip
+                                  Message Opened (Zip Code)
                                   {sortConfig.column === 'zip' && <ArrowUpDown className="w-3 h-3" />}
                                 </div>
                               </TableHead>
