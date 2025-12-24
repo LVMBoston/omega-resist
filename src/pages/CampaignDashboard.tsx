@@ -527,6 +527,7 @@ export default function CampaignDashboard({
             level,
             utm_content,
             utm_campaign,
+            utm_medium,
             eoa_id,
             full_url,
             events_actions(
@@ -590,6 +591,7 @@ export default function CampaignDashboard({
             level: event.tokens?.level,
             utm_content: event.tokens?.utm_content,
             utm_campaign: event.tokens?.utm_campaign,
+            utm_medium: event.tokens?.utm_medium,
             eoa_id: event.tokens?.eoa_id,
             full_url: event.tokens?.full_url,
             events_actions: event.tokens?.events_actions ? {
@@ -632,6 +634,10 @@ export default function CampaignDashboard({
     uniqueMobilizeCodes: new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean)).size,
     scansCount: eventsV2Data.filter((e: any) => e.event_type === 'scan').length,
     viewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view').length,
+    qrViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'qr').length,
+    smsViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'sms').length,
+    emailViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'em').length,
+    unknownViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && !['qr', 'sms', 'em'].includes(e.tokens?.utm_medium)).length,
     sharesCount: eventsV2Data.filter((e: any) => e.event_type === 'share').length,
     totalRows: eventsV2Data.length,
     earliestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[eventsV2Data.length - 1].occurred_at) : 'N/A',
@@ -1156,10 +1162,12 @@ export default function CampaignDashboard({
                     {/* Second Block - Metrics Summary */}
                     <div className="flex items-center gap-6 py-4 border-b mb-4 text-sm flex-wrap">
                       <span># Mobilize Sites: <strong>{eventsV2Metrics?.uniqueMobilizeCodes}</strong></span>
-                      <span># Scans: <strong>{eventsV2Metrics?.scansCount}</strong></span>
-                      <span># Views: <strong>{eventsV2Metrics?.viewsCount}</strong></span>
-                      <span># Shares: <strong>{eventsV2Metrics?.sharesCount}</strong></span>
                       <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong></span>
+                      <span># Scans: <strong>{eventsV2Metrics?.scansCount}</strong></span>
+                      <span># QR Views: <strong>{eventsV2Metrics?.qrViewsCount}</strong></span>
+                      <span># SMS Views: <strong>{eventsV2Metrics?.smsViewsCount}</strong></span>
+                      <span># Email Views: <strong>{eventsV2Metrics?.emailViewsCount}</strong></span>
+                      <span># Unknown: <strong>{eventsV2Metrics?.unknownViewsCount}</strong></span>
                     </div>
 
                     {/* Table */}
