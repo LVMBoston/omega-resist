@@ -49,6 +49,8 @@ interface UrlEvent {
   region: string | null;
   country: string | null;
   is_simulated: boolean;
+  location_source: string | null;
+  zip_code: string | null;
   tokens?: {
     level: number;
     deck_slug: string;
