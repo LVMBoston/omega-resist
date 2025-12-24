@@ -1163,7 +1163,6 @@ export default function CampaignDashboard({
                     <div className="flex items-center gap-6 py-4 border-b mb-4 text-sm flex-wrap">
                       <span># Mobilize Sites: <strong>{eventsV2Metrics?.uniqueMobilizeCodes}</strong></span>
                       <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong></span>
-                      <span># Scans: <strong>{eventsV2Metrics?.scansCount}</strong></span>
                       <span># QR Views: <strong>{eventsV2Metrics?.qrViewsCount}</strong></span>
                       <span># SMS Views: <strong>{eventsV2Metrics?.smsViewsCount}</strong></span>
                       <span># Email Views: <strong>{eventsV2Metrics?.emailViewsCount}</strong></span>
