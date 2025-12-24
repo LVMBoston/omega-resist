@@ -521,6 +521,7 @@ export default function CampaignDashboard({
           city,
           region,
           zip_code,
+          location_source,
           token,
           tokens!inner(
             level,
@@ -583,6 +584,7 @@ export default function CampaignDashboard({
           city: event.city,
           region: event.region,
           zip_code: event.zip_code,
+          location_source: event.location_source,
           token: event.token,
           tokens: {
             level: event.tokens?.level,
