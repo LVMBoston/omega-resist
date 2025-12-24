@@ -638,6 +638,8 @@ export default function CampaignDashboard({
     smsViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'sms').length,
     emailViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'em').length,
     unknownViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && !['qr', 'sms', 'em'].includes(e.tokens?.utm_medium)).length,
+    gpsLocationCount: eventsV2Data.filter((e: any) => e.location_source === 'gps').length,
+    cellTowerLocationCount: eventsV2Data.filter((e: any) => e.location_source !== 'gps').length,
     sharesCount: eventsV2Data.filter((e: any) => e.event_type === 'share').length,
     totalRows: eventsV2Data.length,
     earliestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[eventsV2Data.length - 1].occurred_at) : 'N/A',
@@ -1160,13 +1162,17 @@ export default function CampaignDashboard({
                     </div>
 
                     {/* Second Block - Metrics Summary */}
-                    <div className="flex items-center gap-6 py-4 border-b mb-4 text-sm flex-wrap">
+                    <div className="flex items-center gap-6 py-2 text-sm flex-wrap">
                       <span># Mobilize Sites: <strong>{eventsV2Metrics?.uniqueMobilizeCodes}</strong></span>
                       <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong></span>
                       <span># QR Views: <strong>{eventsV2Metrics?.qrViewsCount}</strong></span>
                       <span># SMS Views: <strong>{eventsV2Metrics?.smsViewsCount}</strong></span>
                       <span># Email Views: <strong>{eventsV2Metrics?.emailViewsCount}</strong></span>
                       <span># Unknown: <strong>{eventsV2Metrics?.unknownViewsCount}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-6 py-2 border-b mb-4 text-sm flex-wrap">
+                      <span># Locations from GPS: <strong>{eventsV2Metrics?.gpsLocationCount}</strong></span>
+                      <span># From Cell Tower: <strong>{eventsV2Metrics?.cellTowerLocationCount}</strong></span>
                     </div>
 
                     {/* Table */}
