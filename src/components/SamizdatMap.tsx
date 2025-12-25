@@ -99,6 +99,72 @@ const MEDIUM_LABELS: Record<string, string> = {
 
 const DEFAULT_COLOR = "#64748b"; // slate-500
 
+// Calculate spiral offsets for overlapping markers at same location
+const calculateSpiralOffsets = (
+  eventPoints: EventPoint[],
+  zoomLevel: number
+): Map<string, { lat: number; lng: number }> => {
+  const offsets = new Map<string, { lat: number; lng: number }>();
+  
+  // Group events by exact coordinates (IP-based locations have identical coords)
+  const coordGroups = new Map<string, EventPoint[]>();
+  eventPoints.forEach(event => {
+    const key = `${event.latitude.toFixed(7)}_${event.longitude.toFixed(7)}`;
+    if (!coordGroups.has(key)) {
+      coordGroups.set(key, []);
+    }
+    coordGroups.get(key)!.push(event);
+  });
+  
+  // For each group with multiple events, calculate spiral offsets
+  coordGroups.forEach((events) => {
+    if (events.length <= 1) {
+      // Single event - no offset needed
+      events.forEach(e => offsets.set(e.eventId, { lat: 0, lng: 0 }));
+      return;
+    }
+    
+    // Sort by occurredAt within the group (oldest first)
+    const sorted = [...events].sort((a, b) => 
+      new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+    );
+    
+    // Calculate offset based on zoom level
+    // At zoom 4: ~0.5 degrees, at zoom 10: ~0.01 degrees, at zoom 15: ~0.0003 degrees
+    const baseOffset = 0.8 / Math.pow(2, zoomLevel - 4);
+    
+    // Place in spiral pattern
+    sorted.forEach((event, index) => {
+      if (index === 0) {
+        // First (oldest) event stays at center
+        offsets.set(event.eventId, { lat: 0, lng: 0 });
+      } else {
+        // Spiral out: angle increases, radius increases slightly per revolution
+        const angle = (index * 0.8) * Math.PI; // ~144 degrees per step (golden angle)
+        const radius = baseOffset * (0.5 + Math.floor(index / 5) * 0.3 + (index % 5) * 0.15);
+        offsets.set(event.eventId, {
+          lat: radius * Math.sin(angle),
+          lng: radius * Math.cos(angle) * 1.2, // Stretch horizontally slightly
+        });
+      }
+    });
+  });
+  
+  return offsets;
+};
+
+// Create chronological sequence numbers for all events
+const createSequenceNumbers = (eventPoints: EventPoint[]): Map<string, number> => {
+  const sorted = [...eventPoints].sort((a, b) => 
+    new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+  );
+  const seqMap = new Map<string, number>();
+  sorted.forEach((event, index) => {
+    seqMap.set(event.eventId, index + 1); // 1-based numbering
+  });
+  return seqMap;
+};
+
 const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -425,6 +491,31 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     updateViewportStats();
   }, [timeFilteredEvents, updateViewportStats]);
 
+  // Calculate sequence numbers for chronological ordering (memoized)
+  const sequenceNumbers = useMemo(() => {
+    return createSequenceNumbers(filteredEventPoints);
+  }, [filteredEventPoints]);
+
+  // Calculate spiral offsets when clustering is disabled
+  const [currentZoom, setCurrentZoom] = useState(4);
+  
+  // Track zoom changes for offset recalculation
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const handleZoom = () => {
+      setCurrentZoom(mapRef.current?.getZoom() || 4);
+    };
+    mapRef.current.on('zoomend', handleZoom);
+    return () => {
+      mapRef.current?.off('zoomend', handleZoom);
+    };
+  }, []);
+
+  const spiralOffsets = useMemo(() => {
+    if (enableClustering) return new Map<string, { lat: number; lng: number }>();
+    return calculateSpiralOffsets(filteredEventPoints, currentZoom);
+  }, [filteredEventPoints, enableClustering, currentZoom]);
+
   // Update markers when filtered data or clustering toggle changes
   useEffect(() => {
     if (!mapRef.current) return;
@@ -498,9 +589,43 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     // Add individual markers with colored divIcons based on utm_medium
     filteredEventPoints.forEach((event) => {
       const fillColor = MEDIUM_COLORS[event.utmMedium] || DEFAULT_COLOR;
+      const seqNum = sequenceNumbers.get(event.eventId) || 0;
+      const offset = spiralOffsets.get(event.eventId) || { lat: 0, lng: 0 };
+      
+      // When clustering is OFF, show numbered badges
+      const showNumber = !enableClustering;
       
       const dotIcon = L.divIcon({
-        html: `<div style="
+        html: showNumber ? `
+          <div style="position:relative;">
+            <div style="
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: ${fillColor};
+              border: 2px solid white;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            "></div>
+            <div style="
+              position: absolute;
+              top: -8px;
+              left: 10px;
+              background: #1e293b;
+              color: white;
+              font-size: 10px;
+              font-weight: 600;
+              min-width: 16px;
+              height: 16px;
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0 3px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+              font-family: system-ui;
+            ">${seqNum}</div>
+          </div>
+        ` : `<div style="
           width: 12px;
           height: 12px;
           border-radius: 50%;
@@ -509,11 +634,15 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         "></div>`,
         className: "samizdat-dot-icon",
-        iconSize: L.point(12, 12),
-        iconAnchor: L.point(6, 6),
+        iconSize: L.point(showNumber ? 30 : 12, showNumber ? 22 : 12),
+        iconAnchor: L.point(showNumber ? 7 : 6, showNumber ? 14 : 6),
       });
 
-      const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
+      // Apply offset when clustering is disabled
+      const lat = event.latitude + offset.lat;
+      const lng = event.longitude + offset.lng;
+
+      const marker = L.marker([lat, lng], { icon: dotIcon });
       // Store utmMedium and eventId for reference
       (marker as any).utmMedium = event.utmMedium;
       (marker as any).eventId = event.eventId;
@@ -530,7 +659,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     mapRef.current.addLayer(clusterGroup);
 
     // User controls zoom - no auto-fitting
-  }, [filteredEventPoints, enableClustering]);
+  }, [filteredEventPoints, enableClustering, sequenceNumbers, spiralOffsets]);
 
   // ZIP count overlay markers (uses filtered events)
   useEffect(() => {
