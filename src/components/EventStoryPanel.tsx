@@ -226,26 +226,28 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
 
         if (!parentToken) break;
 
-        const { data: shareEvent } = await supabase
+        // For L01+ tokens, look for scan/view events (when the link was opened)
+        // Share events record where a NEW link was created, not where the parent link was opened
+        const { data: parentEvent } = await supabase
           .from("url_events")
           .select("city, region, occurred_at")
           .eq("token", parentToken.token)
-          .eq("event_type", "share")
-          .order("occurred_at", { ascending: false })
+          .in("event_type", ["scan", "view"])
+          .order("occurred_at", { ascending: true })
           .limit(1)
           .maybeSingle();
 
         chain.unshift({
           token: parentToken.token,
           level: parentToken.level,
-          city: shareEvent?.city || null,
-          region: shareEvent?.region || null,
+          city: parentEvent?.city || null,
+          region: parentEvent?.region || null,
           utm_medium: parentToken.utm_medium,
-          occurredAt: shareEvent?.occurred_at || null,
+          occurredAt: parentEvent?.occurred_at || null,
         });
 
         if (parentToken.level === currentLevel - 1) {
-          lastShareTime = shareEvent?.occurred_at || null;
+          lastShareTime = parentEvent?.occurred_at || null;
         }
 
         currentToken = parentToken.parent_token;
