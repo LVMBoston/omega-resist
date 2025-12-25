@@ -103,8 +103,8 @@ const DEFAULT_COLOR = "#64748b"; // slate-500
 const calculateSpiralOffsets = (
   eventPoints: EventPoint[],
   zoomLevel: number
-): Map<string, { lat: number; lng: number }> => {
-  const offsets = new Map<string, { lat: number; lng: number }>();
+): Map<string, { lat: number; lng: number; isOffset: boolean; groupSize: number }> => {
+  const offsets = new Map<string, { lat: number; lng: number; isOffset: boolean; groupSize: number }>();
   
   // Group events by exact coordinates (IP-based locations have identical coords)
   const coordGroups = new Map<string, EventPoint[]>();
@@ -118,9 +118,11 @@ const calculateSpiralOffsets = (
   
   // For each group with multiple events, calculate spiral offsets
   coordGroups.forEach((events) => {
-    if (events.length <= 1) {
+    const groupSize = events.length;
+    
+    if (groupSize <= 1) {
       // Single event - no offset needed
-      events.forEach(e => offsets.set(e.eventId, { lat: 0, lng: 0 }));
+      events.forEach(e => offsets.set(e.eventId, { lat: 0, lng: 0, isOffset: false, groupSize: 1 }));
       return;
     }
     
@@ -129,22 +131,26 @@ const calculateSpiralOffsets = (
       new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
     );
     
-    // Calculate offset based on zoom level
-    // At zoom 4: ~0.5 degrees, at zoom 10: ~0.01 degrees, at zoom 15: ~0.0003 degrees
-    const baseOffset = 0.8 / Math.pow(2, zoomLevel - 4);
+    // More aggressive offset calculation that scales visibly with zoom
+    // At zoom 4: ~2 degrees (very spread), at zoom 10: ~0.03 degrees, at zoom 15: ~0.001 degrees
+    // This ensures markers are always visually separated at any zoom level
+    const baseOffset = 2.5 / Math.pow(2, zoomLevel - 4);
     
-    // Place in spiral pattern
+    // Place in spiral pattern with more aggressive spacing
     sorted.forEach((event, index) => {
       if (index === 0) {
         // First (oldest) event stays at center
-        offsets.set(event.eventId, { lat: 0, lng: 0 });
+        offsets.set(event.eventId, { lat: 0, lng: 0, isOffset: true, groupSize });
       } else {
-        // Spiral out: angle increases, radius increases slightly per revolution
-        const angle = (index * 0.8) * Math.PI; // ~144 degrees per step (golden angle)
-        const radius = baseOffset * (0.5 + Math.floor(index / 5) * 0.3 + (index % 5) * 0.15);
+        // Spiral out with golden angle (~137.5°) for optimal packing
+        const angle = index * 2.399963; // Golden angle in radians
+        // Increase radius more aggressively per step
+        const radius = baseOffset * (0.4 + index * 0.35);
         offsets.set(event.eventId, {
           lat: radius * Math.sin(angle),
-          lng: radius * Math.cos(angle) * 1.2, // Stretch horizontally slightly
+          lng: radius * Math.cos(angle) * 1.3, // Stretch horizontally for map projection
+          isOffset: true,
+          groupSize,
         });
       }
     });
@@ -512,7 +518,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   }, []);
 
   const spiralOffsets = useMemo(() => {
-    if (enableClustering) return new Map<string, { lat: number; lng: number }>();
+    if (enableClustering) return new Map<string, { lat: number; lng: number; isOffset: boolean; groupSize: number }>();
     return calculateSpiralOffsets(filteredEventPoints, currentZoom);
   }, [filteredEventPoints, enableClustering, currentZoom]);
 
@@ -590,10 +596,16 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     filteredEventPoints.forEach((event) => {
       const fillColor = MEDIUM_COLORS[event.utmMedium] || DEFAULT_COLOR;
       const seqNum = sequenceNumbers.get(event.eventId) || 0;
-      const offset = spiralOffsets.get(event.eventId) || { lat: 0, lng: 0 };
+      const offset = spiralOffsets.get(event.eventId) || { lat: 0, lng: 0, isOffset: false, groupSize: 1 };
       
       // When clustering is OFF, show numbered badges
       const showNumber = !enableClustering;
+      const isOffsetMarker = offset.isOffset && offset.groupSize > 1;
+      
+      // Add visual indicator for offset markers (dashed border or glow)
+      const offsetStyle = isOffsetMarker && showNumber 
+        ? `box-shadow: 0 0 0 2px rgba(255,255,255,0.8), 0 0 8px rgba(0,0,0,0.4);` 
+        : `box-shadow: 0 1px 4px rgba(0,0,0,0.3);`;
       
       const dotIcon = L.divIcon({
         html: showNumber ? `
@@ -604,7 +616,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
               border-radius: 50%;
               background: ${fillColor};
               border: 2px solid white;
-              box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+              ${offsetStyle}
             "></div>
             <div style="
               position: absolute;
@@ -624,6 +636,15 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
               box-shadow: 0 1px 3px rgba(0,0,0,0.3);
               font-family: system-ui;
             ">${seqNum}</div>
+            ${isOffsetMarker ? `<div style="
+              position: absolute;
+              top: 12px;
+              left: -2px;
+              font-size: 8px;
+              color: #64748b;
+              font-family: system-ui;
+              white-space: nowrap;
+            ">1 of ${offset.groupSize}</div>` : ''}
           </div>
         ` : `<div style="
           width: 12px;
@@ -634,7 +655,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
           box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         "></div>`,
         className: "samizdat-dot-icon",
-        iconSize: L.point(showNumber ? 30 : 12, showNumber ? 22 : 12),
+        iconSize: L.point(showNumber ? 30 : 12, showNumber ? 28 : 12),
         iconAnchor: L.point(showNumber ? 7 : 6, showNumber ? 14 : 6),
       });
 
@@ -659,7 +680,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     mapRef.current.addLayer(clusterGroup);
 
     // User controls zoom - no auto-fitting
-  }, [filteredEventPoints, enableClustering, sequenceNumbers, spiralOffsets]);
+  }, [filteredEventPoints, enableClustering, sequenceNumbers, spiralOffsets, currentZoom]);
 
   // ZIP count overlay markers (uses filtered events)
   useEffect(() => {
