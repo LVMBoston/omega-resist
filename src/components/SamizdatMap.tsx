@@ -131,10 +131,13 @@ const calculateSpiralOffsets = (
       new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
     );
     
-    // Reasonable offset calculation: roughly 50 pixels worth of degrees at given zoom
-    // At zoom 4: ~0.5 degrees, zoom 8: ~0.03 degrees, zoom 12: ~0.002 degrees
-    // This keeps markers close to their true position while still visually separating them
-    const baseOffset = 0.5 / Math.pow(2, zoomLevel - 4);
+    // Convert pixel offset to degrees at current zoom level
+    // At zoom Z, the world (360 degrees longitude) is 256 * 2^Z pixels wide
+    // So 1 pixel = 360 / (256 * 2^Z) degrees
+    // We want ~25 pixels of base offset for visibility
+    const pixelsPerDegree = (256 * Math.pow(2, zoomLevel)) / 360;
+    const basePixelOffset = 25; // Base offset in pixels for good visibility
+    const baseOffset = basePixelOffset / pixelsPerDegree;
     
     // Place in spiral pattern
     sorted.forEach((event, index) => {
@@ -144,11 +147,11 @@ const calculateSpiralOffsets = (
       } else {
         // Spiral out with golden angle (~137.5°) for optimal packing
         const angle = index * 2.399963; // Golden angle in radians
-        // Gradual radius increase
-        const radius = baseOffset * (0.3 + index * 0.2);
+        // Each subsequent marker is further out
+        const radius = baseOffset * (0.8 + index * 0.5);
         offsets.set(event.eventId, {
           lat: radius * Math.sin(angle),
-          lng: radius * Math.cos(angle) * 1.3, // Stretch horizontally for map projection
+          lng: radius * Math.cos(angle),
           isOffset: true,
           groupSize,
         });
