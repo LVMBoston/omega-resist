@@ -5,7 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,11 @@ interface EventPoint {
   longitude: number;
   occurredAt: string;
   utmMedium: string;
+  // New fields for chain visualization
+  token: string;
+  rootToken: string;
+  parentToken: string | null;
+  level: number;
 }
 
 interface ZipAggregate {
@@ -67,8 +72,18 @@ interface ViewportStats {
   color: string;
 }
 
+// L00 event with spawn count for overview mode
+interface L00EventWithCount {
+  event: EventPoint;
+  spawnCount: number;
+  rootToken: string;
+}
+
 // Time window options for "time since go-live" filter
 type TimeWindow = "0-1d" | "1-3d" | "3-5d" | "5-7d" | "all";
+
+// View mode for the map
+type ViewMode = "overview" | "chain";
 
 const TIME_WINDOW_OPTIONS: { value: TimeWindow; label: string; minMs: number; maxMs: number }[] = [
   { value: "0-1d", label: "0–1 day", minMs: 0, maxMs: 24 * 60 * 60 * 1000 },
@@ -97,70 +112,24 @@ const MEDIUM_LABELS: Record<string, string> = {
   bs: "BlueSky",
 };
 
-const DEFAULT_COLOR = "#64748b"; // slate-500
-
-// Calculate spiral offsets for overlapping markers at same location
-const calculateSpiralOffsets = (
-  eventPoints: EventPoint[],
-  zoomLevel: number
-): Map<string, { lat: number; lng: number; isOffset: boolean; groupSize: number }> => {
-  const offsets = new Map<string, { lat: number; lng: number; isOffset: boolean; groupSize: number }>();
-  
-  // Group events by exact coordinates (IP-based locations have identical coords)
-  const coordGroups = new Map<string, EventPoint[]>();
-  eventPoints.forEach(event => {
-    const key = `${event.latitude.toFixed(7)}_${event.longitude.toFixed(7)}`;
-    if (!coordGroups.has(key)) {
-      coordGroups.set(key, []);
-    }
-    coordGroups.get(key)!.push(event);
-  });
-  
-  // For each group with multiple events, calculate spiral offsets
-  coordGroups.forEach((events) => {
-    const groupSize = events.length;
-    
-    if (groupSize <= 1) {
-      // Single event - no offset needed
-      events.forEach(e => offsets.set(e.eventId, { lat: 0, lng: 0, isOffset: false, groupSize: 1 }));
-      return;
-    }
-    
-    // Sort by occurredAt within the group (oldest first)
-    const sorted = [...events].sort((a, b) => 
-      new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
-    );
-    
-    // Convert pixel offset to degrees at current zoom level
-    // At zoom Z, the world (360 degrees longitude) is 256 * 2^Z pixels wide
-    // So 1 pixel = 360 / (256 * 2^Z) degrees
-    // We want ~25 pixels of base offset for visibility
-    const pixelsPerDegree = (256 * Math.pow(2, zoomLevel)) / 360;
-    const basePixelOffset = 25; // Base offset in pixels for good visibility
-    const baseOffset = basePixelOffset / pixelsPerDegree;
-    
-    // Place in spiral pattern
-    sorted.forEach((event, index) => {
-      if (index === 0) {
-        // First (oldest) event stays at center
-        offsets.set(event.eventId, { lat: 0, lng: 0, isOffset: true, groupSize });
-      } else {
-        // Spiral out with golden angle (~137.5°) for optimal packing
-        const angle = index * 2.399963; // Golden angle in radians
-        // Each subsequent marker is further out
-        const radius = baseOffset * (0.8 + index * 0.5);
-        offsets.set(event.eventId, {
-          lat: radius * Math.sin(angle),
-          lng: radius * Math.cos(angle),
-          isOffset: true,
-          groupSize,
-        });
-      }
-    });
-  });
-  
-  return offsets;
+// Colors by level for chain mode
+const LEVEL_COLORS: Record<number, string> = {
+  0: "#3b82f6", // L00 - blue
+  1: "#22c55e", // L01 - green
+  2: "#f97316", // L02 - orange
+  3: "#ef4444", // L03 - red
 };
+
+// Color scale for spawn count (virality heat)
+const getSpawnCountColor = (count: number): string => {
+  if (count === 0) return "#94a3b8"; // gray - no spawns
+  if (count <= 5) return "#93c5fd"; // light blue
+  if (count <= 20) return "#3b82f6"; // blue
+  if (count <= 50) return "#f97316"; // orange
+  return "#ef4444"; // red - hot
+};
+
+const DEFAULT_COLOR = "#64748b"; // slate-500
 
 // Create chronological sequence numbers for all events
 const createSequenceNumbers = (eventPoints: EventPoint[]): Map<string, number> => {
@@ -178,6 +147,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const zipMarkersRef = useRef<L.Marker[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
@@ -189,6 +159,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [enabledChannels, setEnabledChannels] = useState<Set<string>>(new Set(["qr", "em", "sms", "tx", "fb", "bs"]));
+  
+  // New state for L00 Overview / Chain drill-down
+  const [viewMode, setViewMode] = useState<ViewMode>("overview");
+  const [selectedRootToken, setSelectedRootToken] = useState<string | null>(null);
 
   // Toggle a channel on/off
   const toggleChannel = (medium: string) => {
@@ -252,6 +226,49 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
     return filtered;
   }, [eventPoints, timeWindow, eoaStartDates, enabledChannels]);
+
+  // L00 events with spawn counts for overview mode
+  const l00EventsWithCounts = useMemo((): L00EventWithCount[] => {
+    // Group by rootToken to get first L00 event and count spawns
+    const rootMap = new Map<string, { l00Event: EventPoint | null; spawnCount: number }>();
+    
+    filteredEventPoints.forEach(ep => {
+      if (!rootMap.has(ep.rootToken)) {
+        rootMap.set(ep.rootToken, { l00Event: null, spawnCount: 0 });
+      }
+      const entry = rootMap.get(ep.rootToken)!;
+      
+      if (ep.level === 0) {
+        // Take first L00 event by time
+        if (!entry.l00Event || new Date(ep.occurredAt) < new Date(entry.l00Event.occurredAt)) {
+          entry.l00Event = ep;
+        }
+      } else {
+        // Count L01+ as spawns
+        entry.spawnCount++;
+      }
+    });
+    
+    // Convert to array, only include entries with an L00 event
+    const result: L00EventWithCount[] = [];
+    rootMap.forEach((entry, rootToken) => {
+      if (entry.l00Event) {
+        result.push({
+          event: entry.l00Event,
+          spawnCount: entry.spawnCount,
+          rootToken,
+        });
+      }
+    });
+    
+    return result;
+  }, [filteredEventPoints]);
+
+  // Chain events for drill-down mode
+  const chainEvents = useMemo((): EventPoint[] => {
+    if (!selectedRootToken) return [];
+    return filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
+  }, [filteredEventPoints, selectedRootToken]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   // This ensures unchecked channels still show in the table
@@ -333,7 +350,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     setViewportStats(stats);
   }, [timeFilteredEvents]);
 
-  // Fetch event-level data (no aggregation)
+  // Fetch event-level data with token chain info
   useEffect(() => {
     const fetchEventData = async () => {
       if (!eoaIds.length) {
@@ -368,10 +385,10 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       setEoaNames(names);
       setEoaStartDates(startDates);
 
-      // Step 2: Get tokens for selected EoAs (include utm_medium)
+      // Step 2: Get tokens for selected EoAs (include chain fields)
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
-        .select("token, eoa_id, utm_medium")
+        .select("token, eoa_id, utm_medium, root_token, parent_token, level")
         .in("eoa_id", eoaIds)
         .eq("is_simulated", false);
 
@@ -383,11 +400,21 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       }
 
       const tokenList = tokens.map((t) => t.token);
-      const tokenToEoa: Record<string, string> = {};
-      const tokenToMedium: Record<string, string> = {};
+      const tokenData: Record<string, { 
+        eoaId: string; 
+        utmMedium: string; 
+        rootToken: string; 
+        parentToken: string | null; 
+        level: number 
+      }> = {};
       tokens.forEach((t) => {
-        tokenToEoa[t.token] = t.eoa_id;
-        tokenToMedium[t.token] = t.utm_medium || "unknown";
+        tokenData[t.token] = {
+          eoaId: t.eoa_id,
+          utmMedium: t.utm_medium || "unknown",
+          rootToken: t.root_token || t.token, // L00 tokens have themselves as root
+          parentToken: t.parent_token,
+          level: t.level,
+        };
       });
 
       // Step 3: Get ALL view events (no deduplication)
@@ -426,11 +453,13 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
         zipCoords[z.zip_code] = { lat: z.latitude, lng: z.longitude };
       });
 
-      // Step 5: Build event points, filtering by start_date (basic go-live filter)
+      // Step 5: Build event points with chain info, filtering by start_date
       const points: EventPoint[] = [];
       events.forEach((event) => {
-        const eoaId = tokenToEoa[event.token];
-        const startDate = startDates[eoaId];
+        const td = tokenData[event.token];
+        if (!td) return;
+        
+        const startDate = startDates[td.eoaId];
         const coords = zipCoords[event.zip_code!];
 
         // Skip if no coordinates for this ZIP
@@ -443,12 +472,16 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
         points.push({
           eventId: event.id,
-          eoaId,
+          eoaId: td.eoaId,
           zipCode: event.zip_code!,
           latitude: coords.lat,
           longitude: coords.lng,
           occurredAt: event.occurred_at,
-          utmMedium: tokenToMedium[event.token] || "unknown",
+          utmMedium: td.utmMedium,
+          token: event.token,
+          rootToken: td.rootToken,
+          parentToken: td.parentToken,
+          level: td.level,
         });
       });
 
@@ -500,192 +533,270 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     updateViewportStats();
   }, [timeFilteredEvents, updateViewportStats]);
 
-  // Calculate sequence numbers for chronological ordering (memoized)
-  const sequenceNumbers = useMemo(() => {
-    return createSequenceNumbers(filteredEventPoints);
-  }, [filteredEventPoints]);
+  // Calculate sequence numbers for chain mode (chronological ordering)
+  const chainSequenceNumbers = useMemo(() => {
+    return createSequenceNumbers(chainEvents);
+  }, [chainEvents]);
 
-  // Calculate spiral offsets when clustering is disabled
-  const [currentZoom, setCurrentZoom] = useState(4);
-  
-  // Track zoom changes for offset recalculation
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const handleZoom = () => {
-      setCurrentZoom(mapRef.current?.getZoom() || 4);
-    };
-    mapRef.current.on('zoomend', handleZoom);
-    return () => {
-      mapRef.current?.off('zoomend', handleZoom);
-    };
+  // Handle back to overview
+  const handleBackToOverview = useCallback(() => {
+    setViewMode("overview");
+    setSelectedRootToken(null);
+    setSelectedEventId(null);
   }, []);
 
-  const spiralOffsets = useMemo(() => {
-    if (enableClustering) return new Map<string, { lat: number; lng: number; isOffset: boolean; groupSize: number }>();
-    return calculateSpiralOffsets(filteredEventPoints, currentZoom);
-  }, [filteredEventPoints, enableClustering, currentZoom]);
+  // Handle L00 marker click - drill down into chain
+  const handleL00Click = useCallback((rootToken: string) => {
+    setSelectedRootToken(rootToken);
+    setViewMode("chain");
+    setSelectedEventId(null);
+  }, []);
 
-  // Update markers when filtered data or clustering toggle changes
+  // Update markers based on view mode
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Remove existing cluster group if present
+    // Remove existing layers
     if (clusterGroupRef.current) {
       mapRef.current.removeLayer(clusterGroupRef.current);
       clusterGroupRef.current = null;
     }
+    if (markersLayerRef.current) {
+      mapRef.current.removeLayer(markersLayerRef.current);
+      markersLayerRef.current = null;
+    }
 
-    if (filteredEventPoints.length === 0) return;
+    if (viewMode === "overview") {
+      // OVERVIEW MODE: Show L00 events colored by spawn count
+      if (l00EventsWithCounts.length === 0) return;
 
-    // Create cluster group with custom icon creator
-    const clusterGroup = L.markerClusterGroup({
-      disableClusteringAtZoom: enableClustering ? undefined : 0, // Disable clustering when toggle is off
-      maxClusterRadius: enableClustering ? 50 : 0,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      iconCreateFunction: (cluster) => {
-        const count = cluster.getChildCount();
-        // Build medium breakdown for popup
-        const markers = cluster.getAllChildMarkers();
-        const mediumCounts: Record<string, number> = {};
-        markers.forEach((m) => {
-          const medium = (m as any).utmMedium || "unknown";
-          mediumCounts[medium] = (mediumCounts[medium] || 0) + 1;
+      if (enableClustering) {
+        // Use clustering for overview
+        const clusterGroup = L.markerClusterGroup({
+          maxClusterRadius: 50,
+          spiderfyOnMaxZoom: true,
+          showCoverageOnHover: false,
+          zoomToBoundsOnClick: true,
+          iconCreateFunction: (cluster) => {
+            const count = cluster.getChildCount();
+            // Sum up spawn counts for popup
+            const markers = cluster.getAllChildMarkers();
+            let totalSpawns = 0;
+            markers.forEach((m) => {
+              totalSpawns += (m as any).spawnCount || 0;
+            });
+            
+            const popupContent = `
+              <div style="font-family:system-ui;font-size:13px;line-height:1.4;">
+                <div style="font-weight:600;margin-bottom:4px;">${count} origin events</div>
+                <div>Total spawns: ${totalSpawns}</div>
+              </div>
+            `;
+            (cluster as any).popupContent = popupContent;
+
+            return L.divIcon({
+              html: `<div class="samizdat-cluster">${count}</div>`,
+              className: "samizdat-cluster-icon",
+              iconSize: L.point(40, 40),
+            });
+          },
         });
-        
-        // Build breakdown HTML for popup
-        const breakdownLines = Object.entries(mediumCounts)
-          .map(([medium, cnt]) => {
-            const label = MEDIUM_LABELS[medium] || medium;
-            const color = MEDIUM_COLORS[medium] || DEFAULT_COLOR;
-            return `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;"></span>${label}: ${cnt}</div>`;
-          })
-          .join("");
-        
-        const popupContent = `
-          <div style="font-family:system-ui;font-size:13px;line-height:1.4;">
-            <div style="font-weight:600;margin-bottom:4px;">Cluster: ${count} activations</div>
-            <div style="border-top:1px solid #e2e8f0;padding-top:6px;">
-              ${breakdownLines}
-            </div>
-          </div>
-        `;
-        
-        // Store popup content on cluster for later binding
-        (cluster as any).popupContent = popupContent;
 
-        // Neutral, calm cluster styling
-        return L.divIcon({
-          html: `<div class="samizdat-cluster">${count}</div>`,
-          className: "samizdat-cluster-icon",
-          iconSize: L.point(40, 40),
+        clusterGroup.on("clusterclick", (e: any) => {
+          const cluster = e.layer;
+          if (cluster.popupContent) {
+            L.popup()
+              .setLatLng(cluster.getLatLng())
+              .setContent(cluster.popupContent)
+              .openOn(mapRef.current!);
+          }
         });
-      },
-    });
 
-    // Add popup to clusters on click
-    clusterGroup.on("clusterclick", (e: any) => {
-      const cluster = e.layer;
-      if (cluster.popupContent) {
-        L.popup()
-          .setLatLng(cluster.getLatLng())
-          .setContent(cluster.popupContent)
-          .openOn(mapRef.current!);
+        l00EventsWithCounts.forEach(({ event, spawnCount, rootToken }) => {
+          const fillColor = getSpawnCountColor(spawnCount);
+          
+          const dotIcon = L.divIcon({
+            html: `
+              <div style="position:relative;">
+                <div style="
+                  width: 16px;
+                  height: 16px;
+                  border-radius: 50%;
+                  background: ${fillColor};
+                  border: 2px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                  cursor: pointer;
+                "></div>
+                ${spawnCount > 0 ? `
+                <div style="
+                  position: absolute;
+                  top: -8px;
+                  left: 12px;
+                  background: #1e293b;
+                  color: white;
+                  font-size: 10px;
+                  font-weight: 600;
+                  min-width: 18px;
+                  height: 18px;
+                  border-radius: 9px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 0 4px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                  font-family: system-ui;
+                ">${spawnCount}</div>
+                ` : ''}
+              </div>
+            `,
+            className: "samizdat-l00-icon",
+            iconSize: L.point(spawnCount > 0 ? 34 : 16, spawnCount > 0 ? 26 : 16),
+            iconAnchor: L.point(8, 8),
+          });
+
+          const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
+          (marker as any).spawnCount = spawnCount;
+          (marker as any).rootToken = rootToken;
+          
+          marker.on('click', () => {
+            handleL00Click(rootToken);
+          });
+          
+          clusterGroup.addLayer(marker);
+        });
+
+        clusterGroupRef.current = clusterGroup;
+        mapRef.current.addLayer(clusterGroup);
+      } else {
+        // No clustering - show individual L00 markers
+        const layerGroup = L.layerGroup();
+
+        l00EventsWithCounts.forEach(({ event, spawnCount, rootToken }) => {
+          const fillColor = getSpawnCountColor(spawnCount);
+          
+          const dotIcon = L.divIcon({
+            html: `
+              <div style="position:relative;">
+                <div style="
+                  width: 16px;
+                  height: 16px;
+                  border-radius: 50%;
+                  background: ${fillColor};
+                  border: 2px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                  cursor: pointer;
+                "></div>
+                ${spawnCount > 0 ? `
+                <div style="
+                  position: absolute;
+                  top: -8px;
+                  left: 12px;
+                  background: #1e293b;
+                  color: white;
+                  font-size: 10px;
+                  font-weight: 600;
+                  min-width: 18px;
+                  height: 18px;
+                  border-radius: 9px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 0 4px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                  font-family: system-ui;
+                ">${spawnCount}</div>
+                ` : ''}
+              </div>
+            `,
+            className: "samizdat-l00-icon",
+            iconSize: L.point(spawnCount > 0 ? 34 : 16, spawnCount > 0 ? 26 : 16),
+            iconAnchor: L.point(8, 8),
+          });
+
+          const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
+          
+          marker.on('click', () => {
+            handleL00Click(rootToken);
+          });
+          
+          layerGroup.addLayer(marker);
+        });
+
+        markersLayerRef.current = layerGroup;
+        mapRef.current.addLayer(layerGroup);
       }
-    });
+    } else {
+      // CHAIN MODE: Show all events for selected chain, colored by level
+      if (chainEvents.length === 0) return;
 
-    // Add individual markers with colored divIcons based on utm_medium
-    filteredEventPoints.forEach((event) => {
-      const fillColor = MEDIUM_COLORS[event.utmMedium] || DEFAULT_COLOR;
-      const seqNum = sequenceNumbers.get(event.eventId) || 0;
-      const offset = spiralOffsets.get(event.eventId) || { lat: 0, lng: 0, isOffset: false, groupSize: 1 };
-      
-      // When clustering is OFF, show numbered badges
-      const showNumber = !enableClustering;
-      const isOffsetMarker = offset.isOffset && offset.groupSize > 1;
-      
-      // Add visual indicator for offset markers (dashed border or glow)
-      const offsetStyle = isOffsetMarker && showNumber 
-        ? `box-shadow: 0 0 0 2px rgba(255,255,255,0.8), 0 0 8px rgba(0,0,0,0.4);` 
-        : `box-shadow: 0 1px 4px rgba(0,0,0,0.3);`;
-      
-      const dotIcon = L.divIcon({
-        html: showNumber ? `
-          <div style="position:relative;">
-            <div style="
-              width: 14px;
-              height: 14px;
-              border-radius: 50%;
-              background: ${fillColor};
-              border: 2px solid white;
-              ${offsetStyle}
-            "></div>
-            <div style="
-              position: absolute;
-              top: -8px;
-              left: 10px;
-              background: #1e293b;
-              color: white;
-              font-size: 10px;
-              font-weight: 600;
-              min-width: 16px;
-              height: 16px;
-              border-radius: 8px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 0 3px;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-              font-family: system-ui;
-            ">${seqNum}</div>
-            ${isOffsetMarker ? `<div style="
-              position: absolute;
-              top: 12px;
-              left: -2px;
-              font-size: 8px;
-              color: #64748b;
-              font-family: system-ui;
-              white-space: nowrap;
-            ">1 of ${offset.groupSize}</div>` : ''}
-          </div>
-        ` : `<div style="
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: ${fillColor};
-          border: 1px solid rgba(0,0,0,0.2);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        "></div>`,
-        className: "samizdat-dot-icon",
-        iconSize: L.point(showNumber ? 30 : 12, showNumber ? 28 : 12),
-        iconAnchor: L.point(showNumber ? 7 : 6, showNumber ? 14 : 6),
+      const layerGroup = L.layerGroup();
+
+      chainEvents.forEach((event) => {
+        const fillColor = LEVEL_COLORS[event.level] || DEFAULT_COLOR;
+        const seqNum = chainSequenceNumbers.get(event.eventId) || 0;
+        const levelLabel = `L${String(event.level).padStart(2, '0')}`;
+        
+        const dotIcon = L.divIcon({
+          html: `
+            <div style="position:relative;">
+              <div style="
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: ${fillColor};
+                border: 2px solid white;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+              "></div>
+              <div style="
+                position: absolute;
+                top: -10px;
+                left: 10px;
+                background: #1e293b;
+                color: white;
+                font-size: 9px;
+                font-weight: 600;
+                min-width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 3px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                font-family: system-ui;
+              ">${seqNum}</div>
+              <div style="
+                position: absolute;
+                top: 14px;
+                left: -3px;
+                font-size: 8px;
+                color: ${fillColor};
+                font-weight: 700;
+                font-family: system-ui;
+                text-shadow: 0 0 2px white, 0 0 2px white;
+              ">${levelLabel}</div>
+            </div>
+          `,
+          className: "samizdat-chain-icon",
+          iconSize: L.point(30, 30),
+          iconAnchor: L.point(7, 14),
+        });
+
+        const marker = L.marker([event.latitude, event.longitude], { icon: dotIcon });
+        
+        marker.on('click', () => {
+          setSelectedEventId(event.eventId);
+        });
+        
+        layerGroup.addLayer(marker);
       });
 
-      // Apply offset when clustering is disabled
-      const lat = event.latitude + offset.lat;
-      const lng = event.longitude + offset.lng;
+      markersLayerRef.current = layerGroup;
+      mapRef.current.addLayer(layerGroup);
+    }
+  }, [viewMode, l00EventsWithCounts, chainEvents, chainSequenceNumbers, enableClustering, handleL00Click]);
 
-      const marker = L.marker([lat, lng], { icon: dotIcon });
-      // Store utmMedium and eventId for reference
-      (marker as any).utmMedium = event.utmMedium;
-      (marker as any).eventId = event.eventId;
-      
-      // Add click handler to open Event Story dialog
-      marker.on('click', () => {
-        setSelectedEventId(event.eventId);
-      });
-      
-      clusterGroup.addLayer(marker);
-    });
-
-    clusterGroupRef.current = clusterGroup;
-    mapRef.current.addLayer(clusterGroup);
-
-    // User controls zoom - no auto-fitting
-  }, [filteredEventPoints, enableClustering, sequenceNumbers, spiralOffsets, currentZoom]);
-
-  // ZIP count overlay markers (uses filtered events)
+  // ZIP count overlay markers (uses filtered events based on mode)
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -693,11 +804,15 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     zipMarkersRef.current.forEach((marker) => marker.remove());
     zipMarkersRef.current = [];
 
-    if (!showZipCounts || filteredEventPoints.length === 0) return;
+    const eventsToShow = viewMode === "overview" 
+      ? l00EventsWithCounts.map(e => e.event)
+      : chainEvents;
 
-    // Aggregate filtered events by ZIP code
+    if (!showZipCounts || eventsToShow.length === 0) return;
+
+    // Aggregate events by ZIP code
     const zipAggregates: Record<string, ZipAggregate> = {};
-    filteredEventPoints.forEach((event) => {
+    eventsToShow.forEach((event) => {
       if (!zipAggregates[event.zipCode]) {
         zipAggregates[event.zipCode] = {
           zipCode: event.zipCode,
@@ -726,7 +841,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       const tooltipContent = `
         <div style="font-family:system-ui;font-size:13px;line-height:1.4;">
           <div style="font-weight:600;margin-bottom:4px;">ZIP ${agg.zipCode}</div>
-          <div style="margin-bottom:6px;">Activations: ${agg.total}</div>
+          <div style="margin-bottom:6px;">Events: ${agg.total}</div>
           <div style="border-top:1px solid #e2e8f0;padding-top:6px;">
             ${breakdownLines}
           </div>
@@ -769,7 +884,7 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
 
       zipMarkersRef.current.push(marker);
     });
-  }, [showZipCounts, filteredEventPoints]);
+  }, [showZipCounts, viewMode, l00EventsWithCounts, chainEvents]);
 
   return (
     <div className="space-y-4">
@@ -850,18 +965,76 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
       <div className="flex rounded-lg overflow-hidden border border-border" style={{ height: '600px' }}>
         {/* Map container - shrinks when panel is open */}
         <div className="relative flex-1 min-w-0">
+          {/* Mode indicator and back button for chain mode */}
+          {viewMode === "chain" && (
+            <div className="absolute top-3 left-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackToOverview}
+                  className="h-7 px-2"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Overview
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{chainEvents.length}</span> events in chain
+                </div>
+              </div>
+              {/* Level legend */}
+              <div className="flex gap-3 mt-2 pt-2 border-t border-border">
+                {Object.entries(LEVEL_COLORS).map(([level, color]) => (
+                  <div key={level} className="flex items-center gap-1.5 text-xs">
+                    <span 
+                      className="w-2.5 h-2.5 rounded-full" 
+                      style={{ backgroundColor: color }}
+                    />
+                    <span>L{String(level).padStart(2, '0')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Overview mode legend */}
+          {viewMode === "overview" && l00EventsWithCounts.length > 0 && (
+            <div className="absolute bottom-3 left-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
+              <div className="text-xs font-medium mb-2">Spawns from origin</div>
+              <div className="flex gap-2">
+                {[
+                  { label: "0", color: getSpawnCountColor(0) },
+                  { label: "1-5", color: getSpawnCountColor(3) },
+                  { label: "6-20", color: getSpawnCountColor(10) },
+                  { label: "21-50", color: getSpawnCountColor(30) },
+                  { label: "51+", color: getSpawnCountColor(100) },
+                ].map(({ label, color }) => (
+                  <div key={label} className="flex items-center gap-1 text-xs">
+                    <span 
+                      className="w-2.5 h-2.5 rounded-full" 
+                      style={{ backgroundColor: color }}
+                    />
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Map controls */}
           <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex flex-col gap-2 shadow-sm border border-border">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="clustering"
-                checked={enableClustering}
-                onCheckedChange={setEnableClustering}
-              />
-              <Label htmlFor="clustering" className="text-sm cursor-pointer">
-                Clustering
-              </Label>
-            </div>
+            {viewMode === "overview" && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="clustering"
+                  checked={enableClustering}
+                  onCheckedChange={setEnableClustering}
+                />
+                <Label htmlFor="clustering" className="text-sm cursor-pointer">
+                  Clustering
+                </Label>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Switch
                 id="zip-counts"
@@ -920,16 +1093,19 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
               box-shadow: 0 2px 8px rgba(0,0,0,0.25);
               border: 2px solid rgba(255,255,255,0.3);
             }
-            .samizdat-dot-icon {
+            .samizdat-l00-icon,
+            .samizdat-chain-icon {
               background: transparent !important;
               border: none !important;
               cursor: pointer;
               transition: transform 0.15s ease;
             }
-            .samizdat-dot-icon:hover {
-              transform: scale(1.3);
+            .samizdat-l00-icon:hover,
+            .samizdat-chain-icon:hover {
+              transform: scale(1.2);
             }
-            .samizdat-dot-icon > div {
+            .samizdat-l00-icon > div,
+            .samizdat-chain-icon > div {
               cursor: pointer;
             }
             /* Override default markercluster styles */
