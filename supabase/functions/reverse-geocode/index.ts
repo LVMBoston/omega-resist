@@ -1,15 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cache-control, pragma',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 /**
- * Reverse geocoding using OpenStreetMap Nominatim (free, no API key).
- * Rate limit: 1 request/second - should be fine for our use case.
- * https://nominatim.org/release-docs/develop/api/Reverse/
+ * Reverse geocoding that:
+ * 1. For US locations: Uses the local zip_codes table to find the nearest zip code
+ * 2. Falls back to OpenStreetMap Nominatim for city/region/country data
  */
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -29,35 +30,85 @@ serve(async (req) => {
 
     console.log('🗺️ Reverse geocoding coordinates:', { latitude, longitude });
 
-    // Call Nominatim API
-    // IMPORTANT: Nominatim requires a valid User-Agent header
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=16`,
-      {
-        headers: {
-          'User-Agent': 'OmegaResist/1.0 (https://omega-resist.lovable.app)',
-          'Accept-Language': 'en'
-        }
-      }
-    );
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (!response.ok) {
-      console.error('🗺️ Nominatim API error:', response.status, await response.text());
-      throw new Error('Failed to reverse geocode');
+    // First, call Nominatim to get city/region/country
+    let nominatimData: any = null;
+    try {
+      const nominatimResponse = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=16`,
+        {
+          headers: {
+            'User-Agent': 'OmegaResist/1.0 (https://omega-resist.lovable.app)',
+            'Accept-Language': 'en'
+          }
+        }
+      );
+
+      if (nominatimResponse.ok) {
+        nominatimData = await nominatimResponse.json();
+        console.log('🗺️ Nominatim response:', nominatimData);
+      } else {
+        console.warn('🗺️ Nominatim API returned non-OK status:', nominatimResponse.status);
+      }
+    } catch (nominatimError) {
+      console.warn('🗺️ Nominatim API error (continuing without it):', nominatimError);
     }
 
-    const data = await response.json();
-    console.log('🗺️ Nominatim response:', data);
-
-    // Extract address components
-    const address = data.address || {};
-    
-    // Nominatim uses different fields for city depending on location size
+    // Extract address components from Nominatim
+    const address = nominatimData?.address || {};
     const city = address.city || address.town || address.village || address.municipality || address.hamlet || null;
     const region = address.state || address.province || address.region || null;
     const country = address.country || null;
     const countryCode = address.country_code?.toUpperCase() || null;
-    const zipCode = address.postcode || null;
+
+    // For US locations, query our zip_codes table to find the nearest zip code
+    let zipCode: string | null = null;
+    
+    if (countryCode === 'US' || (!countryCode && latitude > 24 && latitude < 50 && longitude > -125 && longitude < -66)) {
+      console.log('🗺️ US location detected, querying local zip_codes table...');
+      
+      // Find the nearest zip code using Haversine formula
+      const { data: nearestZips, error: zipError } = await supabase
+        .from('zip_codes')
+        .select('zip_code, city, state_name, latitude, longitude')
+        .order(`((latitude - ${latitude})^2 + (longitude - ${longitude})^2)`)
+        .limit(1);
+
+      if (zipError) {
+        console.error('🗺️ Error querying zip_codes table:', zipError);
+      } else if (nearestZips && nearestZips.length > 0) {
+        const nearest = nearestZips[0];
+        zipCode = nearest.zip_code;
+        console.log('🗺️ Found nearest zip code from database:', {
+          zip_code: zipCode,
+          city: nearest.city,
+          state: nearest.state_name,
+          zip_lat: nearest.latitude,
+          zip_lon: nearest.longitude
+        });
+        
+        // Calculate distance for logging
+        const R = 6371; // Earth's radius in km
+        const dLat = (nearest.latitude - latitude) * Math.PI / 180;
+        const dLon = (nearest.longitude - longitude) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(latitude * Math.PI / 180) * Math.cos(nearest.latitude * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        console.log(`🗺️ Distance to nearest zip code: ${distance.toFixed(2)} km`);
+      } else {
+        console.log('🗺️ No zip codes found in database, falling back to Nominatim postcode');
+        zipCode = address.postcode || null;
+      }
+    } else {
+      // Non-US: use Nominatim postcode if available
+      zipCode = address.postcode || null;
+    }
 
     const result = {
       city,
@@ -65,10 +116,10 @@ serve(async (req) => {
       country,
       country_code: countryCode,
       zip_code: zipCode,
-      display_name: data.display_name || null
+      display_name: nominatimData?.display_name || null
     };
 
-    console.log('🗺️ Parsed location:', result);
+    console.log('🗺️ Final parsed location:', result);
 
     return new Response(
       JSON.stringify(result),
