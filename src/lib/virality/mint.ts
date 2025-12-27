@@ -234,22 +234,29 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<{
   zip_code: string | null;
 } | null> {
   try {
-    console.log("🗺️ Reverse geocoding GPS coordinates:", { latitude, longitude });
-    const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+    console.log("🗺️ CALLING reverse-geocode edge function with:", { latitude, longitude });
+    
+    const response = await supabase.functions.invoke('reverse-geocode', {
       body: { latitude, longitude }
     });
     
+    console.log("🗺️ Raw reverse-geocode response:", response);
+    
+    const { data, error } = response;
+    
     if (error) {
-      console.error("❌ Reverse geocode error:", error);
+      console.error("❌ Reverse geocode error object:", error);
+      console.error("❌ Error message:", error.message);
+      console.error("❌ Error details:", JSON.stringify(error));
       return null;
     }
     
     if (!data) {
-      console.error("❌ Reverse geocode returned no data");
+      console.error("❌ Reverse geocode returned no data, response was:", response);
       return null;
     }
     
-    console.log("🗺️ Reverse geocode result:", data);
+    console.log("🗺️ Reverse geocode SUCCESS! Result:", data);
     console.log("🗺️ Extracted zip_code:", data.zip_code);
     
     return {
@@ -260,7 +267,9 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<{
       zip_code: data?.zip_code || null
     };
   } catch (error) {
-    console.error("❌ Failed to reverse geocode:", error);
+    console.error("❌ EXCEPTION in reverse geocode:", error);
+    console.error("❌ Exception type:", typeof error);
+    console.error("❌ Exception string:", String(error));
     return null;
   }
 }
