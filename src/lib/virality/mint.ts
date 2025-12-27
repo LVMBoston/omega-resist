@@ -234,7 +234,7 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<{
   zip_code: string | null;
 } | null> {
   try {
-    console.log("🗺️ Reverse geocoding GPS coordinates...");
+    console.log("🗺️ Reverse geocoding GPS coordinates:", { latitude, longitude });
     const { data, error } = await supabase.functions.invoke('reverse-geocode', {
       body: { latitude, longitude }
     });
@@ -244,7 +244,14 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<{
       return null;
     }
     
+    if (!data) {
+      console.error("❌ Reverse geocode returned no data");
+      return null;
+    }
+    
     console.log("🗺️ Reverse geocode result:", data);
+    console.log("🗺️ Extracted zip_code:", data.zip_code);
+    
     return {
       city: data?.city || null,
       region: data?.region || null,
