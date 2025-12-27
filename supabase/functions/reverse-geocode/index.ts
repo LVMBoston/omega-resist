@@ -71,12 +71,11 @@ serve(async (req) => {
     if (countryCode === 'US' || (!countryCode && latitude > 24 && latitude < 50 && longitude > -125 && longitude < -66)) {
       console.log('🗺️ US location detected, querying local zip_codes table...');
       
-      // Find the nearest zip code using Haversine formula
-      const { data: nearestZips, error: zipError } = await supabase
-        .from('zip_codes')
-        .select('zip_code, city, state_name, latitude, longitude')
-        .order(`((latitude - ${latitude})^2 + (longitude - ${longitude})^2)`)
-        .limit(1);
+      // Find the nearest zip code using raw SQL for distance calculation
+      const { data: nearestZips, error: zipError } = await supabase.rpc('get_nearest_zip_code', {
+        p_latitude: latitude,
+        p_longitude: longitude
+      });
 
       if (zipError) {
         console.error('🗺️ Error querying zip_codes table:', zipError);

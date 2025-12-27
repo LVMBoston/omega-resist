@@ -748,6 +748,17 @@ export type Database = {
           timezone: string
         }[]
       }
+      get_nearest_zip_code: {
+        Args: { p_latitude: number; p_longitude: number }
+        Returns: {
+          city: string
+          distance_km: number
+          latitude: number
+          longitude: number
+          state_name: string
+          zip_code: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
