@@ -1186,7 +1186,7 @@ export default function CampaignDashboard({
                       )}
                       <ScrollArea className="h-[calc(100vh-300px)] min-h-[600px]">
                         <Table>
-                          <TableHeader>
+                          <TableHeader className="sticky top-0 z-10 bg-background">
                             <TableRow>
                               <TableHead className="w-[80px]">Row #</TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('timestamp')}>
