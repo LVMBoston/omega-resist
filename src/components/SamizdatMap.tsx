@@ -361,21 +361,41 @@ const SamizdatMap = ({
       }))
     });
     
-    // When "Good Data Only" is enabled in chain mode, only show ONE L00 origin per unique instance token
-    // This prevents multiple origins from different instances of the same base token
+    // When "Good Data Only" is enabled in chain mode, we need to show only ONE instance chain
+    // The problem: root_token in DB doesn't include instance suffix, so all instances share the same rootToken
+    // Solution: Find the first L00 event with a valid hex instance, and filter to only that instance's chain
     if (showGoodDataOnly) {
-      const seenL00Instances = new Set<string>();
-      chainEvents = chainEvents.filter(ep => {
-        if (ep.level === 0) {
-          // For L00 events, only keep the first occurrence of each unique instance token
-          if (seenL00Instances.has(ep.token)) {
-            return false;
+      // Find the first L00 token with a hex instance suffix
+      const firstL00 = chainEvents.find(ep => ep.level === 0 && ep.token.includes(':'));
+      
+      if (firstL00) {
+        const instanceSuffix = firstL00.token.split(':')[1];
+        const baseToken = firstL00.token.split(':')[0];
+        const fullInstanceToken = `${baseToken}:${instanceSuffix}`;
+        
+        console.log('[DEBUG] Filtering to single instance:', { fullInstanceToken, instanceSuffix });
+        
+        // Filter L00 events to only this specific instance
+        // Filter L01+ events to only those whose parent chain traces back to this instance
+        chainEvents = chainEvents.filter(ep => {
+          if (ep.level === 0) {
+            // L00: must be exactly this instance token
+            return ep.token === fullInstanceToken;
+          } else {
+            // L01+: Check if their parent is this instance (for L01) or trace back
+            // For now, include all L01+ since they share the same rootToken
+            // But we need to check the parent_token to see if it traces to the right instance
+            // The parent of an L01 should be the L00 instance token
+            return ep.parentToken === fullInstanceToken || 
+                   chainEvents.some(p => p.token === ep.parentToken && p.level >= 0);
           }
-          seenL00Instances.add(ep.token);
-        }
-        return true;
-      });
-      console.log('[DEBUG] After L00 dedup:', chainEvents.length);
+        });
+        
+        console.log('[DEBUG] After instance filter:', chainEvents.length);
+      } else {
+        // No valid hex instance L00 found - return empty
+        chainEvents = [];
+      }
     }
     
     return chainEvents;
