@@ -217,6 +217,8 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   const [showGoodDataOnly, setShowGoodDataOnly] = useState(false);
+  // Track the specific L00 instance token when clicking a marker (for chain filtering)
+  const [selectedInstanceToken, setSelectedInstanceToken] = useState<string | null>(null);
 
   // Detect properly formed hex instance suffix (6-char lowercase hex)
   // For L00 tokens, check the token itself for the instance suffix
@@ -363,30 +365,28 @@ const SamizdatMap = ({
     
     // When "Good Data Only" is enabled in chain mode, we need to show only ONE instance chain
     // The problem: root_token in DB doesn't include instance suffix, so all instances share the same rootToken
-    // Solution: Find the first L00 event with a valid hex instance, and filter to only that instance's chain
+    // Solution: Use selectedInstanceToken (from clicked marker) or find the first L00 with valid hex
     if (showGoodDataOnly) {
-      // Find the first L00 token with a hex instance suffix
-      const firstL00 = chainEvents.find(ep => ep.level === 0 && ep.token.includes(':'));
+      // Prefer the instance token from the clicked marker, otherwise find the first valid one
+      let targetInstanceToken = selectedInstanceToken;
       
-      if (firstL00) {
-        const instanceSuffix = firstL00.token.split(':')[1];
-        const baseToken = firstL00.token.split(':')[0];
-        const fullInstanceToken = `${baseToken}:${instanceSuffix}`;
-        
-        console.log('[DEBUG] Filtering to single instance:', { fullInstanceToken, instanceSuffix });
+      if (!targetInstanceToken) {
+        const firstL00 = chainEvents.find(ep => ep.level === 0 && ep.token.includes(':'));
+        targetInstanceToken = firstL00?.token || null;
+      }
+      
+      if (targetInstanceToken) {
+        console.log('[DEBUG] Filtering to instance:', { targetInstanceToken, fromClick: !!selectedInstanceToken });
         
         // Filter L00 events to only this specific instance
         // Filter L01+ events to only those whose parent chain traces back to this instance
         chainEvents = chainEvents.filter(ep => {
           if (ep.level === 0) {
             // L00: must be exactly this instance token
-            return ep.token === fullInstanceToken;
+            return ep.token === targetInstanceToken;
           } else {
             // L01+: Check if their parent is this instance (for L01) or trace back
-            // For now, include all L01+ since they share the same rootToken
-            // But we need to check the parent_token to see if it traces to the right instance
-            // The parent of an L01 should be the L00 instance token
-            return ep.parentToken === fullInstanceToken || 
+            return ep.parentToken === targetInstanceToken || 
                    chainEvents.some(p => p.token === ep.parentToken && p.level >= 0);
           }
         });
@@ -399,7 +399,7 @@ const SamizdatMap = ({
     }
     
     return chainEvents;
-  }, [filteredEventPoints, viewMode, selectedRootToken, showGoodDataOnly]);
+  }, [filteredEventPoints, viewMode, selectedRootToken, showGoodDataOnly, selectedInstanceToken]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
@@ -708,8 +708,19 @@ const SamizdatMap = ({
     clusteringBeforeChainRef.current = enableClustering;
     setEnableClustering(false);
     
+    // Determine the L00 instance token for this event
+    // For L00 events, it's the token itself; for L01+, we need to look at their parent chain
+    let instanceToken: string | null = null;
+    if (event.level === 0 && event.token.includes(':')) {
+      instanceToken = event.token;
+    } else if (event.parentToken && event.parentToken.includes(':')) {
+      // For L01+, the parent might be the L00 instance
+      instanceToken = event.parentToken;
+    }
+    
     // Set chain filter and open panel
     setSelectedRootToken(rootToken);
+    setSelectedInstanceToken(instanceToken);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
   }, [enableClustering]);
