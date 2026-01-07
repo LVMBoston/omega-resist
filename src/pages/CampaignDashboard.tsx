@@ -85,6 +85,10 @@ export default function CampaignDashboard({
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  
+  // Chain filter state (shared between Samizdat and EventsV2 tabs)
+  const [chainViewMode, setChainViewMode] = useState<"all" | "chain">("all");
+  const [selectedChainRootToken, setSelectedChainRootToken] = useState<string | null>(null);
   const {
     toast
   } = useToast();
@@ -530,6 +534,7 @@ export default function CampaignDashboard({
             utm_medium,
             eoa_id,
             full_url,
+            root_token,
             events_actions(
               mobilize_code,
               utm_id,
@@ -594,6 +599,7 @@ export default function CampaignDashboard({
             utm_medium: event.tokens?.utm_medium,
             eoa_id: event.tokens?.eoa_id,
             full_url: event.tokens?.full_url,
+            root_token: event.tokens?.root_token,
             events_actions: event.tokens?.events_actions ? {
               mobilize_code: event.tokens.events_actions.mobilize_code,
               utm_id: event.tokens.events_actions.utm_id,
@@ -653,7 +659,14 @@ export default function CampaignDashboard({
       direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
-  const sortedEventsV2 = eventsV2Data ? [...eventsV2Data].sort((a: any, b: any) => {
+  // Filter and sort EventsV2 - apply chain filter if active
+  const filteredEventsV2 = eventsV2Data ? (
+    chainViewMode === "chain" && selectedChainRootToken
+      ? eventsV2Data.filter((e: any) => e.tokens?.root_token === selectedChainRootToken)
+      : eventsV2Data
+  ) : [];
+  
+  const sortedEventsV2 = [...filteredEventsV2].sort((a: any, b: any) => {
     const {
       column,
       direction
@@ -698,7 +711,7 @@ export default function CampaignDashboard({
     if (aVal < bVal) return direction === 'asc' ? -1 : 1;
     if (aVal > bVal) return direction === 'asc' ? 1 : -1;
     return 0;
-  }) : [];
+  });
 
   // Get campaign title for EventsV2
   const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || "N/A";
@@ -1137,6 +1150,30 @@ export default function CampaignDashboard({
           <TabsContent value="eventsv2" className="mt-6 animate-fade-in">
             <Card>
               <CardContent className="pt-6">
+                {/* Chain filter indicator */}
+                {chainViewMode === "chain" && selectedChainRootToken && (
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                        Chain Filter Active
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        Showing {sortedEventsV2.length} events in chain (root: {selectedChainRootToken.slice(0, 20)}...)
+                      </span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setChainViewMode("all");
+                        setSelectedChainRootToken(null);
+                      }}
+                    >
+                      Clear Filter
+                    </Button>
+                  </div>
+                )}
+                
                 {eventsV2Loading ? <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin" />
                   </div> : !eventsV2Data || eventsV2Data.length === 0 ? <div className="py-12 text-center text-muted-foreground">
@@ -1408,7 +1445,13 @@ export default function CampaignDashboard({
               </Accordion>
 
               {/* Map - filters by selected EoAs */}
-              <SamizdatMap eoaIds={selectedEoaIds} />
+              <SamizdatMap 
+                eoaIds={selectedEoaIds}
+                selectedRootToken={selectedChainRootToken}
+                onRootTokenChange={setSelectedChainRootToken}
+                viewMode={chainViewMode}
+                onViewModeChange={setChainViewMode}
+              />
             </div>
           </TabsContent>
         </Tabs>
