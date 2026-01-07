@@ -91,6 +91,15 @@ export default function CampaignDashboard({
   const chainViewMode = chainRootTokenParam ? "chain" : "all";
   const selectedChainRootToken = chainRootTokenParam;
   
+  // Debug logging for chain filter
+  console.log("[CampaignDashboard] Chain filter state:", {
+    chainRootTokenParam,
+    chainViewMode,
+    selectedChainRootToken,
+    fullUrl: window.location.href,
+    searchParamsString: searchParams.toString()
+  });
+  
   const setSelectedChainRootToken = (token: string | null) => {
     const newParams = new URLSearchParams(searchParams);
     if (token) {
