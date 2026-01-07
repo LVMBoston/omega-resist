@@ -38,6 +38,11 @@ L.Marker.prototype.options.icon = L.icon({
 
 interface SamizdatMapProps {
   eoaIds: string[];
+  // Chain filter state (lifted to parent for cross-tab sync)
+  selectedRootToken?: string | null;
+  onRootTokenChange?: (token: string | null) => void;
+  viewMode?: "all" | "chain";
+  onViewModeChange?: (mode: "all" | "chain") => void;
 }
 
 interface EventPoint {
@@ -191,7 +196,13 @@ const createSequenceNumbers = (eventPoints: EventPoint[]): Map<string, number> =
   return seqMap;
 };
 
-const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
+const SamizdatMap = ({ 
+  eoaIds, 
+  selectedRootToken: externalRootToken,
+  onRootTokenChange,
+  viewMode: externalViewMode,
+  onViewModeChange
+}: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -208,9 +219,29 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [enabledChannels, setEnabledChannels] = useState<Set<string>>(new Set(["qr", "em", "sms", "tx", "fb", "bs"]));
   
-  // View mode: "all" shows all events, "chain" shows filtered chain
-  const [viewMode, setViewMode] = useState<ViewMode>("all");
-  const [selectedRootToken, setSelectedRootToken] = useState<string | null>(null);
+  // View mode: use external state if provided, otherwise use internal state
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
+  const [internalRootToken, setInternalRootToken] = useState<string | null>(null);
+  
+  // Determine which state to use (external or internal)
+  const viewMode = externalViewMode ?? internalViewMode;
+  const selectedRootToken = externalRootToken ?? internalRootToken;
+  
+  const setViewMode = (mode: ViewMode) => {
+    if (onViewModeChange) {
+      onViewModeChange(mode);
+    } else {
+      setInternalViewMode(mode);
+    }
+  };
+  
+  const setSelectedRootToken = (token: string | null) => {
+    if (onRootTokenChange) {
+      onRootTokenChange(token);
+    } else {
+      setInternalRootToken(token);
+    }
+  };
 
   // Token lookup map for tracing parent chain
   const tokenLookupRef = useRef<Record<string, { rootToken: string; parentToken: string | null; level: number }>>({});
