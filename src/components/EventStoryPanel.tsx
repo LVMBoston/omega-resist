@@ -76,6 +76,7 @@ interface ChildToken {
   region: string | null;
   firstEventAt: string | null;
   isInstance?: boolean;
+  firstEventId: string | null;
 }
 
 export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
@@ -184,7 +185,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
         children.map(async (child) => {
           const { data: firstEvent } = await supabase
             .from("url_events")
-            .select("city, region, occurred_at")
+            .select("id, city, region, occurred_at")
             .eq("token", child.token)
             .order("occurred_at", { ascending: true })
             .limit(1)
@@ -200,6 +201,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
             region: firstEvent?.region || null,
             firstEventAt: firstEvent?.occurred_at || null,
             isInstance,
+            firstEventId: firstEvent?.id || null,
           };
         })
       );
@@ -616,6 +618,11 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                               <div key={child.token} className="text-xs text-muted-foreground">
                                 • Instance {instanceCode}: {formatShortLocation(child.city, child.region)}
                                 {child.firstEventAt ? " ✓" : " (pending)"}
+                                {child.firstEventId && (
+                                  <span className="ml-1 font-mono text-[10px] opacity-60">
+                                    [{child.firstEventId.slice(0, 8)}]
+                                  </span>
+                                )}
                               </div>
                             );
                           })}
@@ -635,6 +642,11 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                           {shareTokens.filter(c => c.firstEventAt).slice(0, 3).map(child => (
                             <div key={child.token} className="text-xs text-muted-foreground">
                               • {formatShortLocation(child.city, child.region)} (L{child.level.toString().padStart(2, "0")})
+                              {child.firstEventId && (
+                                <span className="ml-1 font-mono text-[10px] opacity-60">
+                                  [{child.firstEventId.slice(0, 8)}]
+                                </span>
+                              )}
                             </div>
                           ))}
                           {shareTokens.filter(c => c.firstEventAt).length > 3 && (
