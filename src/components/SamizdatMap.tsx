@@ -336,8 +336,26 @@ const SamizdatMap = ({
     }
     // Chain mode: filter to events matching selectedRootToken
     if (!selectedRootToken) return [];
-    return filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
-  }, [filteredEventPoints, viewMode, selectedRootToken]);
+    let chainEvents = filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
+    
+    // When "Good Data Only" is enabled in chain mode, only show ONE L00 origin per unique instance token
+    // This prevents multiple origins from different instances of the same base token
+    if (showGoodDataOnly) {
+      const seenL00Instances = new Set<string>();
+      chainEvents = chainEvents.filter(ep => {
+        if (ep.level === 0) {
+          // For L00 events, only keep the first occurrence of each unique instance token
+          if (seenL00Instances.has(ep.token)) {
+            return false;
+          }
+          seenL00Instances.add(ep.token);
+        }
+        return true;
+      });
+    }
+    
+    return chainEvents;
+  }, [filteredEventPoints, viewMode, selectedRootToken, showGoodDataOnly]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
