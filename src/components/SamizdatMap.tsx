@@ -219,9 +219,15 @@ const SamizdatMap = ({
   const [showGoodDataOnly, setShowGoodDataOnly] = useState(false);
 
   // Detect properly formed hex instance suffix (6-char lowercase hex)
-  const hasHexInstance = (token: string): boolean => {
-    if (!token.includes(':')) return true; // L01+ tokens without suffix are fine
-    const suffix = token.split(':')[1];
+  // For L00 tokens, check the token itself for the instance suffix
+  // For L01+ tokens, check the rootToken which is the L00 token with the instance
+  const hasHexInstance = (event: EventPoint): boolean => {
+    // L00 tokens have the instance suffix directly on their token
+    // L01+ tokens inherit from root_token which contains the L00 instance
+    const tokenToCheck = event.level === 0 ? event.token : event.rootToken;
+    
+    if (!tokenToCheck.includes(':')) return false; // L00 must have instance suffix
+    const suffix = tokenToCheck.split(':')[1];
     return /^[a-f0-9]{6}$/.test(suffix);
   };
   
@@ -276,7 +282,7 @@ const SamizdatMap = ({
 
     // Filter by "good data" - only show chains with properly formed hex instance suffixes
     if (showGoodDataOnly) {
-      filtered = filtered.filter(event => hasHexInstance(event.rootToken));
+      filtered = filtered.filter(event => hasHexInstance(event));
     }
 
     // Filter by enabled share mediums (skip in chain mode - show all)
