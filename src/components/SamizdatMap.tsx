@@ -282,7 +282,17 @@ const SamizdatMap = ({
 
     // Filter by "good data" - only show chains with properly formed hex instance suffixes
     if (showGoodDataOnly) {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(event => hasHexInstance(event));
+      console.log('[DEBUG] Good data filter:', {
+        before: beforeCount,
+        after: filtered.length,
+        sampleFiltered: filtered.slice(0, 3).map(e => ({
+          token: e.token,
+          rootToken: e.rootToken,
+          level: e.level
+        }))
+      });
     }
 
     // Filter by enabled share mediums (skip in chain mode - show all)
@@ -338,6 +348,19 @@ const SamizdatMap = ({
     if (!selectedRootToken) return [];
     let chainEvents = filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
     
+    // DEBUG: Log chain filtering
+    console.log('[DEBUG] Chain filter:', {
+      selectedRootToken,
+      showGoodDataOnly,
+      filteredEventPointsCount: filteredEventPoints.length,
+      chainEventsCount: chainEvents.length,
+      sampleChainEvents: chainEvents.slice(0, 3).map(e => ({
+        token: e.token,
+        rootToken: e.rootToken,
+        level: e.level
+      }))
+    });
+    
     // When "Good Data Only" is enabled in chain mode, only show ONE L00 origin per unique instance token
     // This prevents multiple origins from different instances of the same base token
     if (showGoodDataOnly) {
@@ -352,6 +375,7 @@ const SamizdatMap = ({
         }
         return true;
       });
+      console.log('[DEBUG] After L00 dedup:', chainEvents.length);
     }
     
     return chainEvents;
