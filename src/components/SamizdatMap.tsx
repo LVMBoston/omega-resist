@@ -70,12 +70,13 @@ interface ZipAggregate {
 }
 
 interface ViewportStats {
-  medium: string;
+  medium: string; // Actually stores EoaShape now for filtering
   label: string;
   total: number;
   visible: number;
   offscreen: number;
   color: string;
+  shape?: EoaShape; // The actual shape for rendering
 }
 
 // Time window options for "time since go-live" filter
@@ -217,7 +218,7 @@ const SamizdatMap = ({
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [enabledChannels, setEnabledChannels] = useState<Set<string>>(new Set(["qr", "em", "sms", "tx", "fb", "bs"]));
+  const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
@@ -246,14 +247,14 @@ const SamizdatMap = ({
   // Token lookup map for tracing parent chain
   const tokenLookupRef = useRef<Record<string, { rootToken: string; parentToken: string | null; level: number }>>({});
 
-  // Toggle a channel on/off
-  const toggleChannel = (medium: string) => {
+  // Toggle an EoA type shape on/off
+  const toggleChannel = (shape: EoaShape) => {
     setEnabledChannels(prev => {
       const next = new Set(prev);
-      if (next.has(medium)) {
-        next.delete(medium);
+      if (next.has(shape)) {
+        next.delete(shape);
       } else {
-        next.add(medium);
+        next.add(shape);
       }
       return next;
     });
@@ -263,12 +264,12 @@ const SamizdatMap = ({
   const eoaNamesRef = useRef(eoaNames);
   eoaNamesRef.current = eoaNames;
 
-  // Filter events based on selected time window and enabled channels
+  // Filter events based on selected time window and enabled EoA types
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
-    // Filter by enabled channels
-    filtered = filtered.filter(event => enabledChannels.has(event.utmMedium));
+    // Filter by enabled EoA types (shapes based on utm_id)
+    filtered = filtered.filter(event => enabledChannels.has(getEoaShape(event.utmId)));
 
     // Filter by time window
     if (timeWindow !== "all") {
@@ -357,7 +358,7 @@ const SamizdatMap = ({
     });
   }, [eventPoints, timeWindow, eoaStartDates]);
 
-  // Calculate viewport stats using time-filtered events (all channels)
+  // Calculate viewport stats using time-filtered events (by EoA type derived from utm_id)
   const updateViewportStats = useCallback(() => {
     if (!mapRef.current || timeFilteredEvents.length === 0) {
       setViewportStats([]);
@@ -366,32 +367,34 @@ const SamizdatMap = ({
 
     const bounds = mapRef.current.getBounds();
     
-    // Group events by utm_medium and count visible/total
-    const statsMap: Record<string, { total: number; visible: number }> = {};
+    // Group events by EoA type (shape) derived from utm_id prefix
+    const statsMap: Record<EoaShape, { total: number; visible: number }> = {
+      circle: { total: 0, visible: 0 },
+      square: { total: 0, visible: 0 },
+      triangle: { total: 0, visible: 0 },
+    };
 
     timeFilteredEvents.forEach((event) => {
-      const medium = event.utmMedium || "unknown";
-      if (!statsMap[medium]) {
-        statsMap[medium] = { total: 0, visible: 0 };
-      }
-      statsMap[medium].total++;
+      const shape = getEoaShape(event.utmId);
+      statsMap[shape].total++;
       
       // Check if point is within current viewport bounds
       if (bounds.contains([event.latitude, event.longitude])) {
-        statsMap[medium].visible++;
+        statsMap[shape].visible++;
       }
     });
 
-    // Convert to array with labels and colors
-    const stats: ViewportStats[] = Object.entries(statsMap)
+    // Convert to array with labels - use shape as the key
+    const stats: ViewportStats[] = (Object.entries(statsMap) as [EoaShape, { total: number; visible: number }][])
       .filter(([_, counts]) => counts.total > 0)
-      .map(([medium, counts]) => ({
-        medium,
-        label: MEDIUM_LABELS[medium] || medium,
+      .map(([shape, counts]) => ({
+        medium: shape, // Store shape as the medium key for filtering
+        label: EOA_SHAPE_LABELS[shape],
         total: counts.total,
         visible: counts.visible,
         offscreen: counts.total - counts.visible,
-        color: MEDIUM_COLORS[medium] || DEFAULT_COLOR,
+        color: DEFAULT_COLOR, // Use default color since we show shapes instead
+        shape: shape, // Add shape for rendering
       }))
       .sort((a, b) => b.total - a.total); // Sort by total count descending
 
@@ -912,37 +915,40 @@ const SamizdatMap = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]">Show</TableHead>
-                    <TableHead className="w-[120px]">Channel</TableHead>
+                    <TableHead className="w-[120px]">EoA Type</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Visible</TableHead>
                     <TableHead className="text-right">Offscreen</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {viewportStats.map((stat) => (
-                    <TableRow key={stat.medium}>
-                      <TableCell>
-                        <Checkbox
-                          checked={enabledChannels.has(stat.medium)}
-                          onCheckedChange={() => toggleChannel(stat.medium)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: stat.color }}
+                  {viewportStats.map((stat) => {
+                    const shape = stat.shape || (stat.medium as EoaShape);
+                    return (
+                      <TableRow key={stat.medium}>
+                        <TableCell>
+                          <Checkbox
+                            checked={enabledChannels.has(shape)}
+                            onCheckedChange={() => toggleChannel(shape)}
                           />
-                          <span className="truncate">{stat.label}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{stat.total}</TableCell>
-                      <TableCell className="text-right tabular-nums">{stat.visible}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {stat.offscreen}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 flex-shrink-0"
+                              dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, getLevelColor(0), 12) }}
+                            />
+                            <span className="truncate">{stat.label}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{stat.total}</TableCell>
+                        <TableCell className="text-right tabular-nums">{stat.visible}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {stat.offscreen}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </AccordionContent>
