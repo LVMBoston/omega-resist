@@ -455,7 +455,7 @@ export default function CampaignDashboard({
       "Location Method",
       "Event Level",
       "utm_content",
-      "Event Type",
+      "Event ID",
       "Full URL"
     ];
 
@@ -474,7 +474,7 @@ export default function CampaignDashboard({
         event.location_source === 'gps' ? 'GPS' : 'Cell Tower',
         formatLevel(event.tokens?.level || 0),
         utmContent,
-        event.event_type?.toUpperCase() || "",
+        event.id || "",
         event.tokens?.full_url || ""
       ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
     });
@@ -1296,11 +1296,8 @@ export default function CampaignDashboard({
                                   {sortConfig.column === 'utm_content' && <ArrowUpDown className="w-3 h-3" />}
                                 </div>
                               </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('event_type')}>
-                                <div className="flex items-center gap-1">
-                                  Event Type
-                                  {sortConfig.column === 'event_type' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
+                              <TableHead>
+                                Event ID
                               </TableHead>
                               <TableHead>Full URL</TableHead>
                             </TableRow>
@@ -1330,9 +1327,7 @@ export default function CampaignDashboard({
                   {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
                 </TableCell>
                               <TableCell>
-                                <Badge className={getEventBadgeColor(event.event_type)}>
-                                  {event.event_type.toUpperCase()}
-                                </Badge>
+                                <span className="font-mono text-xs">{event.id}</span>
                               </TableCell>
                               <TableCell>
                                 {event.tokens?.full_url ? <div className="flex items-center gap-2">
