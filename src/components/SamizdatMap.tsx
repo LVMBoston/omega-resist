@@ -572,11 +572,16 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     return createSequenceNumbers(displayEvents);
   }, [displayEvents]);
 
+  // Track clustering state before entering chain mode
+  const clusteringBeforeChainRef = useRef<boolean>(true);
+
   // Handle show all events (reset from chain mode)
   const handleShowAllEvents = useCallback(() => {
     setViewMode("all");
     setSelectedRootToken(null);
     setSelectedEventId(null);
+    // Restore clustering state from before chain mode
+    setEnableClustering(clusteringBeforeChainRef.current);
   }, []);
 
   // Handle marker click - traces to root L00 and filters to chain
@@ -584,11 +589,15 @@ const SamizdatMap = ({ eoaIds }: SamizdatMapProps) => {
     // Find the root token for this event
     const rootToken = event.rootToken;
     
+    // Save current clustering state and disable for chain mode
+    clusteringBeforeChainRef.current = enableClustering;
+    setEnableClustering(false);
+    
     // Set chain filter and open panel
     setSelectedRootToken(rootToken);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
-  }, []);
+  }, [enableClustering]);
 
   // Update markers based on view mode
   useEffect(() => {
