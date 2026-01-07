@@ -216,6 +216,14 @@ const SamizdatMap = ({
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [showGoodDataOnly, setShowGoodDataOnly] = useState(false);
+
+  // Detect properly formed hex instance suffix (6-char lowercase hex)
+  const hasHexInstance = (token: string): boolean => {
+    if (!token.includes(':')) return true; // L01+ tokens without suffix are fine
+    const suffix = token.split(':')[1];
+    return /^[a-f0-9]{6}$/.test(suffix);
+  };
   
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
@@ -266,6 +274,11 @@ const SamizdatMap = ({
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
+    // Filter by "good data" - only show chains with properly formed hex instance suffixes
+    if (showGoodDataOnly) {
+      filtered = filtered.filter(event => hasHexInstance(event.rootToken));
+    }
+
     // Filter by enabled share mediums (skip in chain mode - show all)
     if (viewMode !== "chain") {
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
@@ -308,7 +321,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
+  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode, showGoodDataOnly]);
 
   // Events to display based on view mode
   const displayEvents = useMemo((): EventPoint[] => {
@@ -1046,6 +1059,16 @@ const SamizdatMap = ({
               />
               <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
                 Show ZIP counts
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="good-data"
+                checked={showGoodDataOnly}
+                onCheckedChange={setShowGoodDataOnly}
+              />
+              <Label htmlFor="good-data" className="text-sm cursor-pointer text-amber-600">
+                Good Data Only
               </Label>
             </div>
           </div>
