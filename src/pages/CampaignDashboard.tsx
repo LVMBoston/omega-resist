@@ -86,9 +86,28 @@ export default function CampaignDashboard({
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   
-  // Chain filter state (shared between Samizdat and EventsV2 tabs)
-  const [chainViewMode, setChainViewMode] = useState<"all" | "chain">("all");
-  const [selectedChainRootToken, setSelectedChainRootToken] = useState<string | null>(null);
+  // Chain filter state (shared between Samizdat and EventsV2 tabs via URL params)
+  const chainRootTokenParam = searchParams.get("chainRoot");
+  const chainViewMode = chainRootTokenParam ? "chain" : "all";
+  const selectedChainRootToken = chainRootTokenParam;
+  
+  const setSelectedChainRootToken = (token: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (token) {
+      newParams.set("chainRoot", token);
+    } else {
+      newParams.delete("chainRoot");
+    }
+    setSearchParams(newParams);
+  };
+  
+  const setChainViewMode = (mode: "all" | "chain") => {
+    if (mode === "all") {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("chainRoot");
+      setSearchParams(newParams);
+    }
+  };
   const {
     toast
   } = useToast();
