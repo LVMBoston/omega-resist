@@ -129,32 +129,23 @@ const getLevelColor = (level: number): string => {
   return LEVEL_COLORS[level] || LEVEL_COLORS[0];
 };
 
-// EoA shape mapping based on utm_id - checks both prefix and suffix
-const getEoaShape = (utmId: string): EoaShape => {
-  if (!utmId) return "circle";
-  const lowerUtmId = utmId.toLowerCase();
-  const parts = lowerUtmId.split("-");
-  const prefix = parts[0];
-  const suffix = parts[parts.length - 1]; // Last part for formats like "rs1-mail"
+// Share medium shape mapping based on utm_medium
+const getShareMediumShape = (utmMedium: string): EoaShape => {
+  if (!utmMedium) return "circle";
+  const medium = utmMedium.toLowerCase();
   
-  // Check suffix first (for formats like "rs1-mail", "rs1-text", "rs1-qr")
-  if (suffix === "qr") return "circle";
-  if (suffix === "mail" || suffix === "email" || suffix === "em") return "square";
-  if (suffix === "text" || suffix === "sms" || suffix === "tx") return "triangle";
+  if (medium === "qr") return "circle";           // QR scan (L00 only in practice)
+  if (medium === "em") return "square";           // Email share
+  if (medium === "sms") return "triangle";        // SMS/Text share
   
-  // Fall back to prefix check (for formats like "qr-123", "em-456")
-  if (prefix === "qr" || prefix === "rs") return "circle";
-  if (prefix === "em" || prefix === "mail" || prefix === "email") return "square";
-  if (prefix === "tx" || prefix === "sms" || prefix === "text") return "triangle";
-  
-  return "circle"; // default
+  return "circle"; // default fallback
 };
 
-// EoA shape labels for legend
-const EOA_SHAPE_LABELS: Record<EoaShape, string> = {
-  circle: "QR Code",
+// Share medium shape labels for legend
+const SHARE_MEDIUM_LABELS: Record<EoaShape, string> = {
+  circle: "QR Scan",
   square: "Email",
-  triangle: "Text/SMS",
+  triangle: "SMS/Text",
 };
 
 // Generate SVG for marker shape
@@ -270,12 +261,15 @@ const SamizdatMap = ({
   const eoaNamesRef = useRef(eoaNames);
   eoaNamesRef.current = eoaNames;
 
-  // Filter events based on selected time window and enabled EoA types
+  // Filter events based on selected time window and enabled share mediums
+  // In chain mode, skip the medium filter (show all shapes for the chain)
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
-    // Filter by enabled EoA types (shapes based on utm_id)
-    filtered = filtered.filter(event => enabledChannels.has(getEoaShape(event.utmId)));
+    // Filter by enabled share mediums (skip in chain mode - show all)
+    if (viewMode !== "chain") {
+      filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
+    }
 
     // Filter by time window
     if (timeWindow !== "all") {
@@ -314,7 +308,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels]);
+  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
 
   // Events to display based on view mode
   const displayEvents = useMemo((): EventPoint[] => {
@@ -364,7 +358,7 @@ const SamizdatMap = ({
     });
   }, [eventPoints, timeWindow, eoaStartDates]);
 
-  // Calculate viewport stats using time-filtered events (by EoA type derived from utm_id)
+  // Calculate viewport stats using time-filtered events (by share medium)
   const updateViewportStats = useCallback(() => {
     if (!mapRef.current || timeFilteredEvents.length === 0) {
       setViewportStats([]);
@@ -373,7 +367,7 @@ const SamizdatMap = ({
 
     const bounds = mapRef.current.getBounds();
     
-    // Group events by EoA type (shape) derived from utm_id prefix
+    // Group events by share medium shape
     const statsMap: Record<EoaShape, { total: number; visible: number }> = {
       circle: { total: 0, visible: 0 },
       square: { total: 0, visible: 0 },
@@ -381,7 +375,7 @@ const SamizdatMap = ({
     };
 
     timeFilteredEvents.forEach((event) => {
-      const shape = getEoaShape(event.utmId);
+      const shape = getShareMediumShape(event.utmMedium);
       statsMap[shape].total++;
       
       // Check if point is within current viewport bounds
@@ -395,7 +389,7 @@ const SamizdatMap = ({
       .filter(([_, counts]) => counts.total > 0)
       .map(([shape, counts]) => ({
         medium: shape, // Store shape as the medium key for filtering
-        label: EOA_SHAPE_LABELS[shape],
+        label: SHARE_MEDIUM_LABELS[shape],
         total: counts.total,
         visible: counts.visible,
         offscreen: counts.total - counts.visible,
@@ -655,10 +649,10 @@ const SamizdatMap = ({
 
     if (displayEvents.length === 0) return;
 
-    // Create markers for all display events with level colors and EoA shapes
+    // Create markers for all display events with level colors and share medium shapes
     const createMarkerIcon = (event: EventPoint, seqNum?: number) => {
       const fillColor = getLevelColor(event.level);
-      const shape = getEoaShape(event.utmId);
+      const shape = getShareMediumShape(event.utmMedium);
       const size = 16;
       const shapeSVG = getShapeSVG(shape, fillColor, size);
       const levelLabel = `L${String(event.level).padStart(2, '0')}`;
@@ -910,18 +904,18 @@ const SamizdatMap = ({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Viewport Activity Report - by share medium with filter checkboxes */}
-        {viewportStats.length > 0 && (
+        {/* Viewport Activity Report - by share medium with filter checkboxes (hidden in chain view) */}
+        {viewportStats.length > 0 && viewMode !== "chain" && (
           <AccordionItem value="viewport-report" className="rounded-lg border border-border bg-card">
             <AccordionTrigger className="text-sm font-medium px-4 py-3 hover:no-underline">
-              Activity by Share Channel
+              Activity by Share Medium
             </AccordionTrigger>
             <AccordionContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]">Show</TableHead>
-                    <TableHead className="w-[120px]">EoA Type</TableHead>
+                    <TableHead className="w-[120px]">Share Medium</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Visible</TableHead>
                     <TableHead className="text-right">Offscreen</TableHead>
@@ -1011,9 +1005,9 @@ const SamizdatMap = ({
                   </div>
                 </div>
                 
-                {/* EoA shapes */}
+                {/* Share medium shapes */}
                 <div className="border-t border-border pt-2">
-                  <div className="text-xs font-medium mb-1.5">EoA Type</div>
+                  <div className="text-xs font-medium mb-1.5">Share Medium</div>
                   <div className="flex gap-3">
                     {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
                       <div key={shape} className="flex items-center gap-1 text-xs">
@@ -1021,7 +1015,7 @@ const SamizdatMap = ({
                           className="w-3 h-3"
                           dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 12) }}
                         />
-                        <span>{EOA_SHAPE_LABELS[shape]}</span>
+                        <span>{SHARE_MEDIUM_LABELS[shape]}</span>
                       </div>
                     ))}
                   </div>
