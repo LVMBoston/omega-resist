@@ -129,17 +129,23 @@ const getLevelColor = (level: number): string => {
   return LEVEL_COLORS[level] || LEVEL_COLORS[0];
 };
 
-// EoA shape mapping based on utm_id prefix
+// EoA shape mapping based on utm_id - checks both prefix and suffix
 const getEoaShape = (utmId: string): EoaShape => {
   if (!utmId) return "circle";
-  const prefix = utmId.split("-")[0]?.toLowerCase();
+  const lowerUtmId = utmId.toLowerCase();
+  const parts = lowerUtmId.split("-");
+  const prefix = parts[0];
+  const suffix = parts[parts.length - 1]; // Last part for formats like "rs1-mail"
   
-  // QR code variants
+  // Check suffix first (for formats like "rs1-mail", "rs1-text", "rs1-qr")
+  if (suffix === "qr") return "circle";
+  if (suffix === "mail" || suffix === "email" || suffix === "em") return "square";
+  if (suffix === "text" || suffix === "sms" || suffix === "tx") return "triangle";
+  
+  // Fall back to prefix check (for formats like "qr-123", "em-456")
   if (prefix === "qr" || prefix === "rs") return "circle";
-  // Email variants
-  if (prefix === "em") return "square";
-  // Text/SMS variants
-  if (prefix === "tx" || prefix === "sms") return "triangle";
+  if (prefix === "em" || prefix === "mail" || prefix === "email") return "square";
+  if (prefix === "tx" || prefix === "sms" || prefix === "text") return "triangle";
   
   return "circle"; // default
 };
