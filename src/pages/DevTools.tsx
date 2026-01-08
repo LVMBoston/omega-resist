@@ -4,17 +4,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, GitBranch, GitMerge, Upload } from "lucide-react";
+import { Copy, GitBranch, GitMerge, Upload, Download, FileSpreadsheet } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { exportCampaignData, downloadCsv } from "@/lib/exportCampaignData";
 
 const DevTools = () => {
   const [repoUrl, setRepoUrl] = useState("");
   const [targetBranch, setTargetBranch] = useState("main");
+  const [campaignCode, setCampaignCode] = useState("res-sis-live");
+  const [isExporting, setIsExporting] = useState(false);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
+  };
+
+  const handleExportCampaign = async () => {
+    if (!campaignCode.trim()) {
+      toast.error("Please enter a campaign code");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const { csv, stats } = await exportCampaignData(campaignCode.trim());
+      downloadCsv(csv, campaignCode.trim());
+      toast.success(`Exported ${stats.events} events across ${stats.tokens} tokens (${stats.rootTokens} root tokens)`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const commands = {
@@ -44,9 +66,55 @@ git push origin ${targetBranch}`
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Developer Tools</h1>
         <p className="text-muted-foreground">
-          Push Codex's local work branch to GitHub
+          Data exports and Git workflow tools
         </p>
       </div>
+
+      {/* Campaign Data Export Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            Campaign Data Export
+          </CardTitle>
+          <CardDescription>
+            Export chain-traceable CSV with instructions for identifying token hierarchies
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="campaignCode">Campaign Code</Label>
+            <Input
+              id="campaignCode"
+              placeholder="res-sis-live"
+              value={campaignCode}
+              onChange={(e) => setCampaignCode(e.target.value)}
+            />
+            <p className="text-sm text-muted-foreground">
+              The utm_campaign value for the campaign (e.g., res-sis-live)
+            </p>
+          </div>
+          <Button
+            onClick={handleExportCampaign}
+            disabled={isExporting}
+            className="w-full"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {isExporting ? 'Exporting...' : 'Export Campaign Data (CSV)'}
+          </Button>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>CSV includes:</strong></p>
+            <ul className="list-disc list-inside ml-2 space-y-0.5">
+              <li>Instruction header for chain identification</li>
+              <li>All events with token, level, parent_token, root_token</li>
+              <li>Location data: zip_code, city, region, lat/lng</li>
+              <li>UTM parameters and timestamps</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator />
 
       <Alert>
         <AlertDescription>
@@ -57,7 +125,7 @@ git push origin ${targetBranch}`
 
       <Card>
         <CardHeader>
-          <CardTitle>Configuration</CardTitle>
+          <CardTitle>Git Configuration</CardTitle>
           <CardDescription>
             Set your repository details
           </CardDescription>
