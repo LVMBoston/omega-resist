@@ -216,22 +216,6 @@ const SamizdatMap = ({
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
-  const [showGoodDataOnly, setShowGoodDataOnly] = useState(false);
-  // Track the specific L00 instance token when clicking a marker (for chain filtering)
-  const [selectedInstanceToken, setSelectedInstanceToken] = useState<string | null>(null);
-
-  // Detect properly formed hex instance suffix (6-char lowercase hex)
-  // For L00 tokens, check the token itself for the instance suffix
-  // For L01+ tokens, check the rootToken which is the L00 token with the instance
-  const hasHexInstance = (event: EventPoint): boolean => {
-    // L00 tokens have the instance suffix directly on their token
-    // L01+ tokens inherit from root_token which contains the L00 instance
-    const tokenToCheck = event.level === 0 ? event.token : event.rootToken;
-    
-    if (!tokenToCheck.includes(':')) return false; // L00 must have instance suffix
-    const suffix = tokenToCheck.split(':')[1];
-    return /^[a-f0-9]{6}$/.test(suffix);
-  };
   
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
@@ -282,21 +266,6 @@ const SamizdatMap = ({
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
-    // Filter by "good data" - only show chains with properly formed hex instance suffixes
-    if (showGoodDataOnly) {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(event => hasHexInstance(event));
-      console.log('[DEBUG] Good data filter:', {
-        before: beforeCount,
-        after: filtered.length,
-        sampleFiltered: filtered.slice(0, 3).map(e => ({
-          token: e.token,
-          rootToken: e.rootToken,
-          level: e.level
-        }))
-      });
-    }
-
     // Filter by enabled share mediums (skip in chain mode - show all)
     if (viewMode !== "chain") {
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
@@ -339,7 +308,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode, showGoodDataOnly]);
+  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
 
   // Events to display based on view mode
   const displayEvents = useMemo((): EventPoint[] => {
@@ -350,56 +319,9 @@ const SamizdatMap = ({
     if (!selectedRootToken) return [];
     let chainEvents = filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
     
-    // DEBUG: Log chain filtering
-    console.log('[DEBUG] Chain filter:', {
-      selectedRootToken,
-      showGoodDataOnly,
-      filteredEventPointsCount: filteredEventPoints.length,
-      chainEventsCount: chainEvents.length,
-      sampleChainEvents: chainEvents.slice(0, 3).map(e => ({
-        token: e.token,
-        rootToken: e.rootToken,
-        level: e.level
-      }))
-    });
-    
-    // When "Good Data Only" is enabled in chain mode, we need to show only ONE instance chain
-    // The problem: root_token in DB doesn't include instance suffix, so all instances share the same rootToken
-    // Solution: Use selectedInstanceToken (from clicked marker) or find the first L00 with valid hex
-    if (showGoodDataOnly) {
-      // Prefer the instance token from the clicked marker, otherwise find the first valid one
-      let targetInstanceToken = selectedInstanceToken;
-      
-      if (!targetInstanceToken) {
-        const firstL00 = chainEvents.find(ep => ep.level === 0 && ep.token.includes(':'));
-        targetInstanceToken = firstL00?.token || null;
-      }
-      
-      if (targetInstanceToken) {
-        console.log('[DEBUG] Filtering to instance:', { targetInstanceToken, fromClick: !!selectedInstanceToken });
-        
-        // Filter L00 events to only this specific instance
-        // Filter L01+ events to only those whose parent chain traces back to this instance
-        chainEvents = chainEvents.filter(ep => {
-          if (ep.level === 0) {
-            // L00: must be exactly this instance token
-            return ep.token === targetInstanceToken;
-          } else {
-            // L01+: Check if their parent is this instance (for L01) or trace back
-            return ep.parentToken === targetInstanceToken || 
-                   chainEvents.some(p => p.token === ep.parentToken && p.level >= 0);
-          }
-        });
-        
-        console.log('[DEBUG] After instance filter:', chainEvents.length);
-      } else {
-        // No valid hex instance L00 found - return empty
-        chainEvents = [];
-      }
-    }
     
     return chainEvents;
-  }, [filteredEventPoints, viewMode, selectedRootToken, showGoodDataOnly, selectedInstanceToken]);
+  }, [filteredEventPoints, viewMode, selectedRootToken]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
@@ -708,19 +630,8 @@ const SamizdatMap = ({
     clusteringBeforeChainRef.current = enableClustering;
     setEnableClustering(false);
     
-    // Determine the L00 instance token for this event
-    // For L00 events, it's the token itself; for L01+, we need to look at their parent chain
-    let instanceToken: string | null = null;
-    if (event.level === 0 && event.token.includes(':')) {
-      instanceToken = event.token;
-    } else if (event.parentToken && event.parentToken.includes(':')) {
-      // For L01+, the parent might be the L00 instance
-      instanceToken = event.parentToken;
-    }
-    
     // Set chain filter and open panel
     setSelectedRootToken(rootToken);
-    setSelectedInstanceToken(instanceToken);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
   }, [enableClustering]);
@@ -1138,16 +1049,6 @@ const SamizdatMap = ({
               />
               <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
                 Show ZIP counts
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="good-data"
-                checked={showGoodDataOnly}
-                onCheckedChange={setShowGoodDataOnly}
-              />
-              <Label htmlFor="good-data" className="text-sm cursor-pointer text-amber-600">
-                Good Data Only
               </Label>
             </div>
           </div>
