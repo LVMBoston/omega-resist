@@ -775,13 +775,53 @@ const SamizdatMap = ({
       clusterGroupRef.current = clusterGroup;
       mapRef.current.addLayer(clusterGroup);
     } else {
-      // No clustering - show individual markers
+      // No clustering - show individual markers with jitter for overlapping locations
       const layerGroup = L.layerGroup();
 
+      // Group events by location to detect overlaps and apply jitter
+      const locationGroups: Record<string, EventPoint[]> = {};
       displayEvents.forEach((event) => {
+        const key = `${event.latitude.toFixed(4)}_${event.longitude.toFixed(4)}`;
+        if (!locationGroups[key]) {
+          locationGroups[key] = [];
+        }
+        locationGroups[key].push(event);
+      });
+
+      // Sort events so L00 markers are added last (appear on top)
+      // Higher levels render first, L00 renders last
+      const sortedEvents = [...displayEvents].sort((a, b) => b.level - a.level);
+
+      sortedEvents.forEach((event) => {
         const seqNum = chainSequenceNumbers.get(event.eventId);
         const markerIcon = createMarkerIcon(event, seqNum);
-        const marker = L.marker([event.latitude, event.longitude], { icon: markerIcon });
+        
+        // Calculate jitter offset for overlapping markers
+        const locKey = `${event.latitude.toFixed(4)}_${event.longitude.toFixed(4)}`;
+        const group = locationGroups[locKey] || [];
+        let lat = event.latitude;
+        let lng = event.longitude;
+        
+        if (group.length > 1) {
+          // Find index of this event in the group
+          const idx = group.findIndex(e => e.eventId === event.eventId);
+          const count = group.length;
+          
+          // Arrange in a circle pattern around the original point
+          // Jitter radius in degrees (~0.0003 degrees ≈ 30-40 meters)
+          const jitterRadius = 0.0003;
+          const angle = (2 * Math.PI * idx) / count;
+          lat += jitterRadius * Math.sin(angle);
+          lng += jitterRadius * Math.cos(angle);
+        }
+        
+        // L00 markers get higher z-index to appear on top
+        const zIndexOffset = event.level === 0 ? 1000 : (100 - event.level * 10);
+        
+        const marker = L.marker([lat, lng], { 
+          icon: markerIcon,
+          zIndexOffset: zIndexOffset
+        });
         
         marker.on('click', () => {
           handleMarkerClick(event);
