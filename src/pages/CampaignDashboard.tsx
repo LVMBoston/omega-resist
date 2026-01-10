@@ -1476,7 +1476,7 @@ export default function CampaignDashboard({
               {/* Header */}
               <div>
                 <h2 className="text-2xl font-bold tracking-tight">Samizdat</h2>
-                <p className="text-muted-foreground">Mode 1: Spark</p>
+                <p className="text-muted-foreground">{campaignTitle || "Select a campaign"}</p>
               </div>
 
               {/* EoA Selector in Accordion */}
