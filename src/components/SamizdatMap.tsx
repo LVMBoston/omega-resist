@@ -415,10 +415,10 @@ const SamizdatMap = ({
 
       setLoading(true);
 
-      // Step 1: Get EoA start dates, names, and utm_id
+      // Step 1: Get EoA data including mobilize_code for grouping
       const { data: eoas, error: eoasError } = await supabase
         .from("events_actions")
-        .select("id, start_date, title, utm_id")
+        .select("id, title, utm_id, mobilize_code")
         .in("id", eoaIds);
 
       if (eoasError || !eoas?.length) {
@@ -428,18 +428,15 @@ const SamizdatMap = ({
         return;
       }
 
-      const startDates: Record<string, string> = {};
       const names: Record<string, string> = {};
       const utmIds: Record<string, string> = {};
+      const eoaMobilizeCodes: Record<string, string | null> = {};
       eoas.forEach((eoa) => {
-        if (eoa.start_date) {
-          startDates[eoa.id] = eoa.start_date;
-        }
         names[eoa.id] = eoa.title || eoa.id.slice(0, 8);
         utmIds[eoa.id] = eoa.utm_id || "";
+        eoaMobilizeCodes[eoa.id] = eoa.mobilize_code || null;
       });
       setEoaNames(names);
-      setEoaStartDates(startDates);
 
       // Step 2: Get tokens for selected EoAs (include chain fields)
       const { data: tokens, error: tokensError } = await supabase
@@ -503,7 +500,71 @@ const SamizdatMap = ({
         return;
       }
 
-      // Step 4: Get unique ZIP codes for coordinate lookup
+      // Step 4: Calculate first view per mobilize_code group
+      // Group EoAs by mobilize_code
+      const mobilizeCodeToEoaIds: Record<string, string[]> = {};
+      const eoaIdToMobilizeCode: Record<string, string | null> = {};
+      
+      eoas.forEach((eoa) => {
+        eoaIdToMobilizeCode[eoa.id] = eoa.mobilize_code || null;
+        if (eoa.mobilize_code) {
+          if (!mobilizeCodeToEoaIds[eoa.mobilize_code]) {
+            mobilizeCodeToEoaIds[eoa.mobilize_code] = [];
+          }
+          mobilizeCodeToEoaIds[eoa.mobilize_code].push(eoa.id);
+        }
+      });
+
+      // Find first view event for each mobilize_code group and individual EoAs without code
+      const startDates: Record<string, string> = {};
+      
+      // Map token to EoA for event processing
+      const tokenToEoaId: Record<string, string> = {};
+      tokens.forEach((t) => {
+        tokenToEoaId[t.token] = t.eoa_id;
+      });
+
+      // Sort events by occurred_at to find first views
+      const sortedEvents = [...events].sort((a, b) => 
+        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+      );
+
+      // Track first view per mobilize_code and per individual EoA (for those without code)
+      const mobilizeCodeFirstView: Record<string, string> = {};
+      const eoaFirstView: Record<string, string> = {};
+
+      sortedEvents.forEach((event) => {
+        const eoaId = tokenToEoaId[event.token];
+        if (!eoaId) return;
+
+        const mobilizeCode = eoaIdToMobilizeCode[eoaId];
+        
+        if (mobilizeCode) {
+          // Track first view for mobilize_code group
+          if (!mobilizeCodeFirstView[mobilizeCode]) {
+            mobilizeCodeFirstView[mobilizeCode] = event.occurred_at;
+          }
+        } else {
+          // Track first view for individual EoA
+          if (!eoaFirstView[eoaId]) {
+            eoaFirstView[eoaId] = event.occurred_at;
+          }
+        }
+      });
+
+      // Build startDates keyed by EoA ID (using mobilize_code group's first view or individual first view)
+      eoas.forEach((eoa) => {
+        const mobilizeCode = eoa.mobilize_code;
+        if (mobilizeCode && mobilizeCodeFirstView[mobilizeCode]) {
+          startDates[eoa.id] = mobilizeCodeFirstView[mobilizeCode];
+        } else if (!mobilizeCode && eoaFirstView[eoa.id]) {
+          startDates[eoa.id] = eoaFirstView[eoa.id];
+        }
+      });
+
+      setEoaStartDates(startDates);
+
+      // Step 5: Get unique ZIP codes for coordinate lookup
       const uniqueZips = [...new Set(events.map((e) => e.zip_code).filter(Boolean))] as string[];
 
       const { data: zipData, error: zipError } = await supabase
@@ -523,22 +584,17 @@ const SamizdatMap = ({
         zipCoords[z.zip_code] = { lat: z.latitude, lng: z.longitude };
       });
 
-      // Step 5: Build event points with chain info, filtering by start_date
+      // Step 6: Build event points with chain info
+      // Note: No filtering by start_date here since first view IS the start
       const points: EventPoint[] = [];
       events.forEach((event) => {
         const td = tokenData[event.token];
         if (!td) return;
         
-        const startDate = startDates[td.eoaId];
         const coords = zipCoords[event.zip_code!];
 
         // Skip if no coordinates for this ZIP
         if (!coords) return;
-
-        // Filter: only include events after EoA start_date
-        if (startDate && new Date(event.occurred_at) < new Date(startDate)) {
-          return;
-        }
 
         points.push({
           eventId: event.id,

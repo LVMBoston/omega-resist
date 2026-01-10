@@ -13,25 +13,30 @@ interface SamizdatEoaSelectorProps {
 interface EoaOption {
   id: string;
   utm_id: string;
-  start_date: string;
+  mobilize_code: string | null;
   timezone: string | null;
+}
+
+interface FirstViewByMobilizeCode {
+  mobilize_code: string;
+  first_view_at: string;
 }
 
 const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorProps) => {
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
+  const [firstViewDates, setFirstViewDates] = useState<Record<string, string>>({});
 
-  // Query EoAs for this campaign where start_date IS NOT NULL
-  const { data: eoas, isLoading } = useQuery({
+  // Query EoAs for this campaign (no longer filtering by start_date)
+  const { data: eoas, isLoading: isLoadingEoas } = useQuery({
     queryKey: ["samizdat-eoas", campaignId],
     queryFn: async () => {
       if (!campaignId) return [];
 
       const { data, error } = await supabase
         .from("events_actions")
-        .select("id, utm_id, start_date, timezone")
+        .select("id, utm_id, mobilize_code, timezone")
         .eq("campaign_id", campaignId)
-        .not("start_date", "is", null)
-        .order("start_date", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching EoAs:", error);
@@ -43,14 +48,125 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     enabled: !!campaignId,
   });
 
-  // Select all EoAs by default when data loads
+  // Once EoAs are loaded, fetch first view dates per mobilize_code
   useEffect(() => {
-    if (eoas?.length) {
-      const allIds = eoas.map((e) => e.id);
+    const fetchFirstViewDates = async () => {
+      if (!eoas?.length) {
+        setFirstViewDates({});
+        return;
+      }
+
+      // Group EoAs by mobilize_code
+      const mobilizeCodes = [...new Set(eoas.map(e => e.mobilize_code).filter(Boolean))] as string[];
+      const eoaIdsWithoutCode = eoas.filter(e => !e.mobilize_code).map(e => e.id);
+
+      const results: Record<string, string> = {};
+
+      // For EoAs with mobilize_code, find first view across all EoAs sharing that code
+      if (mobilizeCodes.length > 0) {
+        // Get all EoA IDs that share these mobilize_codes (not just selected ones)
+        const { data: allEoasWithCodes } = await supabase
+          .from("events_actions")
+          .select("id, mobilize_code")
+          .in("mobilize_code", mobilizeCodes);
+
+        if (allEoasWithCodes?.length) {
+          // Get all tokens for these EoAs
+          const eoaIdsByCode: Record<string, string[]> = {};
+          allEoasWithCodes.forEach(eoa => {
+            if (eoa.mobilize_code) {
+              if (!eoaIdsByCode[eoa.mobilize_code]) {
+                eoaIdsByCode[eoa.mobilize_code] = [];
+              }
+              eoaIdsByCode[eoa.mobilize_code].push(eoa.id);
+            }
+          });
+
+          // For each mobilize_code group, find the earliest view event
+          for (const code of mobilizeCodes) {
+            const eoaIdsForCode = eoaIdsByCode[code] || [];
+            if (eoaIdsForCode.length === 0) continue;
+
+            // Get tokens for these EoAs
+            const { data: tokens } = await supabase
+              .from("tokens")
+              .select("token")
+              .in("eoa_id", eoaIdsForCode)
+              .eq("is_simulated", false);
+
+            if (!tokens?.length) continue;
+
+            const tokenList = tokens.map(t => t.token);
+
+            // Find earliest view event
+            const { data: events } = await supabase
+              .from("url_events")
+              .select("occurred_at")
+              .in("token", tokenList)
+              .eq("event_type", "view")
+              .eq("is_simulated", false)
+              .order("occurred_at", { ascending: true })
+              .limit(1);
+
+            if (events?.length) {
+              results[code] = events[0].occurred_at;
+            }
+          }
+        }
+      }
+
+      // For EoAs without mobilize_code, find first view for each individually
+      for (const eoaId of eoaIdsWithoutCode) {
+        const { data: tokens } = await supabase
+          .from("tokens")
+          .select("token")
+          .eq("eoa_id", eoaId)
+          .eq("is_simulated", false);
+
+        if (!tokens?.length) continue;
+
+        const tokenList = tokens.map(t => t.token);
+
+        const { data: events } = await supabase
+          .from("url_events")
+          .select("occurred_at")
+          .in("token", tokenList)
+          .eq("event_type", "view")
+          .eq("is_simulated", false)
+          .order("occurred_at", { ascending: true })
+          .limit(1);
+
+        if (events?.length) {
+          // Use eoa_id as key for EoAs without mobilize_code
+          results[`eoa_${eoaId}`] = events[0].occurred_at;
+        }
+      }
+
+      setFirstViewDates(results);
+    };
+
+    fetchFirstViewDates();
+  }, [eoas]);
+
+  // Helper to get first view date for an EoA
+  const getFirstViewForEoa = (eoa: EoaOption): string | null => {
+    if (eoa.mobilize_code) {
+      return firstViewDates[eoa.mobilize_code] || null;
+    }
+    return firstViewDates[`eoa_${eoa.id}`] || null;
+  };
+
+  // Filter EoAs to only show ones that have a first view (active campaigns)
+  const activeEoas = eoas?.filter(eoa => getFirstViewForEoa(eoa) !== null) || [];
+
+  // Select all active EoAs by default when data loads
+  useEffect(() => {
+    if (activeEoas.length > 0) {
+      const allIds = activeEoas.map((e) => e.id);
       setSelectedEoaIds(allIds);
       onEoaChange?.(allIds);
     }
-  }, [eoas, onEoaChange]);
+  }, [activeEoas.length, onEoaChange]);
 
   const toggleEoa = (eoaId: string) => {
     setSelectedEoaIds((prev) => {
@@ -62,9 +178,11 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     });
   };
 
-  const formatStartDate = (dateString: string) => {
+  const formatFirstView = (dateString: string) => {
     return formatFloatingLocalTime(dateString);
   };
+
+  const isLoading = isLoadingEoas || (eoas?.length && Object.keys(firstViewDates).length === 0);
 
   if (isLoading) {
     return (
@@ -75,32 +193,38 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     );
   }
 
-  // Empty state - no EoAs with start_date
-  if (!eoas?.length) {
+  // Empty state - no EoAs with first views
+  if (!activeEoas.length) {
     return (
       <p className="text-muted-foreground text-sm py-2">
-        No active EoAs found. Add a start date to an EoA to view Mode 1 Spark.
+        No active EoAs found. EoAs will appear here after their first deck open.
       </p>
     );
   }
 
   return (
     <div className="space-y-3 py-2">
-      {eoas.map((eoa) => (
-        <div key={eoa.id} className="flex items-center space-x-3">
-          <Checkbox
-            id={eoa.id}
-            checked={selectedEoaIds.includes(eoa.id)}
-            onCheckedChange={() => toggleEoa(eoa.id)}
-          />
-          <label
-            htmlFor={eoa.id}
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-          >
-            {eoa.utm_id} <span className="text-muted-foreground">(Starts {formatStartDate(eoa.start_date)})</span>
-          </label>
-        </div>
-      ))}
+      {activeEoas.map((eoa) => {
+        const firstView = getFirstViewForEoa(eoa);
+        return (
+          <div key={eoa.id} className="flex items-center space-x-3">
+            <Checkbox
+              id={eoa.id}
+              checked={selectedEoaIds.includes(eoa.id)}
+              onCheckedChange={() => toggleEoa(eoa.id)}
+            />
+            <label
+              htmlFor={eoa.id}
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              {eoa.utm_id}{" "}
+              <span className="text-muted-foreground">
+                (First open: {firstView ? formatFirstView(firstView) : "No opens yet"})
+              </span>
+            </label>
+          </div>
+        );
+      })}
     </div>
   );
 };
