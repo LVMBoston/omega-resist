@@ -160,12 +160,12 @@ const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14): str
           fill="${fillColor}" stroke="white" stroke-width="${strokeWidth}" rx="2"/>
       </svg>`;
     case "triangle":
+      // Use same padding as circle for visual size consistency
       const cx = size / 2;
-      const padding = halfStroke + 1;
-      const topY = padding;
-      const bottomY = size - padding;
-      const leftX = padding;
-      const rightX = size - padding;
+      const topY = halfStroke;
+      const bottomY = size - halfStroke;
+      const leftX = halfStroke;
+      const rightX = size - halfStroke;
       return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <polygon points="${cx},${topY} ${rightX},${bottomY} ${leftX},${bottomY}" 
           fill="${fillColor}" stroke="white" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
