@@ -291,54 +291,47 @@ export default function CampaignEoaManager() {
     const mobilizeCodes = [...new Set(campaignEoas.map(e => e.mobilize_code).filter(Boolean))] as string[];
     const eoaIdsWithoutCode = campaignEoas.filter(e => !e.mobilize_code).map(e => e.id);
 
-    // For EoAs with mobilize_code, find first view across all EoAs sharing that code
+    // For EoAs with mobilize_code, find first view across EoAs sharing that code WITHIN THIS CAMPAIGN ONLY
     if (mobilizeCodes.length > 0) {
-      // Get all EoA IDs that share these mobilize_codes
-      const { data: allEoasWithCodes } = await supabase
-        .from("events_actions")
-        .select("id, mobilize_code")
-        .in("mobilize_code", mobilizeCodes);
-
-      if (allEoasWithCodes?.length) {
-        const eoaIdsByCode: Record<string, string[]> = {};
-        allEoasWithCodes.forEach(eoa => {
-          if (eoa.mobilize_code) {
-            if (!eoaIdsByCode[eoa.mobilize_code]) {
-              eoaIdsByCode[eoa.mobilize_code] = [];
-            }
-            eoaIdsByCode[eoa.mobilize_code].push(eoa.id);
+      // Group campaign EoAs by mobilize_code (only EoAs in this campaign)
+      const eoaIdsByCode: Record<string, string[]> = {};
+      campaignEoas.forEach(eoa => {
+        if (eoa.mobilize_code) {
+          if (!eoaIdsByCode[eoa.mobilize_code]) {
+            eoaIdsByCode[eoa.mobilize_code] = [];
           }
-        });
+          eoaIdsByCode[eoa.mobilize_code].push(eoa.id);
+        }
+      });
 
-        // For each mobilize_code group, find the earliest view event
-        for (const code of mobilizeCodes) {
-          const eoaIdsForCode = eoaIdsByCode[code] || [];
-          if (eoaIdsForCode.length === 0) continue;
+      // For each mobilize_code group, find the earliest view event
+      for (const code of mobilizeCodes) {
+        const eoaIdsForCode = eoaIdsByCode[code] || [];
+        if (eoaIdsForCode.length === 0) continue;
 
-          // Get tokens for these EoAs
-          const { data: tokens } = await supabase
-            .from("tokens")
-            .select("token")
-            .in("eoa_id", eoaIdsForCode)
-            .eq("is_simulated", false);
+        // Get tokens for these EoAs
+        const { data: tokens } = await supabase
+          .from("tokens")
+          .select("token")
+          .in("eoa_id", eoaIdsForCode)
+          .eq("is_simulated", false);
 
-          if (!tokens?.length) continue;
+        if (!tokens?.length) continue;
 
-          const tokenList = tokens.map(t => t.token);
+        const tokenList = tokens.map(t => t.token);
 
-          // Find earliest view event
-          const { data: events } = await supabase
-            .from("url_events")
-            .select("occurred_at")
-            .in("token", tokenList)
-            .eq("event_type", "view")
-            .eq("is_simulated", false)
-            .order("occurred_at", { ascending: true })
-            .limit(1);
+        // Find earliest view event
+        const { data: events } = await supabase
+          .from("url_events")
+          .select("occurred_at")
+          .in("token", tokenList)
+          .eq("event_type", "view")
+          .eq("is_simulated", false)
+          .order("occurred_at", { ascending: true })
+          .limit(1);
 
-          if (events?.length) {
-            results[code] = events[0].occurred_at;
-          }
+        if (events?.length) {
+          results[code] = events[0].occurred_at;
         }
       }
     }
