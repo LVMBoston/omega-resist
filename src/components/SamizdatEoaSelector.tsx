@@ -156,10 +156,11 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     return firstViewDates[`eoa_${eoa.id}`] || null;
   };
 
-  // Filter EoAs to only show ones that have a first view (active campaigns)
-  const activeEoas = eoas?.filter(eoa => getFirstViewForEoa(eoa) !== null) || [];
+  // All EoAs are now "active" - we show them all and display their first view status
+  // EoAs with mobilize_code inherit the group's first view even if they individually have no views
+  const activeEoas = eoas || [];
 
-  // Select all active EoAs by default when data loads
+  // Select all EoAs by default when data loads
   useEffect(() => {
     if (activeEoas.length > 0) {
       const allIds = activeEoas.map((e) => e.id);
@@ -193,11 +194,11 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     );
   }
 
-  // Empty state - no EoAs with first views
+  // Empty state - no EoAs at all
   if (!activeEoas.length) {
     return (
       <p className="text-muted-foreground text-sm py-2">
-        No active EoAs found. EoAs will appear here after their first deck open.
+        No EoAs found for this campaign.
       </p>
     );
   }
