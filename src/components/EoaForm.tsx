@@ -130,7 +130,7 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
           state: data.state || prev.state,
           zip_code: data.zip_code || prev.zip_code,
           type: data.type || prev.type,
-          start_date: data.start_date ? toDatetimeLocal(data.start_date) : prev.start_date,
+          // start_date is now derived from first view event, not fetched
           end_date: data.end_date ? toDatetimeLocal(data.end_date) : prev.end_date,
           timezone: data.timezone || prev.timezone,
           description: data.description || prev.description,
@@ -178,9 +178,10 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
     // Store datetime-local as-is (floating local time - same wall-clock everywhere)
     // Format: YYYY-MM-DDTHH:MM:00.000Z (the Z is nominal, treat as naive datetime)
+    // Note: start_date is now derived from first view event, not stored via form
     const payload = {
       ...formData,
-      start_date: formData.start_date ? `${formData.start_date}:00.000Z` : null,
+      start_date: null, // Start date is derived from first view event
       end_date: formData.end_date ? `${formData.end_date}:00.000Z` : null,
       assigned_deck_slug: formData.assigned_deck_slug === "none" ? null : formData.assigned_deck_slug,
       campaign_id: campaignId,
@@ -332,11 +333,12 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Start Date/Time</Label>
-          <Input
-            type="datetime-local"
-            value={formData.start_date}
-            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-          />
+          <div className="flex items-center h-10 px-3 py-2 rounded-md border border-input bg-muted text-muted-foreground text-sm">
+            Begins with first deck open
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Campaign start time is automatically set when the first viewer opens the deck
+          </p>
         </div>
         <div>
           <Label>End Date/Time {formData.type === "action" && "*"}</Label>
