@@ -205,7 +205,7 @@ export default function CampaignDashboard({
     }
   });
 
-  // Set initial campaign from URL or default to first campaign, or use prop
+  // Set initial campaign from URL, localStorage, or default to first campaign
   useEffect(() => {
     if (propCampaignId && campaigns && campaigns.length > 0) {
       // If campaignId prop is provided, find and set the campaign code
@@ -222,6 +222,30 @@ export default function CampaignDashboard({
       }
     } else if (!selectedCampaign && campaigns && campaigns.length > 0 && !propCampaignId) {
       const params = new URLSearchParams(searchParams);
+      
+      // Try to restore from localStorage first
+      const savedFilters = localStorage.getItem("campaign-dashboard-filters");
+      if (savedFilters) {
+        try {
+          const filters = JSON.parse(savedFilters);
+          // Verify the saved campaign still exists
+          const savedCampaign = campaigns.find(c => c.id === filters.campaignId);
+          if (savedCampaign) {
+            params.set("campaign", savedCampaign.code);
+            params.set("campaignId", savedCampaign.id);
+            if (!params.has("eventType")) params.set("eventType", filters.eventType || "all");
+            if (!params.has("dataSource")) params.set("dataSource", filters.dataSource || "real");
+            setSearchParams(params, {
+              replace: true
+            });
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing saved filters:", e);
+        }
+      }
+      
+      // Fall back to first campaign if no valid saved selection
       params.set("campaign", campaigns[0].code);
       params.set("campaignId", campaigns[0].id);
       if (!params.has("eventType")) params.set("eventType", "all");
