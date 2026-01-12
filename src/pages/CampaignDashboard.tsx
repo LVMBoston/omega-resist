@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,7 +89,8 @@ export default function CampaignDashboard({
   // Chain filter state (shared between Samizdat and EventsV2 tabs via URL params)
   const chainRootTokenParam = searchParams.get("chainRoot");
   const chainTokenParam = searchParams.get("chainToken");
-  const chainViewMode = chainRootTokenParam ? "chain" : "all";
+  // View mode is "chain" if either chainRoot or chainToken is set
+  const chainViewMode = (chainRootTokenParam || chainTokenParam) ? "chain" : "all";
   const selectedChainRootToken = chainRootTokenParam;
   const selectedChainToken = chainTokenParam;
   
@@ -120,14 +121,32 @@ export default function CampaignDashboard({
   };
   
   const setSelectedChainToken = (token: string | null) => {
+    // When setting chainToken, preserve the existing chainRoot
     const newParams = new URLSearchParams(searchParams);
     if (token) {
       newParams.set("chainToken", token);
+      // Also ensure chainRoot is set if we have a token (use rootToken from the map's callback)
     } else {
       newParams.delete("chainToken");
     }
     setSearchParams(newParams);
   };
+  
+  // Combined setter to update both chainRoot and chainToken atomically
+  const setChainFilter = useCallback((rootToken: string | null, chainToken: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (rootToken) {
+      newParams.set("chainRoot", rootToken);
+    } else {
+      newParams.delete("chainRoot");
+    }
+    if (chainToken) {
+      newParams.set("chainToken", chainToken);
+    } else {
+      newParams.delete("chainToken");
+    }
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
   
   const setChainViewMode = (mode: "all" | "chain") => {
     if (mode === "all") {
