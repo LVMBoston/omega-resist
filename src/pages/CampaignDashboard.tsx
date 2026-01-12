@@ -608,7 +608,7 @@ export default function CampaignDashboard({
     data: eventsV2Data,
     isLoading: eventsV2Loading
   } = useQuery({
-    queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate],
+    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate],
     queryFn: async () => {
       let query = supabase.from("url_events").select(`
           id,
