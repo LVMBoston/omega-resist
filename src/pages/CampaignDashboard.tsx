@@ -94,8 +94,8 @@ export default function CampaignDashboard({
   const selectedChainRootToken = chainRootTokenParam;
   const selectedChainToken = chainTokenParam;
   
-  // Lineage tokens for filtering eventsV2 (computed from chainToken)
-  const [lineageTokens, setLineageTokens] = useState<Set<string>>(new Set());
+  // Selected L00 instance for filtering eventsV2 (computed from chainToken)
+  const [selectedL00Instance, setSelectedL00Instance] = useState<string | null>(null);
   
   // Debug logging for chain filter
   console.log("[CampaignDashboard] Chain filter state:", {
@@ -104,7 +104,7 @@ export default function CampaignDashboard({
     chainViewMode,
     selectedChainRootToken,
     selectedChainToken,
-    lineageTokensSize: lineageTokens.size,
+    selectedL00Instance,
     fullUrl: window.location.href,
     searchParamsString: searchParams.toString()
   });
@@ -154,7 +154,7 @@ export default function CampaignDashboard({
       newParams.delete("chainRoot");
       newParams.delete("chainToken");
       setSearchParams(newParams);
-      setLineageTokens(new Set());
+      setSelectedL00Instance(null);
     }
   };
   const {
@@ -627,6 +627,7 @@ export default function CampaignDashboard({
             eoa_id,
             full_url,
             root_token,
+            l00_instance,
             events_actions(
               mobilize_code,
               utm_id,
@@ -744,71 +745,29 @@ export default function CampaignDashboard({
     latestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[0].occurred_at) : 'N/A'
   } : null;
 
-  // Build lineage tokens for eventsV2 filtering when chainToken is selected
+  // Update selected L00 instance when chainToken is selected (simple lookup)
   useEffect(() => {
-    const buildLineageTokens = async () => {
-      if (!selectedChainToken || chainViewMode !== "chain" || !eventsV2Data) {
-        setLineageTokens(new Set());
+    const updateL00Instance = async () => {
+      if (!selectedChainToken || chainViewMode !== "chain") {
+        setSelectedL00Instance(null);
         return;
       }
       
-      // Build a token lookup from eventsV2Data
-      const tokenLookup: Record<string, { rootToken: string; parentToken: string | null }> = {};
-      
-      // We need to fetch parent_token info from the tokens table
-      const { data: tokensData } = await supabase
+      // Fetch l00_instance for the selected token
+      const { data } = await supabase
         .from("tokens")
-        .select("token, root_token, parent_token")
-        .eq("is_simulated", false);
+        .select("l00_instance")
+        .eq("token", selectedChainToken)
+        .single();
       
-      if (tokensData) {
-        tokensData.forEach(t => {
-          tokenLookup[t.token] = {
-            rootToken: t.root_token || t.token,
-            parentToken: t.parent_token
-          };
-        });
+      if (data?.l00_instance) {
+        console.log("[CampaignDashboard] Setting L00 instance filter to:", data.l00_instance);
+        setSelectedL00Instance(data.l00_instance);
       }
-      
-      const lineage = new Set<string>();
-      lineage.add(selectedChainToken);
-      
-      // Walk up the parent chain (ancestors)
-      let current = selectedChainToken;
-      while (current) {
-        const tokenInfo = tokenLookup[current];
-        if (!tokenInfo?.parentToken) break;
-        lineage.add(tokenInfo.parentToken);
-        current = tokenInfo.parentToken;
-      }
-      
-      // Build children map and walk down to find descendants
-      const childrenMap: Record<string, string[]> = {};
-      Object.entries(tokenLookup).forEach(([token, info]) => {
-        if (info.parentToken) {
-          if (!childrenMap[info.parentToken]) {
-            childrenMap[info.parentToken] = [];
-          }
-          childrenMap[info.parentToken].push(token);
-        }
-      });
-      
-      // BFS to find all descendants
-      const queue = [selectedChainToken];
-      while (queue.length > 0) {
-        const token = queue.shift()!;
-        const children = childrenMap[token] || [];
-        children.forEach(child => {
-          lineage.add(child);
-          queue.push(child);
-        });
-      }
-      
-      setLineageTokens(lineage);
     };
     
-    buildLineageTokens();
-  }, [selectedChainToken, chainViewMode, eventsV2Data]);
+    updateL00Instance();
+  }, [selectedChainToken, chainViewMode]);
 
   // Sorting logic for EventsV2
   const handleSort = (column: string) => {
@@ -817,10 +776,10 @@ export default function CampaignDashboard({
       direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
-  // Filter and sort EventsV2 - apply chain filter if active (using lineage tokens)
+  // Filter and sort EventsV2 - apply chain filter using l00_instance
   const filteredEventsV2 = eventsV2Data ? (
-    chainViewMode === "chain" && lineageTokens.size > 0
-      ? eventsV2Data.filter((e: any) => lineageTokens.has(e.token))
+    chainViewMode === "chain" && selectedL00Instance
+      ? eventsV2Data.filter((e: any) => e.tokens?.l00_instance === selectedL00Instance)
       : eventsV2Data
   ) : [];
   
@@ -1316,7 +1275,7 @@ export default function CampaignDashboard({
                         Lineage Filter Active
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        Showing {sortedEventsV2.length} events in lineage ({lineageTokens.size} tokens)
+                        Showing {sortedEventsV2.length} events in chain instance
                       </span>
                     </div>
                     <Button 
