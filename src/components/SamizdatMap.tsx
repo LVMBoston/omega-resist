@@ -332,47 +332,106 @@ const SamizdatMap = ({
   useEffect(() => {
     const buildLineageTokens = async () => {
       if (!selectedChainToken || viewMode !== "chain") {
+        console.log("[SamizdatMap] Clearing lineage - no chain token or not in chain mode", { selectedChainToken, viewMode });
         setLineageTokens(new Set());
         return;
       }
       
+      console.log("[SamizdatMap] Building lineage for token:", selectedChainToken);
+      
       const lineage = new Set<string>();
       lineage.add(selectedChainToken);
       
-      // Walk up the parent chain (ancestors)
+      // Walk up the parent chain (ancestors) using tokenLookupRef
       let current = selectedChainToken;
       const tokenLookup = tokenLookupRef.current;
       
+      console.log("[SamizdatMap] Token lookup size:", Object.keys(tokenLookup).length);
+      
+      // First try local lookup
       while (current) {
         const tokenInfo = tokenLookup[current];
+        console.log("[SamizdatMap] Walking up from", current, "-> parent:", tokenInfo?.parentToken);
         if (!tokenInfo?.parentToken) break;
         lineage.add(tokenInfo.parentToken);
         current = tokenInfo.parentToken;
       }
       
-      // Walk down to find all descendants
-      // Build a map of parent -> children from the token lookup
-      const childrenMap: Record<string, string[]> = {};
-      Object.entries(tokenLookup).forEach(([token, info]) => {
-        if (info.parentToken) {
-          if (!childrenMap[info.parentToken]) {
-            childrenMap[info.parentToken] = [];
+      // If we didn't find ancestors in local lookup, fetch from DB
+      if (lineage.size === 1) {
+        console.log("[SamizdatMap] Local lookup incomplete, fetching from DB...");
+        // Fetch the full chain from the database
+        const { data: tokenChain } = await supabase
+          .from("tokens")
+          .select("token, parent_token, root_token")
+          .eq("is_simulated", false);
+        
+        if (tokenChain) {
+          // Build a lookup from DB data
+          const dbLookup: Record<string, { parentToken: string | null; rootToken: string }> = {};
+          tokenChain.forEach(t => {
+            dbLookup[t.token] = {
+              parentToken: t.parent_token,
+              rootToken: t.root_token || t.token
+            };
+          });
+          
+          // Walk up again using DB data
+          current = selectedChainToken;
+          while (current) {
+            const info = dbLookup[current];
+            if (!info?.parentToken) break;
+            lineage.add(info.parentToken);
+            current = info.parentToken;
           }
-          childrenMap[info.parentToken].push(token);
+          
+          // Build children map for descendants
+          const childrenMap: Record<string, string[]> = {};
+          Object.entries(dbLookup).forEach(([token, info]) => {
+            if (info.parentToken) {
+              if (!childrenMap[info.parentToken]) {
+                childrenMap[info.parentToken] = [];
+              }
+              childrenMap[info.parentToken].push(token);
+            }
+          });
+          
+          // BFS to find all descendants of the clicked token
+          const queue = [selectedChainToken];
+          while (queue.length > 0) {
+            const token = queue.shift()!;
+            const children = childrenMap[token] || [];
+            children.forEach(child => {
+              lineage.add(child);
+              queue.push(child);
+            });
+          }
         }
-      });
-      
-      // BFS to find all descendants of the clicked token
-      const queue = [selectedChainToken];
-      while (queue.length > 0) {
-        const token = queue.shift()!;
-        const children = childrenMap[token] || [];
-        children.forEach(child => {
-          lineage.add(child);
-          queue.push(child);
+      } else {
+        // Use local lookup for descendants
+        const childrenMap: Record<string, string[]> = {};
+        Object.entries(tokenLookup).forEach(([token, info]) => {
+          if (info.parentToken) {
+            if (!childrenMap[info.parentToken]) {
+              childrenMap[info.parentToken] = [];
+            }
+            childrenMap[info.parentToken].push(token);
+          }
         });
+        
+        // BFS to find all descendants of the clicked token
+        const queue = [selectedChainToken];
+        while (queue.length > 0) {
+          const token = queue.shift()!;
+          const children = childrenMap[token] || [];
+          children.forEach(child => {
+            lineage.add(child);
+            queue.push(child);
+          });
+        }
       }
       
+      console.log("[SamizdatMap] Built lineage with", lineage.size, "tokens:", [...lineage]);
       setLineageTokens(lineage);
     };
     
@@ -385,9 +444,14 @@ const SamizdatMap = ({
       return filteredEventPoints;
     }
     // Chain mode: filter to events in the lineage set
-    if (lineageTokens.size === 0) return [];
+    // If lineage is still being computed, show events matching the root token as fallback
+    if (lineageTokens.size === 0 && selectedRootToken) {
+      console.log("[SamizdatMap] Lineage not ready, using rootToken fallback:", selectedRootToken);
+      return filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
+    }
+    console.log("[SamizdatMap] Filtering by lineage, size:", lineageTokens.size);
     return filteredEventPoints.filter(ep => lineageTokens.has(ep.token));
-  }, [filteredEventPoints, viewMode, lineageTokens]);
+  }, [filteredEventPoints, viewMode, lineageTokens, selectedRootToken]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
@@ -747,6 +811,13 @@ const SamizdatMap = ({
 
   // Handle marker click - traces lineage and filters to chain
   const handleMarkerClick = useCallback((event: EventPoint) => {
+    console.log("[SamizdatMap] Marker clicked:", {
+      eventId: event.eventId,
+      token: event.token,
+      rootToken: event.rootToken,
+      level: event.level
+    });
+    
     // Save current clustering state and disable for chain mode
     clusteringBeforeChainRef.current = enableClustering;
     setEnableClustering(false);
