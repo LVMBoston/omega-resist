@@ -41,6 +41,8 @@ interface SamizdatMapProps {
   // Chain filter state (lifted to parent for cross-tab sync)
   selectedRootToken?: string | null;
   onRootTokenChange?: (token: string | null) => void;
+  selectedChainToken?: string | null;
+  onChainTokenChange?: (token: string | null) => void;
   viewMode?: "all" | "chain";
   onViewModeChange?: (mode: "all" | "chain") => void;
 }
@@ -198,6 +200,8 @@ const SamizdatMap = ({
   eoaIds, 
   selectedRootToken: externalRootToken,
   onRootTokenChange,
+  selectedChainToken: externalChainToken,
+  onChainTokenChange,
   viewMode: externalViewMode,
   onViewModeChange
 }: SamizdatMapProps) => {
@@ -220,10 +224,15 @@ const SamizdatMap = ({
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
   const [internalRootToken, setInternalRootToken] = useState<string | null>(null);
+  const [internalChainToken, setInternalChainToken] = useState<string | null>(null);
+  
+  // Lineage tokens set for chain filtering (ancestors + clicked + descendants)
+  const [lineageTokens, setLineageTokens] = useState<Set<string>>(new Set());
   
   // Determine which state to use (external or internal)
   const viewMode = externalViewMode ?? internalViewMode;
   const selectedRootToken = externalRootToken ?? internalRootToken;
+  const selectedChainToken = externalChainToken ?? internalChainToken;
   
   const setViewMode = (mode: ViewMode) => {
     if (onViewModeChange) {
@@ -238,6 +247,14 @@ const SamizdatMap = ({
       onRootTokenChange(token);
     } else {
       setInternalRootToken(token);
+    }
+  };
+  
+  const setSelectedChainToken = (token: string | null) => {
+    if (onChainTokenChange) {
+      onChainTokenChange(token);
+    } else {
+      setInternalChainToken(token);
     }
   };
 
@@ -310,18 +327,67 @@ const SamizdatMap = ({
     return filtered;
   }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
 
+  // Build lineage tokens set when chain token is selected
+  // This builds the set of tokens in the direct lineage: ancestors + clicked + descendants
+  useEffect(() => {
+    const buildLineageTokens = async () => {
+      if (!selectedChainToken || viewMode !== "chain") {
+        setLineageTokens(new Set());
+        return;
+      }
+      
+      const lineage = new Set<string>();
+      lineage.add(selectedChainToken);
+      
+      // Walk up the parent chain (ancestors)
+      let current = selectedChainToken;
+      const tokenLookup = tokenLookupRef.current;
+      
+      while (current) {
+        const tokenInfo = tokenLookup[current];
+        if (!tokenInfo?.parentToken) break;
+        lineage.add(tokenInfo.parentToken);
+        current = tokenInfo.parentToken;
+      }
+      
+      // Walk down to find all descendants
+      // Build a map of parent -> children from the token lookup
+      const childrenMap: Record<string, string[]> = {};
+      Object.entries(tokenLookup).forEach(([token, info]) => {
+        if (info.parentToken) {
+          if (!childrenMap[info.parentToken]) {
+            childrenMap[info.parentToken] = [];
+          }
+          childrenMap[info.parentToken].push(token);
+        }
+      });
+      
+      // BFS to find all descendants of the clicked token
+      const queue = [selectedChainToken];
+      while (queue.length > 0) {
+        const token = queue.shift()!;
+        const children = childrenMap[token] || [];
+        children.forEach(child => {
+          lineage.add(child);
+          queue.push(child);
+        });
+      }
+      
+      setLineageTokens(lineage);
+    };
+    
+    buildLineageTokens();
+  }, [selectedChainToken, viewMode]);
+
   // Events to display based on view mode
   const displayEvents = useMemo((): EventPoint[] => {
     if (viewMode === "all") {
       return filteredEventPoints;
     }
-    // Chain mode: filter to events matching selectedRootToken
-    if (!selectedRootToken) return [];
-    let chainEvents = filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
-    
-    
-    return chainEvents;
-  }, [filteredEventPoints, viewMode, selectedRootToken]);
+    // Chain mode: filter to events in the lineage set
+    if (lineageTokens.size === 0) return [];
+    return filteredEventPoints.filter(ep => lineageTokens.has(ep.token));
+  }, [filteredEventPoints, viewMode, lineageTokens]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
@@ -672,22 +738,22 @@ const SamizdatMap = ({
   const handleShowAllEvents = useCallback(() => {
     setViewMode("all");
     setSelectedRootToken(null);
+    setSelectedChainToken(null);
     setSelectedEventId(null);
+    setLineageTokens(new Set());
     // Restore clustering state from before chain mode
     setEnableClustering(clusteringBeforeChainRef.current);
   }, []);
 
-  // Handle marker click - traces to root L00 and filters to chain
+  // Handle marker click - traces lineage and filters to chain
   const handleMarkerClick = useCallback((event: EventPoint) => {
-    // Find the root token for this event
-    const rootToken = event.rootToken;
-    
     // Save current clustering state and disable for chain mode
     clusteringBeforeChainRef.current = enableClustering;
     setEnableClustering(false);
     
-    // Set chain filter and open panel
-    setSelectedRootToken(rootToken);
+    // Set chain filter with the specific clicked token (not just root)
+    setSelectedRootToken(event.rootToken);
+    setSelectedChainToken(event.token);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
   }, [enableClustering]);

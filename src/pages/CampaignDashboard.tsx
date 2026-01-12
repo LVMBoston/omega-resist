@@ -88,14 +88,22 @@ export default function CampaignDashboard({
   
   // Chain filter state (shared between Samizdat and EventsV2 tabs via URL params)
   const chainRootTokenParam = searchParams.get("chainRoot");
+  const chainTokenParam = searchParams.get("chainToken");
   const chainViewMode = chainRootTokenParam ? "chain" : "all";
   const selectedChainRootToken = chainRootTokenParam;
+  const selectedChainToken = chainTokenParam;
+  
+  // Lineage tokens for filtering eventsV2 (computed from chainToken)
+  const [lineageTokens, setLineageTokens] = useState<Set<string>>(new Set());
   
   // Debug logging for chain filter
   console.log("[CampaignDashboard] Chain filter state:", {
     chainRootTokenParam,
+    chainTokenParam,
     chainViewMode,
     selectedChainRootToken,
+    selectedChainToken,
+    lineageTokensSize: lineageTokens.size,
     fullUrl: window.location.href,
     searchParamsString: searchParams.toString()
   });
@@ -106,6 +114,17 @@ export default function CampaignDashboard({
       newParams.set("chainRoot", token);
     } else {
       newParams.delete("chainRoot");
+      newParams.delete("chainToken");
+    }
+    setSearchParams(newParams);
+  };
+  
+  const setSelectedChainToken = (token: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (token) {
+      newParams.set("chainToken", token);
+    } else {
+      newParams.delete("chainToken");
     }
     setSearchParams(newParams);
   };
@@ -114,7 +133,9 @@ export default function CampaignDashboard({
     if (mode === "all") {
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("chainRoot");
+      newParams.delete("chainToken");
       setSearchParams(newParams);
+      setLineageTokens(new Set());
     }
   };
   const {
@@ -704,6 +725,72 @@ export default function CampaignDashboard({
     latestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[0].occurred_at) : 'N/A'
   } : null;
 
+  // Build lineage tokens for eventsV2 filtering when chainToken is selected
+  useEffect(() => {
+    const buildLineageTokens = async () => {
+      if (!selectedChainToken || chainViewMode !== "chain" || !eventsV2Data) {
+        setLineageTokens(new Set());
+        return;
+      }
+      
+      // Build a token lookup from eventsV2Data
+      const tokenLookup: Record<string, { rootToken: string; parentToken: string | null }> = {};
+      
+      // We need to fetch parent_token info from the tokens table
+      const { data: tokensData } = await supabase
+        .from("tokens")
+        .select("token, root_token, parent_token")
+        .eq("is_simulated", false);
+      
+      if (tokensData) {
+        tokensData.forEach(t => {
+          tokenLookup[t.token] = {
+            rootToken: t.root_token || t.token,
+            parentToken: t.parent_token
+          };
+        });
+      }
+      
+      const lineage = new Set<string>();
+      lineage.add(selectedChainToken);
+      
+      // Walk up the parent chain (ancestors)
+      let current = selectedChainToken;
+      while (current) {
+        const tokenInfo = tokenLookup[current];
+        if (!tokenInfo?.parentToken) break;
+        lineage.add(tokenInfo.parentToken);
+        current = tokenInfo.parentToken;
+      }
+      
+      // Build children map and walk down to find descendants
+      const childrenMap: Record<string, string[]> = {};
+      Object.entries(tokenLookup).forEach(([token, info]) => {
+        if (info.parentToken) {
+          if (!childrenMap[info.parentToken]) {
+            childrenMap[info.parentToken] = [];
+          }
+          childrenMap[info.parentToken].push(token);
+        }
+      });
+      
+      // BFS to find all descendants
+      const queue = [selectedChainToken];
+      while (queue.length > 0) {
+        const token = queue.shift()!;
+        const children = childrenMap[token] || [];
+        children.forEach(child => {
+          lineage.add(child);
+          queue.push(child);
+        });
+      }
+      
+      setLineageTokens(lineage);
+    };
+    
+    buildLineageTokens();
+  }, [selectedChainToken, chainViewMode, eventsV2Data]);
+
   // Sorting logic for EventsV2
   const handleSort = (column: string) => {
     setSortConfig(prev => ({
@@ -711,10 +798,10 @@ export default function CampaignDashboard({
       direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
-  // Filter and sort EventsV2 - apply chain filter if active
+  // Filter and sort EventsV2 - apply chain filter if active (using lineage tokens)
   const filteredEventsV2 = eventsV2Data ? (
-    chainViewMode === "chain" && selectedChainRootToken
-      ? eventsV2Data.filter((e: any) => e.tokens?.root_token === selectedChainRootToken)
+    chainViewMode === "chain" && lineageTokens.size > 0
+      ? eventsV2Data.filter((e: any) => lineageTokens.has(e.token))
       : eventsV2Data
   ) : [];
   
@@ -1203,14 +1290,14 @@ export default function CampaignDashboard({
             <Card>
               <CardContent className="pt-6">
                 {/* Chain filter indicator */}
-                {chainViewMode === "chain" && selectedChainRootToken && (
+                {chainViewMode === "chain" && selectedChainToken && (
                   <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3 mb-4">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                        Chain Filter Active
+                        Lineage Filter Active
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        Showing {sortedEventsV2.length} events in chain (root: {selectedChainRootToken.slice(0, 20)}...)
+                        Showing {sortedEventsV2.length} events in lineage ({lineageTokens.size} tokens)
                       </span>
                     </div>
                     <Button 
@@ -1219,6 +1306,7 @@ export default function CampaignDashboard({
                       onClick={() => {
                         setChainViewMode("all");
                         setSelectedChainRootToken(null);
+                        setSelectedChainToken(null);
                       }}
                     >
                       Clear Filter
@@ -1496,6 +1584,8 @@ export default function CampaignDashboard({
                 eoaIds={selectedEoaIds}
                 selectedRootToken={selectedChainRootToken}
                 onRootTokenChange={setSelectedChainRootToken}
+                selectedChainToken={selectedChainToken}
+                onChainTokenChange={setSelectedChainToken}
                 viewMode={chainViewMode}
                 onViewModeChange={setChainViewMode}
               />
