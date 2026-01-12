@@ -61,6 +61,7 @@ interface EventPoint {
   rootToken: string;
   parentToken: string | null;
   level: number;
+  l00Instance: string | null;
 }
 
 interface ZipAggregate {
@@ -226,8 +227,8 @@ const SamizdatMap = ({
   const [internalRootToken, setInternalRootToken] = useState<string | null>(null);
   const [internalChainToken, setInternalChainToken] = useState<string | null>(null);
   
-  // Lineage tokens set for chain filtering (ancestors + clicked + descendants)
-  const [lineageTokens, setLineageTokens] = useState<Set<string>>(new Set());
+  // Selected L00 instance for chain filtering (simple approach)
+  const [selectedL00Instance, setSelectedL00Instance] = useState<string | null>(null);
   
   // Determine which state to use (external or internal)
   const viewMode = externalViewMode ?? internalViewMode;
@@ -327,131 +328,51 @@ const SamizdatMap = ({
     return filtered;
   }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
 
-  // Build lineage tokens set when chain token is selected
-  // This builds the set of tokens in the direct lineage: ancestors + clicked + descendants
+  // Update selected L00 instance when chain token is selected
   useEffect(() => {
-    const buildLineageTokens = async () => {
-      if (!selectedChainToken || viewMode !== "chain") {
-        console.log("[SamizdatMap] Clearing lineage - no chain token or not in chain mode", { selectedChainToken, viewMode });
-        setLineageTokens(new Set());
-        return;
-      }
-      
-      console.log("[SamizdatMap] Building lineage for token:", selectedChainToken);
-      
-      const lineage = new Set<string>();
-      lineage.add(selectedChainToken);
-      
-      // Walk up the parent chain (ancestors) using tokenLookupRef
-      let current = selectedChainToken;
-      const tokenLookup = tokenLookupRef.current;
-      
-      console.log("[SamizdatMap] Token lookup size:", Object.keys(tokenLookup).length);
-      
-      // First try local lookup
-      while (current) {
-        const tokenInfo = tokenLookup[current];
-        console.log("[SamizdatMap] Walking up from", current, "-> parent:", tokenInfo?.parentToken);
-        if (!tokenInfo?.parentToken) break;
-        lineage.add(tokenInfo.parentToken);
-        current = tokenInfo.parentToken;
-      }
-      
-      // If we didn't find ancestors in local lookup, fetch from DB
-      if (lineage.size === 1) {
-        console.log("[SamizdatMap] Local lookup incomplete, fetching from DB...");
-        // Fetch the full chain from the database
-        const { data: tokenChain } = await supabase
-          .from("tokens")
-          .select("token, parent_token, root_token")
-          .eq("is_simulated", false);
-        
-        if (tokenChain) {
-          // Build a lookup from DB data
-          const dbLookup: Record<string, { parentToken: string | null; rootToken: string }> = {};
-          tokenChain.forEach(t => {
-            dbLookup[t.token] = {
-              parentToken: t.parent_token,
-              rootToken: t.root_token || t.token
-            };
-          });
-          
-          // Walk up again using DB data
-          current = selectedChainToken;
-          while (current) {
-            const info = dbLookup[current];
-            if (!info?.parentToken) break;
-            lineage.add(info.parentToken);
-            current = info.parentToken;
-          }
-          
-          // Build children map for descendants
-          const childrenMap: Record<string, string[]> = {};
-          Object.entries(dbLookup).forEach(([token, info]) => {
-            if (info.parentToken) {
-              if (!childrenMap[info.parentToken]) {
-                childrenMap[info.parentToken] = [];
-              }
-              childrenMap[info.parentToken].push(token);
-            }
-          });
-          
-          // BFS to find all descendants of the clicked token
-          const queue = [selectedChainToken];
-          while (queue.length > 0) {
-            const token = queue.shift()!;
-            const children = childrenMap[token] || [];
-            children.forEach(child => {
-              lineage.add(child);
-              queue.push(child);
-            });
-          }
-        }
-      } else {
-        // Use local lookup for descendants
-        const childrenMap: Record<string, string[]> = {};
-        Object.entries(tokenLookup).forEach(([token, info]) => {
-          if (info.parentToken) {
-            if (!childrenMap[info.parentToken]) {
-              childrenMap[info.parentToken] = [];
-            }
-            childrenMap[info.parentToken].push(token);
+    if (!selectedChainToken || viewMode !== "chain") {
+      console.log("[SamizdatMap] Clearing L00 instance filter");
+      setSelectedL00Instance(null);
+      return;
+    }
+    
+    // Find the l00_instance for the selected token from eventPoints
+    const selectedEvent = eventPoints.find(ep => ep.token === selectedChainToken);
+    if (selectedEvent?.l00Instance) {
+      console.log("[SamizdatMap] Setting L00 instance filter to:", selectedEvent.l00Instance);
+      setSelectedL00Instance(selectedEvent.l00Instance);
+    } else {
+      // Fallback: fetch l00_instance from database
+      console.log("[SamizdatMap] Fetching L00 instance from DB for token:", selectedChainToken);
+      supabase
+        .from("tokens")
+        .select("l00_instance")
+        .eq("token", selectedChainToken)
+        .single()
+        .then(({ data }) => {
+          if (data?.l00_instance) {
+            console.log("[SamizdatMap] Found L00 instance from DB:", data.l00_instance);
+            setSelectedL00Instance(data.l00_instance);
           }
         });
-        
-        // BFS to find all descendants of the clicked token
-        const queue = [selectedChainToken];
-        while (queue.length > 0) {
-          const token = queue.shift()!;
-          const children = childrenMap[token] || [];
-          children.forEach(child => {
-            lineage.add(child);
-            queue.push(child);
-          });
-        }
-      }
-      
-      console.log("[SamizdatMap] Built lineage with", lineage.size, "tokens:", [...lineage]);
-      setLineageTokens(lineage);
-    };
-    
-    buildLineageTokens();
-  }, [selectedChainToken, viewMode]);
+    }
+  }, [selectedChainToken, viewMode, eventPoints]);
 
-  // Events to display based on view mode
+  // Events to display based on view mode - now using simple l00_instance filter
   const displayEvents = useMemo((): EventPoint[] => {
     if (viewMode === "all") {
       return filteredEventPoints;
     }
-    // Chain mode: filter to events in the lineage set
-    // If lineage is still being computed, show events matching the root token as fallback
-    if (lineageTokens.size === 0 && selectedRootToken) {
-      console.log("[SamizdatMap] Lineage not ready, using rootToken fallback:", selectedRootToken);
-      return filteredEventPoints.filter(ep => ep.rootToken === selectedRootToken);
+    // Chain mode: filter to events with matching l00_instance
+    if (!selectedL00Instance) {
+      console.log("[SamizdatMap] No L00 instance selected, showing nothing in chain mode");
+      return [];
     }
-    console.log("[SamizdatMap] Filtering by lineage, size:", lineageTokens.size);
-    return filteredEventPoints.filter(ep => lineageTokens.has(ep.token));
-  }, [filteredEventPoints, viewMode, lineageTokens, selectedRootToken]);
+    console.log("[SamizdatMap] Filtering by L00 instance:", selectedL00Instance);
+    const filtered = filteredEventPoints.filter(ep => ep.l00Instance === selectedL00Instance);
+    console.log("[SamizdatMap] Filtered to", filtered.length, "events");
+    return filtered;
+  }, [filteredEventPoints, viewMode, selectedL00Instance]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
@@ -568,10 +489,10 @@ const SamizdatMap = ({
       });
       setEoaNames(names);
 
-      // Step 2: Get tokens for selected EoAs (include chain fields)
+      // Step 2: Get tokens for selected EoAs (include chain fields + l00_instance)
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
-        .select("token, eoa_id, utm_medium, utm_id, root_token, parent_token, level")
+        .select("token, eoa_id, utm_medium, utm_id, root_token, parent_token, level, l00_instance")
         .in("eoa_id", eoaIds)
         .eq("is_simulated", false);
 
@@ -589,7 +510,8 @@ const SamizdatMap = ({
         utmId: string;
         rootToken: string; 
         parentToken: string | null; 
-        level: number 
+        level: number;
+        l00Instance: string | null;
       }> = {};
       
       // Build token lookup for parent chain tracing
@@ -604,6 +526,7 @@ const SamizdatMap = ({
           rootToken: t.root_token || t.token,
           parentToken: t.parent_token,
           level: t.level,
+          l00Instance: t.l00_instance,
         };
         tokenLookup[t.token] = {
           rootToken: t.root_token || t.token,
@@ -739,6 +662,7 @@ const SamizdatMap = ({
           rootToken: td.rootToken,
           parentToken: td.parentToken,
           level: td.level,
+          l00Instance: td.l00Instance,
         });
       });
 
@@ -804,7 +728,7 @@ const SamizdatMap = ({
     setSelectedRootToken(null);
     setSelectedChainToken(null);
     setSelectedEventId(null);
-    setLineageTokens(new Set());
+    setSelectedL00Instance(null);
     // Restore clustering state from before chain mode
     setEnableClustering(clusteringBeforeChainRef.current);
   }, []);

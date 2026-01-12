@@ -452,6 +452,7 @@ export type Database = {
           full_url: string
           id: string
           is_simulated: boolean
+          l00_instance: string | null
           level: number
           minted_at: string
           parent_token: string | null
@@ -472,6 +473,7 @@ export type Database = {
           full_url: string
           id?: string
           is_simulated?: boolean
+          l00_instance?: string | null
           level: number
           minted_at?: string
           parent_token?: string | null
@@ -492,6 +494,7 @@ export type Database = {
           full_url?: string
           id?: string
           is_simulated?: boolean
+          l00_instance?: string | null
           level?: number
           minted_at?: string
           parent_token?: string | null
