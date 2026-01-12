@@ -693,6 +693,7 @@ export default function CampaignDashboard({
             eoa_id: event.tokens?.eoa_id,
             full_url: event.tokens?.full_url,
             root_token: event.tokens?.root_token,
+            l00_instance: event.tokens?.l00_instance,
             events_actions: event.tokens?.events_actions ? {
               mobilize_code: event.tokens.events_actions.mobilize_code,
               utm_id: event.tokens.events_actions.utm_id,
