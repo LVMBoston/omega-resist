@@ -1386,6 +1386,7 @@ export default function CampaignDashboard({
                                   {sortConfig.column === 'utm_content' && <ArrowUpDown className="w-3 h-3" />}
                                 </div>
                               </TableHead>
+                              <TableHead>Instance</TableHead>
                               <TableHead>
                                 Event ID
                               </TableHead>
@@ -1415,6 +1416,9 @@ export default function CampaignDashboard({
                 </TableCell>
                 <TableCell className="font-mono text-xs">
                   {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
+                </TableCell>
+                <TableCell className="font-mono text-xs">
+                  {event.tokens?.l00_instance ? event.tokens.l00_instance.split(':')[1] || event.tokens.l00_instance : 'N/A'}
                 </TableCell>
                               <TableCell>
                                 <span className="font-mono text-xs">{event.id}</span>
