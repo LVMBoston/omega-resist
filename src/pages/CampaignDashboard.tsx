@@ -518,6 +518,7 @@ export default function CampaignDashboard({
       "Message Opened (Zipcode)",
       "Location Method",
       "Event Level",
+      "Instance",
       "utm_content",
       "Event ID",
       "Full URL"
@@ -537,6 +538,7 @@ export default function CampaignDashboard({
         event.zip_code || "",
         event.location_source === 'gps' ? 'GPS' : 'Cell Tower',
         formatLevel(event.tokens?.level || 0),
+        event.tokens?.l00_instance || "",
         utmContent,
         event.id || "",
         event.tokens?.full_url || ""
