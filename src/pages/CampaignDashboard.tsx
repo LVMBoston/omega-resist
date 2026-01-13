@@ -296,6 +296,22 @@ export default function CampaignDashboard({
     }
   }, [campaigns, selectedCampaign, searchParams, setSearchParams, propCampaignId]);
 
+  // Clear chain filter when campaign changes to prevent stale filters from other campaigns
+  useEffect(() => {
+    const currentChainToken = searchParams.get("chainToken");
+    const currentChainRoot = searchParams.get("chainRoot");
+    
+    if (selectedCampaignId && (currentChainToken || currentChainRoot)) {
+      // Clear chain filter params when campaign changes
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("chainToken");
+      newParams.delete("chainRoot");
+      setSearchParams(newParams, { replace: true });
+      setSelectedL00Instance(null);
+      console.log("[CampaignDashboard] Cleared chain filter on campaign change:", selectedCampaignId);
+    }
+  }, [selectedCampaignId]); // Only depend on campaignId to detect campaign switches
+
   // Real-time subscription for EventsV2
   useEffect(() => {
     if (!selectedCampaign) return;
