@@ -169,6 +169,7 @@ export default function CampaignDashboard({
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
   const hideLegacy = searchParams.get("hideLegacy") === "true";
+  const hideNoSpawns = searchParams.get("hideNoSpawns") === "true";
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
   const [startDate, setStartDate] = useState<Date | undefined>(
@@ -627,7 +628,7 @@ export default function CampaignDashboard({
     data: eventsV2Data,
     isLoading: eventsV2Loading
   } = useQuery({
-    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, hideLegacy],
+    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, hideLegacy, hideNoSpawns],
     queryFn: async () => {
       let query = supabase.from("url_events").select(`
           id,
@@ -698,8 +699,30 @@ export default function CampaignDashboard({
           shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
         });
 
+        // If hideNoSpawns is enabled, get L00 tokens that have spawns
+        let l00WithSpawnsSet: Set<string> = new Set();
+        if (hideNoSpawns) {
+          // Get all L00 tokens from the current data
+          const l00Tokens = data
+            .filter((e: any) => e.tokens?.level === 0)
+            .map((e: any) => e.token);
+          
+          if (l00Tokens.length > 0) {
+            // Query for tokens that have these L00 tokens as parent_token
+            const { data: childTokens } = await supabase
+              .from("tokens")
+              .select("parent_token")
+              .in("parent_token", l00Tokens);
+            
+            // Create set of L00 tokens that have at least one child
+            childTokens?.forEach((t: any) => {
+              if (t.parent_token) l00WithSpawnsSet.add(t.parent_token);
+            });
+          }
+        }
+
         // Transform to clean objects with null-safety
-        return data.map((event: any) => JSON.parse(JSON.stringify({
+        let transformedData = data.map((event: any) => JSON.parse(JSON.stringify({
           id: event.id,
           occurred_at: event.occurred_at,
           event_type: event.event_type,
@@ -728,6 +751,18 @@ export default function CampaignDashboard({
           },
           short_url: event.tokens?.full_url ? shortUrlMap.get(event.tokens.full_url) : null
         })));
+
+        // Filter out L00 events with no spawns if enabled
+        if (hideNoSpawns) {
+          transformedData = transformedData.filter((event: any) => {
+            // Keep non-L00 events
+            if (event.tokens?.level !== 0) return true;
+            // Keep L00 events that have spawns
+            return l00WithSpawnsSet.has(event.token);
+          });
+        }
+
+        return transformedData;
       }
       return [];
     },
@@ -1111,6 +1146,26 @@ export default function CampaignDashboard({
                     Hide Legacy Events
                   </Label>
                   <span className="text-xs text-muted-foreground">(pre-instance era data)</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="hide-no-spawns" 
+                    checked={hideNoSpawns} 
+                    onCheckedChange={(checked) => {
+                      const params = new URLSearchParams(searchParams);
+                      if (checked) {
+                        params.set("hideNoSpawns", "true");
+                      } else {
+                        params.delete("hideNoSpawns");
+                      }
+                      setSearchParams(params);
+                    }} 
+                  />
+                  <Label htmlFor="hide-no-spawns" className="text-sm font-medium leading-none cursor-pointer">
+                    Hide L00 with No Spawns
+                  </Label>
+                  <span className="text-xs text-muted-foreground">(L00 events that didn't generate shares)</span>
                 </div>
 
                 <div>
