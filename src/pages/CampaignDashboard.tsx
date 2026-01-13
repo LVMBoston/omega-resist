@@ -168,6 +168,7 @@ export default function CampaignDashboard({
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
+  const hideLegacy = searchParams.get("hideLegacy") === "true";
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
   const [startDate, setStartDate] = useState<Date | undefined>(
@@ -626,7 +627,7 @@ export default function CampaignDashboard({
     data: eventsV2Data,
     isLoading: eventsV2Loading
   } = useQuery({
-    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate],
+    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, hideLegacy],
     queryFn: async () => {
       let query = supabase.from("url_events").select(`
           id,
@@ -665,6 +666,10 @@ export default function CampaignDashboard({
         query = query.eq("is_simulated", false);
       } else if (dataSourceFilter === "simulated") {
         query = query.eq("is_simulated", true);
+      }
+      // Filter out legacy events (tokens ending with :legacy)
+      if (hideLegacy) {
+        query = query.not("token", "like", "%:legacy");
       }
       if (startDate) {
         query = query.gte("occurred_at", startDate.toISOString());
@@ -1086,6 +1091,26 @@ export default function CampaignDashboard({
                       <SelectItem value="both">Both Combined</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="hide-legacy" 
+                    checked={hideLegacy} 
+                    onCheckedChange={(checked) => {
+                      const params = new URLSearchParams(searchParams);
+                      if (checked) {
+                        params.set("hideLegacy", "true");
+                      } else {
+                        params.delete("hideLegacy");
+                      }
+                      setSearchParams(params);
+                    }} 
+                  />
+                  <Label htmlFor="hide-legacy" className="text-sm font-medium leading-none cursor-pointer">
+                    Hide Legacy Events
+                  </Label>
+                  <span className="text-xs text-muted-foreground">(pre-instance era data)</span>
                 </div>
 
                 <div>
