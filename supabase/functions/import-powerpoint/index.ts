@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +17,20 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Starting PowerPoint import...");
+    
+    // Dynamically import JSZip to catch import errors
+    let JSZip;
+    try {
+      const jsZipModule = await import("https://esm.sh/jszip@3.10.1?target=deno");
+      JSZip = jsZipModule.default;
+      console.log("JSZip loaded successfully");
+    } catch (importError: unknown) {
+      console.error("Failed to load JSZip:", importError);
+      const errorMessage = importError instanceof Error ? importError.message : String(importError);
+      throw new Error(`Failed to load JSZip library: ${errorMessage}`);
+    }
+    
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
@@ -67,15 +80,17 @@ serve(async (req) => {
 
     // For each image, extract and convert to base64
     let imageIndex = 0;
-    for (const { name, file } of imageFiles) {
+    for (const { name, file: zipFile } of imageFiles) {
       try {
-        const arrayBuffer = await file.async('arraybuffer');
-        const base64 = btoa(
-          new Uint8Array(arrayBuffer).reduce(
-            (data: string, byte: number) => data + String.fromCharCode(byte),
-            ''
-          )
-        );
+        const arrayBuffer = await zipFile.async('arraybuffer');
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        // Convert to base64 using Deno's built-in encoder
+        let binary = '';
+        for (let i = 0; i < uint8Array.length; i++) {
+          binary += String.fromCharCode(uint8Array[i]);
+        }
+        const base64 = btoa(binary);
         
         const ext = name.split('.').pop()?.toLowerCase() || 'png';
         const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
