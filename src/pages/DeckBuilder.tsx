@@ -256,23 +256,43 @@ export default function DeckBuilder() {
   const handlePowerPointUpload = async (file: File, slug: string, compress: boolean) => {
     setProgress("Processing PowerPoint file...");
 
-    // Create FormData for file upload
-    const formData = new FormData();
-    formData.append('file', file);
+    // Process PPTX client-side (PPTX is a ZIP archive)
+    const zip = await JSZip.loadAsync(file);
+    
     setProgress("Extracting slides from PowerPoint...");
-
-    // Call edge function to extract slides
-    const {
-      data: pptxData,
-      error: pptxError
-    } = await supabase.functions.invoke("import-powerpoint", {
-      body: formData
+    
+    // Extract images from ppt/media/ folder
+    const imageFiles: { name: string; data: Blob; mimeType: string }[] = [];
+    const filePromises: Promise<void>[] = [];
+    
+    zip.forEach((relativePath, zipFile) => {
+      // PowerPoint stores slide images in ppt/media/
+      if (!zipFile.dir && relativePath.startsWith('ppt/media/') && 
+          /\.(png|jpg|jpeg)$/i.test(relativePath)) {
+        filePromises.push(
+          zipFile.async("blob").then(blob => {
+            const ext = relativePath.split('.').pop()?.toLowerCase() || 'png';
+            const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+            imageFiles.push({
+              name: relativePath.split('/').pop() || `image.${ext}`,
+              data: blob,
+              mimeType
+            });
+          })
+        );
+      }
     });
-    if (pptxError) throw pptxError;
-    if (!pptxData?.slides || pptxData.slides.length === 0) {
-      throw new Error("No slides found in PowerPoint file");
+    
+    await Promise.all(filePromises);
+    
+    if (imageFiles.length === 0) {
+      throw new Error("No images found in PowerPoint file. Make sure your slides contain embedded images.");
     }
-    setProgress(`Found ${pptxData.slides.length} slides. Creating deck...`);
+    
+    // Sort images by filename for consistent ordering
+    imageFiles.sort((a, b) => a.name.localeCompare(b.name));
+    
+    setProgress(`Found ${imageFiles.length} images. Creating deck...`);
 
     // Check if deck exists and delete it if so
     const {
@@ -306,38 +326,31 @@ export default function DeckBuilder() {
     if (deckError) throw deckError;
 
     // Upload slides to storage
-    for (let i = 0; i < pptxData.slides.length; i++) {
-      const slide = pptxData.slides[i];
-      setProgress(`Uploading slide ${i + 1} of ${pptxData.slides.length}...`);
+    for (let i = 0; i < imageFiles.length; i++) {
+      const image = imageFiles[i];
+      setProgress(`Uploading slide ${i + 1} of ${imageFiles.length}...`);
 
-      // Convert base64 to blob
-      const base64Data = slide.imageData.split(',')[1];
-      const binaryData = atob(base64Data);
-      const bytes = new Uint8Array(binaryData.length);
-      for (let j = 0; j < binaryData.length; j++) {
-        bytes[j] = binaryData.charCodeAt(j);
-      }
-      let uploadBlob: Blob = new Blob([bytes], {
-        type: 'image/png'
-      });
+      let uploadBlob: Blob = image.data;
 
       // Compress if enabled
       let isCompressed = false;
       if (compress) {
         setProgress(`Compressing slide ${i + 1}...`);
-        const imageFile = new File([uploadBlob], slide.fileName, {
-          type: 'image/png'
+        const imageFile = new File([uploadBlob], image.name, {
+          type: image.mimeType
         });
         uploadBlob = await compressImage(imageFile);
         isCompressed = true;
       }
-      const fileName = `${slug}/${i.toString().padStart(3, "0")}-${slide.fileName}`;
+      
+      const ext = image.name.split('.').pop() || 'png';
+      const fileName = `${slug}/${i.toString().padStart(3, "0")}-${image.name}`;
 
       // Upload to storage
       const {
         error: uploadError
       } = await supabase.storage.from("slides").upload(fileName, uploadBlob, {
-        contentType: 'image/png',
+        contentType: image.mimeType,
         upsert: true
       });
       if (uploadError) throw uploadError;
