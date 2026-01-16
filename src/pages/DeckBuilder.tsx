@@ -261,22 +261,43 @@ export default function DeckBuilder() {
     
     setProgress("Extracting slides from PowerPoint...");
     
+    // Log all files in the PPTX for debugging
+    const allFiles: string[] = [];
+    zip.forEach((relativePath) => {
+      allFiles.push(relativePath);
+    });
+    console.log("PPTX contents:", allFiles);
+    console.log("Files in ppt/media/:", allFiles.filter(f => f.startsWith('ppt/media/')));
+    
     // Extract images from ppt/media/ folder
+    // Support PNG, JPG, JPEG, GIF, TIFF, BMP
     const imageFiles: { name: string; data: Blob; mimeType: string }[] = [];
     const filePromises: Promise<void>[] = [];
+    
+    const getMimeType = (ext: string): string => {
+      const types: Record<string, string> = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'tiff': 'image/tiff',
+        'tif': 'image/tiff',
+        'bmp': 'image/bmp',
+      };
+      return types[ext] || 'image/png';
+    };
     
     zip.forEach((relativePath, zipFile) => {
       // PowerPoint stores slide images in ppt/media/
       if (!zipFile.dir && relativePath.startsWith('ppt/media/') && 
-          /\.(png|jpg|jpeg)$/i.test(relativePath)) {
+          /\.(png|jpg|jpeg|gif|tiff|tif|bmp)$/i.test(relativePath)) {
         filePromises.push(
           zipFile.async("blob").then(blob => {
             const ext = relativePath.split('.').pop()?.toLowerCase() || 'png';
-            const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
             imageFiles.push({
               name: relativePath.split('/').pop() || `image.${ext}`,
               data: blob,
-              mimeType
+              mimeType: getMimeType(ext)
             });
           })
         );
@@ -285,8 +306,18 @@ export default function DeckBuilder() {
     
     await Promise.all(filePromises);
     
+    console.log(`Found ${imageFiles.length} images in ppt/media/`);
+    
     if (imageFiles.length === 0) {
-      throw new Error("No images found in PowerPoint file. Make sure your slides contain embedded images.");
+      // Provide more helpful error with what we found
+      const mediaFiles = allFiles.filter(f => f.startsWith('ppt/media/'));
+      const slideFiles = allFiles.filter(f => f.startsWith('ppt/slides/'));
+      console.error("No compatible images found. Media files:", mediaFiles);
+      console.error("Slide XML files:", slideFiles);
+      throw new Error(
+        `No images found in PowerPoint file. This PPTX has ${slideFiles.length} slides but no embedded images. ` +
+        `To import slides, please export them as images first (File → Export → Change File Type → PNG/JPEG).`
+      );
     }
     
     // Sort images by filename for consistent ordering
