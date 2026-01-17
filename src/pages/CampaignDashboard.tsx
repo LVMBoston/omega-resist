@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download, FileText } from "lucide-react";
+import { downloadCampaignRecapPdf } from "@/lib/campaignPdfExport";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -578,6 +579,37 @@ export default function CampaignDashboard({
       title: "Export Complete",
       description: `Exported ${sortedEventsV2.length} rows to CSV.`
     });
+  };
+
+  // Export PDF Recap
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const handleExportPdf = async () => {
+    if (!selectedCampaign) {
+      toast({
+        variant: "destructive",
+        title: "No Campaign",
+        description: "Please select a campaign first."
+      });
+      return;
+    }
+
+    setIsExportingPdf(true);
+    try {
+      await downloadCampaignRecapPdf(selectedCampaign);
+      toast({
+        title: "PDF Exported",
+        description: `Campaign recap downloaded as ${selectedCampaign}-recap.pdf`
+      });
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "Failed to generate PDF."
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   // Fetch total event counts (not limited to last 50)
@@ -1411,6 +1443,10 @@ export default function CampaignDashboard({
                         <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!sortedEventsV2 || sortedEventsV2.length === 0}>
                           <Download className="h-4 w-4 mr-2" />
                           Export CSV
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={isExportingPdf || !selectedCampaign}>
+                          <FileText className={`h-4 w-4 mr-2 ${isExportingPdf ? 'animate-pulse' : ''}`} />
+                          {isExportingPdf ? 'Generating...' : 'PDF Recap'}
                         </Button>
                       </div>
                     </div>
