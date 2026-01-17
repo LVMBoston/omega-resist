@@ -206,12 +206,13 @@ export function generateCampaignRecapPdf(data: CampaignRecapData): jsPDF {
   });
 
   // Total row
+  const totalParents = levels.reduce((sum, level) => sum + (data.tokensByLevel[level]?.uniqueParents || 0), 0);
   doc.setFont('helvetica', 'bold');
   doc.setFillColor(230, 230, 230);
   doc.rect(20, y - 4, pageWidth - 40, 8, 'F');
   doc.text('Total', 25, y);
   doc.text(String(data.totalTokens), 80, y);
-  doc.text('-', 130, y);
+  doc.text(String(totalParents), 130, y);
   y += 15;
 
   // Key Metrics Summary - Tokens vs Events distinction
