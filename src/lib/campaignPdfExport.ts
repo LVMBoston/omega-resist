@@ -214,26 +214,69 @@ export function generateCampaignRecapPdf(data: CampaignRecapData): jsPDF {
   doc.text('-', 130, y);
   y += 15;
 
-  // Engagement Section
+  // Key Metrics Summary - Tokens vs Events distinction
   doc.setFontSize(16);
-  doc.text('Engagement Metrics', 20, y);
+  doc.text('Key Metrics', 20, y);
   y += 10;
 
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   
-  const metrics = [
+  // Two-column layout for Tokens vs Events
+  const halfWidth = (pageWidth - 50) / 2;
+  
+  // Tokens Minted Box
+  doc.setFillColor(230, 245, 255);
+  doc.roundedRect(20, y, halfWidth, 35, 3, 3, 'F');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Tokens Minted', 20 + halfWidth / 2, y + 8, { align: 'center' });
+  doc.setFontSize(24);
+  doc.text(String(data.totalTokens), 20 + halfWidth / 2, y + 22, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80);
+  doc.text('Unique share links created', 20 + halfWidth / 2, y + 30, { align: 'center' });
+  doc.setTextColor(0);
+  
+  // Events Recorded Box
+  const totalEvents = data.engagement.views + data.engagement.scans + data.engagement.shares;
+  doc.setFillColor(255, 240, 230);
+  doc.roundedRect(30 + halfWidth, y, halfWidth, 35, 3, 3, 'F');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Events Recorded', 30 + halfWidth + halfWidth / 2, y + 8, { align: 'center' });
+  doc.setFontSize(24);
+  doc.text(String(totalEvents), 30 + halfWidth + halfWidth / 2, y + 22, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80);
+  doc.text('Actual interactions logged', 30 + halfWidth + halfWidth / 2, y + 30, { align: 'center' });
+  doc.setTextColor(0);
+  
+  y += 42;
+
+  // Event Type Breakdown
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Event Breakdown', 20, y);
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  
+  const eventMetrics = [
     { label: 'Views', value: data.engagement.views },
     { label: 'Scans', value: data.engagement.scans },
     { label: 'Shares', value: data.engagement.shares },
   ];
 
   const boxWidth = (pageWidth - 60) / 3;
-  metrics.forEach((metric, idx) => {
+  eventMetrics.forEach((metric, idx) => {
     const x = 20 + idx * (boxWidth + 10);
     doc.setFillColor(245, 245, 245);
     doc.roundedRect(x, y, boxWidth, 25, 3, 3, 'F');
-    doc.setFontSize(20);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(String(metric.value), x + boxWidth / 2, y + 12, { align: 'center' });
     doc.setFontSize(9);
