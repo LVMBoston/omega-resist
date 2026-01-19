@@ -390,6 +390,40 @@ export default function CampaignEoaManager() {
       fetchEoas();
     }
   };
+
+  const duplicateEoa = async (eoa: EventAction) => {
+    const { error } = await supabase.from("events_actions").insert({
+      campaign_id: eoa.campaign_id,
+      mobilize_id: eoa.mobilize_id,
+      mobilize_code: eoa.mobilize_code,
+      utm_id: "", // Blanked out as requested
+      title: eoa.title + " (Copy)",
+      site_name: eoa.site_name,
+      city: eoa.city,
+      state: eoa.state,
+      zip_code: eoa.zip_code,
+      type: eoa.type,
+      start_date: eoa.start_date,
+      end_date: eoa.end_date,
+      timezone: eoa.timezone,
+      assigned_deck_slug: eoa.assigned_deck_slug,
+      description: eoa.description,
+      utm_content: eoa.utm_content,
+    });
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to duplicate event/action: " + error.message
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Event/Action duplicated with blank utm_id"
+      });
+      fetchEoas();
+    }
+  };
   // Format floating local time using shared utility
   const formatDateTime = (date: string | null) => {
     if (!date) return "—";
@@ -1016,8 +1050,17 @@ export default function CampaignEoaManager() {
               variant="ghost"
               size="sm"
               onClick={() => deleteEoa(eoa.id)}
+              title="Delete"
             >
               <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => duplicateEoa(eoa)}
+              title="Duplicate with blank utm_id"
+            >
+              <Copy className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" disabled title="Kit feature coming soon">
               <Package className="h-4 w-4 opacity-50" />
