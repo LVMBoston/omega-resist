@@ -828,7 +828,7 @@ export default function CampaignEoaManager() {
     },
     {
       accessorKey: "mobilize_code",
-      header: "Mobilize Code",
+      header: "Mobilize/ Zip Code",
       cell: ({ row }) => row.original.mobilize_code || "—",
     },
     {
@@ -1387,7 +1387,7 @@ export default function CampaignEoaManager() {
                             checked={column.getIsVisible()}
                             onCheckedChange={(value) => column.toggleVisibility(!!value)}
                           >
-                            {column.id === "mobilize_code" && "Mobilize Code"}
+                            {column.id === "mobilize_code" && "Mobilize/ Zip Code"}
                             {column.id === "utm_id" && "utm_id"}
                             {column.id === "title" && "Event/Action Name"}
                             {column.id === "site_name" && "Site Name"}
