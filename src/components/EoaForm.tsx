@@ -236,14 +236,24 @@ export default function EoaForm({ campaignId, eoaId, initialData, hasMintedToken
             <Input
               value={formData.mobilize_code}
               onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
-              placeholder="Enter Mobilize event ID"
+              placeholder="Enter Mobilize event ID or Zip Code"
               className="flex-1"
               disabled={hasMintedToken}
             />
             <Button
               type="button"
-              onClick={fetchFromMobilize}
-              disabled={fetchingMobilize || !formData.mobilize_code || hasMintedToken}
+              onClick={() => {
+                if (formData.mobilize_code.toLowerCase().startsWith("z")) {
+                  toast({
+                    title: "Fetch Unavailable",
+                    description: "Fetch is only available for Mobilize 6 digit codes, not zip codes",
+                    variant: "default",
+                  });
+                  return;
+                }
+                fetchFromMobilize();
+              }}
+              disabled={fetchingMobilize || !formData.mobilize_code || hasMintedToken || formData.mobilize_code.toLowerCase().startsWith("z")}
               variant="outline"
               size="sm"
             >
@@ -253,7 +263,9 @@ export default function EoaForm({ campaignId, eoaId, initialData, hasMintedToken
           <p className="text-xs text-muted-foreground mt-1">
             {hasMintedToken 
               ? "Locked — changing would invalidate tracking data"
-              : "Enter Mobilize event ID and click \"Fetch\" to auto-populate fields"}
+              : formData.mobilize_code.toLowerCase().startsWith("z")
+                ? "Zip code detected — Fetch is only available for Mobilize IDs"
+                : "Enter Mobilize event ID and click \"Fetch\" to auto-populate fields"}
           </p>
         </div>
         <div>
