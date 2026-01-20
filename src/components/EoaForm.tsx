@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Lock } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Deck {
   slug: string;
@@ -36,11 +38,12 @@ interface EoaFormProps {
     description?: string;
     utm_id: string;
   };
+  hasMintedToken?: boolean;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onCancel }: EoaFormProps) {
+export default function EoaForm({ campaignId, eoaId, initialData, hasMintedToken = false, onSuccess, onCancel }: EoaFormProps) {
   const { toast } = useToast();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(false);
@@ -213,20 +216,34 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
 
   return (
     <div className="space-y-4">
+      {hasMintedToken && (
+        <Alert className="border-amber-500/50 bg-amber-500/10">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-700 dark:text-amber-400">
+            <strong>Token Minted:</strong> Event Code, UTM ID, and Assigned Deck are locked to protect tracking data. 
+            To change these fields, delete this EoA from the Event Manager and create a new one.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Event Code <span className="text-destructive">*</span></Label>
+          <Label className="flex items-center gap-1">
+            Event Code <span className="text-destructive">*</span>
+            {hasMintedToken && <Lock className="h-3 w-3 text-muted-foreground" />}
+          </Label>
           <div className="flex gap-2">
             <Input
               value={formData.mobilize_code}
               onChange={(e) => setFormData({ ...formData, mobilize_code: e.target.value })}
               placeholder="Enter Mobilize event ID"
               className="flex-1"
+              disabled={hasMintedToken}
             />
             <Button
               type="button"
               onClick={fetchFromMobilize}
-              disabled={fetchingMobilize || !formData.mobilize_code}
+              disabled={fetchingMobilize || !formData.mobilize_code || hasMintedToken}
               variant="outline"
               size="sm"
             >
@@ -234,11 +251,16 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Enter Mobilize event ID and click "Fetch" to auto-populate fields
+            {hasMintedToken 
+              ? "Locked — changing would invalidate tracking data"
+              : "Enter Mobilize event ID and click \"Fetch\" to auto-populate fields"}
           </p>
         </div>
         <div>
-          <Label>UTM ID <span className="text-destructive">*</span></Label>
+          <Label className="flex items-center gap-1">
+            UTM ID <span className="text-destructive">*</span>
+            {hasMintedToken && <Lock className="h-3 w-3 text-muted-foreground" />}
+          </Label>
           <Input
             value={formData.utm_id}
             onChange={(e) => {
@@ -251,9 +273,12 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
             }}
             placeholder="e.g., rally-a1"
             maxLength={8}
+            disabled={hasMintedToken}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Max 8 chars, lowercase, use '-' or '_'. utm_content: {formData.mobilize_code || "{code}"}-{formData.utm_id || "{utm_id}"}
+            {hasMintedToken 
+              ? "Locked — changing would invalidate tracking data"
+              : `Max 8 chars, lowercase, use '-' or '_'. utm_content: ${formData.mobilize_code || "{code}"}-${formData.utm_id || "{utm_id}"}`}
           </p>
         </div>
       </div>
@@ -351,10 +376,14 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
       </div>
 
       <div>
-        <Label>Assigned Deck</Label>
+        <Label className="flex items-center gap-1">
+          Assigned Deck
+          {hasMintedToken && <Lock className="h-3 w-3 text-muted-foreground" />}
+        </Label>
         <Select
           value={formData.assigned_deck_slug}
           onValueChange={(value) => setFormData({ ...formData, assigned_deck_slug: value })}
+          disabled={hasMintedToken}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a deck..." />
@@ -368,6 +397,11 @@ export default function EoaForm({ campaignId, eoaId, initialData, onSuccess, onC
             ))}
           </SelectContent>
         </Select>
+        {hasMintedToken && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Locked — changing would invalidate tracking data
+          </p>
+        )}
       </div>
 
       <div>

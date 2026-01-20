@@ -1499,22 +1499,27 @@ export default function CampaignEoaManager() {
               {editingEoa ? "Update the event or action details below." : "Add a new event or action to this campaign."}
             </DialogDescription>
           </DialogHeader>
-          <EoaForm campaignId={campaign.id} eoaId={editingEoa?.id} initialData={editingEoa ? {
-          mobilize_id: editingEoa.mobilize_id || "",
-          mobilize_code: editingEoa.mobilize_code || "",
-          title: editingEoa.title,
-          site_name: editingEoa.site_name || "",
-          city: editingEoa.city || "",
-          state: editingEoa.state || "",
-          zip_code: editingEoa.zip_code || "",
-          type: editingEoa.type,
-          start_date: editingEoa.start_date || "",
-          end_date: editingEoa.end_date || "",
-          timezone: editingEoa.timezone || "TBD",
-          assigned_deck_slug: editingEoa.assigned_deck_slug || "",
-          description: editingEoa.description || "",
-          utm_id: editingEoa.utm_id
-        } : undefined} onSuccess={async () => {
+          <EoaForm 
+            campaignId={campaign.id} 
+            eoaId={editingEoa?.id} 
+            hasMintedToken={editingEoa ? !!l00Tokens[editingEoa.id] : false}
+            initialData={editingEoa ? {
+              mobilize_id: editingEoa.mobilize_id || "",
+              mobilize_code: editingEoa.mobilize_code || "",
+              title: editingEoa.title,
+              site_name: editingEoa.site_name || "",
+              city: editingEoa.city || "",
+              state: editingEoa.state || "",
+              zip_code: editingEoa.zip_code || "",
+              type: editingEoa.type,
+              start_date: editingEoa.start_date || "",
+              end_date: editingEoa.end_date || "",
+              timezone: editingEoa.timezone || "TBD",
+              assigned_deck_slug: editingEoa.assigned_deck_slug || "",
+              description: editingEoa.description || "",
+              utm_id: editingEoa.utm_id
+            } : undefined} 
+            onSuccess={async () => {
           // Check if this eoa had a token before saving
           const hadToken = editingEoa ? !!l00Tokens[editingEoa.id] : false;
           
