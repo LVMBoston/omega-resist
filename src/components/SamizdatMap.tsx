@@ -67,6 +67,8 @@ interface EventPoint {
   country?: string | null;
   countryCode?: string | null;
   city?: string | null;
+  // Spawn data for L00 markers
+  spawnCount?: number;
 }
 
 interface ZipAggregate {
@@ -160,15 +162,17 @@ const SHARE_MEDIUM_LABELS: Record<EoaShape, string> = {
 };
 
 // Generate SVG for marker shape
-const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14): string => {
+// hasSpawns param controls stroke color: green (#22c55e) if true, white if false
+const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, hasSpawns: boolean = false): string => {
   const strokeWidth = 2;
   const halfStroke = strokeWidth / 2;
+  const strokeColor = hasSpawns ? "#22c55e" : "white";
   
   switch (shape) {
     case "square":
       return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <rect x="${halfStroke}" y="${halfStroke}" width="${size - strokeWidth}" height="${size - strokeWidth}" 
-          fill="${fillColor}" stroke="white" stroke-width="${strokeWidth}" rx="2"/>
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" rx="2"/>
       </svg>`;
     case "triangle":
       // Use same padding as circle for visual size consistency
@@ -179,14 +183,14 @@ const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14): str
       const rightX = size - halfStroke;
       return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <polygon points="${cx},${topY} ${rightX},${bottomY} ${leftX},${bottomY}" 
-          fill="${fillColor}" stroke="white" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
       </svg>`;
     case "circle":
     default:
       const r = (size / 2) - halfStroke;
       return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <circle cx="${size / 2}" cy="${size / 2}" r="${r}" 
-          fill="${fillColor}" stroke="white" stroke-width="${strokeWidth}"/>
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
       </svg>`;
   }
 };
@@ -575,6 +579,29 @@ const SamizdatMap = ({
         return;
       }
 
+      // Step 3b: Fetch spawn counts for L00 instance tokens
+      // Get unique l00_instance values and count children (L01+) for each
+      const l00Instances = [...new Set(tokens.filter(t => t.l00_instance).map(t => t.l00_instance!))] as string[];
+      const spawnCounts: Record<string, number> = {};
+      
+      if (l00Instances.length > 0) {
+        // Count tokens where l00_instance matches and level > 0 (spawns)
+        const { data: spawnData } = await supabase
+          .from("tokens")
+          .select("l00_instance")
+          .in("l00_instance", l00Instances)
+          .gt("level", 0)
+          .eq("is_simulated", false);
+        
+        if (spawnData) {
+          spawnData.forEach((t) => {
+            if (t.l00_instance) {
+              spawnCounts[t.l00_instance] = (spawnCounts[t.l00_instance] || 0) + 1;
+            }
+          });
+        }
+      }
+
       // Step 4: Calculate first view per mobilize_code group
       // Group EoAs by mobilize_code
       const mobilizeCodeToEoaIds: Record<string, string[]> = {};
@@ -684,6 +711,9 @@ const SamizdatMap = ({
           lng = coords.lng;
         }
 
+        // Get spawn count for this token's l00_instance (only meaningful for L00 events)
+        const tokenSpawnCount = td.l00Instance ? (spawnCounts[td.l00Instance] || 0) : 0;
+        
         points.push({
           eventId: event.id,
           eoaId: td.eoaId,
@@ -702,6 +732,7 @@ const SamizdatMap = ({
           country: event.country || null,
           countryCode: event.country_code || null,
           city: event.city || null,
+          spawnCount: tokenSpawnCount,
         });
       });
 
@@ -813,7 +844,9 @@ const SamizdatMap = ({
       const fillColor = getLevelColor(event.level);
       const shape = getShareMediumShape(event.utmMedium);
       const size = 16;
-      const shapeSVG = getShapeSVG(shape, fillColor, size);
+      // L00 QR markers get green outline if they have spawns
+      const hasSpawns = event.level === 0 && event.utmMedium === "qr" && (event.spawnCount || 0) > 0;
+      const shapeSVG = getShapeSVG(shape, fillColor, size, hasSpawns);
       const levelLabel = `L${String(event.level).padStart(2, '0')}`;
       
       // In chain mode, show sequence numbers
@@ -863,6 +896,39 @@ const SamizdatMap = ({
         iconSize: L.point(showSeqNum ? 32 : 16, 28),
         iconAnchor: L.point(8, 8),
       });
+    };
+
+    // Create tooltip content for a marker
+    const createTooltipContent = (event: EventPoint): string => {
+      const levelLabel = `L${String(event.level).padStart(2, '0')}`;
+      const mediumLabel = MEDIUM_LABELS[event.utmMedium] || event.utmMedium;
+      const locationLabel = event.isInternational 
+        ? `🌍 ${event.city || ''} ${event.country || 'International'}`.trim()
+        : event.zipCode ? `ZIP ${event.zipCode}` : 'Unknown';
+      
+      const timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      // Show spawn info for L00 QR events
+      const spawnInfo = event.level === 0 && event.utmMedium === "qr" && event.spawnCount !== undefined
+        ? `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #e2e8f0;color:${event.spawnCount > 0 ? '#22c55e' : '#94a3b8'};">
+            ${event.spawnCount > 0 ? `✓ ${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''}` : 'No spawns yet'}
+           </div>`
+        : '';
+      
+      return `
+        <div style="font-family:system-ui;font-size:12px;line-height:1.4;min-width:140px;">
+          <div style="font-weight:600;margin-bottom:4px;">${levelLabel} • ${mediumLabel}</div>
+          <div style="color:#64748b;">${locationLabel}</div>
+          <div style="color:#64748b;">${timestamp}</div>
+          ${spawnInfo}
+        </div>
+      `;
     };
 
     if (viewMode === "all" && enableClustering) {
@@ -921,6 +987,14 @@ const SamizdatMap = ({
         (marker as any).eventLevel = event.level;
         (marker as any).rootToken = event.rootToken;
         
+        // Add hover tooltip
+        marker.bindTooltip(createTooltipContent(event), {
+          permanent: false,
+          direction: "top",
+          offset: [0, -10],
+          className: "samizdat-event-tooltip",
+        });
+        
         marker.on('click', () => {
           handleMarkerClick(event);
         });
@@ -977,6 +1051,14 @@ const SamizdatMap = ({
         const marker = L.marker([lat, lng], { 
           icon: markerIcon,
           zIndexOffset: zIndexOffset
+        });
+        
+        // Add hover tooltip
+        marker.bindTooltip(createTooltipContent(event), {
+          permanent: false,
+          direction: "top",
+          offset: [0, -10],
+          className: "samizdat-event-tooltip",
         });
         
         marker.on('click', () => {
@@ -1290,6 +1372,16 @@ const SamizdatMap = ({
               box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             }
             .zip-count-tooltip::before {
+              border-top-color: #e2e8f0 !important;
+            }
+            .samizdat-event-tooltip {
+              background: white;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 8px 12px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            .samizdat-event-tooltip::before {
               border-top-color: #e2e8f0 !important;
             }
             /* Neutral cluster styling */
