@@ -832,6 +832,13 @@ export type Database = {
           token: string
         }[]
       }
+      maybe_reinstantiate_l00: {
+        Args: { _current_zip_code: string; _instance_token: string }
+        Returns: {
+          new_instance_token: string
+          was_reinstantiated: boolean
+        }[]
+      }
       mint_l00: {
         Args: { _deck_slug: string; _eoa_id: string; _utm_medium?: string }
         Returns: {

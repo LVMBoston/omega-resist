@@ -274,7 +274,8 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<{
   }
 }
 
-async function fetchGeolocation(): Promise<GeoLocationData> {
+// Export so DeckViewer can use it for location-based instance detection
+export async function fetchGeolocation(): Promise<GeoLocationData> {
   try {
     // Try to get GPS coordinates first (mobile devices)
     const gpsCoords = await getGPSLocation();
@@ -409,6 +410,72 @@ async function fetchGeolocation(): Promise<GeoLocationData> {
       zip_code: null,
       location_source: 'unknown'
     };
+  }
+}
+
+/**
+ * Check if an L00 instance token should be re-instantiated because
+ * the current user is viewing from a different zip code than the original viewer.
+ * This distinguishes different persons who received the same URL via direct share.
+ * 
+ * @param instanceToken The current L00 instance token (e.g., "l00-837854-rs1-qr:5731e6")
+ * @param currentZipCode The zip code of the current viewer
+ * @returns The (possibly new) instance token to use
+ */
+export async function maybeReinstantiateL00(
+  instanceToken: string, 
+  currentZipCode: string | null
+): Promise<{ token: string; wasReinstantiated: boolean }> {
+  // Skip if not an L00 instance token
+  if (!instanceToken.startsWith('l00-') || !instanceToken.includes(':')) {
+    return { token: instanceToken, wasReinstantiated: false };
+  }
+  
+  // Skip if no zip code available
+  if (!currentZipCode) {
+    console.log('⏭️ No zip code available, skipping reinstantiation check');
+    return { token: instanceToken, wasReinstantiated: false };
+  }
+
+  try {
+    console.log('🔍 Checking if L00 instance needs reinstantiation:', {
+      instanceToken,
+      currentZipCode
+    });
+
+    const { data, error } = await supabase.rpc('maybe_reinstantiate_l00', {
+      _instance_token: instanceToken,
+      _current_zip_code: currentZipCode
+    });
+
+    if (error) {
+      console.error('❌ Failed to check L00 reinstantiation:', error);
+      return { token: instanceToken, wasReinstantiated: false };
+    }
+
+    if (!data || data.length === 0) {
+      return { token: instanceToken, wasReinstantiated: false };
+    }
+
+    const result = data[0];
+    
+    if (result.was_reinstantiated) {
+      console.log('🆕 L00 token re-instantiated for new location:', {
+        original: instanceToken,
+        new: result.new_instance_token,
+        zipCode: currentZipCode
+      });
+    } else {
+      console.log('✅ Same location, keeping existing instance:', instanceToken);
+    }
+
+    return { 
+      token: result.new_instance_token, 
+      wasReinstantiated: result.was_reinstantiated 
+    };
+  } catch (error) {
+    console.error('❌ Error checking L00 reinstantiation:', error);
+    return { token: instanceToken, wasReinstantiated: false };
   }
 }
 
