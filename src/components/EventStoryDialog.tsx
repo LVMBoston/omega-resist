@@ -97,6 +97,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
   const [childTokens, setChildTokens] = useState<ChildToken[]>([]);
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
   const [originTimeDelta, setOriginTimeDelta] = useState<number | null>(null);
+  const [isFirstEventForToken, setIsFirstEventForToken] = useState<boolean>(true);
 
   useEffect(() => {
     if (!eventId || !open) {
@@ -108,6 +109,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
       setChildTokens([]);
       setTimeDelta(null);
       setOriginTimeDelta(null);
+      setIsFirstEventForToken(true);
       return;
     }
 
@@ -164,9 +166,21 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
           }
         }
 
-        // If L00, fetch children (viral spread)
+        // If L00, fetch children (viral spread) and check if first event
         if (token.level === 0) {
           await fetchChildTokens(token.token, event.occurred_at);
+          
+          // Check if this is the first event for this instance token
+          const { data: firstEventForToken } = await supabase
+            .from("url_events")
+            .select("id")
+            .eq("token", token.token)
+            .eq("is_simulated", false)
+            .order("occurred_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          
+          setIsFirstEventForToken(firstEventForToken?.id === eventId);
         }
 
         // If L01+, walk the parent chain back to L00 (viral journey)
@@ -449,12 +463,12 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
       
       let spawnNote = "";
       if (spawnCount === 0) {
-        spawnNote = " No shares have been spawned from this scan yet.";
+        spawnNote = " No shares have been spawned from this instance yet.";
       } else if (spawnCount === 1) {
         const spawn = spawns[0];
         const spawnMedium = getMediumLabel(spawn.utm_medium);
         const spawnLoc = formatShortLocation(spawn.city, spawn.region);
-        spawnNote = ` This scan spawned 1 share via ${spawnMedium} to ${spawnLoc}.`;
+        spawnNote = ` This instance spawned 1 share via ${spawnMedium} to ${spawnLoc}.`;
       } else {
         // Group by medium
         const byMedium: Record<string, number> = {};
@@ -465,11 +479,15 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
         const breakdown = Object.entries(byMedium)
           .map(([m, count]) => `${count} via ${m}`)
           .join(", ");
-        spawnNote = ` This scan spawned ${spawnCount} shares (${breakdown}).`;
+        spawnNote = ` This instance spawned ${spawnCount} shares (${breakdown}).`;
       }
       const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
       
-      return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+      if (isFirstEventForToken) {
+        return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+      } else {
+        return `This is a return visit to instance ${instanceCode} for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+      }
     }
 
     if (viralChain.length === 0) return null;
