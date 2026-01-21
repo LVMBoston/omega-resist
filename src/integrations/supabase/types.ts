@@ -331,6 +331,33 @@ export type Database = {
           },
         ]
       }
+      l00_instance_corrections: {
+        Row: {
+          corrected_at: string | null
+          event_id: string
+          id: string
+          new_token: string
+          original_token: string
+          zip_code: string | null
+        }
+        Insert: {
+          corrected_at?: string | null
+          event_id: string
+          id?: string
+          new_token: string
+          original_token: string
+          zip_code?: string | null
+        }
+        Update: {
+          corrected_at?: string | null
+          event_id?: string
+          id?: string
+          new_token?: string
+          original_token?: string
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           category: string
