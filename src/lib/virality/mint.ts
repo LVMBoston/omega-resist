@@ -330,15 +330,20 @@ export async function fetchGeolocation(): Promise<GeoLocationData> {
       console.error("❌ Geoip function error:", error);
       // If we have GPS coords but geoip failed, still use GPS coords
       if (gpsCoords) {
-        // Check if non-US based on lack of country_code (since geoip failed)
-        // Round coordinates for privacy (non-US assumed)
+        // Check if coordinates fall within continental US bounding box
+        const isLikelyUS = 
+          gpsCoords.latitude >= 24 && gpsCoords.latitude <= 50 &&
+          gpsCoords.longitude >= -125 && gpsCoords.longitude <= -66;
+        
+        console.log(`📍 GPS fallback - keeping full precision (likely US: ${isLikelyUS})`);
+        
         return {
-          latitude: Math.round(gpsCoords.latitude * 10) / 10,
-          longitude: Math.round(gpsCoords.longitude * 10) / 10,
+          latitude: gpsCoords.latitude,        // Full precision - no rounding
+          longitude: gpsCoords.longitude,      // Full precision - no rounding
           city: null,
           region: null,
-          country: null,
-          country_code: null,
+          country: isLikelyUS ? 'United States' : null,
+          country_code: isLikelyUS ? 'US' : null,
           zip_code: null,
           location_source: 'gps'
         };
