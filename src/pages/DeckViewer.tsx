@@ -7,7 +7,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlideV2";
-import { logEvent, instantiateL00Token } from "@/lib/virality/mint";
+import { logEvent, instantiateL00Token, maybeReinstantiateL00, fetchGeolocation } from "@/lib/virality/mint";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface SlideItem {
@@ -47,34 +47,67 @@ export default function DeckViewer() {
   const [instanceTokenProcessed, setInstanceTokenProcessed] = useState(false);
   const [activeToken, setActiveToken] = useState<string | null>(viralToken);
 
-  // Instance token creation for BUGTEST campaign L00 tokens
+  // Instance token creation and location-based re-instantiation for L00 tokens
   useEffect(() => {
     const processInstanceToken = async () => {
       // Skip if already processed or no token
       if (instanceTokenProcessed || !viralToken) return;
       
-      // Only process L00 tokens that haven't been instantiated
-      if (!viralToken.startsWith('l00-') || viralToken.includes(':')) {
+      // Case 1: Base L00 token (no colon) - create new instance
+      if (viralToken.startsWith('l00-') && !viralToken.includes(':')) {
+        console.log('🔄 Base L00 detected, creating instance token for:', viralToken);
+
+        const result = await instantiateL00Token(viralToken);
+        
+        if (result) {
+          console.log('✅ Instance token created, updating URL:', result.instanceToken);
+          
+          // Update URL with instance token (replace history entry)
+          const newParams = new URLSearchParams(searchParams);
+          newParams.set('t', result.instanceToken);
+          navigate(`/deck/${slug}?${newParams.toString()}`, { replace: true });
+          
+          // Update active token for event logging
+          setActiveToken(result.instanceToken);
+        }
+        
         setInstanceTokenProcessed(true);
         return;
       }
-
-      console.log('🔄 L00 detected, creating instance token for:', viralToken);
-
-      const result = await instantiateL00Token(viralToken);
       
-      if (result) {
-        console.log('✅ Instance token created, updating URL:', result.instanceToken);
+      // Case 2: L00 instance token (has colon) - check for different location
+      if (viralToken.startsWith('l00-') && viralToken.includes(':')) {
+        console.log('🔍 L00 instance detected, checking for location change:', viralToken);
         
-        // Update URL with instance token (replace history entry)
-        const newParams = new URLSearchParams(searchParams);
-        newParams.set('t', result.instanceToken);
-        navigate(`/deck/${slug}?${newParams.toString()}`, { replace: true });
+        // Get current location to compare
+        const geoData = await fetchGeolocation();
         
-        // Update active token for event logging
-        setActiveToken(result.instanceToken);
+        if (geoData.zip_code) {
+          const result = await maybeReinstantiateL00(viralToken, geoData.zip_code);
+          
+          if (result.wasReinstantiated) {
+            console.log('🆕 Different location detected, new instance created:', result.token);
+            
+            // Update URL with new instance token
+            const newParams = new URLSearchParams(searchParams);
+            newParams.set('t', result.token);
+            navigate(`/deck/${slug}?${newParams.toString()}`, { replace: true });
+            
+            setActiveToken(result.token);
+          } else {
+            console.log('✅ Same location, using existing instance:', viralToken);
+            setActiveToken(viralToken);
+          }
+        } else {
+          console.log('⚠️ No zip code available, keeping existing instance');
+          setActiveToken(viralToken);
+        }
+        
+        setInstanceTokenProcessed(true);
+        return;
       }
       
+      // Case 3: Non-L00 token (L01, L02, L03) - use as-is
       setInstanceTokenProcessed(true);
     };
 
