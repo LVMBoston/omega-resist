@@ -50,7 +50,7 @@ interface SamizdatMapProps {
 interface EventPoint {
   eventId: string;
   eoaId: string;
-  zipCode: string;
+  zipCode: string | null;  // Can be null for international events
   latitude: number;
   longitude: number;
   occurredAt: string;
@@ -62,6 +62,11 @@ interface EventPoint {
   parentToken: string | null;
   level: number;
   l00Instance: string | null;
+  // International event fields
+  isInternational?: boolean;
+  country?: string | null;
+  countryCode?: string | null;
+  city?: string | null;
 }
 
 interface ZipAggregate {
@@ -70,6 +75,9 @@ interface ZipAggregate {
   longitude: number;
   total: number;
   byMedium: Record<string, number>;
+  isInternational?: boolean;
+  country?: string | null;
+  city?: string | null;
 }
 
 interface ViewportStats {
@@ -537,17 +545,31 @@ const SamizdatMap = ({
       
       tokenLookupRef.current = tokenLookup;
 
-      // Step 3: Get ALL view events (no deduplication)
-      const { data: events, error: eventsError } = await supabase
+      // Step 3: Get ALL view events - both with zip codes AND international events with lat/lon
+      const { data: eventsWithZip, error: eventsError } = await supabase
         .from("url_events")
-        .select("id, token, zip_code, occurred_at")
+        .select("id, token, zip_code, occurred_at, latitude, longitude, country, country_code, city")
         .in("token", tokenList)
         .eq("event_type", "view")
         .eq("is_simulated", false)
         .not("zip_code", "is", null);
 
-      if (eventsError || !events?.length) {
-        console.log("No view events with zip codes found");
+      // Also fetch international events (have lat/lon but no zip_code)
+      const { data: intlEvents, error: intlError } = await supabase
+        .from("url_events")
+        .select("id, token, zip_code, occurred_at, latitude, longitude, country, country_code, city")
+        .in("token", tokenList)
+        .eq("event_type", "view")
+        .eq("is_simulated", false)
+        .is("zip_code", null)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
+
+      // Combine both event sets
+      const events = [...(eventsWithZip || []), ...(intlEvents || [])];
+
+      if ((eventsError && intlError) || !events.length) {
+        console.log("No view events found");
         setEventPoints([]);
         setLoading(false);
         return;
@@ -644,17 +666,30 @@ const SamizdatMap = ({
         const td = tokenData[event.token];
         if (!td) return;
         
-        const coords = zipCoords[event.zip_code!];
-
-        // Skip if no coordinates for this ZIP
-        if (!coords) return;
+        // Check if this is an international event (has lat/lon but no zip_code)
+        const isInternational = !event.zip_code && event.latitude != null && event.longitude != null;
+        
+        let lat: number;
+        let lng: number;
+        
+        if (isInternational) {
+          // Use raw coordinates for international events
+          lat = Number(event.latitude);
+          lng = Number(event.longitude);
+        } else {
+          // Use ZIP code lookup for US events
+          const coords = zipCoords[event.zip_code!];
+          if (!coords) return; // Skip if no coordinates for this ZIP
+          lat = coords.lat;
+          lng = coords.lng;
+        }
 
         points.push({
           eventId: event.id,
           eoaId: td.eoaId,
-          zipCode: event.zip_code!,
-          latitude: coords.lat,
-          longitude: coords.lng,
+          zipCode: event.zip_code || null,
+          latitude: lat,
+          longitude: lng,
           occurredAt: event.occurred_at,
           utmMedium: td.utmMedium,
           utmId: td.utmId,
@@ -663,6 +698,10 @@ const SamizdatMap = ({
           parentToken: td.parentToken,
           level: td.level,
           l00Instance: td.l00Instance,
+          isInternational,
+          country: event.country || null,
+          countryCode: event.country_code || null,
+          city: event.city || null,
         });
       });
 
@@ -962,21 +1001,27 @@ const SamizdatMap = ({
 
     if (!showZipCounts || displayEvents.length === 0) return;
 
-    // Aggregate events by ZIP code
+    // Aggregate events by ZIP code (or by lat/lon key for international)
     const zipAggregates: Record<string, ZipAggregate> = {};
     displayEvents.forEach((event) => {
-      if (!zipAggregates[event.zipCode]) {
-        zipAggregates[event.zipCode] = {
-          zipCode: event.zipCode,
+      // Use zipCode if available, otherwise create a unique key for international events
+      const key = event.zipCode || `intl-${event.latitude.toFixed(1)}-${event.longitude.toFixed(1)}`;
+      
+      if (!zipAggregates[key]) {
+        zipAggregates[key] = {
+          zipCode: event.zipCode || `${event.city || event.country || 'International'}`,
           latitude: event.latitude,
           longitude: event.longitude,
           total: 0,
           byMedium: {},
+          isInternational: event.isInternational,
+          country: event.country,
+          city: event.city,
         };
       }
-      zipAggregates[event.zipCode].total++;
-      zipAggregates[event.zipCode].byMedium[event.utmMedium] = 
-        (zipAggregates[event.zipCode].byMedium[event.utmMedium] || 0) + 1;
+      zipAggregates[key].total++;
+      zipAggregates[key].byMedium[event.utmMedium] = 
+        (zipAggregates[key].byMedium[event.utmMedium] || 0) + 1;
     });
 
     // Create ZIP count markers with tooltips
@@ -990,9 +1035,14 @@ const SamizdatMap = ({
         })
         .join("");
 
+      // Different tooltip for international vs US events
+      const locationLabel = agg.isInternational 
+        ? `🌍 ${agg.city || ''} ${agg.country || 'International'}`.trim()
+        : `ZIP ${agg.zipCode}`;
+
       const tooltipContent = `
         <div style="font-family:system-ui;font-size:13px;line-height:1.4;">
-          <div style="font-weight:600;margin-bottom:4px;">ZIP ${agg.zipCode}</div>
+          <div style="font-weight:600;margin-bottom:4px;">${locationLabel}</div>
           <div style="margin-bottom:6px;">Events: ${agg.total}</div>
           <div style="border-top:1px solid #e2e8f0;padding-top:6px;">
             ${breakdownLines}
@@ -1000,11 +1050,15 @@ const SamizdatMap = ({
         </div>
       `;
 
+      // Different styling for international markers (use globe emoji + purple bg)
+      const bgColor = agg.isInternational ? '#7c3aed' : '#1e293b';
+      const prefix = agg.isInternational ? '🌍 ' : '';
+      
       // Create a DivIcon with the count number
       const countIcon = L.divIcon({
         className: "zip-count-marker",
         html: `<div style="
-          background:#1e293b;
+          background:${bgColor};
           color:white;
           border-radius:9999px;
           min-width:24px;
@@ -1017,7 +1071,7 @@ const SamizdatMap = ({
           padding:0 6px;
           box-shadow:0 2px 4px rgba(0,0,0,0.2);
           cursor:pointer;
-        ">${agg.total}</div>`,
+        ">${prefix}${agg.total}</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
