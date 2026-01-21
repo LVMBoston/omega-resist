@@ -5,7 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -232,6 +232,7 @@ const SamizdatMap = ({
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   
   // View mode: use external state if provided, otherwise use internal state
@@ -339,6 +340,20 @@ const SamizdatMap = ({
 
     return filtered;
   }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
+
+  // Escape key handler for fullscreen mode
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [isFullscreen]);
 
   // Update selected L00 instance when chain token is selected
   useEffect(() => {
@@ -1253,7 +1268,12 @@ const SamizdatMap = ({
       </Accordion>
 
       {/* Map + Panel container */}
-      <div className="flex rounded-lg overflow-hidden border border-border" style={{ height: '600px' }}>
+      <div 
+        className={`flex rounded-lg overflow-hidden border border-border ${
+          isFullscreen ? 'fixed inset-0 z-[9999] rounded-none border-none' : ''
+        }`}
+        style={isFullscreen ? { height: '100vh' } : { height: 'calc(100vh - 280px)', minHeight: '500px', maxHeight: '900px' }}
+      >
         {/* Map container - shrinks when panel is open */}
         <div className="relative flex-1 min-w-0">
           {/* Chain mode indicator and back button */}
@@ -1322,6 +1342,26 @@ const SamizdatMap = ({
 
           {/* Map controls */}
           <div className="absolute top-3 right-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 flex flex-col gap-2 shadow-sm border border-border">
+            {/* Fullscreen toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="h-7 px-2 justify-start"
+            >
+              {isFullscreen ? (
+                <>
+                  <X className="w-4 h-4 mr-1" />
+                  Exit Fullscreen
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-4 h-4 mr-1" />
+                  Fullscreen
+                </>
+              )}
+            </Button>
+            
             {viewMode === "all" && (
               <div className="flex items-center gap-2">
                 <Switch
