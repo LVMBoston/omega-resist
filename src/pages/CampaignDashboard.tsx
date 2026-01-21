@@ -819,21 +819,30 @@ export default function CampaignDashboard({
     return zip.padStart(5, '0');
   };
 
-  // Calculate metrics for EventsV2
-  const eventsV2Metrics = eventsV2Data ? {
-    uniqueMobilizeCodes: new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean)).size,
-    scansCount: eventsV2Data.filter((e: any) => e.event_type === 'scan').length,
-    viewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view').length,
-    qrViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'qr').length,
-    smsViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'sms').length,
-    emailViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'em').length,
-    unknownViewsCount: eventsV2Data.filter((e: any) => e.event_type === 'view' && !['qr', 'sms', 'em'].includes(e.tokens?.utm_medium)).length,
-    gpsLocationCount: eventsV2Data.filter((e: any) => e.location_source === 'gps').length,
-    cellTowerLocationCount: eventsV2Data.filter((e: any) => e.location_source !== 'gps').length,
-    sharesCount: eventsV2Data.filter((e: any) => e.event_type === 'share').length,
-    totalRows: eventsV2Data.length,
-    earliestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[eventsV2Data.length - 1].occurred_at) : 'N/A',
-    latestTimestamp: eventsV2Data.length > 0 ? formatTimestamp(eventsV2Data[0].occurred_at) : 'N/A'
+  // Filter and sort EventsV2 - apply chain filter using l00_instance
+  // Moved here so metrics can use filtered data
+  const filteredEventsV2 = eventsV2Data ? (
+    chainViewMode === "chain" && selectedL00Instance
+      ? eventsV2Data.filter((e: any) => e.tokens?.l00_instance === selectedL00Instance)
+      : eventsV2Data
+  ) : [];
+
+  // Calculate metrics for EventsV2 - use filtered data to match what's displayed
+  const eventsV2Metrics = filteredEventsV2.length > 0 ? {
+    uniqueMobilizeCodes: new Set(filteredEventsV2.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean)).size,
+    scansCount: filteredEventsV2.filter((e: any) => e.event_type === 'scan').length,
+    viewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view').length,
+    qrViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'qr').length,
+    smsViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'sms').length,
+    emailViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'em').length,
+    unknownViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && !['qr', 'sms', 'em'].includes(e.tokens?.utm_medium)).length,
+    gpsLocationCount: filteredEventsV2.filter((e: any) => e.location_source === 'gps').length,
+    cellTowerLocationCount: filteredEventsV2.filter((e: any) => e.location_source !== 'gps').length,
+    sharesCount: filteredEventsV2.filter((e: any) => e.event_type === 'share').length,
+    totalRows: filteredEventsV2.length,
+    totalUnfilteredRows: eventsV2Data?.length || 0,
+    earliestTimestamp: filteredEventsV2.length > 0 ? formatTimestamp(filteredEventsV2[filteredEventsV2.length - 1].occurred_at) : 'N/A',
+    latestTimestamp: filteredEventsV2.length > 0 ? formatTimestamp(filteredEventsV2[0].occurred_at) : 'N/A'
   } : null;
 
   // Update selected L00 instance when chainToken is selected (simple lookup)
@@ -867,12 +876,7 @@ export default function CampaignDashboard({
       direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
-  // Filter and sort EventsV2 - apply chain filter using l00_instance
-  const filteredEventsV2 = eventsV2Data ? (
-    chainViewMode === "chain" && selectedL00Instance
-      ? eventsV2Data.filter((e: any) => e.tokens?.l00_instance === selectedL00Instance)
-      : eventsV2Data
-  ) : [];
+  // filteredEventsV2 is defined above near metrics calculation
   
   const sortedEventsV2 = [...filteredEventsV2].sort((a: any, b: any) => {
     const {
@@ -1454,7 +1458,7 @@ export default function CampaignDashboard({
                     {/* Second Block - Metrics Summary */}
                     <div className="flex items-center gap-6 py-2 text-sm flex-wrap">
                       <span># Mobilize Sites: <strong>{eventsV2Metrics?.uniqueMobilizeCodes}</strong></span>
-                      <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong></span>
+                      <span># Rows: <strong>{eventsV2Metrics?.totalRows}</strong>{chainViewMode === "chain" && eventsV2Metrics?.totalUnfilteredRows !== eventsV2Metrics?.totalRows && <span className="text-muted-foreground"> of {eventsV2Metrics?.totalUnfilteredRows}</span>}</span>
                       <span># QR Views: <strong>{eventsV2Metrics?.qrViewsCount}</strong></span>
                       <span># SMS Views: <strong>{eventsV2Metrics?.smsViewsCount}</strong></span>
                       <span># Email Views: <strong>{eventsV2Metrics?.emailViewsCount}</strong></span>
