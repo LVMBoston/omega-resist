@@ -28,6 +28,7 @@ import ViralityDashboard from "./pages/ViralityDashboard";
 import ZipCodeImporter from "./pages/ZipCodeImporter";
 import ActivityMonitor from "./pages/ActivityMonitor";
 import InteractiveTemplates from "./pages/InteractiveTemplates";
+import LiveNumbersDemo from "./pages/LiveNumbersDemo";
 import DevTools from "./pages/DevTools";
 import GeoipTest from "./pages/GeoipTest";
 import MapDebugTest from "./pages/MapDebugTest";
@@ -168,6 +169,7 @@ const App = () => (
             />
             <Route path="/dev-tools" element={<LayoutWithSidebar><DevTools /></LayoutWithSidebar>} />
             <Route path="/geoip-test" element={<LayoutWithSidebar><GeoipTest /></LayoutWithSidebar>} />
+            <Route path="/live-numbers-demo" element={<LiveNumbersDemo />} />
             <Route 
               path="/map-debug"
               element={
