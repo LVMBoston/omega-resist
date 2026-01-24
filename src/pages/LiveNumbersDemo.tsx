@@ -39,6 +39,7 @@ export default function LiveNumbersDemo() {
   const [height, setHeight] = useState(9);
   const [fontSize, setFontSize] = useState(56);
   const [fontFamily, setFontFamily] = useState("Calibri, sans-serif");
+  const [fontWeight, setFontWeight] = useState("700");
   const [bgColor, setBgColor] = useState("#e8dcc8");
   const [displayValue, setDisplayValue] = useState("142");
 
@@ -56,7 +57,7 @@ export default function LiveNumbersDemo() {
       metricKey: "seeds",
       liveNumberStyle: {
         fontSize: `${fontSize}px`,
-        fontWeight: "700",
+        fontWeight,
         color: "#1a1a1a",
         backgroundColor: bgColor,
         textAlign: "center",
@@ -114,7 +115,7 @@ export default function LiveNumbersDemo() {
         <div className="max-w-4xl mx-auto space-y-4">
           <h2 className="font-semibold">Position Controls</h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-4">
             {/* X Position */}
             <div className="space-y-2">
               <Label className="text-xs">X: {x.toFixed(1)}%</Label>
@@ -192,6 +193,23 @@ export default function LiveNumbersDemo() {
               </Select>
             </div>
 
+            {/* Font Weight */}
+            <div className="space-y-2">
+              <Label className="text-xs">Weight</Label>
+              <Select value={fontWeight} onValueChange={setFontWeight}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="400" className="text-xs">Normal</SelectItem>
+                  <SelectItem value="500" className="text-xs">Medium</SelectItem>
+                  <SelectItem value="600" className="text-xs">Semibold</SelectItem>
+                  <SelectItem value="700" className="text-xs">Bold</SelectItem>
+                  <SelectItem value="800" className="text-xs">Extra Bold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Background Color */}
             <div className="space-y-2">
               <Label className="text-xs">BG Color</Label>
@@ -218,7 +236,7 @@ export default function LiveNumbersDemo() {
           <div className="pt-2">
             <p className="text-xs text-muted-foreground mb-1">Current config (copy for use):</p>
             <code className="text-xs bg-muted px-2 py-1 rounded break-all">
-              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontFamily: "{fontFamily}", backgroundColor: "{bgColor}"
+              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontWeight: "{fontWeight}", fontFamily: "{fontFamily}", backgroundColor: "{bgColor}"
             </code>
           </div>
         </div>
