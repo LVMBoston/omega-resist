@@ -8,6 +8,19 @@ import { useNavigate } from "react-router-dom";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Common fonts available on most systems
+const FONT_OPTIONS = [
+  { value: "Calibri, sans-serif", label: "Calibri (Body)" },
+  { value: "'Arial', sans-serif", label: "Arial" },
+  { value: "'Helvetica Neue', Helvetica, sans-serif", label: "Helvetica" },
+  { value: "'Georgia', serif", label: "Georgia" },
+  { value: "'Times New Roman', serif", label: "Times New Roman" },
+  { value: "'Verdana', sans-serif", label: "Verdana" },
+  { value: "'Trebuchet MS', sans-serif", label: "Trebuchet MS" },
+  { value: "system-ui, -apple-system, sans-serif", label: "System UI" },
+];
 
 /**
  * Demo page for Live Numbers Overlay (Phase 1 Mockup)
@@ -25,6 +38,7 @@ export default function LiveNumbersDemo() {
   const [width, setWidth] = useState(14);
   const [height, setHeight] = useState(9);
   const [fontSize, setFontSize] = useState(56);
+  const [fontFamily, setFontFamily] = useState("Calibri, sans-serif");
   const [displayValue, setDisplayValue] = useState("142");
 
   // Dynamic hotspots based on slider values
@@ -45,7 +59,7 @@ export default function LiveNumbersDemo() {
         color: "#1a1a1a",
         backgroundColor: "#e8dcc8",
         textAlign: "center",
-        fontFamily: "'Georgia', serif",
+        fontFamily,
         padding: "4px",
       }
     }
@@ -99,7 +113,7 @@ export default function LiveNumbersDemo() {
         <div className="max-w-4xl mx-auto space-y-4">
           <h2 className="font-semibold">Position Controls</h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
             {/* X Position */}
             <div className="space-y-2">
               <Label className="text-xs">X: {x.toFixed(1)}%</Label>
@@ -150,7 +164,7 @@ export default function LiveNumbersDemo() {
             
             {/* Font Size */}
             <div className="space-y-2">
-              <Label className="text-xs">Font: {fontSize}px</Label>
+              <Label className="text-xs">Size: {fontSize}px</Label>
               <Slider
                 value={[fontSize]}
                 onValueChange={([val]) => setFontSize(val)}
@@ -158,6 +172,23 @@ export default function LiveNumbersDemo() {
                 max={120}
                 step={1}
               />
+            </div>
+            
+            {/* Font Family */}
+            <div className="space-y-2">
+              <Label className="text-xs">Font</Label>
+              <Select value={fontFamily} onValueChange={setFontFamily}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONT_OPTIONS.map((font) => (
+                    <SelectItem key={font.value} value={font.value} className="text-xs">
+                      {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {/* Display Value */}
@@ -175,7 +206,7 @@ export default function LiveNumbersDemo() {
           <div className="pt-2">
             <p className="text-xs text-muted-foreground mb-1">Current config (copy for use):</p>
             <code className="text-xs bg-muted px-2 py-1 rounded">
-              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px"
+              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontFamily: "{fontFamily}"
             </code>
           </div>
         </div>
