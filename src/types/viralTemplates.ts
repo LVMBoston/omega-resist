@@ -68,7 +68,36 @@ export interface Hotspot {
   height: number;   // percentage
   labelPosition?: 'top' | 'bottom';
   url?: string;     // For external_link type
+  // Live number hotspot properties
+  metricKey?: LiveMetricKey;
+  liveNumberStyle?: LiveNumberStyle;
 }
+
+// Live number style configuration
+export interface LiveNumberStyle {
+  fontSize?: string;
+  fontWeight?: string;
+  color?: string;
+  backgroundColor?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  fontFamily?: string;
+  padding?: string;
+  borderRadius?: string;
+}
+
+// Available metrics for live_number hotspots
+export type LiveMetricKey = 
+  | 'seeds'           // Count of L00 tokens
+  | 'shares'          // Count of child tokens minted
+  | 'opens'           // Total view events
+  | 'opens_us'        // US-based views
+  | 'opens_intl'      // International views
+  | 'neighborhoods'   // Distinct zip codes
+  | 'depth'           // Max level reached
+  | 'l01_count'       // Count at level 1
+  | 'l02_count'       // Count at level 2
+  | 'l03_count'       // Count at level 3
+  | 'viral_coefficient'; // K-factor
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 
@@ -77,4 +106,5 @@ export type HotspotActionType =
   | 'social'
   | 'external_link'    // Future: link to external URL
   | 'form_trigger'     // Future: open embedded form
-  | 'custom';          // Future: custom action
+  | 'custom'           // Future: custom action
+  | 'live_number';     // Live metrics overlay

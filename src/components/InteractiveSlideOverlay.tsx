@@ -625,6 +625,51 @@ const InteractiveSlideOverlay = ({
           height: buttonHeight,
           imageDimensions
         });
+
+        // Handle live_number hotspot type
+        if (hotspot.type === 'live_number') {
+          // Hardcoded metrics for mockup - will be replaced with real data later
+          const mockMetrics: Record<string, number | string> = {
+            seeds: 142,
+            shares: 387,
+            opens: 1249,
+            opens_us: 1102,
+            opens_intl: 147,
+            neighborhoods: 89,
+            depth: 3,
+            l01_count: 234,
+            l02_count: 98,
+            l03_count: 55,
+            viral_coefficient: '2.7',
+          };
+          
+          const metricValue = hotspot.metricKey ? mockMetrics[hotspot.metricKey] : '—';
+          const style = hotspot.liveNumberStyle || {};
+          
+          return (
+            <div
+              key={hotspot.id}
+              className="absolute flex items-center justify-center"
+              style={{
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${width}px`,
+                height: `${height}px`,
+                fontSize: style.fontSize || '48px',
+                fontWeight: style.fontWeight || '700',
+                color: style.color || '#1a1a1a',
+                backgroundColor: style.backgroundColor || 'transparent',
+                textAlign: style.textAlign || 'center',
+                fontFamily: style.fontFamily || 'system-ui, -apple-system, sans-serif',
+                padding: style.padding || '0',
+                borderRadius: style.borderRadius || '0',
+                pointerEvents: 'none',
+              }}
+            >
+              {metricValue}
+            </div>
+          );
+        }
         
         // Check if this is a Vimeo link that should use the overlay
         console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}`);
