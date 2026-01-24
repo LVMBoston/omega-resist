@@ -3,7 +3,7 @@ import testSlideImage from "@/assets/test-live-numbers-slide.png";
 import { InteractiveSlideOverlay } from "@/components/InteractiveSlideOverlay";
 import { Hotspot } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pipette } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
@@ -221,12 +221,20 @@ export default function LiveNumbersDemo() {
                   placeholder="#1a1a1a"
                   className="h-8 text-xs font-mono flex-1"
                 />
-                <input
-                  type="color"
-                  value={textColor}
-                  onChange={(e) => setTextColor(e.target.value)}
-                  className="h-8 w-8 rounded border border-input cursor-pointer"
-                />
+                <div className="relative h-8 w-8">
+                  <input
+                    type="color"
+                    value={textColor}
+                    onChange={(e) => setTextColor(e.target.value)}
+                    className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
+                  />
+                  <div 
+                    className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
+                    style={{ backgroundColor: textColor }}
+                  >
+                    <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -240,12 +248,20 @@ export default function LiveNumbersDemo() {
                   placeholder="#e8dcc8"
                   className="h-8 text-xs font-mono flex-1"
                 />
-                <input
-                  type="color"
-                  value={bgColor}
-                  onChange={(e) => setBgColor(e.target.value)}
-                  className="h-8 w-8 rounded border border-input cursor-pointer"
-                />
+                <div className="relative h-8 w-8">
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
+                  />
+                  <div 
+                    className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
+                    style={{ backgroundColor: bgColor }}
+                  >
+                    <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
+                  </div>
+                </div>
               </div>
             </div>
             
