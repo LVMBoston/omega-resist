@@ -39,6 +39,7 @@ export default function LiveNumbersDemo() {
   const [height, setHeight] = useState(9);
   const [fontSize, setFontSize] = useState(56);
   const [fontFamily, setFontFamily] = useState("Calibri, sans-serif");
+  const [bgColor, setBgColor] = useState("#e8dcc8");
   const [displayValue, setDisplayValue] = useState("142");
 
   // Dynamic hotspots based on slider values
@@ -57,7 +58,7 @@ export default function LiveNumbersDemo() {
         fontSize: `${fontSize}px`,
         fontWeight: "700",
         color: "#1a1a1a",
-        backgroundColor: "#e8dcc8",
+        backgroundColor: bgColor,
         textAlign: "center",
         fontFamily,
         padding: "4px",
@@ -113,7 +114,7 @@ export default function LiveNumbersDemo() {
         <div className="max-w-4xl mx-auto space-y-4">
           <h2 className="font-semibold">Position Controls</h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
             {/* X Position */}
             <div className="space-y-2">
               <Label className="text-xs">X: {x.toFixed(1)}%</Label>
@@ -190,6 +191,17 @@ export default function LiveNumbersDemo() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Background Color */}
+            <div className="space-y-2">
+              <Label className="text-xs">BG Color</Label>
+              <Input
+                value={bgColor}
+                onChange={(e) => setBgColor(e.target.value)}
+                placeholder="#e8dcc8"
+                className="h-8 text-xs font-mono"
+              />
+            </div>
             
             {/* Display Value */}
             <div className="space-y-2">
@@ -205,8 +217,8 @@ export default function LiveNumbersDemo() {
           {/* Copy Config */}
           <div className="pt-2">
             <p className="text-xs text-muted-foreground mb-1">Current config (copy for use):</p>
-            <code className="text-xs bg-muted px-2 py-1 rounded">
-              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontFamily: "{fontFamily}"
+            <code className="text-xs bg-muted px-2 py-1 rounded break-all">
+              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontFamily: "{fontFamily}", backgroundColor: "{bgColor}"
             </code>
           </div>
         </div>
