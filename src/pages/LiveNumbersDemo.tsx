@@ -214,23 +214,39 @@ export default function LiveNumbersDemo() {
             {/* Text Color */}
             <div className="space-y-2">
               <Label className="text-xs">Text Color</Label>
-              <Input
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-                placeholder="#1a1a1a"
-                className="h-8 text-xs font-mono"
-              />
+              <div className="flex gap-1">
+                <Input
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  placeholder="#1a1a1a"
+                  className="h-8 text-xs font-mono flex-1"
+                />
+                <input
+                  type="color"
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  className="h-8 w-8 rounded border border-input cursor-pointer"
+                />
+              </div>
             </div>
 
             {/* Background Color */}
             <div className="space-y-2">
               <Label className="text-xs">BG Color</Label>
-              <Input
-                value={bgColor}
-                onChange={(e) => setBgColor(e.target.value)}
-                placeholder="#e8dcc8"
-                className="h-8 text-xs font-mono"
-              />
+              <div className="flex gap-1">
+                <Input
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  placeholder="#e8dcc8"
+                  className="h-8 text-xs font-mono flex-1"
+                />
+                <input
+                  type="color"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  className="h-8 w-8 rounded border border-input cursor-pointer"
+                />
+              </div>
             </div>
             
             {/* Display Value */}
