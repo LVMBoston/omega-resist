@@ -18,6 +18,7 @@ interface InteractiveSlideOverlayProps {
   deckSlug: string;
   imageRef: React.RefObject<HTMLImageElement>;
   viralToken: string | null;
+  mockMetricValue?: string; // For demo/testing - overrides metric lookup
 }
 
 const InteractiveSlideOverlay = ({
@@ -25,6 +26,7 @@ const InteractiveSlideOverlay = ({
   deckSlug,
   imageRef,
   viralToken,
+  mockMetricValue,
 }: InteractiveSlideOverlayProps) => {
   const { toast } = useToast();
   const [imageDimensions, setImageDimensions] = useState({ 
@@ -628,8 +630,8 @@ const InteractiveSlideOverlay = ({
 
         // Handle live_number hotspot type
         if (hotspot.type === 'live_number') {
-          // Hardcoded metrics for mockup - will be replaced with real data later
-          const mockMetrics: Record<string, number | string> = {
+          // Use mockMetricValue if provided (for demo), otherwise use hardcoded metrics
+          const defaultMetrics: Record<string, number | string> = {
             seeds: 142,
             shares: 387,
             opens: 1249,
@@ -643,7 +645,9 @@ const InteractiveSlideOverlay = ({
             viral_coefficient: '2.7',
           };
           
-          const metricValue = hotspot.metricKey ? mockMetrics[hotspot.metricKey] : '—';
+          const metricValue = mockMetricValue !== undefined 
+            ? mockMetricValue 
+            : (hotspot.metricKey ? defaultMetrics[hotspot.metricKey] : '—');
           const style = hotspot.liveNumberStyle || {};
           
           return (

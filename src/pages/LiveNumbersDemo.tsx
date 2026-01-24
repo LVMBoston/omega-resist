@@ -5,34 +5,45 @@ import { Hotspot } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 /**
  * Demo page for Live Numbers Overlay (Phase 1 Mockup)
  * Shows a test slide with hardcoded live_number hotspots
+ * Includes interactive sliders to adjust position
  */
 export default function LiveNumbersDemo() {
   const navigate = useNavigate();
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  
+  // Editable position state
+  const [x, setX] = useState(26);
+  const [y, setY] = useState(17.5);
+  const [width, setWidth] = useState(14);
+  const [height, setHeight] = useState(9);
+  const [fontSize, setFontSize] = useState(56);
+  const [displayValue, setDisplayValue] = useState("142");
 
-  // Mockup hotspots positioned over the test slide
-  // Adjusted to precisely cover the "39" text in the PNG
+  // Dynamic hotspots based on slider values
   const mockHotspots: Hotspot[] = [
     {
       id: "seeds-value",
       iconId: "live-number",
       type: "live_number",
       label: "Seeds Count",
-      x: 26,           // Left edge of "39" box
-      y: 17.5,         // Top of the beige box
-      width: 14,       // Width of "39" number area
-      height: 9,       // Height to cover the number
+      x,
+      y,
+      width,
+      height,
       metricKey: "seeds",
       liveNumberStyle: {
-        fontSize: "56px",
+        fontSize: `${fontSize}px`,
         fontWeight: "700",
-        color: "#1a1a1a",              // Dark text to match original
-        backgroundColor: "#e8dcc8",    // Beige background matching the box
+        color: "#1a1a1a",
+        backgroundColor: "#e8dcc8",
         textAlign: "center",
         fontFamily: "'Georgia', serif",
         padding: "4px",
@@ -55,7 +66,7 @@ export default function LiveNumbersDemo() {
         <div>
           <h1 className="font-semibold">Live Numbers Demo</h1>
           <p className="text-sm text-muted-foreground">
-            Phase 1 Mockup - Hardcoded live_number overlay
+            Phase 1 Mockup - Adjust position with sliders below
           </p>
         </div>
       </div>
@@ -77,18 +88,96 @@ export default function LiveNumbersDemo() {
               deckSlug="demo"
               imageRef={imageRef}
               viralToken={null}
+              mockMetricValue={displayValue}
             />
           )}
         </div>
       </div>
 
-      {/* Debug Info */}
+      {/* Position Controls */}
       <div className="bg-background/90 backdrop-blur-sm p-4 border-t border-border">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="font-semibold mb-2">Hotspot Configuration</h2>
-          <pre className="text-xs bg-muted p-3 rounded-md overflow-auto">
-            {JSON.stringify(mockHotspots, null, 2)}
-          </pre>
+        <div className="max-w-4xl mx-auto space-y-4">
+          <h2 className="font-semibold">Position Controls</h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {/* X Position */}
+            <div className="space-y-2">
+              <Label className="text-xs">X: {x.toFixed(1)}%</Label>
+              <Slider
+                value={[x]}
+                onValueChange={([val]) => setX(val)}
+                min={0}
+                max={100}
+                step={0.5}
+              />
+            </div>
+            
+            {/* Y Position */}
+            <div className="space-y-2">
+              <Label className="text-xs">Y: {y.toFixed(1)}%</Label>
+              <Slider
+                value={[y]}
+                onValueChange={([val]) => setY(val)}
+                min={0}
+                max={100}
+                step={0.5}
+              />
+            </div>
+            
+            {/* Width */}
+            <div className="space-y-2">
+              <Label className="text-xs">Width: {width.toFixed(1)}%</Label>
+              <Slider
+                value={[width]}
+                onValueChange={([val]) => setWidth(val)}
+                min={1}
+                max={50}
+                step={0.5}
+              />
+            </div>
+            
+            {/* Height */}
+            <div className="space-y-2">
+              <Label className="text-xs">Height: {height.toFixed(1)}%</Label>
+              <Slider
+                value={[height]}
+                onValueChange={([val]) => setHeight(val)}
+                min={1}
+                max={50}
+                step={0.5}
+              />
+            </div>
+            
+            {/* Font Size */}
+            <div className="space-y-2">
+              <Label className="text-xs">Font: {fontSize}px</Label>
+              <Slider
+                value={[fontSize]}
+                onValueChange={([val]) => setFontSize(val)}
+                min={12}
+                max={120}
+                step={1}
+              />
+            </div>
+            
+            {/* Display Value */}
+            <div className="space-y-2">
+              <Label className="text-xs">Value</Label>
+              <Input
+                value={displayValue}
+                onChange={(e) => setDisplayValue(e.target.value)}
+                className="h-8"
+              />
+            </div>
+          </div>
+
+          {/* Copy Config */}
+          <div className="pt-2">
+            <p className="text-xs text-muted-foreground mb-1">Current config (copy for use):</p>
+            <code className="text-xs bg-muted px-2 py-1 rounded">
+              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px"
+            </code>
+          </div>
         </div>
       </div>
     </div>
