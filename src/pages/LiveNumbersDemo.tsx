@@ -40,6 +40,7 @@ export default function LiveNumbersDemo() {
   const [fontSize, setFontSize] = useState(56);
   const [fontFamily, setFontFamily] = useState("Calibri, sans-serif");
   const [fontWeight, setFontWeight] = useState("700");
+  const [textColor, setTextColor] = useState("#1a1a1a");
   const [bgColor, setBgColor] = useState("#e8dcc8");
   const [displayValue, setDisplayValue] = useState("142");
 
@@ -58,7 +59,7 @@ export default function LiveNumbersDemo() {
       liveNumberStyle: {
         fontSize: `${fontSize}px`,
         fontWeight,
-        color: "#1a1a1a",
+        color: textColor,
         backgroundColor: bgColor,
         textAlign: "center",
         fontFamily,
@@ -115,7 +116,7 @@ export default function LiveNumbersDemo() {
         <div className="max-w-4xl mx-auto space-y-4">
           <h2 className="font-semibold">Position Controls</h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-4">
             {/* X Position */}
             <div className="space-y-2">
               <Label className="text-xs">X: {x.toFixed(1)}%</Label>
@@ -210,6 +211,17 @@ export default function LiveNumbersDemo() {
               </Select>
             </div>
 
+            {/* Text Color */}
+            <div className="space-y-2">
+              <Label className="text-xs">Text Color</Label>
+              <Input
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                placeholder="#1a1a1a"
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+
             {/* Background Color */}
             <div className="space-y-2">
               <Label className="text-xs">BG Color</Label>
@@ -236,7 +248,7 @@ export default function LiveNumbersDemo() {
           <div className="pt-2">
             <p className="text-xs text-muted-foreground mb-1">Current config (copy for use):</p>
             <code className="text-xs bg-muted px-2 py-1 rounded break-all">
-              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontWeight: "{fontWeight}", fontFamily: "{fontFamily}", backgroundColor: "{bgColor}"
+              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontWeight: "{fontWeight}", fontFamily: "{fontFamily}", color: "{textColor}", backgroundColor: "{bgColor}"
             </code>
           </div>
         </div>
