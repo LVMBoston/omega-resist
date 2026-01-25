@@ -18,13 +18,15 @@ export interface ViralTemplate {
 export type TemplateType = 
   | 'interactive_share'   // Default: L01-L03 viral share hotspots
   | 'display_only'        // No interactivity, just display
-  | 'custom_action';      // Future: custom actions (e.g., form, quiz)
+  | 'custom_action'       // Future: custom actions (e.g., form, quiz)
+  | 'stats_page';         // Data template: live metrics overlay
 
 // Base config (extensible)
 export type TemplateConfig = 
   | InteractiveShareConfig
   | DisplayOnlyConfig
-  | CustomActionConfig;
+  | CustomActionConfig
+  | StatsPageConfig;
 
 // Interactive share config (current functionality)
 export interface InteractiveShareConfig {
@@ -53,6 +55,16 @@ export interface CustomActionConfig {
   actionDefinition?: {
     actionType: string;
     payload: Record<string, any>;
+  };
+}
+
+// Stats page config (data template with live metrics)
+export interface StatsPageConfig {
+  type: 'stats_page';
+  dataSettings?: {
+    refreshIntervalSeconds?: number;
+    animateChanges?: boolean;
+    formatLocale?: string;
   };
 }
 
