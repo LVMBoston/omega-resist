@@ -255,7 +255,7 @@ export function DataTemplateEditor({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         {/* Image Upload / Preview */}
-        <div className="flex-1 flex items-center justify-center p-4 bg-black/95 min-h-[400px] overflow-auto">
+        <div className="flex-1 flex items-start justify-center p-4 bg-black/95 min-h-[400px] overflow-auto">
           {imageUrl ? (
             <div className="relative max-w-4xl w-full">
               <img
