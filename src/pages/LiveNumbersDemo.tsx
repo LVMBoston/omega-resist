@@ -1,91 +1,138 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import testSlideImage from "@/assets/test-live-numbers-slide.png";
 import { InteractiveSlideOverlay } from "@/components/InteractiveSlideOverlay";
 import { Hotspot } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pipette } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Copy, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
+import { toast } from "sonner";
 
-// Common fonts available on most systems
-const FONT_OPTIONS = [
-  { value: "Calibri, sans-serif", label: "Calibri (Body)" },
-  { value: "'Arial', sans-serif", label: "Arial" },
-  { value: "'Helvetica Neue', Helvetica, sans-serif", label: "Helvetica" },
-  { value: "'Georgia', serif", label: "Georgia" },
-  { value: "'Times New Roman', serif", label: "Times New Roman" },
-  { value: "'Verdana', sans-serif", label: "Verdana" },
-  { value: "'Trebuchet MS', sans-serif", label: "Trebuchet MS" },
-  { value: "system-ui, -apple-system, sans-serif", label: "System UI" },
-];
+// Default hotspot template
+const createDefaultHotspot = (index: number): Hotspot => ({
+  id: `hotspot-${index}`,
+  iconId: "live-number",
+  type: "live_number",
+  label: `Hotspot ${index + 1}`,
+  x: 20 + (index % 4) * 15,
+  y: 20 + Math.floor(index / 4) * 15,
+  width: 14,
+  height: 9,
+  metricKey: "seeds",
+  liveNumberStyle: {
+    fontSize: "56px",
+    fontWeight: "700",
+    color: "#1a1a1a",
+    backgroundColor: "#e8dcc8",
+    textAlign: "center",
+    fontFamily: "Calibri, sans-serif",
+    padding: "4px",
+  },
+});
 
 /**
- * Demo page for Live Numbers Overlay (Phase 1 Mockup)
- * Shows a test slide with hardcoded live_number hotspots
- * Includes interactive sliders to adjust position
+ * Demo page for Live Numbers Overlay (Phase 0.5 Multi-Hotspot Calibration)
+ * Supports multiple hotspots with selector chips and JSON export
  */
 export default function LiveNumbersDemo() {
   const navigate = useNavigate();
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  
-  // Editable position state
-  const [x, setX] = useState(26);
-  const [y, setY] = useState(17.5);
-  const [width, setWidth] = useState(14);
-  const [height, setHeight] = useState(9);
-  const [fontSize, setFontSize] = useState(56);
-  const [fontFamily, setFontFamily] = useState("Calibri, sans-serif");
-  const [fontWeight, setFontWeight] = useState("700");
-  const [textColor, setTextColor] = useState("#1a1a1a");
-  const [bgColor, setBgColor] = useState("#e8dcc8");
-  const [displayValue, setDisplayValue] = useState("142");
+  const [copied, setCopied] = useState(false);
 
-  // Dynamic hotspots based on slider values
-  const mockHotspots: Hotspot[] = [
-    {
-      id: "seeds-value",
-      iconId: "live-number",
-      type: "live_number",
-      label: "Seeds Count",
-      x,
-      y,
-      width,
-      height,
-      metricKey: "seeds",
-      liveNumberStyle: {
-        fontSize: `${fontSize}px`,
-        fontWeight,
-        color: textColor,
-        backgroundColor: bgColor,
-        textAlign: "center",
-        fontFamily,
-        padding: "4px",
-      }
+  // Multi-hotspot state
+  const [hotspots, setHotspots] = useState<Hotspot[]>([createDefaultHotspot(0)]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>({
+    "hotspot-0": "142",
+  });
+
+  const activeHotspot = hotspots[activeIndex];
+
+  // Update a hotspot by index
+  const updateHotspot = useCallback((index: number, updates: Partial<Hotspot>) => {
+    setHotspots((prev) =>
+      prev.map((h, i) => (i === index ? { ...h, ...updates } : h))
+    );
+  }, []);
+
+  // Add a new hotspot
+  const addHotspot = useCallback(() => {
+    const newIndex = hotspots.length;
+    const newHotspot = createDefaultHotspot(newIndex);
+    setHotspots((prev) => [...prev, newHotspot]);
+    setDisplayValues((prev) => ({ ...prev, [newHotspot.id]: "0" }));
+    setActiveIndex(newIndex);
+  }, [hotspots.length]);
+
+  // Remove the active hotspot
+  const removeHotspot = useCallback(() => {
+    if (hotspots.length <= 1) {
+      toast.error("Cannot remove the last hotspot");
+      return;
     }
-  ];
+    const removedId = hotspots[activeIndex].id;
+    setHotspots((prev) => prev.filter((_, i) => i !== activeIndex));
+    setDisplayValues((prev) => {
+      const { [removedId]: _, ...rest } = prev;
+      return rest;
+    });
+    setActiveIndex((prev) => Math.max(0, prev - 1));
+  }, [hotspots, activeIndex]);
+
+  // Update display value for active hotspot
+  const updateDisplayValue = useCallback(
+    (value: string) => {
+      if (activeHotspot) {
+        setDisplayValues((prev) => ({ ...prev, [activeHotspot.id]: value }));
+      }
+    },
+    [activeHotspot]
+  );
+
+  // Export configuration as JSON
+  const exportConfig = useCallback(() => {
+    const config = {
+      slideImage: "test-live-numbers-slide.png",
+      hotspots: hotspots.map((h) => ({
+        id: h.id,
+        metricKey: h.metricKey,
+        x: h.x,
+        y: h.y,
+        width: h.width,
+        height: h.height,
+        liveNumberStyle: h.liveNumberStyle,
+      })),
+    };
+    navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+    setCopied(true);
+    toast.success("Configuration copied to clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+  }, [hotspots]);
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
       {/* Header */}
       <div className="bg-background/90 backdrop-blur-sm p-4 flex items-center gap-4 border-b border-border">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(-1)}
-        >
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <div>
-          <h1 className="font-semibold">Live Numbers Demo</h1>
+        <div className="flex-1">
+          <h1 className="font-semibold">Live Numbers Calibration</h1>
           <p className="text-sm text-muted-foreground">
-            Phase 1 Mockup - Adjust position with sliders below
+            Phase 0.5 — Multi-hotspot positioning for Stats Page
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={exportConfig}
+          className="gap-2"
+        >
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          {copied ? "Copied!" : "Copy Config"}
+        </Button>
       </div>
 
       {/* Slide Preview */}
@@ -98,189 +145,82 @@ export default function LiveNumbersDemo() {
             className="w-full h-auto rounded-lg shadow-2xl"
             onLoad={() => setImageLoaded(true)}
           />
-          
+
           {imageLoaded && (
             <InteractiveSlideOverlay
-              hotspots={mockHotspots}
+              hotspots={hotspots}
               deckSlug="demo"
               imageRef={imageRef}
               viralToken={null}
-              mockMetricValue={displayValue}
+              mockMetricValue={displayValues[activeHotspot?.id] || "0"}
             />
           )}
         </div>
       </div>
 
-      {/* Position Controls */}
+      {/* Controls Panel */}
       <div className="bg-background/90 backdrop-blur-sm p-4 border-t border-border">
-        <div className="max-w-4xl mx-auto space-y-4">
-          <h2 className="font-semibold">Position Controls</h2>
-          
-          <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-4">
-            {/* X Position */}
-            <div className="space-y-2">
-              <Label className="text-xs">X: {x.toFixed(1)}%</Label>
-              <Slider
-                value={[x]}
-                onValueChange={([val]) => setX(val)}
-                min={0}
-                max={100}
-                step={0.5}
-              />
-            </div>
-            
-            {/* Y Position */}
-            <div className="space-y-2">
-              <Label className="text-xs">Y: {y.toFixed(1)}%</Label>
-              <Slider
-                value={[y]}
-                onValueChange={([val]) => setY(val)}
-                min={0}
-                max={100}
-                step={0.5}
-              />
-            </div>
-            
-            {/* Width */}
-            <div className="space-y-2">
-              <Label className="text-xs">Width: {width.toFixed(1)}%</Label>
-              <Slider
-                value={[width]}
-                onValueChange={([val]) => setWidth(val)}
-                min={1}
-                max={50}
-                step={0.5}
-              />
-            </div>
-            
-            {/* Height */}
-            <div className="space-y-2">
-              <Label className="text-xs">Height: {height.toFixed(1)}%</Label>
-              <Slider
-                value={[height]}
-                onValueChange={([val]) => setHeight(val)}
-                min={1}
-                max={50}
-                step={0.5}
-              />
-            </div>
-            
-            {/* Font Size */}
-            <div className="space-y-2">
-              <Label className="text-xs">Size: {fontSize}px</Label>
-              <Slider
-                value={[fontSize]}
-                onValueChange={([val]) => setFontSize(val)}
-                min={12}
-                max={120}
-                step={1}
-              />
-            </div>
-            
-            {/* Font Family */}
-            <div className="space-y-2">
-              <Label className="text-xs">Font</Label>
-              <Select value={fontFamily} onValueChange={setFontFamily}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_OPTIONS.map((font) => (
-                    <SelectItem key={font.value} value={font.value} className="text-xs">
-                      {font.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Font Weight */}
-            <div className="space-y-2">
-              <Label className="text-xs">Weight</Label>
-              <Select value={fontWeight} onValueChange={setFontWeight}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="400" className="text-xs">Normal</SelectItem>
-                  <SelectItem value="500" className="text-xs">Medium</SelectItem>
-                  <SelectItem value="600" className="text-xs">Semibold</SelectItem>
-                  <SelectItem value="700" className="text-xs">Bold</SelectItem>
-                  <SelectItem value="800" className="text-xs">Extra Bold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Text Color */}
-            <div className="space-y-2">
-              <Label className="text-xs">Text Color</Label>
-              <div className="flex gap-1">
-                <Input
-                  value={textColor}
-                  onChange={(e) => setTextColor(e.target.value)}
-                  placeholder="#1a1a1a"
-                  className="h-8 text-xs font-mono flex-1"
-                />
-                <div className="relative h-8 w-8">
-                  <input
-                    type="color"
-                    value={textColor}
-                    onChange={(e) => setTextColor(e.target.value)}
-                    className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
-                  />
-                  <div 
-                    className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
-                    style={{ backgroundColor: textColor }}
-                  >
-                    <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Background Color */}
-            <div className="space-y-2">
-              <Label className="text-xs">BG Color</Label>
-              <div className="flex gap-1">
-                <Input
-                  value={bgColor}
-                  onChange={(e) => setBgColor(e.target.value)}
-                  placeholder="#e8dcc8"
-                  className="h-8 text-xs font-mono flex-1"
-                />
-                <div className="relative h-8 w-8">
-                  <input
-                    type="color"
-                    value={bgColor}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
-                  />
-                  <div 
-                    className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
-                    style={{ backgroundColor: bgColor }}
-                  >
-                    <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Display Value */}
-            <div className="space-y-2">
-              <Label className="text-xs">Value</Label>
-              <Input
-                value={displayValue}
-                onChange={(e) => setDisplayValue(e.target.value)}
-                className="h-8"
-              />
-            </div>
+        <div className="max-w-5xl mx-auto space-y-4">
+          {/* Hotspot Selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-muted-foreground">
+              Hotspots:
+            </span>
+            {hotspots.map((h, i) => (
+              <Button
+                key={h.id}
+                variant={i === activeIndex ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveIndex(i)}
+                className="min-w-[40px]"
+              >
+                {i + 1}
+                {h.metricKey && (
+                  <span className="ml-1 text-xs opacity-70">
+                    ({h.metricKey})
+                  </span>
+                )}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addHotspot}
+              className="gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeHotspot}
+              disabled={hotspots.length <= 1}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remove
+            </Button>
           </div>
 
-          {/* Copy Config */}
+          {/* Active Hotspot Controls */}
+          {activeHotspot && (
+            <HotspotCalibrationControls
+              hotspot={activeHotspot}
+              displayValue={displayValues[activeHotspot.id] || "0"}
+              onUpdate={(updates) => updateHotspot(activeIndex, updates)}
+              onDisplayValueChange={updateDisplayValue}
+            />
+          )}
+
+          {/* Config Preview */}
           <div className="pt-2">
-            <p className="text-xs text-muted-foreground mb-1">Current config (copy for use):</p>
-            <code className="text-xs bg-muted px-2 py-1 rounded break-all">
-              x: {x}, y: {y}, width: {width}, height: {height}, fontSize: "{fontSize}px", fontWeight: "{fontWeight}", fontFamily: "{fontFamily}", color: "{textColor}", backgroundColor: "{bgColor}"
+            <p className="text-xs text-muted-foreground mb-1">
+              Active hotspot config:
+            </p>
+            <code className="text-xs bg-muted px-2 py-1 rounded break-all block max-h-20 overflow-auto">
+              {activeHotspot &&
+                `{ metricKey: "${activeHotspot.metricKey}", x: ${activeHotspot.x.toFixed(1)}, y: ${activeHotspot.y.toFixed(1)}, w: ${activeHotspot.width.toFixed(1)}, h: ${activeHotspot.height.toFixed(1)} }`}
             </code>
           </div>
         </div>
