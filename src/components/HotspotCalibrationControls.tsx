@@ -126,7 +126,7 @@ export function HotspotCalibrationControls({
   const bgColor = style.backgroundColor || "#e8dcc8";
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-11 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-11 gap-4">
       {/* Metric Key */}
       <div className="space-y-2">
         <Label className="text-xs">Metric</Label>
@@ -146,6 +146,18 @@ export function HotspotCalibrationControls({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Font Size - moved next to Metric */}
+      <SliderWithButtons
+        label="Size"
+        value={fontSize}
+        onChange={(val) => updateStyle({ fontSize: `${Math.round(val)}px` })}
+        min={12}
+        max={120}
+        step={1}
+        fineStep={1}
+        unit="px"
+      />
 
       {/* X Position */}
       <SliderWithButtons
@@ -189,18 +201,6 @@ export function HotspotCalibrationControls({
         max={50}
         step={0.5}
         fineStep={0.1}
-      />
-
-      {/* Font Size */}
-      <SliderWithButtons
-        label="Size"
-        value={fontSize}
-        onChange={(val) => updateStyle({ fontSize: `${Math.round(val)}px` })}
-        min={12}
-        max={120}
-        step={1}
-        fineStep={1}
-        unit="px"
       />
 
       {/* Font Family */}
