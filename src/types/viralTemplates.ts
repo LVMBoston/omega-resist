@@ -92,12 +92,20 @@ export type LiveMetricKey =
   | 'opens'           // Total view events
   | 'opens_us'        // US-based views
   | 'opens_intl'      // International views
+  | 'opens_qr'        // Opens via QR scan
+  | 'opens_text'      // Opens via text/SMS
+  | 'opens_mail'      // Opens via email
   | 'neighborhoods'   // Distinct zip codes
   | 'depth'           // Max level reached
   | 'l01_count'       // Count at level 1
   | 'l02_count'       // Count at level 2
   | 'l03_count'       // Count at level 3
-  | 'viral_coefficient'; // K-factor
+  | 'viral_coefficient' // K-factor
+  | 'campaign_name'   // Campaign title text
+  | 'start_date'      // Campaign start date
+  | 'current_date'    // Current date
+  | 'start_time'      // Campaign start time
+  | 'current_time';   // Current time
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 
