@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import testSlideImage from "@/assets/test-live-numbers-slide.png";
+import statsPageMockup from "@/assets/stats-page-mockup.png";
 import { InteractiveSlideOverlay } from "@/components/InteractiveSlideOverlay";
 import { Hotspot } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
@@ -140,7 +140,7 @@ export default function LiveNumbersDemo() {
         <div className="relative max-w-4xl w-full">
           <img
             ref={imageRef}
-            src={testSlideImage}
+            src={statsPageMockup}
             alt="Test slide with live numbers"
             className="w-full h-auto rounded-lg shadow-2xl"
             onLoad={() => setImageLoaded(true)}
