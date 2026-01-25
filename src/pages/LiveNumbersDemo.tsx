@@ -1,11 +1,11 @@
 import { useRef, useState, useCallback } from "react";
 import statsPageMockup from "@/assets/stats-page-mockup.png";
-import { InteractiveSlideOverlay } from "@/components/InteractiveSlideOverlay";
 import { Hotspot } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Trash2, Copy, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
+import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
 import { toast } from "sonner";
 
 // Default hotspot template
@@ -147,12 +147,13 @@ export default function LiveNumbersDemo() {
           />
 
           {imageLoaded && (
-            <InteractiveSlideOverlay
+            <DraggableHotspotOverlay
               hotspots={hotspots}
-              deckSlug="demo"
+              activeIndex={activeIndex}
               imageRef={imageRef}
-              viralToken={null}
-              mockMetricValue={displayValues[activeHotspot?.id] || "0"}
+              displayValues={displayValues}
+              onUpdateHotspot={updateHotspot}
+              onSelectHotspot={setActiveIndex}
             />
           )}
         </div>
