@@ -1,7 +1,8 @@
-import { Pipette } from "lucide-react";
+import { Pipette, ChevronUp, ChevronDown } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Hotspot, LiveMetricKey } from "@/types/viralTemplates";
 
@@ -37,6 +38,70 @@ interface HotspotCalibrationControlsProps {
   displayValue: string;
   onUpdate: (updates: Partial<Hotspot>) => void;
   onDisplayValueChange: (value: string) => void;
+}
+
+// Reusable slider with fine-tune buttons
+interface SliderWithButtonsProps {
+  label: string;
+  value: number;
+  onChange: (val: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  fineStep?: number;
+  unit?: string;
+}
+
+function SliderWithButtons({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  fineStep = 0.1,
+  unit = "%",
+}: SliderWithButtonsProps) {
+  const increment = () => onChange(Math.min(max, value + fineStep));
+  const decrement = () => onChange(Math.max(min, value - fineStep));
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">
+        {label}: {unit === "px" ? Math.round(value) : value.toFixed(1)}{unit}
+      </Label>
+      <div className="flex items-center gap-1">
+        <Slider
+          value={[value]}
+          onValueChange={([val]) => onChange(val)}
+          min={min}
+          max={max}
+          step={step}
+          className="flex-1"
+        />
+        <div className="flex flex-col">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-4 w-6 p-0"
+            onClick={increment}
+            tabIndex={-1}
+          >
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-4 w-6 p-0"
+            onClick={decrement}
+            tabIndex={-1}
+          >
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function HotspotCalibrationControls({
@@ -83,64 +148,60 @@ export function HotspotCalibrationControls({
       </div>
 
       {/* X Position */}
-      <div className="space-y-2">
-        <Label className="text-xs">X: {hotspot.x.toFixed(1)}%</Label>
-        <Slider
-          value={[hotspot.x]}
-          onValueChange={([val]) => onUpdate({ x: val })}
-          min={0}
-          max={100}
-          step={0.5}
-        />
-      </div>
+      <SliderWithButtons
+        label="X"
+        value={hotspot.x}
+        onChange={(val) => onUpdate({ x: val })}
+        min={0}
+        max={100}
+        step={0.5}
+        fineStep={0.1}
+      />
 
       {/* Y Position */}
-      <div className="space-y-2">
-        <Label className="text-xs">Y: {hotspot.y.toFixed(1)}%</Label>
-        <Slider
-          value={[hotspot.y]}
-          onValueChange={([val]) => onUpdate({ y: val })}
-          min={0}
-          max={100}
-          step={0.5}
-        />
-      </div>
+      <SliderWithButtons
+        label="Y"
+        value={hotspot.y}
+        onChange={(val) => onUpdate({ y: val })}
+        min={0}
+        max={100}
+        step={0.5}
+        fineStep={0.1}
+      />
 
       {/* Width */}
-      <div className="space-y-2">
-        <Label className="text-xs">W: {hotspot.width.toFixed(1)}%</Label>
-        <Slider
-          value={[hotspot.width]}
-          onValueChange={([val]) => onUpdate({ width: val })}
-          min={1}
-          max={50}
-          step={0.5}
-        />
-      </div>
+      <SliderWithButtons
+        label="W"
+        value={hotspot.width}
+        onChange={(val) => onUpdate({ width: val })}
+        min={1}
+        max={50}
+        step={0.5}
+        fineStep={0.1}
+      />
 
       {/* Height */}
-      <div className="space-y-2">
-        <Label className="text-xs">H: {hotspot.height.toFixed(1)}%</Label>
-        <Slider
-          value={[hotspot.height]}
-          onValueChange={([val]) => onUpdate({ height: val })}
-          min={1}
-          max={50}
-          step={0.5}
-        />
-      </div>
+      <SliderWithButtons
+        label="H"
+        value={hotspot.height}
+        onChange={(val) => onUpdate({ height: val })}
+        min={1}
+        max={50}
+        step={0.5}
+        fineStep={0.1}
+      />
 
       {/* Font Size */}
-      <div className="space-y-2">
-        <Label className="text-xs">Size: {fontSize}px</Label>
-        <Slider
-          value={[fontSize]}
-          onValueChange={([val]) => updateStyle({ fontSize: `${val}px` })}
-          min={12}
-          max={120}
-          step={1}
-        />
-      </div>
+      <SliderWithButtons
+        label="Size"
+        value={fontSize}
+        onChange={(val) => updateStyle({ fontSize: `${Math.round(val)}px` })}
+        min={12}
+        max={120}
+        step={1}
+        fineStep={1}
+        unit="px"
+      />
 
       {/* Font Family */}
       <div className="space-y-2">
