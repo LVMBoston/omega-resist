@@ -56,14 +56,20 @@ export default function LiveNumbersDemo() {
     );
   }, []);
 
-  // Add a new hotspot
+  // Add a new hotspot, inheriting style from the active hotspot
   const addHotspot = useCallback(() => {
     const newIndex = hotspots.length;
-    const newHotspot = createDefaultHotspot(newIndex);
-    setHotspots((prev) => [...prev, newHotspot]);
-    setDisplayValues((prev) => ({ ...prev, [newHotspot.id]: "0" }));
+    const baseHotspot = createDefaultHotspot(newIndex);
+    
+    // Inherit styling from the active hotspot if one exists
+    if (activeHotspot?.liveNumberStyle) {
+      baseHotspot.liveNumberStyle = { ...activeHotspot.liveNumberStyle };
+    }
+    
+    setHotspots((prev) => [...prev, baseHotspot]);
+    setDisplayValues((prev) => ({ ...prev, [baseHotspot.id]: "0" }));
     setActiveIndex(newIndex);
-  }, [hotspots.length]);
+  }, [hotspots.length, activeHotspot]);
 
   // Remove the active hotspot
   const removeHotspot = useCallback(() => {
