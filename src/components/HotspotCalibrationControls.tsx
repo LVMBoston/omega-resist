@@ -25,12 +25,20 @@ const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
   { value: "opens", label: "Opens (total views)" },
   { value: "opens_us", label: "Opens US" },
   { value: "opens_intl", label: "Opens Intl" },
+  { value: "opens_qr", label: "Opens QR" },
+  { value: "opens_text", label: "Opens Text" },
+  { value: "opens_mail", label: "Opens Mail" },
   { value: "neighborhoods", label: "Neighborhoods (zip codes)" },
   { value: "depth", label: "Max Depth" },
   { value: "l01_count", label: "L01 Count" },
   { value: "l02_count", label: "L02 Count" },
   { value: "l03_count", label: "L03 Count" },
   { value: "viral_coefficient", label: "Viral Coefficient" },
+  { value: "campaign_name", label: "Campaign Name" },
+  { value: "start_date", label: "Start Date" },
+  { value: "current_date", label: "Current Date" },
+  { value: "start_time", label: "Start Time" },
+  { value: "current_time", label: "Current Time" },
 ];
 
 interface HotspotCalibrationControlsProps {
