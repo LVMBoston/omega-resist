@@ -40,12 +40,41 @@ export default function LiveNumbersDemo() {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Multi-hotspot state
-  const [hotspots, setHotspots] = useState<Hotspot[]>([createDefaultHotspot(0)]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [displayValues, setDisplayValues] = useState<Record<string, string>>({
+  // Pre-populated hotspots matching Stats Page layout
+  const initialHotspots: Hotspot[] = [
+    { ...createDefaultHotspot(0), metricKey: "seeds", label: "Seeds" },
+    { ...createDefaultHotspot(1), metricKey: "shares", label: "Shares" },
+    { ...createDefaultHotspot(2), metricKey: "opens", label: "Opens" },
+    { ...createDefaultHotspot(3), metricKey: "opens_qr", label: "Opens QR" },
+    { ...createDefaultHotspot(4), metricKey: "opens_text", label: "Opens Text" },
+    { ...createDefaultHotspot(5), metricKey: "opens_mail", label: "Opens Mail" },
+    { ...createDefaultHotspot(6), metricKey: "neighborhoods", label: "Neighborhoods" },
+    { ...createDefaultHotspot(7), metricKey: "campaign_name", label: "Campaign Name" },
+    { ...createDefaultHotspot(8), metricKey: "start_date", label: "Start Date" },
+    { ...createDefaultHotspot(9), metricKey: "current_date", label: "Current Date" },
+    { ...createDefaultHotspot(10), metricKey: "start_time", label: "Start Time" },
+    { ...createDefaultHotspot(11), metricKey: "current_time", label: "Current Time" },
+  ];
+
+  const initialDisplayValues: Record<string, string> = {
     "hotspot-0": "142",
-  });
+    "hotspot-1": "87",
+    "hotspot-2": "1,234",
+    "hotspot-3": "456",
+    "hotspot-4": "321",
+    "hotspot-5": "198",
+    "hotspot-6": "73",
+    "hotspot-7": "OMEGA PA",
+    "hotspot-8": "Jan 15, 2026",
+    "hotspot-9": "Jan 25, 2026",
+    "hotspot-10": "9:00 AM",
+    "hotspot-11": "2:45 PM",
+  };
+
+  // Multi-hotspot state
+  const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>(initialDisplayValues);
 
   const activeHotspot = hotspots[activeIndex];
 
