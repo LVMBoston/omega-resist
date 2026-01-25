@@ -12,9 +12,10 @@ interface DataTemplateDialogProps {
     name: string;
     slug: string;
     description?: string;
-  }) => Promise<void>;
+  }) => Promise<string | void>;
   mode: "create" | "edit";
   initialData?: {
+    id?: string;
     hotspots?: Hotspot[];
     imageUrl?: string;
     name?: string;
@@ -36,9 +37,11 @@ export function DataTemplateDialog({
     name: string;
     slug: string;
     description?: string;
-  }) => {
-    await onSave(data);
-    onOpenChange(false);
+  }): Promise<string | void> => {
+    const result = await onSave(data);
+    // Don't close the dialog on auto-save, only on final save
+    // The editor will call this multiple times for auto-save
+    return result;
   };
 
   return (
@@ -67,6 +70,7 @@ export function DataTemplateDialog({
             templateName={initialData?.name}
             templateSlug={initialData?.slug}
             templateDescription={initialData?.description}
+            templateId={initialData?.id}
             onSave={handleSave}
             onCancel={() => onOpenChange(false)}
             mode={mode}
