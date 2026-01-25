@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateType, Hotspot } from "@/types/viralTemplates";
 import { detectOverlaps, detectOutOfBounds } from "@/lib/hotspotValidation";
 import { DataTemplateDialog } from "@/components/DataTemplateDialog";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Template {
   id: string;
@@ -529,7 +530,7 @@ export default function InteractiveTemplates() {
     name: string;
     slug: string;
     description?: string;
-  }) => {
+  }): Promise<string | void> => {
     const templateData = {
       name: data.name,
       slug: data.slug,
@@ -543,13 +544,41 @@ export default function InteractiveTemplates() {
     };
 
     if (editingDataTemplate) {
+      // Update existing template
       await updateTemplate.mutateAsync({ id: editingDataTemplate.id, data: templateData });
+      return editingDataTemplate.id;
     } else {
-      await createTemplate.mutateAsync(templateData);
+      // Create new template - use direct insert to get the ID back
+      const { data: inserted, error } = await supabase
+        .from("viral_slide_configs")
+        .insert([{
+          name: data.name,
+          slug: data.slug,
+          description: data.description || "",
+          image_url: data.imageUrl,
+          hotspots: data.hotspots as unknown as Json,
+          is_default: false,
+          template_type: "stats_page",
+          config: { type: "stats_page" } as Json,
+        }])
+        .select("id")
+        .single();
+      
+      if (error) throw error;
+      
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
+      
+      // Update the editingDataTemplate so subsequent saves are updates
+      if (inserted) {
+        setEditingDataTemplate({ 
+          ...templateData, 
+          id: inserted.id, 
+          created_at: new Date().toISOString() 
+        } as Template);
+        return inserted.id;
+      }
     }
-    
-    setIsDataDialogOpen(false);
-    setEditingDataTemplate(null);
   };
 
   // Render a template card
@@ -945,6 +974,7 @@ export default function InteractiveTemplates() {
         onSave={handleDataTemplateSave}
         mode={dataDialogMode}
         initialData={editingDataTemplate ? {
+          id: editingDataTemplate.id,
           hotspots: editingDataTemplate.hotspots,
           imageUrl: editingDataTemplate.image_url,
           name: editingDataTemplate.name,

@@ -195,7 +195,7 @@ export function HotspotCalibrationControls({
         value={hotspot.width}
         onChange={(val) => onUpdate({ width: val })}
         min={1}
-        max={50}
+        max={80}
         step={0.5}
         fineStep={0.1}
       />

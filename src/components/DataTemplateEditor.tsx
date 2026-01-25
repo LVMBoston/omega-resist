@@ -1,10 +1,10 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Hotspot } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2 } from "lucide-react";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
 import { toast } from "sonner";
@@ -38,13 +38,14 @@ interface DataTemplateEditorProps {
   templateName?: string;
   templateDescription?: string;
   templateSlug?: string;
+  templateId?: string;
   onSave: (data: {
     hotspots: Hotspot[];
     imageUrl: string;
     name: string;
     slug: string;
     description?: string;
-  }) => Promise<void>;
+  }) => Promise<string | void>;
   onCancel: () => void;
   mode: "create" | "edit";
 }
@@ -55,6 +56,7 @@ export function DataTemplateEditor({
   templateName = "",
   templateDescription = "",
   templateSlug = "",
+  templateId,
   onSave,
   onCancel,
   mode,
@@ -63,6 +65,9 @@ export function DataTemplateEditor({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [savedTemplateId, setSavedTemplateId] = useState<string | undefined>(templateId);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // Form state
   const [name, setName] = useState(templateName);
@@ -86,6 +91,38 @@ export function DataTemplateEditor({
 
   const activeHotspot = hotspots[activeIndex];
 
+  // Auto-save function
+  const performAutoSave = useCallback(async (hotspotsToSave: Hotspot[]) => {
+    // Only auto-save if we have the minimum required fields
+    if (!name.trim() || !slug.trim() || !imageUrl) {
+      return;
+    }
+    
+    setIsAutoSaving(true);
+    try {
+      const result = await onSave({
+        hotspots: hotspotsToSave,
+        imageUrl,
+        name: name.trim(),
+        slug: slug.trim(),
+        description: description.trim() || undefined,
+      });
+      
+      // If this was a create and we got an ID back, store it
+      if (result && !savedTemplateId) {
+        setSavedTemplateId(result);
+      }
+      
+      setLastSavedAt(new Date());
+      toast.success("Auto-saved", { duration: 1500 });
+    } catch (error: any) {
+      console.error("Auto-save failed:", error);
+      toast.error(`Auto-save failed: ${error.message}`, { duration: 3000 });
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [name, slug, imageUrl, description, onSave, savedTemplateId]);
+
   // Update a hotspot by index
   const updateHotspot = useCallback((index: number, updates: Partial<Hotspot>) => {
     setHotspots((prev) =>
@@ -94,7 +131,7 @@ export function DataTemplateEditor({
   }, []);
 
   // Add a new hotspot, inheriting style from the active hotspot
-  const addHotspot = useCallback(() => {
+  const addHotspot = useCallback(async () => {
     const newIndex = hotspots.length;
     const baseHotspot = createDefaultHotspot(newIndex);
 
@@ -107,10 +144,14 @@ export function DataTemplateEditor({
       }
     }
 
-    setHotspots((prev) => [...prev, baseHotspot]);
+    const newHotspots = [...hotspots, baseHotspot];
+    setHotspots(newHotspots);
     setDisplayValues((prev) => ({ ...prev, [baseHotspot.id]: "0" }));
     setActiveIndex(newIndex);
-  }, [hotspots.length, activeHotspot]);
+    
+    // Auto-save after adding hotspot
+    await performAutoSave(newHotspots);
+  }, [hotspots, activeHotspot, performAutoSave]);
 
   // Remove the active hotspot
   const removeHotspot = useCallback(() => {
@@ -387,21 +428,36 @@ export function DataTemplateEditor({
         )}
 
         {/* Footer Buttons */}
-        <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !imageUrl || !name || !slug}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {isSaving
-              ? "Saving..."
-              : mode === "edit"
-              ? "Update Template"
-              : "Create Template"}
-          </Button>
+        <div className="flex justify-between items-center gap-2 pt-2 border-t border-border">
+          {/* Save status indicator */}
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            {isAutoSaving ? (
+              <span className="text-amber-600 flex items-center gap-1">
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+              </span>
+            ) : lastSavedAt ? (
+              <span className="text-green-600 flex items-center gap-1">
+                <Check className="w-4 h-4" /> Saved
+              </span>
+            ) : null}
+          </div>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || isAutoSaving || !imageUrl || !name || !slug}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSaving
+                ? "Saving..."
+                : savedTemplateId || mode === "edit"
+                ? "Update Template"
+                : "Create Template"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
