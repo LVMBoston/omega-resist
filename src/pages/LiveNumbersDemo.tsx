@@ -61,9 +61,13 @@ export default function LiveNumbersDemo() {
     const newIndex = hotspots.length;
     const baseHotspot = createDefaultHotspot(newIndex);
     
-    // Inherit styling from the active hotspot if one exists
-    if (activeHotspot?.liveNumberStyle) {
-      baseHotspot.liveNumberStyle = { ...activeHotspot.liveNumberStyle };
+    // Inherit styling and dimensions from the active hotspot if one exists
+    if (activeHotspot) {
+      baseHotspot.width = activeHotspot.width;
+      baseHotspot.height = activeHotspot.height;
+      if (activeHotspot.liveNumberStyle) {
+        baseHotspot.liveNumberStyle = { ...activeHotspot.liveNumberStyle };
+      }
     }
     
     setHotspots((prev) => [...prev, baseHotspot]);
