@@ -74,6 +74,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   current_date: "Current Date",
   start_time: "Start Time",
   current_time: "Current Time",
+  first_open: "First Open",
 };
 
 // Visual Preview Component

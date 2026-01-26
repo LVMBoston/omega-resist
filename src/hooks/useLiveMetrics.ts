@@ -43,6 +43,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   current_date: "Current Date",
   start_time: "Start Time",
   current_time: "Current Time",
+  first_open: "First Open",
 };
 
 export interface UseLiveMetricsResult {
@@ -137,16 +138,24 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       // Query url_events for these tokens
       const tokenStrings = tokens?.map(t => t.token) || [];
       let events: any[] = [];
+      let firstOpenTimestamp: string | null = null;
       
       if (tokenStrings.length > 0) {
         const { data: eventsData, error: eventsError } = await supabase
           .from("url_events")
-          .select("event_type, country_code, zip_code, utm_snapshot")
+          .select("event_type, country_code, zip_code, utm_snapshot, occurred_at")
           .in("token", tokenStrings)
           .is("deleted_at", null);
         
         if (eventsError) throw eventsError;
         events = eventsData || [];
+        
+        // Find earliest view event timestamp
+        const viewEvents = events.filter(e => e.event_type === "view" && e.occurred_at);
+        if (viewEvents.length > 0) {
+          viewEvents.sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+          firstOpenTimestamp = viewEvents[0].occurred_at;
+        }
       }
 
       // Calculate metrics
@@ -226,6 +235,15 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       } else {
         metricResults.push({ key: "start_date", label: METRIC_LABELS.start_date, value: "(no EOA)", source: "events_actions" });
         metricResults.push({ key: "start_time", label: METRIC_LABELS.start_time, value: "(no EOA)", source: "events_actions" });
+      }
+
+      // First open - earliest view event timestamp
+      if (firstOpenTimestamp) {
+        const firstOpenDate = new Date(firstOpenTimestamp);
+        const formattedFirstOpen = formatInTimeZone(firstOpenDate, timezone, "MMM d, yyyy h:mm a");
+        metricResults.push({ key: "first_open", label: METRIC_LABELS.first_open, value: formattedFirstOpen, source: "url_events" });
+      } else {
+        metricResults.push({ key: "first_open", label: METRIC_LABELS.first_open, value: "(no activity)", source: "url_events" });
       }
 
       setMetrics(metricResults);
