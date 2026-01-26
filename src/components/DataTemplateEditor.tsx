@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database } from "lucide-react";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 
 // Default hotspot template for data templates
 const createDefaultHotspot = (index: number): Hotspot => ({
@@ -75,6 +76,11 @@ export function DataTemplateEditor({
   const [description, setDescription] = useState(templateDescription);
   const [imageUrl, setImageUrl] = useState(initialImageUrl);
 
+  // Live metrics preview state
+  const [campaignId, setCampaignId] = useState("");
+  const [mobilizeId, setMobilizeId] = useState("");
+  const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
+
   // Initialize with at least one hotspot if empty
   const [hotspots, setHotspots] = useState<Hotspot[]>(
     initialHotspots.length > 0 ? initialHotspots : [createDefaultHotspot(0)]
@@ -90,6 +96,28 @@ export function DataTemplateEditor({
   });
 
   const activeHotspot = hotspots[activeIndex];
+
+  // Resolve live metrics when campaign/mobilize changes
+  useEffect(() => {
+    if (campaignId.trim()) {
+      resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
+    }
+  }, [campaignId, mobilizeId, resolveMetrics]);
+
+  // Update display values when metrics are resolved
+  useEffect(() => {
+    if (Object.keys(metricsMap).length > 0) {
+      setDisplayValues((prev) => {
+        const updated = { ...prev };
+        hotspots.forEach((h) => {
+          if (h.metricKey && metricsMap[h.metricKey] !== undefined) {
+            updated[h.id] = String(metricsMap[h.metricKey]);
+          }
+        });
+        return updated;
+      });
+    }
+  }, [metricsMap, hotspots]);
 
   // Auto-save function
   const performAutoSave = useCallback(async (hotspotsToSave: Hotspot[]) => {
@@ -289,6 +317,37 @@ export function DataTemplateEditor({
             placeholder="Optional description..."
             className="h-9 min-h-[36px] resize-none"
             rows={1}
+          />
+        </div>
+      </div>
+
+      {/* Live Data Preview Inputs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20">
+        <div className="space-y-1">
+          <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-green-600" />
+            Manual Campaign ID (overrides dropdown)
+          </Label>
+          <Input
+            id="campaign-id"
+            value={campaignId}
+            onChange={(e) => setCampaignId(e.target.value)}
+            placeholder="e.g., rs-good-1 or UUID"
+            className="h-9"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="mobilize-id" className="text-sm flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-green-600" />
+            Manual Mobilize ID (overrides EOA dropdown)
+            {metricsLoading && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+          </Label>
+          <Input
+            id="mobilize-id"
+            value={mobilizeId}
+            onChange={(e) => setMobilizeId(e.target.value)}
+            placeholder="e.g., 837854"
+            className="h-9"
           />
         </div>
       </div>
