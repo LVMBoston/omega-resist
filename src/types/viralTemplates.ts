@@ -76,6 +76,18 @@ export interface ChartConfig {
   showYAxis?: boolean;  // default false
 }
 
+// Map configuration for map hotspots
+export interface MapConfig {
+  mapStyle: 'channel_colors';  // Future: 'level_colors' | 'single_color'
+  showClustering: boolean;
+  savedBounds?: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  };
+}
+
 // Hotspot interface
 export interface Hotspot {
   id: string;
@@ -94,6 +106,8 @@ export interface Hotspot {
   liveNumberStyle?: LiveNumberStyle;
   // Chart hotspot properties
   chartConfig?: ChartConfig;
+  // Map hotspot properties
+  mapConfig?: MapConfig;
 }
 
 // Live number style configuration
@@ -140,4 +154,5 @@ export type HotspotActionType =
   | 'form_trigger'     // Future: open embedded form
   | 'custom'           // Future: custom action
   | 'live_number'      // Live metrics overlay
-  | 'chart';           // Chart visualization
+  | 'chart'            // Chart visualization
+  | 'map';             // Map visualization
