@@ -65,6 +65,7 @@ export function DataTemplateDialog({
         
         <div className="flex-1 min-h-0 overflow-hidden">
           <DataTemplateEditor
+            key={initialData?.id || "new"}
             initialHotspots={initialData?.hotspots}
             initialImageUrl={initialData?.imageUrl}
             templateName={initialData?.name}
