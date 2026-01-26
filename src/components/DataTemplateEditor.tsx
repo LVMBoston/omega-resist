@@ -401,6 +401,7 @@ export function DataTemplateEditor({
                   displayValues={displayValues}
                   onUpdateHotspot={updateHotspot}
                   onSelectHotspot={setActiveIndex}
+                  campaignCode={campaignId}
                 />
               )}
 
