@@ -68,6 +68,14 @@ export interface StatsPageConfig {
   };
 }
 
+// Chart configuration for chart hotspots
+export interface ChartConfig {
+  chartType: 'stacked_bar';
+  dataSource: 'cumulative_opens_by_level';
+  showXAxis?: boolean;  // default true
+  showYAxis?: boolean;  // default false
+}
+
 // Hotspot interface
 export interface Hotspot {
   id: string;
@@ -84,6 +92,8 @@ export interface Hotspot {
   metricKey?: LiveMetricKey;
   manualLabel?: string;  // For manual_entry metric type
   liveNumberStyle?: LiveNumberStyle;
+  // Chart hotspot properties
+  chartConfig?: ChartConfig;
 }
 
 // Live number style configuration
@@ -129,4 +139,5 @@ export type HotspotActionType =
   | 'external_link'    // Future: link to external URL
   | 'form_trigger'     // Future: open embedded form
   | 'custom'           // Future: custom action
-  | 'live_number';     // Live metrics overlay
+  | 'live_number'      // Live metrics overlay
+  | 'chart';           // Chart visualization

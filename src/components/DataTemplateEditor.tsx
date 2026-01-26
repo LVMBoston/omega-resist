@@ -1,17 +1,19 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Hotspot } from "@/types/viralTemplates";
+import { Hotspot, ChartConfig } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3 } from "lucide-react";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
+import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
+import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 
-// Default hotspot template for data templates
+// Default hotspot template for data templates (live_number)
 const createDefaultHotspot = (index: number): Hotspot => ({
   id: `hotspot-${Date.now()}-${index}`,
   iconId: "live-number",
@@ -30,6 +32,24 @@ const createDefaultHotspot = (index: number): Hotspot => ({
     textAlign: "center",
     fontFamily: "Calibri, sans-serif",
     padding: "4px",
+  },
+});
+
+// Default chart hotspot
+const createChartHotspot = (index: number): Hotspot => ({
+  id: `chart-${Date.now()}-${index}`,
+  iconId: "chart",
+  type: "chart",
+  label: `Chart ${index + 1}`,
+  x: 20 + (index % 4) * 15,
+  y: 50,
+  width: 30,
+  height: 20,
+  chartConfig: {
+    chartType: "stacked_bar",
+    dataSource: "cumulative_opens_by_level",
+    showXAxis: true,
+    showYAxis: false,
   },
 });
 
@@ -158,13 +178,13 @@ export function DataTemplateEditor({
     );
   }, []);
 
-  // Add a new hotspot, inheriting style from the active hotspot
+  // Add a new live_number hotspot, inheriting style from the active hotspot
   const addHotspot = useCallback(() => {
     const newIndex = hotspots.length;
     const baseHotspot = createDefaultHotspot(newIndex);
 
-    // Inherit styling and dimensions from the active hotspot if one exists
-    if (activeHotspot) {
+    // Inherit styling and dimensions from the active hotspot if one exists and is a live_number
+    if (activeHotspot && activeHotspot.type === "live_number") {
       baseHotspot.width = activeHotspot.width;
       baseHotspot.height = activeHotspot.height;
       if (activeHotspot.liveNumberStyle) {
@@ -177,6 +197,16 @@ export function DataTemplateEditor({
     setDisplayValues((prev) => ({ ...prev, [baseHotspot.id]: "0" }));
     setActiveIndex(newIndex);
   }, [hotspots, activeHotspot]);
+
+  // Add a new chart hotspot
+  const addChartHotspot = useCallback(() => {
+    const newIndex = hotspots.length;
+    const chartHotspot = createChartHotspot(newIndex);
+
+    const newHotspots = [...hotspots, chartHotspot];
+    setHotspots(newHotspots);
+    setActiveIndex(newIndex);
+  }, [hotspots]);
 
   // Remove the active hotspot
   const removeHotspot = useCallback(() => {
@@ -451,35 +481,51 @@ export function DataTemplateEditor({
                 </span>
               )}
             </Button>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addHotspot}
-            className="gap-1 border-green-500 text-green-600 hover:bg-green-50"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={removeHotspot}
-            disabled={hotspots.length <= 1}
-            className="gap-1 text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-            Remove
-          </Button>
-        </div>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addHotspot}
+              className="gap-1 border-green-500 text-green-600 hover:bg-green-50"
+            >
+              <Plus className="w-4 h-4" />
+              Number
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addChartHotspot}
+              className="gap-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Chart
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeHotspot}
+              disabled={hotspots.length <= 1}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remove
+            </Button>
+          </div>
 
-        {/* Active Hotspot Controls */}
-        {activeHotspot && imageUrl && (
+        {/* Active Hotspot Controls - different controls for different types */}
+        {activeHotspot && imageUrl && activeHotspot.type === "live_number" && (
           <HotspotCalibrationControls
             hotspot={activeHotspot}
             displayValue={displayValues[activeHotspot.id] || "0"}
             onUpdate={(updates) => updateHotspot(activeIndex, updates)}
             onDisplayValueChange={updateDisplayValue}
+          />
+        )}
+        
+        {activeHotspot && imageUrl && activeHotspot.type === "chart" && (
+          <ChartCalibrationControls
+            hotspot={activeHotspot}
+            onUpdate={(updates) => updateHotspot(activeIndex, updates)}
           />
         )}
 

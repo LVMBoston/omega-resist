@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Hotspot } from "@/types/viralTemplates";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
+import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { Loader2 } from "lucide-react";
 
 interface StatsPageSlideProps {
@@ -121,6 +122,64 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
   }, [imageLoaded]);
 
   const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
+  const chartHotspots = hotspots.filter(h => h.type === 'chart');
+
+  // Extract campaign code for chart hotspots
+  const [campaignCode, setCampaignCode] = useState<string>("");
+
+  useEffect(() => {
+    const extractCampaignCode = async () => {
+      try {
+        // First try to get campaign from token
+        if (viralToken) {
+          const { data: tokenData } = await supabase
+            .from("tokens")
+            .select("utm_campaign")
+            .eq("token", viralToken)
+            .maybeSingle();
+          
+          if (tokenData?.utm_campaign) {
+            setCampaignCode(tokenData.utm_campaign);
+            return;
+          }
+        }
+
+        // Fallback: try to get campaign from deck's EOA assignments
+        if (deckSlug) {
+          const { data: assignmentData } = await supabase
+            .from("deck_eoa_assignments")
+            .select("eoa_id")
+            .eq("deck_slug", deckSlug)
+            .limit(1)
+            .maybeSingle();
+          
+          if (assignmentData?.eoa_id) {
+            const { data: eoaData } = await supabase
+              .from("events_actions")
+              .select("campaign_id")
+              .eq("id", assignmentData.eoa_id)
+              .maybeSingle();
+            
+            if (eoaData?.campaign_id) {
+              const { data: campaignData } = await supabase
+                .from("campaigns")
+                .select("code")
+                .eq("id", eoaData.campaign_id)
+                .maybeSingle();
+              
+              if (campaignData?.code) {
+                setCampaignCode(campaignData.code);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("📊 StatsPageSlide: Error extracting campaign code:", error);
+      }
+    };
+
+    extractCampaignCode();
+  }, [viralToken, deckSlug]);
 
   return (
     <div 
@@ -143,7 +202,7 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
         </div>
       )}
       
-      {/* Render hotspots with resolved values */}
+      {/* Render live_number hotspots */}
       {imageLoaded && imageDimensions.width > 0 && liveNumberHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
@@ -181,6 +240,43 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
             }}
           >
             {value}
+          </div>
+        );
+      })}
+
+      {/* Render chart hotspots */}
+      {imageLoaded && imageDimensions.width > 0 && campaignCode && chartHotspots.map((hotspot) => {
+        const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
+        const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
+        const width = (hotspot.width / 100) * imageDimensions.width;
+        const height = (hotspot.height / 100) * imageDimensions.height;
+        
+        const chartConfig = hotspot.chartConfig || {
+          chartType: 'stacked_bar',
+          dataSource: 'cumulative_opens_by_level',
+          showXAxis: true,
+          showYAxis: false,
+        };
+        
+        return (
+          <div
+            key={hotspot.id}
+            className="absolute"
+            style={{
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${width}px`,
+              height: `${height}px`,
+              backgroundColor: 'transparent',
+              pointerEvents: 'none',
+            }}
+          >
+            <ChartHotspotRenderer
+              campaignCode={campaignCode}
+              config={chartConfig}
+              width={width}
+              height={height}
+            />
           </div>
         );
       })}
