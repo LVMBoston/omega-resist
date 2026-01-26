@@ -24,6 +24,7 @@ interface Campaign {
 }
 
 const METRIC_LABELS: Record<LiveMetricKey, string> = {
+  manual_entry: "Manual Entry",
   seeds: "Seeds (L00 count)",
   shares: "Shares (L01+ count)",
   opens: "Opens (total views)",
