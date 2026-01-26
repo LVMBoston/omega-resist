@@ -47,18 +47,20 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
 
 export interface UseLiveMetricsResult {
   metrics: MetricResult[];
+  eoas: EOA[];
   metricsMap: Record<string, string | number>;
   loading: boolean;
   error: string | null;
-  resolveMetrics: (campaignIdOrCode: string, mobilizeId?: string) => Promise<void>;
+  resolveMetrics: (campaignIdOrCode: string, eoaId?: string) => Promise<void>;
 }
 
 export function useLiveMetrics(): UseLiveMetricsResult {
   const [metrics, setMetrics] = useState<MetricResult[]>([]);
+  const [eoas, setEoas] = useState<EOA[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const resolveMetrics = useCallback(async (campaignIdOrCode: string, mobilizeId?: string) => {
+  const resolveMetrics = useCallback(async (campaignIdOrCode: string, eoaId?: string) => {
     if (!campaignIdOrCode.trim()) {
       setMetrics([]);
       return;
@@ -95,16 +97,22 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         throw new Error(`Campaign not found: ${campaignIdOrCode}`);
       }
 
-      // Fetch EOA if mobilize_id provided
+      // Fetch EOAs for this campaign
+      const { data: eoaList, error: eoaErr } = await supabase
+        .from("events_actions")
+        .select("id, title, timezone, start_date")
+        .eq("campaign_id", campaign.id)
+        .order("start_date", { ascending: true });
+      
+      if (eoaErr) throw eoaErr;
+      setEoas(eoaList || []);
+
+      // Use specified EOA or first available
       let eoa: EOA | null = null;
-      if (mobilizeId) {
-        const { data, error: err } = await supabase
-          .from("events_actions")
-          .select("id, title, timezone, start_date")
-          .eq("mobilize_id", mobilizeId)
-          .maybeSingle();
-        if (err) throw err;
-        eoa = data;
+      if (eoaId && eoaList) {
+        eoa = eoaList.find(e => e.id === eoaId) || eoaList[0] || null;
+      } else if (eoaList && eoaList.length > 0) {
+        eoa = eoaList[0];
       }
 
       const timezone = eoa?.timezone || "America/New_York";
@@ -229,5 +237,5 @@ export function useLiveMetrics(): UseLiveMetricsResult {
     return acc;
   }, {} as Record<string, string | number>);
 
-  return { metrics, metricsMap, loading, error, resolveMetrics };
+  return { metrics, eoas, metricsMap, loading, error, resolveMetrics };
 }
