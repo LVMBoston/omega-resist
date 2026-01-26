@@ -164,8 +164,13 @@ export function HotspotCalibrationControls({
         <div className="space-y-2">
           <Label className="text-xs">Label</Label>
           <Input
+            key={`manual-label-${hotspot.id}`}
             value={hotspot.manualLabel || ""}
-            onChange={(e) => onUpdate({ manualLabel: e.target.value })}
+            onChange={(e) => {
+              e.stopPropagation();
+              onUpdate({ manualLabel: e.target.value });
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
             placeholder="Enter text..."
             className="h-8 text-xs"
           />
