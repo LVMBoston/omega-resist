@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
-import { Pencil, Move } from "lucide-react";
+import { Pencil, Move, BarChart3 } from "lucide-react";
+import { LEVEL_COLORS } from "@/hooks/useChartData";
 
 interface DraggableHotspotOverlayProps {
   hotspots: Hotspot[];
@@ -104,7 +105,60 @@ export function DraggableHotspotOverlay({
         const isDragging = index === draggingIndex;
         const isEditMode = index === editModeIndex;
         const isManualEntry = hotspot.metricKey === "manual_entry";
+        const isChart = hotspot.type === "chart";
 
+        // Chart hotspot rendering
+        if (isChart) {
+          return (
+            <div
+              key={hotspot.id}
+              className={`absolute flex items-center justify-center select-none transition-shadow cursor-move ${
+                isActive ? "ring-2 ring-blue-500 ring-offset-2" : ""
+              } ${isDragging ? "z-50 shadow-2xl" : "z-10"}`}
+              style={{
+                left: `${hotspot.x}%`,
+                top: `${hotspot.y}%`,
+                width: `${hotspot.width}%`,
+                height: `${hotspot.height}%`,
+                backgroundColor: "rgba(255,255,255,0.9)",
+                border: "2px dashed rgba(59, 130, 246, 0.5)",
+                borderRadius: "4px",
+              }}
+              onMouseDown={(e) => handleMouseDown(e, index)}
+            >
+              {/* Chart preview placeholder */}
+              <div className="flex flex-col items-center justify-center gap-1 text-blue-600">
+                <BarChart3 className="w-6 h-6" />
+                <span className="text-xs font-medium">Chart</span>
+                <div className="flex gap-1">
+                  {Object.entries(LEVEL_COLORS).map(([level, color]) => (
+                    <span
+                      key={level}
+                      className="w-2 h-4 rounded-sm"
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Index badge */}
+              <div
+                className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  isActive
+                    ? "bg-blue-500 text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {index + 1}
+              </div>
+
+              {/* Resize handle indicator */}
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity" />
+            </div>
+          );
+        }
+
+        // Live number hotspot rendering
         return (
           <div
             key={hotspot.id}
