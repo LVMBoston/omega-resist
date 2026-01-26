@@ -2,6 +2,7 @@ import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
 import { Pencil, Move, BarChart3 } from "lucide-react";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
+import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 
 interface DraggableHotspotOverlayProps {
   hotspots: Hotspot[];
@@ -10,6 +11,7 @@ interface DraggableHotspotOverlayProps {
   displayValues: Record<string, string>;
   onUpdateHotspot: (index: number, updates: Partial<Hotspot>) => void;
   onSelectHotspot: (index: number) => void;
+  campaignCode?: string;
 }
 
 export function DraggableHotspotOverlay({
@@ -19,6 +21,7 @@ export function DraggableHotspotOverlay({
   displayValues,
   onUpdateHotspot,
   onSelectHotspot,
+  campaignCode,
 }: DraggableHotspotOverlayProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editModeIndex, setEditModeIndex] = useState<number | null>(null);
@@ -109,6 +112,13 @@ export function DraggableHotspotOverlay({
 
         // Chart hotspot rendering
         if (isChart) {
+          const chartConfig = hotspot.chartConfig || {
+            chartType: 'stacked_bar',
+            dataSource: 'cumulative_opens_by_level',
+            showXAxis: true,
+            showYAxis: false,
+          };
+          
           return (
             <div
               key={hotspot.id}
@@ -120,26 +130,38 @@ export function DraggableHotspotOverlay({
                 top: `${hotspot.y}%`,
                 width: `${hotspot.width}%`,
                 height: `${hotspot.height}%`,
-                backgroundColor: "rgba(255,255,255,0.9)",
+                backgroundColor: "rgba(255,255,255,0.95)",
                 border: "2px dashed rgba(59, 130, 246, 0.5)",
                 borderRadius: "4px",
               }}
               onMouseDown={(e) => handleMouseDown(e, index)}
             >
-              {/* Chart preview placeholder */}
-              <div className="flex flex-col items-center justify-center gap-1 text-blue-600">
-                <BarChart3 className="w-6 h-6" />
-                <span className="text-xs font-medium">Chart</span>
-                <div className="flex gap-1">
-                  {Object.entries(LEVEL_COLORS).map(([level, color]) => (
-                    <span
-                      key={level}
-                      className="w-2 h-4 rounded-sm"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+              {/* Render actual chart if campaignCode is provided, otherwise show placeholder */}
+              {campaignCode ? (
+                <div className="w-full h-full p-1 pointer-events-none">
+                  <ChartHotspotRenderer
+                    campaignCode={campaignCode}
+                    config={chartConfig}
+                    width={100}
+                    height={100}
+                  />
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-1 text-blue-600">
+                  <BarChart3 className="w-6 h-6" />
+                  <span className="text-xs font-medium">Chart</span>
+                  <span className="text-[10px] text-muted-foreground">Enter Campaign ID</span>
+                  <div className="flex gap-1">
+                    {Object.entries(LEVEL_COLORS).map(([level, color]) => (
+                      <span
+                        key={level}
+                        className="w-2 h-4 rounded-sm"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Index badge */}
               <div
