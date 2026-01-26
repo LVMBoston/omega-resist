@@ -36,11 +36,10 @@ const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
   { value: "l03_count", label: "L03 Count" },
   { value: "viral_coefficient", label: "Viral Coefficient" },
   { value: "campaign_name", label: "Campaign Name" },
-  { value: "start_date", label: "Start Date" },
   { value: "current_date", label: "Current Date" },
-  { value: "start_time", label: "Start Time" },
   { value: "current_time", label: "Current Time" },
-  { value: "first_open", label: "First Open" },
+  { value: "earliest_active", label: "Earliest Active" },
+  { value: "latest_active", label: "Latest Active" },
 ];
 
 interface HotspotCalibrationControlsProps {

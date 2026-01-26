@@ -10,13 +10,6 @@ export interface MetricResult {
   source: string;
 }
 
-interface EOA {
-  id: string;
-  title: string;
-  timezone: string | null;
-  start_date: string | null;
-}
-
 interface Campaign {
   id: string;
   title: string;
@@ -40,11 +33,26 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   l03_count: "L03 Count",
   viral_coefficient: "Viral Coefficient",
   campaign_name: "Campaign Name",
-  start_date: "Start Date",
   current_date: "Current Date",
-  start_time: "Start Time",
   current_time: "Current Time",
-  first_open: "First Open",
+  earliest_active: "Earliest Active",
+  latest_active: "Latest Active",
+};
+
+// Get viewer's browser timezone
+const getViewerTimezone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "America/New_York";
+  }
+};
+
+// Format timestamp in viewer's local timezone with indicator
+const formatLocalTimestamp = (date: Date, includeDate = true): string => {
+  const tz = getViewerTimezone();
+  const format = includeDate ? "MMM d, yyyy h:mm a zzz" : "h:mm a zzz";
+  return formatInTimeZone(date, tz, format);
 };
 
 export interface UseLiveMetricsResult {
@@ -97,35 +105,8 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         throw new Error(`Campaign not found: ${campaignIdOrCode}`);
       }
 
-      // Fetch EOA for timezone and start date
-      // If mobilizeId is provided, look up by mobilize_id; otherwise use first EOA
-      let eoa: EOA | null = null;
-      
-      if (mobilizeId?.trim()) {
-        const { data: eoaData, error: eoaErr } = await supabase
-          .from("events_actions")
-          .select("id, title, timezone, start_date")
-          .eq("campaign_id", campaign.id)
-          .eq("mobilize_id", mobilizeId.trim())
-          .maybeSingle();
-        
-        if (eoaErr) throw eoaErr;
-        eoa = eoaData;
-      } else {
-        // Fall back to first EOA for this campaign
-        const { data: eoaData, error: eoaErr } = await supabase
-          .from("events_actions")
-          .select("id, title, timezone, start_date")
-          .eq("campaign_id", campaign.id)
-          .order("start_date", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        
-        if (eoaErr) throw eoaErr;
-        eoa = eoaData;
-      }
-
-      const timezone = eoa?.timezone || "America/New_York";
+      // Use viewer's browser timezone for all time formatting
+      const viewerTimezone = getViewerTimezone();
 
       // Query tokens for this campaign
       const { data: tokens, error: tokensError } = await supabase
@@ -214,37 +195,28 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       // Campaign name
       metricResults.push({ key: "campaign_name", label: METRIC_LABELS.campaign_name, value: campaign.title, source: "campaigns" });
 
-      // Date/time metrics
+      // Date/time metrics - use viewer's local timezone with indicator
       const now = new Date();
-      metricResults.push({ key: "current_date", label: METRIC_LABELS.current_date, value: formatInTimeZone(now, timezone, "MMM d, yyyy"), source: "current" });
-      metricResults.push({ key: "current_time", label: METRIC_LABELS.current_time, value: formatInTimeZone(now, timezone, "h:mm a"), source: "current" });
+      const viewerTz = getViewerTimezone();
+      metricResults.push({ key: "current_date", label: METRIC_LABELS.current_date, value: formatInTimeZone(now, viewerTz, "MMM d, yyyy zzz"), source: "current" });
+      metricResults.push({ key: "current_time", label: METRIC_LABELS.current_time, value: formatInTimeZone(now, viewerTz, "h:mm a zzz"), source: "current" });
 
-      // Start date/time from EOA
-      if (eoa?.start_date) {
-        const match = eoa.start_date.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-        if (match) {
-          const [, year, month, day, hour, minute] = match;
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const monthIdx = parseInt(month, 10) - 1;
-          const hourNum = parseInt(hour, 10);
-          const ampm = hourNum >= 12 ? "PM" : "AM";
-          const hour12 = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
-          
-          metricResults.push({ key: "start_date", label: METRIC_LABELS.start_date, value: `${monthNames[monthIdx]} ${parseInt(day, 10)}, ${year}`, source: "events_actions" });
-          metricResults.push({ key: "start_time", label: METRIC_LABELS.start_time, value: `${hour12}:${minute} ${ampm}`, source: "events_actions" });
-        }
+      // Earliest active - first event timestamp in viewer's local timezone
+      if (firstOpenTimestamp) {
+        const earliestDate = new Date(firstOpenTimestamp);
+        metricResults.push({ key: "earliest_active", label: METRIC_LABELS.earliest_active, value: formatLocalTimestamp(earliestDate), source: "url_events" });
       } else {
-        metricResults.push({ key: "start_date", label: METRIC_LABELS.start_date, value: "(no EOA)", source: "events_actions" });
-        metricResults.push({ key: "start_time", label: METRIC_LABELS.start_time, value: "(no EOA)", source: "events_actions" });
+        metricResults.push({ key: "earliest_active", label: METRIC_LABELS.earliest_active, value: "(no activity)", source: "url_events" });
       }
 
-      // First open - earliest view event timestamp
-      if (firstOpenTimestamp) {
-        const firstOpenDate = new Date(firstOpenTimestamp);
-        const formattedFirstOpen = formatInTimeZone(firstOpenDate, timezone, "MMM d, yyyy h:mm a");
-        metricResults.push({ key: "first_open", label: METRIC_LABELS.first_open, value: formattedFirstOpen, source: "url_events" });
+      // Latest active - most recent event timestamp in viewer's local timezone
+      const viewEventsWithTime = events.filter(e => e.event_type === "view" && e.occurred_at);
+      if (viewEventsWithTime.length > 0) {
+        viewEventsWithTime.sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
+        const latestDate = new Date(viewEventsWithTime[0].occurred_at);
+        metricResults.push({ key: "latest_active", label: METRIC_LABELS.latest_active, value: formatLocalTimestamp(latestDate), source: "url_events" });
       } else {
-        metricResults.push({ key: "first_open", label: METRIC_LABELS.first_open, value: "(no activity)", source: "url_events" });
+        metricResults.push({ key: "latest_active", label: METRIC_LABELS.latest_active, value: "(no activity)", source: "url_events" });
       }
 
       setMetrics(metricResults);

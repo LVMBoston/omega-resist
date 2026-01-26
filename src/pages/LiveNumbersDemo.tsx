@@ -50,9 +50,9 @@ export default function LiveNumbersDemo() {
     { ...createDefaultHotspot(5), metricKey: "opens_mail", label: "Opens Mail" },
     { ...createDefaultHotspot(6), metricKey: "neighborhoods", label: "Neighborhoods" },
     { ...createDefaultHotspot(7), metricKey: "campaign_name", label: "Campaign Name" },
-    { ...createDefaultHotspot(8), metricKey: "start_date", label: "Start Date" },
+    { ...createDefaultHotspot(8), metricKey: "earliest_active", label: "Earliest Active" },
     { ...createDefaultHotspot(9), metricKey: "current_date", label: "Current Date" },
-    { ...createDefaultHotspot(10), metricKey: "start_time", label: "Start Time" },
+    { ...createDefaultHotspot(10), metricKey: "latest_active", label: "Latest Active" },
     { ...createDefaultHotspot(11), metricKey: "current_time", label: "Current Time" },
   ];
 
