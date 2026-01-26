@@ -93,7 +93,7 @@ export function DraggableHotspotOverlay({
 
   return (
     <div
-      className="absolute inset-0"
+      className="absolute inset-0 overflow-visible"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
@@ -108,7 +108,7 @@ export function DraggableHotspotOverlay({
         return (
           <div
             key={hotspot.id}
-            className={`absolute flex items-center justify-center select-none transition-shadow ${
+            className={`absolute flex items-center justify-center select-none transition-shadow overflow-visible ${
               isEditMode ? "cursor-text" : "cursor-move"
             } ${isActive ? "ring-2 ring-primary ring-offset-2" : ""} ${
               isDragging ? "z-50 shadow-2xl" : "z-10"
@@ -165,16 +165,17 @@ export function DraggableHotspotOverlay({
               {index + 1}
             </div>
 
-            {/* Edit/Drag mode toggle - only show for manual_entry hotspots */}
+            {/* Edit/Drag mode toggle - ALWAYS show for manual_entry hotspots */}
             {isManualEntry && (
               <button
                 type="button"
                 onClick={(e) => toggleEditMode(e, index)}
                 onMouseDown={(e) => e.stopPropagation()}
-                className={`absolute -top-3 -right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors z-50 shadow-md border border-border ${
                   isEditMode
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
+                    : "bg-background text-foreground hover:bg-muted"
                 }`}
                 title={isEditMode ? "Switch to drag mode" : "Switch to edit mode"}
               >
