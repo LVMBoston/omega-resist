@@ -71,11 +71,10 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   l03_count: "L03 Count",
   viral_coefficient: "Viral Coefficient",
   campaign_name: "Campaign Name",
-  start_date: "Start Date",
   current_date: "Current Date",
-  start_time: "Start Time",
   current_time: "Current Time",
-  first_open: "First Open",
+  earliest_active: "Earliest Active",
+  latest_active: "Latest Active",
 };
 
 // Visual Preview Component
@@ -564,44 +563,43 @@ export default function DataTemplateTestHarness() {
         source: `Current time in ${timezone}`,
       });
 
-      // Start date/time from EOA
-      if (eoa?.start_date) {
-        // Parse floating local time (wall clock)
-        const match = eoa.start_date.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-        if (match) {
-          const [, year, month, day, hour, minute] = match;
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const monthIdx = parseInt(month, 10) - 1;
-          const hourNum = parseInt(hour, 10);
-          const ampm = hourNum >= 12 ? "PM" : "AM";
-          const hour12 = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
-          
-          metricResults.push({
-            key: "start_date",
-            label: METRIC_LABELS.start_date,
-            value: `${monthNames[monthIdx]} ${parseInt(day, 10)}, ${year}`,
-            source: `events_actions.start_date (floating local time)`,
-          });
-          
-          metricResults.push({
-            key: "start_time",
-            label: METRIC_LABELS.start_time,
-            value: `${hour12}:${minute} ${ampm}`,
-            source: `events_actions.start_date (floating local time)`,
-          });
-        }
+      // Earliest active - first event in viewer's local timezone
+      const viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
+      const viewEventsWithTime = viewEvents.filter(e => e.occurred_at);
+      
+      if (viewEventsWithTime.length > 0) {
+        // Sort by occurred_at ascending for earliest
+        const sortedAsc = [...viewEventsWithTime].sort((a, b) => 
+          new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+        );
+        const earliestDate = new Date(sortedAsc[0].occurred_at);
+        metricResults.push({
+          key: "earliest_active",
+          label: METRIC_LABELS.earliest_active,
+          value: formatInTimeZone(earliestDate, viewerTz, "MMM d, yyyy h:mm a zzz"),
+          source: `url_events.occurred_at (viewer TZ: ${viewerTz})`,
+        });
+        
+        // Latest is last in ascending order
+        const latestDate = new Date(sortedAsc[sortedAsc.length - 1].occurred_at);
+        metricResults.push({
+          key: "latest_active",
+          label: METRIC_LABELS.latest_active,
+          value: formatInTimeZone(latestDate, viewerTz, "MMM d, yyyy h:mm a zzz"),
+          source: `url_events.occurred_at (viewer TZ: ${viewerTz})`,
+        });
       } else {
         metricResults.push({
-          key: "start_date",
-          label: METRIC_LABELS.start_date,
-          value: "(no EOA selected)",
-          source: "events_actions.start_date",
+          key: "earliest_active",
+          label: METRIC_LABELS.earliest_active,
+          value: "(no activity)",
+          source: "url_events.occurred_at",
         });
         metricResults.push({
-          key: "start_time",
-          label: METRIC_LABELS.start_time,
-          value: "(no EOA selected)",
-          source: "events_actions.start_date",
+          key: "latest_active",
+          label: METRIC_LABELS.latest_active,
+          value: "(no activity)",
+          source: "url_events.occurred_at",
         });
       }
 

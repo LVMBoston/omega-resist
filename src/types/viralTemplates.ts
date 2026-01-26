@@ -100,27 +100,26 @@ export interface LiveNumberStyle {
 
 // Available metrics for live_number hotspots
 export type LiveMetricKey = 
-  | 'manual_entry'    // User-defined manual text
-  | 'seeds'           // Count of L00 tokens
-  | 'shares'          // Count of child tokens minted
-  | 'opens'           // Total view events
-  | 'opens_us'        // US-based views
-  | 'opens_intl'      // International views
-  | 'opens_qr'        // Opens via QR scan
-  | 'opens_text'      // Opens via text/SMS
-  | 'opens_mail'      // Opens via email
-  | 'neighborhoods'   // Distinct zip codes
-  | 'depth'           // Max level reached
-  | 'l01_count'       // Count at level 1
-  | 'l02_count'       // Count at level 2
-  | 'l03_count'       // Count at level 3
+  | 'manual_entry'      // User-defined manual text
+  | 'seeds'             // Count of L00 tokens
+  | 'shares'            // Count of child tokens minted
+  | 'opens'             // Total view events
+  | 'opens_us'          // US-based views
+  | 'opens_intl'        // International views
+  | 'opens_qr'          // Opens via QR scan
+  | 'opens_text'        // Opens via text/SMS
+  | 'opens_mail'        // Opens via email
+  | 'neighborhoods'     // Distinct zip codes
+  | 'depth'             // Max level reached
+  | 'l01_count'         // Count at level 1
+  | 'l02_count'         // Count at level 2
+  | 'l03_count'         // Count at level 3
   | 'viral_coefficient' // K-factor
-  | 'campaign_name'   // Campaign title text
-  | 'start_date'      // Campaign start date
-  | 'current_date'    // Current date
-  | 'start_time'      // Campaign start time
-  | 'current_time'    // Current time
-  | 'first_open';     // Timestamp of earliest view event
+  | 'campaign_name'     // Campaign title text
+  | 'current_date'      // Current date (viewer's local TZ)
+  | 'current_time'      // Current time (viewer's local TZ)
+  | 'earliest_active'   // Earliest activity timestamp (viewer's local TZ)
+  | 'latest_active';    // Latest activity timestamp (viewer's local TZ)
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 
