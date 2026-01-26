@@ -154,25 +154,43 @@ export default function DataTemplateTestHarness() {
     
     try {
       // Determine which campaign and EOA to use
-      const campaignId = manualCampaignId || selectedCampaignId;
+      const campaignIdOrCode = manualCampaignId || selectedCampaignId;
       const eoaId = selectedEoaId;
       const mobilizeId = manualMobilizeId || selectedEoa?.mobilize_id;
       
-      if (!campaignId) {
-        throw new Error("Please select or enter a Campaign ID");
+      if (!campaignIdOrCode) {
+        throw new Error("Please select or enter a Campaign ID or code");
       }
 
-      console.log("🧪 TEST: Using parameters:", { campaignId, eoaId, mobilizeId });
+      console.log("🧪 TEST: Using parameters:", { campaignIdOrCode, eoaId, mobilizeId });
 
-      // Fetch campaign details
-      const { data: campaign, error: campaignError } = await supabase
-        .from("campaigns")
-        .select("*")
-        .eq("id", campaignId)
-        .maybeSingle();
+      // Fetch campaign details - try by ID first, then by code
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campaignIdOrCode);
       
-      if (campaignError) throw campaignError;
-      if (!campaign) throw new Error(`Campaign not found: ${campaignId}`);
+      let campaign: any = null;
+      let campaignError: any = null;
+      
+      if (isUuid) {
+        const result = await supabase
+          .from("campaigns")
+          .select("*")
+          .eq("id", campaignIdOrCode)
+          .maybeSingle();
+        campaign = result.data;
+        campaignError = result.error;
+      } else {
+        // Try by code
+        const result = await supabase
+          .from("campaigns")
+          .select("*")
+          .eq("code", campaignIdOrCode)
+          .maybeSingle();
+        campaign = result.data;
+        campaignError = result.error;
+      }
+      
+      if (campaignError) throw new Error(campaignError.message || JSON.stringify(campaignError));
+      if (!campaign) throw new Error(`Campaign not found: ${campaignIdOrCode} (searched by ${isUuid ? 'UUID' : 'code'})`);
       
       console.log("🧪 TEST: Campaign loaded:", campaign);
 
