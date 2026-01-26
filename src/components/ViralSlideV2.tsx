@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { InteractiveShareSlide } from "./InteractiveShareSlide";
 import { DisplayOnlySlide } from "./DisplayOnlySlide";
+import { StatsPageSlide } from "./StatsPageSlide";
 import { Loader2 } from "lucide-react";
 import { TemplateType, DisplayOnlyConfig } from "@/types/viralTemplates";
 
@@ -227,6 +228,17 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   // Branch rendering based on template_type
   if (templateType === 'display_only') {
     return <DisplayOnlySlide imageUrl={config.image_url} config={config.config as DisplayOnlyConfig || { type: 'display_only' }} />;
+  }
+
+  if (templateType === 'stats_page') {
+    return (
+      <StatsPageSlide 
+        imageUrl={config.image_url} 
+        hotspots={config.hotspots} 
+        deckSlug={deckSlug}
+        viralToken={viralToken}
+      />
+    );
   }
   
   if (templateType === 'interactive_share' || !templateType) {
