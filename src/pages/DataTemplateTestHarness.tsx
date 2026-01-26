@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,15 +6,28 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Database, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, Database, AlertCircle, Eye } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
-import { LiveMetricKey } from "@/types/viralTemplates";
+import { LiveMetricKey, LiveNumberStyle } from "@/types/viralTemplates";
+
+interface HotspotData {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: string;
+  metricKey?: LiveMetricKey;
+  liveNumberStyle?: LiveNumberStyle;
+  label?: string;
+}
 
 interface DataTemplate {
   id: string;
   name: string | null;
   slug: string;
-  hotspots: any[] | null;
+  image_url: string;
+  hotspots: HotspotData[] | null;
 }
 
 interface Campaign {
@@ -63,6 +76,150 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   current_time: "Current Time",
 };
 
+// Visual Preview Component
+interface TemplatePreviewProps {
+  template: DataTemplate;
+  metrics: MetricResult[];
+}
+
+const TemplatePreview = ({ template, metrics }: TemplatePreviewProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Create a lookup map for metrics
+  const metricsMap = metrics.reduce((acc, m) => {
+    acc[m.key] = m.value;
+    return acc;
+  }, {} as Record<string, string | number>);
+
+  // Calculate image dimensions when loaded
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (!imageRef.current || !containerRef.current) return;
+      
+      const img = imageRef.current;
+      const container = containerRef.current;
+      
+      // Get the rendered dimensions of the image
+      const renderedWidth = img.clientWidth;
+      const renderedHeight = img.clientHeight;
+      
+      // Calculate offset (for centering)
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      const offsetX = (containerWidth - renderedWidth) / 2;
+      const offsetY = (containerHeight - renderedHeight) / 2;
+      
+      setImageDimensions({
+        width: renderedWidth,
+        height: renderedHeight,
+        offsetX: Math.max(0, offsetX),
+        offsetY: Math.max(0, offsetY)
+      });
+    };
+
+    if (imageLoaded) {
+      updateDimensions();
+      window.addEventListener('resize', updateDimensions);
+      return () => window.removeEventListener('resize', updateDimensions);
+    }
+  }, [imageLoaded]);
+
+  const liveNumberHotspots = template.hotspots?.filter(h => h.type === 'live_number') || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Eye className="w-5 h-5" />
+          Template Visual Preview
+        </CardTitle>
+        <CardDescription>
+          Template: <strong>{template.name || template.slug}</strong> | 
+          {" "}{liveNumberHotspots.length} live number hotspots
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div 
+          ref={containerRef}
+          className="relative bg-black rounded-lg overflow-hidden"
+          style={{ minHeight: '400px' }}
+        >
+          <img
+            ref={imageRef}
+            src={template.image_url}
+            alt={template.name || "Data template"}
+            className="max-w-full max-h-[600px] object-contain mx-auto block"
+            onLoad={() => setImageLoaded(true)}
+          />
+          
+          {/* Render hotspots with resolved values */}
+          {imageLoaded && imageDimensions.width > 0 && liveNumberHotspots.map((hotspot) => {
+            const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
+            const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
+            const width = (hotspot.width / 100) * imageDimensions.width;
+            const height = (hotspot.height / 100) * imageDimensions.height;
+            
+            const style = hotspot.liveNumberStyle || {};
+            const value = hotspot.metricKey ? metricsMap[hotspot.metricKey] : '—';
+            
+            return (
+              <div
+                key={hotspot.id}
+                className="absolute flex items-center justify-center"
+                style={{
+                  left: `${left}px`,
+                  top: `${top}px`,
+                  width: `${width}px`,
+                  height: `${height}px`,
+                  fontSize: style.fontSize || '24px',
+                  fontWeight: style.fontWeight || '700',
+                  color: style.color || '#1a1a1a',
+                  backgroundColor: style.backgroundColor || 'transparent',
+                  textAlign: style.textAlign || 'center',
+                  fontFamily: style.fontFamily || 'system-ui, -apple-system, sans-serif',
+                  padding: style.padding || '0',
+                  borderRadius: style.borderRadius || '0',
+                  pointerEvents: 'none',
+                }}
+              >
+                {value !== undefined ? String(value) : '—'}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Hotspot Details */}
+        {liveNumberHotspots.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <h4 className="text-sm font-medium mb-2">Configured Hotspots</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+              {liveNumberHotspots.map((h) => (
+                <div key={h.id} className="bg-muted p-2 rounded">
+                  <span className="font-mono text-muted-foreground">{h.metricKey || 'no metric'}</span>
+                  <span className="mx-2">→</span>
+                  <span className="font-semibold">{h.metricKey ? metricsMap[h.metricKey] : '—'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {liveNumberHotspots.length === 0 && (
+          <Alert className="mt-4">
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription>
+              This template has no live_number hotspots configured. Add hotspots in the Data Template Editor.
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function DataTemplateTestHarness() {
   // Selection state
   const [templates, setTemplates] = useState<DataTemplate[]>([]);
@@ -92,14 +249,14 @@ export default function DataTemplateTestHarness() {
         // Load data templates (stats_page type)
         const { data: templatesData, error: templatesError } = await supabase
           .from("viral_slide_configs")
-          .select("id, name, slug, hotspots")
+          .select("id, name, slug, hotspots, image_url")
           .eq("template_type", "stats_page")
           .order("name");
         
         if (templatesError) throw templatesError;
         setTemplates((templatesData || []).map(t => ({
           ...t,
-          hotspots: Array.isArray(t.hotspots) ? t.hotspots : []
+          hotspots: Array.isArray(t.hotspots) ? t.hotspots as unknown as HotspotData[] : []
         })));
 
         // Load campaigns
@@ -639,6 +796,13 @@ export default function DataTemplateTestHarness() {
         </Card>
       )}
 
+      {/* Visual Template Preview */}
+      {results.length > 0 && selectedTemplate && (
+        <TemplatePreview 
+          template={selectedTemplate}
+          metrics={results}
+        />
+      )}
       {/* Debug Info */}
       {debugInfo && (
         <Card className="bg-muted/50">
