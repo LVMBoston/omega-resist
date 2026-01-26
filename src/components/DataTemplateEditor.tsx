@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
@@ -100,6 +102,19 @@ export function DataTemplateEditor({
   const [campaignId, setCampaignId] = useState("");
   const [mobilizeId, setMobilizeId] = useState("");
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
+
+  // Fetch campaigns for dropdown
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ["campaigns-dropdown"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, code, title")
+        .order("display_order", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   // Initialize with at least one hotspot if empty
   const [hotspots, setHotspots] = useState<Hotspot[]>(
@@ -353,15 +368,20 @@ export function DataTemplateEditor({
         <div className="space-y-1">
           <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-green-600" />
-            Campaign ID (code or UUID)
+            Campaign
           </Label>
-          <Input
-            id="campaign-id"
-            value={campaignId}
-            onChange={(e) => setCampaignId(e.target.value)}
-            placeholder="e.g., rs-good-1 or UUID"
-            className="h-9"
-          />
+          <Select value={campaignId} onValueChange={setCampaignId}>
+            <SelectTrigger className="h-9 bg-background">
+              <SelectValue placeholder="Select a campaign..." />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              {campaigns.map((campaign) => (
+                <SelectItem key={campaign.id} value={campaign.code}>
+                  {campaign.title} ({campaign.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1">
           <Label htmlFor="mobilize-id" className="text-sm flex items-center gap-1.5">
