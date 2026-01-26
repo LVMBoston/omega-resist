@@ -31,6 +31,7 @@ import InteractiveTemplates from "./pages/InteractiveTemplates";
 import LiveNumbersDemo from "./pages/LiveNumbersDemo";
 import DevTools from "./pages/DevTools";
 import GeoipTest from "./pages/GeoipTest";
+import DataTemplateTestHarness from "./pages/DataTemplateTestHarness";
 import MapDebugTest from "./pages/MapDebugTest";
 import NotFound from "./pages/NotFound";
 
@@ -169,6 +170,7 @@ const App = () => (
             />
             <Route path="/dev-tools" element={<LayoutWithSidebar><DevTools /></LayoutWithSidebar>} />
             <Route path="/geoip-test" element={<LayoutWithSidebar><GeoipTest /></LayoutWithSidebar>} />
+            <Route path="/data-template-test" element={<LayoutWithSidebar><DataTemplateTestHarness /></LayoutWithSidebar>} />
             <Route path="/live-numbers-demo" element={<LiveNumbersDemo />} />
             <Route 
               path="/map-debug"
