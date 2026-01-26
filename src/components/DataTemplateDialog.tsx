@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { DataTemplateEditor } from "@/components/DataTemplateEditor";
 import { Hotspot } from "@/types/viralTemplates";
 import { BarChart3 } from "lucide-react";
+import { useRef, useEffect } from "react";
 
 interface DataTemplateDialogProps {
   open: boolean;
@@ -31,6 +32,18 @@ export function DataTemplateDialog({
   mode,
   initialData,
 }: DataTemplateDialogProps) {
+  // Use a stable session key that only changes when the dialog opens with different data
+  // This prevents remounting when the ID is assigned on first save
+  const sessionKeyRef = useRef<string>("");
+  
+  useEffect(() => {
+    if (open) {
+      // Generate a new session key only when the dialog opens
+      // Use the existing ID if editing, or a random key for new templates
+      sessionKeyRef.current = initialData?.id || `new-${Date.now()}`;
+    }
+  }, [open, initialData?.id]);
+
   const handleSave = async (data: {
     hotspots: Hotspot[];
     imageUrl: string;
@@ -39,8 +52,7 @@ export function DataTemplateDialog({
     description?: string;
   }): Promise<string | void> => {
     const result = await onSave(data);
-    // Don't close the dialog on auto-save, only on final save
-    // The editor will call this multiple times for auto-save
+    // Don't close the dialog - let the user continue editing
     return result;
   };
 
@@ -64,18 +76,20 @@ export function DataTemplateDialog({
         </SheetHeader>
         
         <div className="flex-1 min-h-0 overflow-hidden">
-          <DataTemplateEditor
-            key={initialData?.id || "new"}
-            initialHotspots={initialData?.hotspots}
-            initialImageUrl={initialData?.imageUrl}
-            templateName={initialData?.name}
-            templateSlug={initialData?.slug}
-            templateDescription={initialData?.description}
-            templateId={initialData?.id}
-            onSave={handleSave}
-            onCancel={() => onOpenChange(false)}
-            mode={mode}
-          />
+          {open && (
+            <DataTemplateEditor
+              key={sessionKeyRef.current}
+              initialHotspots={initialData?.hotspots}
+              initialImageUrl={initialData?.imageUrl}
+              templateName={initialData?.name}
+              templateSlug={initialData?.slug}
+              templateDescription={initialData?.description}
+              templateId={initialData?.id}
+              onSave={handleSave}
+              onCancel={() => onOpenChange(false)}
+              mode={mode}
+            />
+          )}
         </div>
       </SheetContent>
     </Sheet>
