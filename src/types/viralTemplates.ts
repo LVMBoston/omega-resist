@@ -117,7 +117,8 @@ export type LiveMetricKey =
   | 'start_date'      // Campaign start date
   | 'current_date'    // Current date
   | 'start_time'      // Campaign start time
-  | 'current_time';   // Current time
+  | 'current_time'    // Current time
+  | 'first_open';     // Timestamp of earliest view event
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 
