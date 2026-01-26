@@ -159,7 +159,7 @@ export function DataTemplateEditor({
   }, []);
 
   // Add a new hotspot, inheriting style from the active hotspot
-  const addHotspot = useCallback(async () => {
+  const addHotspot = useCallback(() => {
     const newIndex = hotspots.length;
     const baseHotspot = createDefaultHotspot(newIndex);
 
@@ -176,10 +176,7 @@ export function DataTemplateEditor({
     setHotspots(newHotspots);
     setDisplayValues((prev) => ({ ...prev, [baseHotspot.id]: "0" }));
     setActiveIndex(newIndex);
-    
-    // Auto-save after adding hotspot
-    await performAutoSave(newHotspots);
-  }, [hotspots, activeHotspot, performAutoSave]);
+  }, [hotspots, activeHotspot]);
 
   // Remove the active hotspot
   const removeHotspot = useCallback(() => {
