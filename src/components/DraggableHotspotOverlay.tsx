@@ -204,7 +204,7 @@ export function DraggableHotspotOverlay({
               />
             ) : (
               <span className="pointer-events-none">
-                {displayValues[hotspot.id] || "0"}
+                {isManualEntry ? (hotspot.manualLabel || "—") : (displayValues[hotspot.id] || "0")}
               </span>
             )}
             
