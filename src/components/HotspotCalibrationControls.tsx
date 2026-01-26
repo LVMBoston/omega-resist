@@ -20,6 +20,7 @@ const FONT_OPTIONS = [
 
 // All available metric keys for the dropdown
 const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
+  { value: "manual_entry", label: "✏️ Manual Entry" },
   { value: "seeds", label: "Seeds (L00 count)" },
   { value: "shares", label: "Shares (L01+ count)" },
   { value: "opens", label: "Opens (total views)" },
@@ -39,6 +40,7 @@ const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
   { value: "current_date", label: "Current Date" },
   { value: "start_time", label: "Start Time" },
   { value: "current_time", label: "Current Time" },
+  { value: "first_open", label: "First Open" },
 ];
 
 interface HotspotCalibrationControlsProps {
@@ -133,8 +135,10 @@ export function HotspotCalibrationControls({
   const textColor = style.color || "#1a1a1a";
   const bgColor = style.backgroundColor || "#e8dcc8";
 
+  const isManualEntry = hotspot.metricKey === "manual_entry";
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-11 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-4">
       {/* Metric Key */}
       <div className="space-y-2">
         <Label className="text-xs">Metric</Label>
@@ -154,6 +158,19 @@ export function HotspotCalibrationControls({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Manual Label - only shown when Manual Entry is selected */}
+      {isManualEntry && (
+        <div className="space-y-2">
+          <Label className="text-xs">Label</Label>
+          <Input
+            value={hotspot.manualLabel || ""}
+            onChange={(e) => onUpdate({ manualLabel: e.target.value })}
+            placeholder="Enter text..."
+            className="h-8 text-xs"
+          />
+        </div>
+      )}
 
       {/* Font Size - moved next to Metric */}
       <SliderWithButtons

@@ -82,6 +82,7 @@ export interface Hotspot {
   url?: string;     // For external_link type
   // Live number hotspot properties
   metricKey?: LiveMetricKey;
+  manualLabel?: string;  // For manual_entry metric type
   liveNumberStyle?: LiveNumberStyle;
 }
 
@@ -99,6 +100,7 @@ export interface LiveNumberStyle {
 
 // Available metrics for live_number hotspots
 export type LiveMetricKey = 
+  | 'manual_entry'    // User-defined manual text
   | 'seeds'           // Count of L00 tokens
   | 'shares'          // Count of child tokens minted
   | 'opens'           // Total view events
