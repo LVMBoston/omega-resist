@@ -1,14 +1,15 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Hotspot, ChartConfig } from "@/types/viralTemplates";
+import { Hotspot, ChartConfig, MapConfig } from "@/types/viralTemplates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3 } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
+import { MapCalibrationControls } from "@/components/MapCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { toast } from "sonner";
@@ -52,6 +53,22 @@ const createChartHotspot = (index: number): Hotspot => ({
     dataSource: "cumulative_opens_by_level",
     showXAxis: true,
     showYAxis: false,
+  },
+});
+
+// Default map hotspot
+const createMapHotspot = (index: number): Hotspot => ({
+  id: `map-${Date.now()}-${index}`,
+  iconId: "map",
+  type: "map",
+  label: `Map ${index + 1}`,
+  x: 10,
+  y: 10,
+  width: 40,
+  height: 40,
+  mapConfig: {
+    mapStyle: "channel_colors",
+    showClustering: true,
   },
 });
 
@@ -121,6 +138,7 @@ export function DataTemplateEditor({
     initialHotspots.length > 0 ? initialHotspots : [createDefaultHotspot(0)]
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
   const [displayValues, setDisplayValues] = useState<Record<string, string>>(() => {
     const values: Record<string, string> = {};
     const defaultValues = ["142", "87", "1,234", "456", "321", "198", "73", "OMEGA PA", "Jan 15", "Jan 25", "9:00 AM", "2:45 PM"];
@@ -219,6 +237,16 @@ export function DataTemplateEditor({
     const chartHotspot = createChartHotspot(newIndex);
 
     const newHotspots = [...hotspots, chartHotspot];
+    setHotspots(newHotspots);
+    setActiveIndex(newIndex);
+  }, [hotspots]);
+
+  // Add a new map hotspot
+  const addMapHotspot = useCallback(() => {
+    const newIndex = hotspots.length;
+    const mapHotspot = createMapHotspot(newIndex);
+
+    const newHotspots = [...hotspots, mapHotspot];
     setHotspots(newHotspots);
     setActiveIndex(newIndex);
   }, [hotspots]);
@@ -422,6 +450,7 @@ export function DataTemplateEditor({
                   onUpdateHotspot={updateHotspot}
                   onSelectHotspot={setActiveIndex}
                   campaignCode={campaignId}
+                  onMapBoundsChange={setCurrentMapBounds}
                 />
               )}
 
@@ -524,6 +553,15 @@ export function DataTemplateEditor({
             <Button
               variant="outline"
               size="sm"
+              onClick={addMapHotspot}
+              className="gap-1 border-purple-500 text-purple-600 hover:bg-purple-50"
+            >
+              <MapIcon className="w-4 h-4" />
+              Map
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={removeHotspot}
               disabled={hotspots.length <= 1}
               className="gap-1 text-destructive hover:text-destructive"
@@ -547,6 +585,14 @@ export function DataTemplateEditor({
           <ChartCalibrationControls
             hotspot={activeHotspot}
             onUpdate={(updates) => updateHotspot(activeIndex, updates)}
+          />
+        )}
+
+        {activeHotspot && imageUrl && activeHotspot.type === "map" && (
+          <MapCalibrationControls
+            hotspot={activeHotspot}
+            onUpdate={(updates) => updateHotspot(activeIndex, updates)}
+            currentBounds={currentMapBounds}
           />
         )}
 

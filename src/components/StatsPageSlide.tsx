@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Hotspot } from "@/types/viralTemplates";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
+import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { Loader2 } from "lucide-react";
 
 interface StatsPageSlideProps {
@@ -123,6 +124,7 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
 
   const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
   const chartHotspots = hotspots.filter(h => h.type === 'chart');
+  const mapHotspots = hotspots.filter(h => h.type === 'map');
 
   // Extract campaign code for chart hotspots
   const [campaignCode, setCampaignCode] = useState<string>("");
@@ -276,6 +278,40 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
               config={chartConfig}
               width={width}
               height={height}
+            />
+          </div>
+        );
+      })}
+
+      {/* Render map hotspots */}
+      {imageLoaded && imageDimensions.width > 0 && campaignCode && mapHotspots.map((hotspot) => {
+        const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
+        const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
+        const width = (hotspot.width / 100) * imageDimensions.width;
+        const height = (hotspot.height / 100) * imageDimensions.height;
+        
+        const mapConfig = hotspot.mapConfig || {
+          mapStyle: 'channel_colors' as const,
+          showClustering: true,
+        };
+        
+        return (
+          <div
+            key={hotspot.id}
+            className="absolute overflow-hidden rounded-lg"
+            style={{
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${width}px`,
+              height: `${height}px`,
+            }}
+          >
+            <MapHotspotRenderer
+              campaignCode={campaignCode}
+              config={mapConfig}
+              width={width}
+              height={height}
+              isEditorMode={false}
             />
           </div>
         );

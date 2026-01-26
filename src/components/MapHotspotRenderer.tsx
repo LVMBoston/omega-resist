@@ -1,0 +1,470 @@
+import { useEffect, useRef, useState, useCallback } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
+import { supabase } from "@/integrations/supabase/client";
+import { MapConfig } from "@/types/viralTemplates";
+import { Lock, Hand, Loader2, MapIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Fix Leaflet default icon paths
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+L.Marker.prototype.options.icon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+interface MapHotspotRendererProps {
+  campaignCode: string;
+  config: MapConfig;
+  width: number;  // pixels
+  height: number; // pixels
+  isEditorMode?: boolean;
+  onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+}
+
+interface EventPoint {
+  eventId: string;
+  latitude: number;
+  longitude: number;
+  utmMedium: string;
+  level: number;
+  spawnCount?: number;
+}
+
+// Colors by share medium (utm_medium)
+const MEDIUM_COLORS: Record<string, string> = {
+  qr: "#000099",   // QR code - navy blue
+  em: "#0066ff",   // email - medium blue
+  sms: "#99ccff",  // text/SMS - light blue
+  tx: "#99ccff",   // text alternate code - light blue
+};
+
+// Generate SVG for marker
+const getMarkerSVG = (fillColor: string, size: number = 12, hasSpawns: boolean = false): string => {
+  const strokeWidth = 2;
+  const halfStroke = strokeWidth / 2;
+  const strokeColor = hasSpawns ? "#22c55e" : "white";
+  const r = (size / 2) - halfStroke;
+  
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" 
+      fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
+  </svg>`;
+};
+
+const DEFAULT_COLOR = "#64748b"; // slate-500
+
+export function MapHotspotRenderer({
+  campaignCode,
+  config,
+  width,
+  height,
+  isEditorMode = false,
+  onBoundsChange,
+}: MapHotspotRendererProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  
+  const [loading, setLoading] = useState(true);
+  const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
+  const [isInteractive, setIsInteractive] = useState(false);
+  
+  // Long-press detection
+  const touchStartRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch event data for the campaign
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (!campaignCode) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Get campaign ID from code
+        const { data: campaign } = await supabase
+          .from("campaigns")
+          .select("id")
+          .eq("code", campaignCode)
+          .maybeSingle();
+
+        if (!campaign) {
+          console.warn("MapHotspotRenderer: Campaign not found:", campaignCode);
+          setLoading(false);
+          return;
+        }
+
+        // Get EoAs for this campaign
+        const { data: eoas } = await supabase
+          .from("events_actions")
+          .select("id")
+          .eq("campaign_id", campaign.id);
+
+        if (!eoas || eoas.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const eoaIds = eoas.map((e) => e.id);
+
+        // Get tokens for these EoAs
+        const { data: tokens } = await supabase
+          .from("tokens")
+          .select("token, level, utm_medium")
+          .in("eoa_id", eoaIds)
+          .eq("is_simulated", false);
+
+        if (!tokens || tokens.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const tokenIds = tokens.map((t) => t.token);
+        const tokenLookup = new Map(tokens.map((t) => [t.token, t]));
+
+        // Get view events with coordinates
+        const { data: events } = await supabase
+          .from("url_events")
+          .select("id, token, latitude, longitude, event_type")
+          .in("token", tokenIds)
+          .eq("event_type", "view")
+          .eq("is_simulated", false)
+          .not("latitude", "is", null)
+          .not("longitude", "is", null);
+
+        if (!events) {
+          setLoading(false);
+          return;
+        }
+
+        // Count spawns per L00 token
+        const spawnCounts = new Map<string, number>();
+        tokens.forEach((t) => {
+          if (t.level === 0) {
+            spawnCounts.set(t.token, 0);
+          }
+        });
+        tokens.forEach((t) => {
+          if (t.level > 0) {
+            // This is a simplification - ideally we'd trace to root_token
+            // For now, we'll mark L00s that have any children
+          }
+        });
+
+        // Get spawn counts for L00 tokens
+        const l00Tokens = tokens.filter((t) => t.level === 0).map((t) => t.token);
+        if (l00Tokens.length > 0) {
+          const { data: childTokens } = await supabase
+            .from("tokens")
+            .select("root_token")
+            .in("root_token", l00Tokens)
+            .gt("level", 0)
+            .eq("is_simulated", false);
+
+          if (childTokens) {
+            childTokens.forEach((ct) => {
+              if (ct.root_token) {
+                spawnCounts.set(ct.root_token, (spawnCounts.get(ct.root_token) || 0) + 1);
+              }
+            });
+          }
+        }
+
+        const points: EventPoint[] = events.map((e) => {
+          const tokenData = tokenLookup.get(e.token);
+          return {
+            eventId: e.id,
+            latitude: e.latitude!,
+            longitude: e.longitude!,
+            utmMedium: tokenData?.utm_medium || "qr",
+            level: tokenData?.level || 0,
+            spawnCount: spawnCounts.get(e.token) || 0,
+          };
+        });
+
+        setEventPoints(points);
+      } catch (error) {
+        console.error("MapHotspotRenderer: Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [campaignCode]);
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [39.8283, -98.5795], // US center
+      zoom: 4,
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      touchZoom: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+    });
+
+    // CartoDB Positron tiles
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Apply saved bounds if configured
+    if (config.savedBounds) {
+      const { north, south, east, west } = config.savedBounds;
+      map.fitBounds([
+        [south, west],
+        [north, east],
+      ]);
+    }
+
+    mapRef.current = map;
+
+    // Create cluster group or regular layer
+    if (config.showClustering) {
+      const clusterGroup = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount();
+          return L.divIcon({
+            html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-600 text-white text-xs font-bold border-2 border-white shadow-lg">${count}</div>`,
+            className: "custom-cluster-icon",
+            iconSize: L.point(32, 32),
+          });
+        },
+      });
+      clusterGroupRef.current = clusterGroup;
+      map.addLayer(clusterGroup);
+    } else {
+      const layer = L.layerGroup();
+      markersLayerRef.current = layer;
+      map.addLayer(layer);
+    }
+
+    // Report bounds changes in editor mode
+    if (isEditorMode && onBoundsChange) {
+      map.on("moveend", () => {
+        const bounds = map.getBounds();
+        onBoundsChange({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      });
+    }
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      clusterGroupRef.current = null;
+      markersLayerRef.current = null;
+    };
+  }, [config.showClustering, config.savedBounds, isEditorMode, onBoundsChange]);
+
+  // Update map interactivity when mode changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const map = mapRef.current;
+    if (isInteractive) {
+      map.dragging.enable();
+      map.touchZoom.enable();
+    } else {
+      map.dragging.disable();
+      map.touchZoom.disable();
+    }
+  }, [isInteractive]);
+
+  // Render markers
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const targetLayer = config.showClustering ? clusterGroupRef.current : markersLayerRef.current;
+    if (!targetLayer) return;
+
+    targetLayer.clearLayers();
+
+    eventPoints.forEach((point) => {
+      const color = MEDIUM_COLORS[point.utmMedium?.toLowerCase()] || DEFAULT_COLOR;
+      const hasSpawns = (point.spawnCount || 0) > 0;
+      const svgIcon = getMarkerSVG(color, 12, hasSpawns);
+
+      const icon = L.divIcon({
+        html: svgIcon,
+        className: "map-hotspot-marker",
+        iconSize: L.point(12, 12),
+        iconAnchor: L.point(6, 6),
+      });
+
+      const marker = L.marker([point.latitude, point.longitude], { icon });
+      targetLayer.addLayer(marker);
+    });
+  }, [eventPoints, config.showClustering]);
+
+  // Handle tap to zoom in
+  const handleTap = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (!isInteractive || !mapRef.current) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const map = mapRef.current;
+      const container = mapContainerRef.current;
+      if (!container) return;
+
+      // Get tap position relative to map container
+      let clientX: number, clientY: number;
+      if ("touches" in e) {
+        if (e.touches.length === 0) return;
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+
+      const rect = container.getBoundingClientRect();
+      const point = L.point(clientX - rect.left, clientY - rect.top);
+      const latlng = map.containerPointToLatLng(point);
+
+      // Zoom in one level centered on tap
+      map.setView(latlng, map.getZoom() + 1);
+    },
+    [isInteractive]
+  );
+
+  // Handle long-press to zoom out
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!isInteractive) return;
+
+      const touch = e.touches[0];
+      touchStartRef.current = {
+        time: Date.now(),
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+
+      longPressTimeoutRef.current = setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.zoomOut();
+        }
+        touchStartRef.current = null;
+      }, 500);
+    },
+    [isInteractive]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+        longPressTimeoutRef.current = null;
+      }
+
+      // If it was a short tap, zoom in
+      if (touchStartRef.current && Date.now() - touchStartRef.current.time < 500) {
+        handleTap(e);
+      }
+      touchStartRef.current = null;
+    },
+    [handleTap]
+  );
+
+  const handleTouchMove = useCallback(() => {
+    // Cancel long-press if user moves finger
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+    touchStartRef.current = null;
+  }, []);
+
+  // Toggle interactive mode
+  const toggleInteractive = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsInteractive((prev) => !prev);
+  }, []);
+
+  if (!campaignCode) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center bg-muted/50 border-2 border-dashed border-muted-foreground/30 rounded-lg"
+        style={{ width, height }}
+      >
+        <MapIcon className="w-8 h-8 text-muted-foreground mb-2" />
+        <span className="text-sm text-muted-foreground">Select Campaign</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-lg",
+        isInteractive && "ring-2 ring-blue-500"
+      )}
+      style={{ width, height }}
+    >
+      {/* Map container */}
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        style={{ pointerEvents: isInteractive ? "auto" : "none" }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onClick={isInteractive ? handleTap : undefined}
+      />
+
+      {/* Loading indicator */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Lock/Hand toggle button */}
+      <button
+        type="button"
+        onClick={toggleInteractive}
+        className={cn(
+          "absolute top-2 right-2 z-[1000] w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors",
+          isInteractive
+            ? "bg-blue-500 text-white"
+            : "bg-white/90 text-muted-foreground hover:bg-white"
+        )}
+        title={isInteractive ? "Lock map (return to deck navigation)" : "Unlock map (enable pan/zoom)"}
+      >
+        {isInteractive ? <Hand className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+      </button>
+
+      {/* Event count badge */}
+      {eventPoints.length > 0 && (
+        <div className="absolute bottom-2 left-2 z-[1000] px-2 py-1 bg-black/70 text-white text-xs rounded-full">
+          {eventPoints.length} events
+        </div>
+      )}
+    </div>
+  );
+}

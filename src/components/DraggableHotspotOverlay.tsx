@@ -1,8 +1,9 @@
 import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
-import { Pencil, Move, BarChart3 } from "lucide-react";
+import { Pencil, Move, BarChart3, MapIcon } from "lucide-react";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
+import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 
 interface DraggableHotspotOverlayProps {
   hotspots: Hotspot[];
@@ -12,6 +13,7 @@ interface DraggableHotspotOverlayProps {
   onUpdateHotspot: (index: number, updates: Partial<Hotspot>) => void;
   onSelectHotspot: (index: number) => void;
   campaignCode?: string;
+  onMapBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void;
 }
 
 export function DraggableHotspotOverlay({
@@ -22,6 +24,7 @@ export function DraggableHotspotOverlay({
   onUpdateHotspot,
   onSelectHotspot,
   campaignCode,
+  onMapBoundsChange,
 }: DraggableHotspotOverlayProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editModeIndex, setEditModeIndex] = useState<number | null>(null);
@@ -109,6 +112,69 @@ export function DraggableHotspotOverlay({
         const isEditMode = index === editModeIndex;
         const isManualEntry = hotspot.metricKey === "manual_entry";
         const isChart = hotspot.type === "chart";
+        const isMap = hotspot.type === "map";
+
+        // Map hotspot rendering
+        if (isMap) {
+          const mapConfig = hotspot.mapConfig || {
+            mapStyle: 'channel_colors' as const,
+            showClustering: true,
+          };
+          
+          // Calculate pixel dimensions based on image
+          const imageBounds = imageRef.current?.getBoundingClientRect();
+          const pixelWidth = imageBounds ? (hotspot.width / 100) * imageBounds.width : 200;
+          const pixelHeight = imageBounds ? (hotspot.height / 100) * imageBounds.height : 150;
+          
+          return (
+            <div
+              key={hotspot.id}
+              className={`absolute select-none transition-shadow cursor-move overflow-hidden rounded-lg ${
+                isActive ? "ring-2 ring-purple-500 ring-offset-2" : ""
+              } ${isDragging ? "z-50 shadow-2xl" : "z-10"}`}
+              style={{
+                left: `${hotspot.x}%`,
+                top: `${hotspot.y}%`,
+                width: `${hotspot.width}%`,
+                height: `${hotspot.height}%`,
+                border: "2px dashed rgba(168, 85, 247, 0.5)",
+              }}
+              onMouseDown={(e) => handleMouseDown(e, index)}
+            >
+              {/* Render live map if campaignCode is provided, otherwise show placeholder */}
+              {campaignCode ? (
+                <MapHotspotRenderer
+                  campaignCode={campaignCode}
+                  config={mapConfig}
+                  width={pixelWidth}
+                  height={pixelHeight}
+                  isEditorMode={true}
+                  onBoundsChange={isActive ? onMapBoundsChange : undefined}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted/50 text-purple-600">
+                  <MapIcon className="w-8 h-8" />
+                  <span className="text-xs font-medium">Map</span>
+                  <span className="text-[10px] text-muted-foreground">Select Campaign</span>
+                </div>
+              )}
+
+              {/* Index badge */}
+              <div
+                className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
+                  isActive
+                    ? "bg-purple-500 text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {index + 1}
+              </div>
+
+              {/* Resize handle indicator */}
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-purple-500/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity z-[1001]" />
+            </div>
+          );
+        }
 
         // Chart hotspot rendering
         if (isChart) {
