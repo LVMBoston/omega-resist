@@ -49,10 +49,11 @@ const getViewerTimezone = (): string => {
 };
 
 // Format timestamp in viewer's local timezone with indicator
-const formatLocalTimestamp = (date: Date, includeDate = true): string => {
+const formatLocalTimestamp = (isoString: string, includeDate = true): string => {
   const tz = getViewerTimezone();
   const format = includeDate ? "MMM d, yyyy h:mm a zzz" : "h:mm a zzz";
-  return formatInTimeZone(date, tz, format);
+  // Parse the UTC timestamp and format to local timezone
+  return formatInTimeZone(new Date(isoString), tz, format);
 };
 
 export interface UseLiveMetricsResult {
@@ -203,8 +204,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
 
       // Earliest active - first event timestamp in viewer's local timezone
       if (firstOpenTimestamp) {
-        const earliestDate = new Date(firstOpenTimestamp);
-        metricResults.push({ key: "earliest_active", label: METRIC_LABELS.earliest_active, value: formatLocalTimestamp(earliestDate), source: "url_events" });
+        metricResults.push({ key: "earliest_active", label: METRIC_LABELS.earliest_active, value: formatLocalTimestamp(firstOpenTimestamp), source: "url_events" });
       } else {
         metricResults.push({ key: "earliest_active", label: METRIC_LABELS.earliest_active, value: "(no activity)", source: "url_events" });
       }
@@ -213,8 +213,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       const viewEventsWithTime = events.filter(e => e.event_type === "view" && e.occurred_at);
       if (viewEventsWithTime.length > 0) {
         viewEventsWithTime.sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
-        const latestDate = new Date(viewEventsWithTime[0].occurred_at);
-        metricResults.push({ key: "latest_active", label: METRIC_LABELS.latest_active, value: formatLocalTimestamp(latestDate), source: "url_events" });
+        metricResults.push({ key: "latest_active", label: METRIC_LABELS.latest_active, value: formatLocalTimestamp(viewEventsWithTime[0].occurred_at), source: "url_events" });
       } else {
         metricResults.push({ key: "latest_active", label: METRIC_LABELS.latest_active, value: "(no activity)", source: "url_events" });
       }
