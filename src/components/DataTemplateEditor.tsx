@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database } from "lucide-react";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
@@ -79,8 +78,8 @@ export function DataTemplateEditor({
 
   // Live metrics preview state
   const [campaignId, setCampaignId] = useState("");
-  const [selectedEoaId, setSelectedEoaId] = useState("");
-  const { metricsMap, eoas, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
+  const [mobilizeId, setMobilizeId] = useState("");
+  const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
 
   // Initialize with at least one hotspot if empty
   const [hotspots, setHotspots] = useState<Hotspot[]>(
@@ -98,19 +97,12 @@ export function DataTemplateEditor({
 
   const activeHotspot = hotspots[activeIndex];
 
-  // Resolve live metrics when campaign/EOA changes
+  // Resolve live metrics when campaign ID or mobilize ID changes
   useEffect(() => {
     if (campaignId.trim()) {
-      resolveMetrics(campaignId.trim(), selectedEoaId || undefined);
+      resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
     }
-  }, [campaignId, selectedEoaId, resolveMetrics]);
-
-  // Auto-select first EOA when list loads
-  useEffect(() => {
-    if (eoas.length > 0 && !selectedEoaId) {
-      setSelectedEoaId(eoas[0].id);
-    }
-  }, [eoas, selectedEoaId]);
+  }, [campaignId, mobilizeId, resolveMetrics]);
 
   // Update display values when metrics are resolved
   useEffect(() => {
@@ -334,7 +326,7 @@ export function DataTemplateEditor({
         <div className="space-y-1">
           <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-green-600" />
-            Manual Campaign ID (overrides dropdown)
+            Campaign ID (code or UUID)
           </Label>
           <Input
             id="campaign-id"
@@ -345,23 +337,18 @@ export function DataTemplateEditor({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="eoa-select" className="text-sm flex items-center gap-1.5">
+          <Label htmlFor="mobilize-id" className="text-sm flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-green-600" />
-            EOA (for Start Date/Time)
+            Mobilize ID (for Start Date/Time)
             {metricsLoading && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
           </Label>
-          <Select value={selectedEoaId} onValueChange={setSelectedEoaId} disabled={eoas.length === 0}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder={eoas.length === 0 ? "Enter Campaign ID first" : "Select EOA"} />
-            </SelectTrigger>
-            <SelectContent>
-              {eoas.map((eoa) => (
-                <SelectItem key={eoa.id} value={eoa.id}>
-                  {eoa.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            id="mobilize-id"
+            value={mobilizeId}
+            onChange={(e) => setMobilizeId(e.target.value)}
+            placeholder="e.g., 12345"
+            className="h-9"
+          />
         </div>
       </div>
 

@@ -47,20 +47,18 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
 
 export interface UseLiveMetricsResult {
   metrics: MetricResult[];
-  eoas: EOA[];
   metricsMap: Record<string, string | number>;
   loading: boolean;
   error: string | null;
-  resolveMetrics: (campaignIdOrCode: string, eoaId?: string) => Promise<void>;
+  resolveMetrics: (campaignIdOrCode: string, mobilizeId?: string) => Promise<void>;
 }
 
 export function useLiveMetrics(): UseLiveMetricsResult {
   const [metrics, setMetrics] = useState<MetricResult[]>([]);
-  const [eoas, setEoas] = useState<EOA[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const resolveMetrics = useCallback(async (campaignIdOrCode: string, eoaId?: string) => {
+  const resolveMetrics = useCallback(async (campaignIdOrCode: string, mobilizeId?: string) => {
     if (!campaignIdOrCode.trim()) {
       setMetrics([]);
       return;
@@ -97,22 +95,32 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         throw new Error(`Campaign not found: ${campaignIdOrCode}`);
       }
 
-      // Fetch EOAs for this campaign
-      const { data: eoaList, error: eoaErr } = await supabase
-        .from("events_actions")
-        .select("id, title, timezone, start_date")
-        .eq("campaign_id", campaign.id)
-        .order("start_date", { ascending: true });
-      
-      if (eoaErr) throw eoaErr;
-      setEoas(eoaList || []);
-
-      // Use specified EOA or first available
+      // Fetch EOA for timezone and start date
+      // If mobilizeId is provided, look up by mobilize_id; otherwise use first EOA
       let eoa: EOA | null = null;
-      if (eoaId && eoaList) {
-        eoa = eoaList.find(e => e.id === eoaId) || eoaList[0] || null;
-      } else if (eoaList && eoaList.length > 0) {
-        eoa = eoaList[0];
+      
+      if (mobilizeId?.trim()) {
+        const { data: eoaData, error: eoaErr } = await supabase
+          .from("events_actions")
+          .select("id, title, timezone, start_date")
+          .eq("campaign_id", campaign.id)
+          .eq("mobilize_id", mobilizeId.trim())
+          .maybeSingle();
+        
+        if (eoaErr) throw eoaErr;
+        eoa = eoaData;
+      } else {
+        // Fall back to first EOA for this campaign
+        const { data: eoaData, error: eoaErr } = await supabase
+          .from("events_actions")
+          .select("id, title, timezone, start_date")
+          .eq("campaign_id", campaign.id)
+          .order("start_date", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        
+        if (eoaErr) throw eoaErr;
+        eoa = eoaData;
       }
 
       const timezone = eoa?.timezone || "America/New_York";
@@ -237,5 +245,5 @@ export function useLiveMetrics(): UseLiveMetricsResult {
     return acc;
   }, {} as Record<string, string | number>);
 
-  return { metrics, eoas, metricsMap, loading, error, resolveMetrics };
+  return { metrics, metricsMap, loading, error, resolveMetrics };
 }

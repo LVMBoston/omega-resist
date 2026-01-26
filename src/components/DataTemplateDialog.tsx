@@ -32,17 +32,18 @@ export function DataTemplateDialog({
   mode,
   initialData,
 }: DataTemplateDialogProps) {
-  // Use a stable session key that only changes when the dialog opens with different data
+  // Use a stable session key that only changes when the dialog OPENS (not when ID is assigned)
   // This prevents remounting when the ID is assigned on first save
   const sessionKeyRef = useRef<string>("");
+  const wasOpenRef = useRef(false);
   
   useEffect(() => {
-    if (open) {
-      // Generate a new session key only when the dialog opens
-      // Use the existing ID if editing, or a random key for new templates
+    // Only generate a new key when transitioning from closed to open
+    if (open && !wasOpenRef.current) {
       sessionKeyRef.current = initialData?.id || `new-${Date.now()}`;
     }
-  }, [open, initialData?.id]);
+    wasOpenRef.current = open;
+  }, [open]); // Remove initialData?.id from deps - we only care about open transitions
 
   const handleSave = async (data: {
     hotspots: Hotspot[];
