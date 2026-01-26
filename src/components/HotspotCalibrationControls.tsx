@@ -171,8 +171,11 @@ export function HotspotCalibrationControls({
               onUpdate({ manualLabel: e.target.value });
             }}
             onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onDragStart={(e) => e.preventDefault()}
             placeholder="Enter text..."
-            className="h-8 text-xs"
+            className="h-8 text-xs cursor-text"
+            draggable={false}
           />
         </div>
       )}
