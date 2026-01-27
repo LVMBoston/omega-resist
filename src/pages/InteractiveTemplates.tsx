@@ -531,21 +531,19 @@ export default function InteractiveTemplates() {
     slug: string;
     description?: string;
   }): Promise<string | void> => {
-    const templateData = {
-      name: data.name,
-      slug: data.slug,
-      description: data.description || "",
-      image_url: data.imageUrl,
-      thumbnail_url: undefined,
-      hotspots: data.hotspots,
-      is_default: false,
-      template_type: "stats_page" as TemplateType,
-      config: { type: "stats_page" },
-    };
-
     if (editingDataTemplate) {
-      // Update existing template
-      await updateTemplate.mutateAsync({ id: editingDataTemplate.id, data: templateData });
+      // Update existing template - exclude slug to avoid unique constraint violation
+      const updateData = {
+        name: data.name,
+        description: data.description || "",
+        image_url: data.imageUrl,
+        thumbnail_url: undefined,
+        hotspots: data.hotspots,
+        is_default: false,
+        template_type: "stats_page" as TemplateType,
+        config: { type: "stats_page" },
+      };
+      await updateTemplate.mutateAsync({ id: editingDataTemplate.id, data: updateData });
       return editingDataTemplate.id;
     } else {
       // Create new template - use direct insert to get the ID back
@@ -571,6 +569,16 @@ export default function InteractiveTemplates() {
       
       // Update the editingDataTemplate so subsequent saves are updates
       if (inserted) {
+        const templateData = {
+          name: data.name,
+          slug: data.slug,
+          description: data.description || "",
+          image_url: data.imageUrl,
+          hotspots: data.hotspots,
+          is_default: false,
+          template_type: "stats_page" as TemplateType,
+          config: { type: "stats_page" },
+        };
         setEditingDataTemplate({ 
           ...templateData, 
           id: inserted.id, 
