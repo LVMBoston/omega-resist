@@ -32,6 +32,7 @@ interface EventAction {
   type: string;
   start_date: string | null;
   end_date: string | null;
+  mobilize_code: string | null;
 }
 interface CampaignStats {
   totalEvents: number;
@@ -41,6 +42,14 @@ interface CampaignStats {
   earliestActive: string | null;
   latestActive: string | null;
   totalEventsActions: number;
+  // New stats
+  realDataRows: number;
+  simDataRows: number;
+  l0Count: number;
+  l1Count: number;
+  l2Count: number;
+  l3PlusCount: number;
+  chaptersCount: number;
 }
 const codeSchema = z.string().min(1, "Code is required").regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
 export default function CampaignManager() {
@@ -102,7 +111,7 @@ export default function CampaignManager() {
     const {
       data,
       error
-    } = await supabase.from("events_actions").select("id, campaign_id, type, start_date, end_date").order("created_at", {
+    } = await supabase.from("events_actions").select("id, campaign_id, type, start_date, end_date, mobilize_code").order("created_at", {
       ascending: false
     });
     if (error) {
@@ -137,16 +146,30 @@ export default function CampaignManager() {
       const activeEvents = activeEoas.filter(e => e.type === "event").length;
       const activeActions = activeEoas.filter(e => e.type === "action").length;
       
-      // Get all tokens for this campaign
+      // Get all tokens for this campaign with level info
       const { data: campaignTokens } = await supabase
         .from("tokens")
-        .select("token")
+        .select("token, level")
         .eq("utm_campaign", campaign.code);
       
       const tokenList = campaignTokens?.map(t => t.token) || [];
       
+      // Calculate viral depth counts
+      const l0Count = campaignTokens?.filter(t => t.level === 0).length || 0;
+      const l1Count = campaignTokens?.filter(t => t.level === 1).length || 0;
+      const l2Count = campaignTokens?.filter(t => t.level === 2).length || 0;
+      const l3PlusCount = campaignTokens?.filter(t => t.level >= 3).length || 0;
+      
+      // Calculate unique chapters (mobilize_code)
+      const uniqueMobilizeCodes = new Set(
+        campaignEoas.map(e => e.mobilize_code).filter(Boolean)
+      );
+      const chaptersCount = uniqueMobilizeCodes.size;
+      
       let earliestEvent = null;
       let latestEvent = null;
+      let realDataRows = 0;
+      let simDataRows = 0;
       
       if (tokenList.length > 0) {
         // Get earliest event
@@ -170,6 +193,21 @@ export default function CampaignManager() {
           .limit(1)
           .maybeSingle();
         latestEvent = latest;
+        
+        // Count real vs simulated data rows
+        const { count: realCount } = await supabase
+          .from("url_events")
+          .select("*", { count: "exact", head: true })
+          .eq("is_simulated", false)
+          .in("token", tokenList);
+        realDataRows = realCount || 0;
+        
+        const { count: simCount } = await supabase
+          .from("url_events")
+          .select("*", { count: "exact", head: true })
+          .eq("is_simulated", true)
+          .in("token", tokenList);
+        simDataRows = simCount || 0;
       }
       
       stats.set(campaign.id, {
@@ -179,7 +217,14 @@ export default function CampaignManager() {
         activeActions,
         earliestActive: earliestEvent?.occurred_at || null,
         latestActive: latestEvent?.occurred_at || null,
-        totalEventsActions: campaignEoas.length
+        totalEventsActions: campaignEoas.length,
+        realDataRows,
+        simDataRows,
+        l0Count,
+        l1Count,
+        l2Count,
+        l3PlusCount,
+        chaptersCount
       });
     }
     setCampaignStats(stats);
@@ -688,28 +733,30 @@ export default function CampaignManager() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
-              <div className="flex justify-between gap-4">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Events: Total / Active</p>
+                  <p className="text-sm text-muted-foreground">Data Rows: Real / Sim</p>
                   <p className="font-semibold text-lg">
-                    {stats?.totalEvents || 0} / {stats?.activeEvents || 0}
+                    {showStats 
+                      ? `${(stats?.realDataRows || 0).toLocaleString()} / ${(stats?.simDataRows || 0).toLocaleString()}`
+                      : "-nm-"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Actions: Total / Active</p>
+                  <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3+</p>
                   <p className="font-semibold text-lg">
-                    {stats?.totalActions || 0} / {stats?.activeActions || 0}
+                    {showStats 
+                      ? `${(stats?.l0Count || 0).toLocaleString()} / ${(stats?.l1Count || 0).toLocaleString()} / ${(stats?.l2Count || 0).toLocaleString()} / ${(stats?.l3PlusCount || 0).toLocaleString()}`
+                      : "-nm-"}
                   </p>
                 </div>
-              </div>
-              <div className="flex justify-between gap-4">
                 <div>
-                  <p className="text-muted-foreground">Earliest Active</p>
-                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.earliestActive || null) : "-nm-"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Latest Active</p>
-                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.latestActive || null) : "-nm-"}</p>
+                  <p className="text-sm text-muted-foreground"># Chapters</p>
+                  <p className="font-semibold text-lg">
+                    {showStats 
+                      ? (stats?.chaptersCount || 0).toLocaleString()
+                      : "-nm-"}
+                  </p>
                 </div>
               </div>
               <div className="space-y-2">
