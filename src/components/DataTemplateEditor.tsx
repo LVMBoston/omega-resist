@@ -367,7 +367,7 @@ export function DataTemplateEditor({
         </div>
         <div className="space-y-1">
           <Label htmlFor="template-slug" className="text-sm">
-            Slug (unique ID) *
+            Template ID *
           </Label>
           <Input
             id="template-slug"
