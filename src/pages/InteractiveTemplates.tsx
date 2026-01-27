@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -522,7 +522,16 @@ export default function InteractiveTemplates() {
       createTemplate.mutate(dataToSave);
     }
   };
-
+  // Track created template ID to avoid duplicate inserts during async state updates
+  const createdDataTemplateIdRef = useRef<string | null>(null);
+  
+  // Reset the ref when dialog closes
+  useEffect(() => {
+    if (!isDataDialogOpen) {
+      createdDataTemplateIdRef.current = null;
+    }
+  }, [isDataDialogOpen]);
+  
   // Handle Data Template save
   const handleDataTemplateSave = async (data: {
     hotspots: Hotspot[];
@@ -531,7 +540,10 @@ export default function InteractiveTemplates() {
     slug: string;
     description?: string;
   }): Promise<string | void> => {
-    if (editingDataTemplate) {
+    // Check if we're editing an existing template OR if we've already created one in this session
+    const existingId = editingDataTemplate?.id || createdDataTemplateIdRef.current;
+    
+    if (existingId) {
       // Update existing template - exclude slug to avoid unique constraint violation
       const updateData = {
         name: data.name,
@@ -543,8 +555,8 @@ export default function InteractiveTemplates() {
         template_type: "stats_page" as TemplateType,
         config: { type: "stats_page" },
       };
-      await updateTemplate.mutateAsync({ id: editingDataTemplate.id, data: updateData });
-      return editingDataTemplate.id;
+      await updateTemplate.mutateAsync({ id: existingId, data: updateData });
+      return existingId;
     } else {
       // Create new template - use direct insert to get the ID back
       const { data: inserted, error } = await supabase
@@ -564,10 +576,15 @@ export default function InteractiveTemplates() {
       
       if (error) throw error;
       
+      // Store the ID in ref immediately (synchronous) to prevent race conditions
+      if (inserted) {
+        createdDataTemplateIdRef.current = inserted.id;
+      }
+      
       // Invalidate queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
       
-      // Update the editingDataTemplate so subsequent saves are updates
+      // Update the editingDataTemplate state (async, but ref already captures it)
       if (inserted) {
         const templateData = {
           name: data.name,
