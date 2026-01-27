@@ -26,7 +26,15 @@ interface MapHotspotRendererProps {
   height: number; // pixels
   isEditorMode?: boolean;
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onMapReady?: (controls: MapControls) => void;
 }
+
+export interface MapControls {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetView: () => void;
+}
+
 
 interface EventPoint {
   eventId: string;
@@ -67,7 +75,9 @@ export function MapHotspotRenderer({
   height,
   isEditorMode = false,
   onBoundsChange,
+  onMapReady,
 }: MapHotspotRendererProps) {
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -207,17 +217,29 @@ export function MapHotspotRenderer({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      center: [39.8283, -98.5795], // US center
-      zoom: 4,
-      zoomControl: false,
-      attributionControl: false,
+    // In editor mode, enable interactivity by default
+    const interactiveOptions = isEditorMode ? {
+      dragging: true,
+      touchZoom: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: true,
+      keyboard: true,
+    } : {
       dragging: false,
       touchZoom: false,
       scrollWheelZoom: false,
       doubleClickZoom: false,
       boxZoom: false,
       keyboard: false,
+    };
+
+    const map = L.map(mapContainerRef.current, {
+      center: [39.8283, -98.5795], // US center
+      zoom: 4,
+      zoomControl: false,
+      attributionControl: false,
+      ...interactiveOptions,
     });
 
     // CartoDB Positron tiles
@@ -270,6 +292,26 @@ export function MapHotspotRenderer({
           west: bounds.getWest(),
         });
       });
+      
+      // Report initial bounds
+      setTimeout(() => {
+        const bounds = map.getBounds();
+        onBoundsChange({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }, 100);
+    }
+
+    // Expose control functions in editor mode
+    if (isEditorMode && onMapReady) {
+      onMapReady({
+        zoomIn: () => map.zoomIn(),
+        zoomOut: () => map.zoomOut(),
+        resetView: () => map.setView([39.8283, -98.5795], 4),
+      });
     }
 
     return () => {
@@ -278,7 +320,8 @@ export function MapHotspotRenderer({
       clusterGroupRef.current = null;
       markersLayerRef.current = null;
     };
-  }, [config.showClustering, config.savedBounds, isEditorMode, onBoundsChange]);
+  }, [config.showClustering, config.savedBounds, isEditorMode, onBoundsChange, onMapReady]);
+
 
   // Update map interactivity when mode changes
   useEffect(() => {
@@ -418,11 +461,14 @@ export function MapHotspotRenderer({
     );
   }
 
+  // In editor mode, always allow interaction
+  const effectiveInteractive = isEditorMode || isInteractive;
+
   return (
     <div
       className={cn(
         "relative overflow-hidden rounded-lg",
-        isInteractive && "ring-2 ring-blue-500"
+        effectiveInteractive && !isEditorMode && "ring-2 ring-blue-500"
       )}
       style={{ width, height }}
     >
@@ -430,11 +476,11 @@ export function MapHotspotRenderer({
       <div
         ref={mapContainerRef}
         className="w-full h-full"
-        style={{ pointerEvents: isInteractive ? "auto" : "none" }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchMove}
-        onClick={isInteractive ? handleTap : undefined}
+        style={{ pointerEvents: effectiveInteractive ? "auto" : "none" }}
+        onTouchStart={!isEditorMode ? handleTouchStart : undefined}
+        onTouchEnd={!isEditorMode ? handleTouchEnd : undefined}
+        onTouchMove={!isEditorMode ? handleTouchMove : undefined}
+        onClick={!isEditorMode && effectiveInteractive ? handleTap : undefined}
       />
 
       {/* Loading indicator */}
@@ -444,20 +490,22 @@ export function MapHotspotRenderer({
         </div>
       )}
 
-      {/* Lock/Hand toggle button */}
-      <button
-        type="button"
-        onClick={toggleInteractive}
-        className={cn(
-          "absolute top-2 right-2 z-[1000] w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors",
-          isInteractive
-            ? "bg-blue-500 text-white"
-            : "bg-white/90 text-muted-foreground hover:bg-white"
-        )}
-        title={isInteractive ? "Lock map (return to deck navigation)" : "Unlock map (enable pan/zoom)"}
-      >
-        {isInteractive ? <Hand className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-      </button>
+      {/* Lock/Hand toggle button - only show in runtime mode, not editor */}
+      {!isEditorMode && (
+        <button
+          type="button"
+          onClick={toggleInteractive}
+          className={cn(
+            "absolute top-2 right-2 z-[1000] w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors",
+            isInteractive
+              ? "bg-blue-500 text-white"
+              : "bg-white/90 text-muted-foreground hover:bg-white"
+          )}
+          title={isInteractive ? "Lock map (return to deck navigation)" : "Unlock map (enable pan/zoom)"}
+        >
+          {isInteractive ? <Hand className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+        </button>
+      )}
 
       {/* Event count badge */}
       {eventPoints.length > 0 && (

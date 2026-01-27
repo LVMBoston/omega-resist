@@ -3,7 +3,7 @@ import { Hotspot } from "@/types/viralTemplates";
 import { Pencil, Move, BarChart3, MapIcon } from "lucide-react";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
-import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
+import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
 
 interface DraggableHotspotOverlayProps {
   hotspots: Hotspot[];
@@ -14,6 +14,7 @@ interface DraggableHotspotOverlayProps {
   onSelectHotspot: (index: number) => void;
   campaignCode?: string;
   onMapBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void;
+  onMapControlsReady?: (controls: MapControls) => void;
 }
 
 export function DraggableHotspotOverlay({
@@ -25,6 +26,7 @@ export function DraggableHotspotOverlay({
   onSelectHotspot,
   campaignCode,
   onMapBoundsChange,
+  onMapControlsReady,
 }: DraggableHotspotOverlayProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editModeIndex, setEditModeIndex] = useState<number | null>(null);
@@ -129,9 +131,9 @@ export function DraggableHotspotOverlay({
           return (
             <div
               key={hotspot.id}
-              className={`absolute select-none transition-shadow cursor-move overflow-hidden rounded-lg ${
+              className={`absolute select-none transition-shadow overflow-hidden rounded-lg ${
                 isActive ? "ring-2 ring-purple-500 ring-offset-2" : ""
-              } ${isDragging ? "z-50 shadow-2xl" : "z-10"}`}
+              } ${isDragging ? "z-50 shadow-2xl cursor-move" : "z-10"}`}
               style={{
                 left: `${hotspot.x}%`,
                 top: `${hotspot.y}%`,
@@ -139,7 +141,6 @@ export function DraggableHotspotOverlay({
                 height: `${hotspot.height}%`,
                 border: "2px dashed rgba(168, 85, 247, 0.5)",
               }}
-              onMouseDown={(e) => handleMouseDown(e, index)}
             >
               {/* Render live map if campaignCode is provided, otherwise show placeholder */}
               {campaignCode ? (
@@ -150,6 +151,7 @@ export function DraggableHotspotOverlay({
                   height={pixelHeight}
                   isEditorMode={true}
                   onBoundsChange={isActive ? onMapBoundsChange : undefined}
+                  onMapReady={isActive ? onMapControlsReady : undefined}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted/50 text-purple-600">
@@ -159,9 +161,18 @@ export function DraggableHotspotOverlay({
                 </div>
               )}
 
+              {/* Drag handle - on the corner for map hotspots */}
+              <div 
+                className="absolute top-0 left-0 w-8 h-8 bg-purple-500/80 rounded-br-lg flex items-center justify-center cursor-move z-[1002]"
+                onMouseDown={(e) => handleMouseDown(e, index)}
+                title="Drag to reposition"
+              >
+                <Move className="w-4 h-4 text-white" />
+              </div>
+
               {/* Index badge */}
               <div
-                className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
+                className={`absolute -top-3 -right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
                   isActive
                     ? "bg-purple-500 text-white"
                     : "bg-muted text-muted-foreground"

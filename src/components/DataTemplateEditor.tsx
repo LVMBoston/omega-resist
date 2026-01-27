@@ -12,9 +12,11 @@ import { ChartCalibrationControls } from "@/components/ChartCalibrationControls"
 import { MapCalibrationControls } from "@/components/MapCalibrationControls";
 import { DraggableHotspotOverlay } from "@/components/DraggableHotspotOverlay";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
+import { MapControls } from "@/components/MapHotspotRenderer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
+
 
 // Default hotspot template for data templates (live_number)
 const createDefaultHotspot = (index: number): Hotspot => ({
@@ -139,6 +141,7 @@ export function DataTemplateEditor({
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const [mapControls, setMapControls] = useState<MapControls | null>(null);
   const [displayValues, setDisplayValues] = useState<Record<string, string>>(() => {
     const values: Record<string, string> = {};
     const defaultValues = ["142", "87", "1,234", "456", "321", "198", "73", "OMEGA PA", "Jan 15", "Jan 25", "9:00 AM", "2:45 PM"];
@@ -451,6 +454,7 @@ export function DataTemplateEditor({
                   onSelectHotspot={setActiveIndex}
                   campaignCode={campaignId}
                   onMapBoundsChange={setCurrentMapBounds}
+                  onMapControlsReady={setMapControls}
                 />
               )}
 
@@ -593,6 +597,9 @@ export function DataTemplateEditor({
             hotspot={activeHotspot}
             onUpdate={(updates) => updateHotspot(activeIndex, updates)}
             currentBounds={currentMapBounds}
+            onZoomIn={mapControls?.zoomIn}
+            onZoomOut={mapControls?.zoomOut}
+            onResetView={mapControls?.resetView}
           />
         )}
 
