@@ -70,7 +70,7 @@ const createMapHotspot = (index: number): Hotspot => ({
   height: 40,
   mapConfig: {
     mapStyle: "channel_colors",
-    showClustering: true,
+    showClustering: false, // Disabled by default for clearer positioning
   },
 });
 

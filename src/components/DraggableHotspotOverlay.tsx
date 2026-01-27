@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
-import { Pencil, Move, BarChart3, MapIcon } from "lucide-react";
+import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock } from "lucide-react";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
@@ -120,8 +120,9 @@ export function DraggableHotspotOverlay({
         if (isMap) {
           const mapConfig = hotspot.mapConfig || {
             mapStyle: 'channel_colors' as const,
-            showClustering: true,
+            showClustering: false,
           };
+          const isMapLocked = mapConfig.isLocked || false;
           
           // Calculate pixel dimensions based on image
           const imageBounds = imageRef.current?.getBoundingClientRect();
@@ -139,7 +140,7 @@ export function DraggableHotspotOverlay({
                 top: `${hotspot.y}%`,
                 width: `${hotspot.width}%`,
                 height: `${hotspot.height}%`,
-                border: "2px dashed rgba(168, 85, 247, 0.5)",
+                border: isMapLocked ? "2px solid rgba(245, 158, 11, 0.7)" : "2px dashed rgba(168, 85, 247, 0.5)",
               }}
             >
               {/* Render live map if campaignCode is provided, otherwise show placeholder */}
@@ -149,9 +150,9 @@ export function DraggableHotspotOverlay({
                   config={mapConfig}
                   width={pixelWidth}
                   height={pixelHeight}
-                  isEditorMode={true}
-                  onBoundsChange={isActive ? onMapBoundsChange : undefined}
-                  onMapReady={isActive ? onMapControlsReady : undefined}
+                  isEditorMode={!isMapLocked}
+                  onBoundsChange={isActive && !isMapLocked ? onMapBoundsChange : undefined}
+                  onMapReady={isActive && !isMapLocked ? onMapControlsReady : undefined}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted/50 text-purple-600">
@@ -160,6 +161,18 @@ export function DraggableHotspotOverlay({
                   <span className="text-[10px] text-muted-foreground">Select Campaign</span>
                 </div>
               )}
+
+              {/* Lock indicator in upper right corner */}
+              <div 
+                className={`absolute top-0 right-0 w-7 h-7 flex items-center justify-center z-[1002] rounded-bl-lg ${
+                  isMapLocked 
+                    ? "bg-amber-500 text-white" 
+                    : "bg-gray-500/60 text-white/80"
+                }`}
+                title={isMapLocked ? "Map position locked" : "Map position unlocked"}
+              >
+                {isMapLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+              </div>
 
               {/* Drag handle - on the corner for map hotspots */}
               <div 
@@ -172,7 +185,7 @@ export function DraggableHotspotOverlay({
 
               {/* Index badge */}
               <div
-                className={`absolute -top-3 -right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
+                className={`absolute -bottom-3 -right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
                   isActive
                     ? "bg-purple-500 text-white"
                     : "bg-muted text-muted-foreground"

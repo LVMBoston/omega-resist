@@ -2,8 +2,9 @@ import { Hotspot, MapConfig } from "@/types/viralTemplates";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Save, Trash2, ZoomIn, ZoomOut, Move, Hand } from "lucide-react";
+import { Save, Trash2, ZoomIn, ZoomOut, Move, Hand, Lock, Unlock } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 
 interface MapCalibrationControlsProps {
   hotspot: Hotspot;
@@ -152,6 +153,22 @@ export function MapCalibrationControls({
       {/* Map Settings */}
       <div className="space-y-3 pt-2 border-t border-border">
         <h4 className="text-sm font-medium">Map Settings</h4>
+
+      {/* Lock Map Toggle */}
+        <div className="flex items-center justify-between">
+          <Label htmlFor="lock-map" className="text-sm flex items-center gap-2">
+            {mapConfig.isLocked ? <Lock className="w-4 h-4 text-amber-600" /> : <Unlock className="w-4 h-4" />}
+            Lock Map Position
+          </Label>
+          <Switch
+            id="lock-map"
+            checked={mapConfig.isLocked || false}
+            onCheckedChange={(checked) => updateMapConfig({ isLocked: checked })}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground -mt-1">
+          When locked, pan/zoom controls are disabled to prevent accidental changes.
+        </p>
 
         {/* Clustering Toggle */}
         <div className="flex items-center justify-between">
