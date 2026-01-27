@@ -94,33 +94,17 @@ export const StatsPageSlide = ({
           }
         }
 
-        // Fallback: try to get campaign from deck's EOA assignments
+        // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
         if (!campaignCode && deckSlug) {
-          const { data: assignmentData } = await supabase
-            .from("deck_eoa_assignments")
-            .select("eoa_id")
-            .eq("deck_slug", deckSlug)
+          const { data: eoaData } = await supabase
+            .from("events_actions")
+            .select("campaign_id, campaigns(code)")
+            .eq("assigned_deck_slug", deckSlug)
             .limit(1)
             .maybeSingle();
           
-          if (assignmentData?.eoa_id) {
-            const { data: eoaData } = await supabase
-              .from("events_actions")
-              .select("campaign_id")
-              .eq("id", assignmentData.eoa_id)
-              .maybeSingle();
-            
-            if (eoaData?.campaign_id) {
-              const { data: campaignData } = await supabase
-                .from("campaigns")
-                .select("code")
-                .eq("id", eoaData.campaign_id)
-                .maybeSingle();
-              
-              if (campaignData?.code) {
-                campaignCode = campaignData.code;
-              }
-            }
+          if (eoaData?.campaigns?.code) {
+            campaignCode = eoaData.campaigns.code;
           }
         }
 
@@ -194,33 +178,17 @@ export const StatsPageSlide = ({
           }
         }
 
-        // Fallback: try to get campaign from deck's EOA assignments
+        // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
         if (deckSlug) {
-          const { data: assignmentData } = await supabase
-            .from("deck_eoa_assignments")
-            .select("eoa_id")
-            .eq("deck_slug", deckSlug)
+          const { data: eoaData } = await supabase
+            .from("events_actions")
+            .select("campaign_id, campaigns(code)")
+            .eq("assigned_deck_slug", deckSlug)
             .limit(1)
             .maybeSingle();
           
-          if (assignmentData?.eoa_id) {
-            const { data: eoaData } = await supabase
-              .from("events_actions")
-              .select("campaign_id")
-              .eq("id", assignmentData.eoa_id)
-              .maybeSingle();
-            
-            if (eoaData?.campaign_id) {
-              const { data: campaignData } = await supabase
-                .from("campaigns")
-                .select("code")
-                .eq("id", eoaData.campaign_id)
-                .maybeSingle();
-              
-              if (campaignData?.code) {
-                setCampaignCode(campaignData.code);
-              }
-            }
+          if (eoaData?.campaigns?.code) {
+            setCampaignCode(eoaData.campaigns.code);
           }
         }
       } catch (error) {
