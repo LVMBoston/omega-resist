@@ -559,11 +559,14 @@ export default function InteractiveTemplates() {
       return existingId;
     } else {
       // Create new template - use direct insert to get the ID back
+      // Generate a unique slug by appending timestamp to avoid collisions
+      const uniqueSlug = `${data.slug}-${Date.now()}`;
+      
       const { data: inserted, error } = await supabase
         .from("viral_slide_configs")
         .insert([{
           name: data.name,
-          slug: data.slug,
+          slug: uniqueSlug,
           description: data.description || "",
           image_url: data.imageUrl,
           hotspots: data.hotspots as unknown as Json,
