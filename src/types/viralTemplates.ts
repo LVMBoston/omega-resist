@@ -80,6 +80,7 @@ export interface ChartConfig {
 export interface MapConfig {
   mapStyle: 'channel_colors';  // Future: 'level_colors' | 'single_color'
   showClustering: boolean;
+  isLocked?: boolean;  // Lock map positioning in editor
   savedBounds?: {
     north: number;
     south: number;
