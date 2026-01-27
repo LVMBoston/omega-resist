@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -66,6 +67,7 @@ export default function CampaignManager() {
   const [codeError, setCodeError] = useState<string>("");
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [showStatsMap, setShowStatsMap] = useState<Map<string, boolean>>(new Map());
   useEffect(() => {
     fetchData();
   }, []);
@@ -393,9 +395,11 @@ export default function CampaignManager() {
   interface SortableCardProps {
     campaign: Campaign;
     stats: CampaignStats | undefined;
+    showStats: boolean;
+    onToggleStats: (checked: boolean) => void;
   }
   
-  const SortableCard = ({ campaign, stats }: SortableCardProps) => {
+  const SortableCard = ({ campaign, stats, showStats, onToggleStats }: SortableCardProps) => {
     const [deckDialogOpen, setDeckDialogOpen] = useState(false);
     const [deckSlides, setDeckSlides] = useState<any[]>([]);
     const [loadingDeck, setLoadingDeck] = useState(false);
@@ -645,10 +649,25 @@ export default function CampaignManager() {
                 <CardTitle>{campaign.title}</CardTitle>
                 <CardDescription>utm_campaign: {campaign.code}</CardDescription>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={handleViewDeck} title="View Deck">
-                  <Eye className="h-4 w-4" />
-                </Button>
+              <div className="flex gap-1 items-center">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div 
+                        className="flex items-center justify-center h-8 w-8"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox 
+                          checked={showStats} 
+                          onCheckedChange={onToggleStats}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Display stats</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleEditCampaign(campaign);
@@ -686,11 +705,11 @@ export default function CampaignManager() {
               <div className="flex justify-between gap-4">
                 <div>
                   <p className="text-muted-foreground">Earliest Active</p>
-                  <p className="font-medium">{formatDateWithTime(stats?.earliestActive || null)}</p>
+                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.earliestActive || null) : "-nm-"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Latest Active</p>
-                  <p className="font-medium">{formatDateWithTime(stats?.latestActive || null)}</p>
+                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.latestActive || null) : "-nm-"}</p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -894,7 +913,21 @@ export default function CampaignManager() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {campaigns.map(campaign => {
                     const stats = campaignStats.get(campaign.id);
-                    return <SortableCard key={campaign.id} campaign={campaign} stats={stats} />;
+                    return (
+                      <SortableCard 
+                        key={campaign.id} 
+                        campaign={campaign} 
+                        stats={stats}
+                        showStats={showStatsMap.get(campaign.id) ?? false}
+                        onToggleStats={(checked) => {
+                          setShowStatsMap(prev => {
+                            const next = new Map(prev);
+                            next.set(campaign.id, checked);
+                            return next;
+                          });
+                        }}
+                      />
+                    );
                   })}
                 </div>
               </SortableContext>
