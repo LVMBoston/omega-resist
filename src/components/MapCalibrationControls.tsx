@@ -76,7 +76,7 @@ export function MapCalibrationControls({
             value={[hotspot.width]}
             onValueChange={([v]) => onUpdate({ width: v })}
             min={10}
-            max={80}
+            max={95}
             step={0.5}
           />
           <span className="text-xs text-muted-foreground">{hotspot.width.toFixed(1)}%</span>
