@@ -33,6 +33,11 @@ interface ViralConfig {
   hotspots: Hotspot[];
   template_type?: TemplateType;
   config?: any;
+  // Snapshot properties
+  cached_snapshot_path?: string | null;
+  snapshot_rendered_at?: string | null;
+  snapshot_enabled?: boolean;
+  snapshot_interval_minutes?: number;
 }
 
 export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
@@ -124,6 +129,8 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
             hotspots: mappedHotspots,
             template_type: (legacyData.template_type as TemplateType) || 'interactive_share',
             config: legacyData.config || {},
+            cached_snapshot_path: legacyData.cached_snapshot_path,
+            snapshot_rendered_at: legacyData.snapshot_rendered_at,
           });
         } else {
           console.error(`❌ ${COMPONENT_VERSION} - No legacy config found either. Slide cannot be rendered.`);
@@ -166,11 +173,52 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
             })
           : [];
         
+        const templateType = (templateData.template_type as TemplateType) || 'interactive_share';
+        
+        // For stats_page templates, fetch campaign snapshot settings
+        let snapshotEnabled = false;
+        let snapshotIntervalMinutes = 2;
+        
+        if (templateType === 'stats_page') {
+          // Try to get campaign settings via deck assignment
+          const { data: assignmentData } = await supabase
+            .from("deck_eoa_assignments")
+            .select("eoa_id")
+            .eq("deck_slug", deckSlug)
+            .limit(1)
+            .maybeSingle();
+          
+          if (assignmentData?.eoa_id) {
+            const { data: eoaData } = await supabase
+              .from("events_actions")
+              .select("campaign_id")
+              .eq("id", assignmentData.eoa_id)
+              .maybeSingle();
+            
+            if (eoaData?.campaign_id) {
+              const { data: campaignData } = await supabase
+                .from("campaigns")
+                .select("snapshot_enabled, snapshot_interval_minutes")
+                .eq("id", eoaData.campaign_id)
+                .maybeSingle();
+              
+              if (campaignData) {
+                snapshotEnabled = campaignData.snapshot_enabled ?? false;
+                snapshotIntervalMinutes = campaignData.snapshot_interval_minutes ?? 2;
+              }
+            }
+          }
+        }
+        
         setConfig({
           image_url: templateData.image_url,
           hotspots: mappedHotspots,
-          template_type: (templateData.template_type as TemplateType) || 'interactive_share',
+          template_type: templateType,
           config: templateData.config || {},
+          cached_snapshot_path: templateData.cached_snapshot_path,
+          snapshot_rendered_at: templateData.snapshot_rendered_at,
+          snapshot_enabled: snapshotEnabled,
+          snapshot_interval_minutes: snapshotIntervalMinutes,
         });
       } else {
         console.warn(`⚠️ ${COMPONENT_VERSION} - Template query returned null for:`, slideData.template_id);
@@ -237,6 +285,10 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
         hotspots={config.hotspots} 
         deckSlug={deckSlug}
         viralToken={viralToken}
+        cachedSnapshotPath={config.cached_snapshot_path}
+        snapshotRenderedAt={config.snapshot_rendered_at}
+        snapshotEnabled={config.snapshot_enabled}
+        snapshotIntervalMinutes={config.snapshot_interval_minutes}
       />
     );
   }

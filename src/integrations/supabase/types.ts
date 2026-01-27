@@ -21,6 +21,8 @@ export type Database = {
           description: string | null
           display_order: number
           id: string
+          snapshot_enabled: boolean | null
+          snapshot_interval_minutes: number | null
           title: string
           updated_at: string
         }
@@ -30,6 +32,8 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
+          snapshot_enabled?: boolean | null
+          snapshot_interval_minutes?: number | null
           title: string
           updated_at?: string
         }
@@ -39,6 +43,8 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
+          snapshot_enabled?: boolean | null
+          snapshot_interval_minutes?: number | null
           title?: string
           updated_at?: string
         }
@@ -655,6 +661,7 @@ export type Database = {
       }
       viral_slide_configs: {
         Row: {
+          cached_snapshot_path: string | null
           config: Json | null
           created_at: string
           deck_slug: string | null
@@ -666,11 +673,13 @@ export type Database = {
           name: string | null
           slide_id: string | null
           slug: string
+          snapshot_rendered_at: string | null
           template_type: string
           thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
+          cached_snapshot_path?: string | null
           config?: Json | null
           created_at?: string
           deck_slug?: string | null
@@ -682,11 +691,13 @@ export type Database = {
           name?: string | null
           slide_id?: string | null
           slug: string
+          snapshot_rendered_at?: string | null
           template_type?: string
           thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
+          cached_snapshot_path?: string | null
           config?: Json | null
           created_at?: string
           deck_slug?: string | null
@@ -698,6 +709,7 @@ export type Database = {
           name?: string | null
           slide_id?: string | null
           slug?: string
+          snapshot_rendered_at?: string | null
           template_type?: string
           thumbnail_url?: string | null
           updated_at?: string

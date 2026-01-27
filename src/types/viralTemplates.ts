@@ -143,7 +143,8 @@ export type LiveMetricKey =
   | 'current_date'      // Current date (viewer's local TZ)
   | 'current_time'      // Current time (viewer's local TZ)
   | 'earliest_active'   // Earliest activity timestamp (viewer's local TZ)
-  | 'latest_active';    // Latest activity timestamp (viewer's local TZ)
+  | 'latest_active'     // Latest activity timestamp (viewer's local TZ)
+  | 'last_updated';     // When snapshot was last rendered (for SSR)
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 

@@ -40,6 +40,7 @@ const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
   { value: "current_time", label: "Current Time" },
   { value: "earliest_active", label: "Earliest Active" },
   { value: "latest_active", label: "Latest Active" },
+  { value: "last_updated", label: "🕐 Last Updated" },
 ];
 
 interface HotspotCalibrationControlsProps {
