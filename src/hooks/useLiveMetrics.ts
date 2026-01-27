@@ -37,6 +37,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   current_time: "Current Time",
   earliest_active: "Earliest Active",
   latest_active: "Latest Active",
+  last_updated: "Last Updated",
 };
 
 // Get viewer's browser timezone

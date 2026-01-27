@@ -36,6 +36,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { EventStoryDialog } from "@/components/EventStoryDialog";
+import { CampaignSnapshotSettings } from "@/components/CampaignSnapshotSettings";
 interface UrlEvent {
   id: string;
   token: string;
@@ -1387,6 +1388,14 @@ export default function CampaignDashboard({
                 </AlertDialog>
               </CardContent>
             </Card>
+
+            {/* Server-Side Rendering Settings */}
+            {selectedCampaignId && selectedCampaign && (
+              <CampaignSnapshotSettings 
+                campaignId={selectedCampaignId}
+                campaignCode={selectedCampaign}
+              />
+            )}
 
             {/* Filter Summary */}
             <Card>

@@ -5,15 +5,51 @@ import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { Loader2 } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
 
 interface StatsPageSlideProps {
   imageUrl: string;
   hotspots: Hotspot[];
   deckSlug: string;
   viralToken: string | null;
+  // Snapshot props for server-side rendered version
+  cachedSnapshotPath?: string | null;
+  snapshotRenderedAt?: string | null;
+  snapshotEnabled?: boolean;
+  snapshotIntervalMinutes?: number;
 }
 
-export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: StatsPageSlideProps) => {
+// Check if a snapshot is fresh enough to use
+function isSnapshotFresh(
+  renderedAt: string | null | undefined,
+  intervalMinutes: number = 2
+): boolean {
+  if (!renderedAt) return false;
+  
+  const renderedDate = new Date(renderedAt);
+  const now = new Date();
+  const ageMinutes = (now.getTime() - renderedDate.getTime()) / (1000 * 60);
+  
+  // Use snapshot if it's within 2.5x the interval (buffer for refresh timing)
+  return ageMinutes < intervalMinutes * 2.5;
+}
+
+// Get the full URL for a snapshot from its relative path
+function getSnapshotUrl(relativePath: string): string {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  return `${supabaseUrl}/storage/v1/object/public/slide-snapshots${relativePath}`;
+}
+
+export const StatsPageSlide = ({ 
+  imageUrl, 
+  hotspots, 
+  deckSlug, 
+  viralToken,
+  cachedSnapshotPath,
+  snapshotRenderedAt,
+  snapshotEnabled,
+  snapshotIntervalMinutes = 2,
+}: StatsPageSlideProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -24,11 +60,23 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
     offsetY: 0 
   });
 
-  // Get live metrics via the hook
+  // Determine if we should use the cached snapshot
+  const shouldUseCachedSnapshot = 
+    snapshotEnabled && 
+    cachedSnapshotPath && 
+    isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes);
+
+  // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
 
-  // Resolve campaign from viralToken or deckSlug
+  // Resolve campaign from viralToken or deckSlug (only when not using cached snapshot)
   useEffect(() => {
+    // Skip API calls if using cached snapshot
+    if (shouldUseCachedSnapshot) {
+      console.log("📊 StatsPageSlide: Using cached snapshot, skipping API calls");
+      return;
+    }
+
     const resolveCampaign = async () => {
       try {
         let campaignCode: string | null = null;
@@ -88,7 +136,7 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
     };
 
     resolveCampaign();
-  }, [viralToken, deckSlug, resolveMetrics]);
+  }, [viralToken, deckSlug, resolveMetrics, shouldUseCachedSnapshot]);
 
   // Calculate image dimensions when loaded
   useEffect(() => {
@@ -183,6 +231,26 @@ export const StatsPageSlide = ({ imageUrl, hotspots, deckSlug, viralToken }: Sta
     extractCampaignCode();
   }, [viralToken, deckSlug]);
 
+  // If using cached snapshot, render simple static image (no API calls)
+  if (shouldUseCachedSnapshot && cachedSnapshotPath) {
+    const snapshotUrl = getSnapshotUrl(cachedSnapshotPath);
+    console.log("📊 StatsPageSlide: Rendering cached snapshot:", snapshotUrl);
+    
+    return (
+      <div 
+        ref={containerRef}
+        className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
+      >
+        <img
+          src={snapshotUrl}
+          alt="Stats page (cached)"
+          className="max-w-full max-h-full object-contain"
+        />
+      </div>
+    );
+  }
+
+  // Dynamic rendering with live metrics
   return (
     <div 
       ref={containerRef}
