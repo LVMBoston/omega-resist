@@ -759,6 +759,16 @@ export default function CampaignManager() {
                   </p>
                 </div>
               </div>
+              <div className="flex justify-between gap-4">
+                <div>
+                  <p className="text-muted-foreground">Earliest Active</p>
+                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.earliestActive || null) : "-nm-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Latest Active</p>
+                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.latestActive || null) : "-nm-"}</p>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Button 
                   variant="outline" 
