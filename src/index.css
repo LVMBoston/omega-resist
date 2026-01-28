@@ -1,4 +1,21 @@
 @tailwind base;
+
+/* DeckViewer slide container - portrait slides (9:16) on different viewport orientations */
+.deck-slide-container {
+  /* Default: portrait viewport - fill width, height auto */
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+}
+
+@media (orientation: landscape) {
+  /* Landscape viewport (PC/iPad) - constrain by height, letterbox horizontally */
+  .deck-slide-container {
+    height: 100%;
+    width: auto;
+    aspect-ratio: 9 / 16;
+  }
+}
 @tailwind components;
 @tailwind utilities;
 

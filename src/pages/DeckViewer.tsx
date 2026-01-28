@@ -473,8 +473,8 @@ export default function DeckViewer() {
                 <CarouselItem key={slide.id} className="h-full flex items-center justify-center">
                   <Card className="h-full w-full border-0 rounded-none bg-black">
                     <CardContent className="p-0 h-full w-full flex items-center justify-center">
-                      {/* Portrait slide container: on landscape screens, constrain by height; on portrait screens, constrain by width */}
-                      <div className="relative bg-black flex items-center justify-center h-full w-full portrait:w-full portrait:h-auto landscape:h-full landscape:w-auto landscape:aspect-[9/16]">
+                      {/* Portrait slide (9:16): fill height on landscape viewports (letterbox), fill width on portrait viewports */}
+                      <div className="relative bg-black flex items-center justify-center deck-slide-container">
                         {slide.type === "spread-word" ? (
                           <ViralSlide 
                             key={`viral-${slide.id}`}
