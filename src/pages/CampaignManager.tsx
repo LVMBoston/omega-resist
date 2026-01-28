@@ -35,6 +35,7 @@ interface EventAction {
   start_date: string | null;
   end_date: string | null;
   mobilize_code: string | null;
+  assigned_deck_slug: string | null;
 }
 interface CampaignStats {
   totalEvents: number;
@@ -53,12 +54,22 @@ interface CampaignStats {
   l3PlusCount: number;
   chaptersCount: number;
 }
+
+interface DeploymentState {
+  ready: boolean;
+  hasExistingTokens: boolean;
+  readyEoas: number;
+  totalEoas: number;
+  lastDeployed: string | null;
+  deckSlugs: string[];
+}
 const codeSchema = z.string().min(1, "Code is required").regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
 export default function CampaignManager() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [eoas, setEoas] = useState<EventAction[]>([]);
   const [campaignStats, setCampaignStats] = useState<Map<string, CampaignStats>>(new Map());
+  const [deploymentStates, setDeploymentStates] = useState<Map<string, DeploymentState>>(new Map());
   const [loading, setLoading] = useState(true);
   const {
     userRole
@@ -85,6 +96,7 @@ export default function CampaignManager() {
   useEffect(() => {
     if (campaigns.length > 0 || eoas.length > 0) {
       calculateCampaignStats();
+      calculateDeploymentStates();
     }
   }, [campaigns, eoas]);
   const fetchData = async () => {
@@ -113,7 +125,7 @@ export default function CampaignManager() {
     const {
       data,
       error
-    } = await supabase.from("events_actions").select("id, campaign_id, type, start_date, end_date, mobilize_code").order("created_at", {
+    } = await supabase.from("events_actions").select("id, campaign_id, type, start_date, end_date, mobilize_code, assigned_deck_slug").order("created_at", {
       ascending: false
     });
     if (error) {
@@ -236,6 +248,80 @@ export default function CampaignManager() {
     }
     setCampaignStats(stats);
   };
+
+  // Calculate deployment states for all campaigns in one batch
+  const calculateDeploymentStates = async () => {
+    const states = new Map<string, DeploymentState>();
+    
+    // Group EoAs by campaign and compute local stats
+    const campaignEoaMap = new Map<string, EventAction[]>();
+    for (const campaign of campaigns) {
+      campaignEoaMap.set(campaign.id, eoas.filter(e => e.campaign_id === campaign.id));
+    }
+    
+    // Collect all EoA IDs that are "ready" (have mobilize_code and deck)
+    const allReadyEoaIds: string[] = [];
+    for (const [campaignId, campaignEoas] of campaignEoaMap) {
+      const readyEoas = campaignEoas.filter(e => e.mobilize_code && e.assigned_deck_slug);
+      allReadyEoaIds.push(...readyEoas.map(e => e.id));
+    }
+    
+    // Batch fetch latest L00 token per EoA in ONE query
+    let tokensByEoaId = new Map<string, string>(); // eoa_id -> minted_at
+    if (allReadyEoaIds.length > 0) {
+      const { data: tokens, error } = await supabase
+        .from("tokens")
+        .select("eoa_id, minted_at")
+        .eq("level", 0)
+        .in("eoa_id", allReadyEoaIds);
+      
+      if (!error && tokens) {
+        for (const token of tokens) {
+          // Keep the latest minted_at per eoa_id
+          const existing = tokensByEoaId.get(token.eoa_id);
+          if (!existing || token.minted_at > existing) {
+            tokensByEoaId.set(token.eoa_id, token.minted_at);
+          }
+        }
+      }
+    }
+    
+    // Build deployment state for each campaign
+    for (const [campaignId, campaignEoas] of campaignEoaMap) {
+      const readyEoas = campaignEoas.filter(e => e.mobilize_code && e.assigned_deck_slug);
+      const allReady = readyEoas.length > 0 && readyEoas.length === campaignEoas.length;
+      
+      // Get unique deck slugs
+      const deckSlugs = [...new Set(
+        campaignEoas
+          .map(e => e.assigned_deck_slug)
+          .filter((slug): slug is string => slug !== null)
+      )];
+      
+      // Find latest deployed token for this campaign
+      let lastDeployed: string | null = null;
+      for (const eoa of campaignEoas) {
+        const mintedAt = tokensByEoaId.get(eoa.id);
+        if (mintedAt && (!lastDeployed || mintedAt > lastDeployed)) {
+          lastDeployed = mintedAt;
+        }
+      }
+      
+      const hasExistingTokens = campaignEoas.some(e => tokensByEoaId.has(e.id));
+      
+      states.set(campaignId, {
+        ready: allReady,
+        hasExistingTokens,
+        readyEoas: readyEoas.length,
+        totalEoas: campaignEoas.length,
+        lastDeployed,
+        deckSlugs
+      });
+    }
+    
+    setDeploymentStates(states);
+  };
+
   const createCampaign = async () => {
     if (!campaignForm.code || !campaignForm.title) {
       toast({
@@ -449,21 +535,15 @@ export default function CampaignManager() {
     stats: CampaignStats | undefined;
     showStats: boolean;
     onToggleStats: (checked: boolean) => void;
+    deploymentState: DeploymentState;
+    onRefreshDeployment: () => void;
   }
   
-  const SortableCard = ({ campaign, stats, showStats, onToggleStats }: SortableCardProps) => {
+  const SortableCard = ({ campaign, stats, showStats, onToggleStats, deploymentState, onRefreshDeployment }: SortableCardProps) => {
     const [deckDialogOpen, setDeckDialogOpen] = useState(false);
     const [deckSlides, setDeckSlides] = useState<any[]>([]);
     const [loadingDeck, setLoadingDeck] = useState(false);
-    const [deckSlugs, setDeckSlugs] = useState<string[]>([]);
     const [selectedDeckSlug, setSelectedDeckSlug] = useState<string | null>(null);
-    const [deploymentState, setDeploymentState] = useState<{
-      ready: boolean;
-      hasExistingTokens: boolean;
-      readyEoas: number;
-      totalEoas: number;
-      lastDeployed: string | null;
-    }>({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0, lastDeployed: null });
     const [deploying, setDeploying] = useState(false);
 
     const {
@@ -474,79 +554,6 @@ export default function CampaignManager() {
       transition,
       isDragging,
     } = useSortable({ id: campaign.id });
-
-    // Fetch deck slugs and deployment state when component mounts
-    useEffect(() => {
-      const fetchCampaignData = async () => {
-        // Fetch all unique deck slugs
-        const { data: eoaData } = await supabase
-          .from("events_actions")
-          .select("assigned_deck_slug")
-          .eq("campaign_id", campaign.id)
-          .not("assigned_deck_slug", "is", null);
-
-        if (eoaData && eoaData.length > 0) {
-          const uniqueSlugs = [...new Set(
-            eoaData
-              .map(e => e.assigned_deck_slug)
-              .filter((slug): slug is string => slug !== null)
-          )];
-          setDeckSlugs(uniqueSlugs);
-        }
-
-        // Check deployment state
-        await checkDeploymentState();
-      };
-
-      fetchCampaignData();
-    }, [campaign.id]);
-
-    const checkDeploymentState = async () => {
-      // Get all EoAs for campaign
-      const { data: eoas } = await supabase
-        .from("events_actions")
-        .select("id, mobilize_code, assigned_deck_slug")
-        .eq("campaign_id", campaign.id);
-      
-      if (!eoas || eoas.length === 0) {
-        setDeploymentState({ ready: false, hasExistingTokens: false, readyEoas: 0, totalEoas: 0, lastDeployed: null });
-        return;
-      }
-      
-      // Check if all EoAs have required fields
-      const readyEoas = eoas.filter(eoa => eoa.mobilize_code && eoa.assigned_deck_slug);
-      const allReady = readyEoas.length === eoas.length;
-      
-      if (!allReady) {
-        setDeploymentState({ 
-          ready: false, 
-          hasExistingTokens: false, 
-          readyEoas: readyEoas.length, 
-          totalEoas: eoas.length,
-          lastDeployed: null
-        });
-        return;
-      }
-      
-      // Check if any L00 tokens exist and get most recent deployment
-      const { data: tokens } = await supabase
-        .from("tokens")
-        .select("id, minted_at")
-        .eq("level", 0)
-        .in("eoa_id", eoas.map(e => e.id))
-        .order("minted_at", { ascending: false })
-        .limit(1);
-      
-      const lastDeployed = tokens && tokens.length > 0 ? tokens[0].minted_at : null;
-      
-      setDeploymentState({
-        ready: true,
-        hasExistingTokens: (tokens?.length ?? 0) > 0,
-        readyEoas: readyEoas.length,
-        totalEoas: eoas.length,
-        lastDeployed
-      });
-    };
 
     const handleDeploy = async (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -615,8 +622,8 @@ export default function CampaignManager() {
           });
         }
 
-        // Refresh deployment state
-        await checkDeploymentState();
+        // Refresh deployment state via parent
+        onRefreshDeployment();
       } catch (error: any) {
         toast({
           variant: "destructive",
@@ -633,6 +640,9 @@ export default function CampaignManager() {
       transition,
       opacity: isDragging ? 0.5 : 1,
     };
+
+    // Use deckSlugs from deploymentState prop
+    const deckSlugs = deploymentState.deckSlugs;
 
     const handleViewDeck = async (e: React.MouseEvent, slug?: string) => {
       e.stopPropagation();
@@ -1008,6 +1018,14 @@ export default function CampaignManager() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {campaigns.map(campaign => {
                     const stats = campaignStats.get(campaign.id);
+                    const depState = deploymentStates.get(campaign.id) || {
+                      ready: false,
+                      hasExistingTokens: false,
+                      readyEoas: 0,
+                      totalEoas: 0,
+                      lastDeployed: null,
+                      deckSlugs: []
+                    };
                     return (
                       <SortableCard 
                         key={campaign.id} 
@@ -1021,6 +1039,8 @@ export default function CampaignManager() {
                             return next;
                           });
                         }}
+                        deploymentState={depState}
+                        onRefreshDeployment={calculateDeploymentStates}
                       />
                     );
                   })}
