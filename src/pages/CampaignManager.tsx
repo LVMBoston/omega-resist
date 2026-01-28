@@ -128,14 +128,21 @@ export default function CampaignManager() {
     const stats = new Map<string, CampaignStats>();
     const now = new Date();
     
+    // Calculate EoA-based stats locally (fast, in-memory)
+    const campaignEoaStats = new Map<string, {
+      totalEvents: number;
+      totalActions: number;
+      activeEvents: number;
+      activeActions: number;
+      chaptersCount: number;
+      totalEventsActions: number;
+    }>();
+    
     for (const campaign of campaigns) {
       const campaignEoas = eoas.filter(e => e.campaign_id === campaign.id);
-      
-      // Calculate totals by type
       const totalEvents = campaignEoas.filter(e => e.type === "event").length;
       const totalActions = campaignEoas.filter(e => e.type === "action").length;
       
-      // Calculate active (within 14 days past end_date)
       const activeEoas = campaignEoas.filter(eoa => {
         if (!eoa.end_date) return true;
         const endDate = new Date(eoa.end_date);
@@ -146,85 +153,83 @@ export default function CampaignManager() {
       const activeEvents = activeEoas.filter(e => e.type === "event").length;
       const activeActions = activeEoas.filter(e => e.type === "action").length;
       
-      // Get all tokens for this campaign with level info
-      const { data: campaignTokens } = await supabase
-        .from("tokens")
-        .select("token, level")
-        .eq("utm_campaign", campaign.code);
-      
-      const tokenList = campaignTokens?.map(t => t.token) || [];
-      
-      // Calculate viral depth counts
-      const l0Count = campaignTokens?.filter(t => t.level === 0).length || 0;
-      const l1Count = campaignTokens?.filter(t => t.level === 1).length || 0;
-      const l2Count = campaignTokens?.filter(t => t.level === 2).length || 0;
-      const l3PlusCount = campaignTokens?.filter(t => t.level >= 3).length || 0;
-      
-      // Calculate unique chapters (mobilize_code)
       const uniqueMobilizeCodes = new Set(
         campaignEoas.map(e => e.mobilize_code).filter(Boolean)
       );
-      const chaptersCount = uniqueMobilizeCodes.size;
       
-      let earliestEvent = null;
-      let latestEvent = null;
-      let realDataRows = 0;
-      let simDataRows = 0;
-      
-      if (tokenList.length > 0) {
-        // Get earliest event
-        const { data: earliest } = await supabase
-          .from("url_events")
-          .select("occurred_at")
-          .eq("is_simulated", false)
-          .in("token", tokenList)
-          .order("occurred_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        earliestEvent = earliest;
-        
-        // Get latest event
-        const { data: latest } = await supabase
-          .from("url_events")
-          .select("occurred_at")
-          .eq("is_simulated", false)
-          .in("token", tokenList)
-          .order("occurred_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        latestEvent = latest;
-        
-        // Count real vs simulated data rows
-        const { count: realCount } = await supabase
-          .from("url_events")
-          .select("*", { count: "exact", head: true })
-          .eq("is_simulated", false)
-          .in("token", tokenList);
-        realDataRows = realCount || 0;
-        
-        const { count: simCount } = await supabase
-          .from("url_events")
-          .select("*", { count: "exact", head: true })
-          .eq("is_simulated", true)
-          .in("token", tokenList);
-        simDataRows = simCount || 0;
-      }
-      
-      stats.set(campaign.id, {
+      campaignEoaStats.set(campaign.id, {
         totalEvents,
         totalActions,
         activeEvents,
         activeActions,
-        earliestActive: earliestEvent?.occurred_at || null,
-        latestActive: latestEvent?.occurred_at || null,
-        totalEventsActions: campaignEoas.length,
-        realDataRows,
-        simDataRows,
-        l0Count,
-        l1Count,
-        l2Count,
-        l3PlusCount,
-        chaptersCount
+        chaptersCount: uniqueMobilizeCodes.size,
+        totalEventsActions: campaignEoas.length
+      });
+    }
+    
+    // Fetch database stats in ONE RPC call for all campaigns
+    const campaignCodes = campaigns.map(c => c.code);
+    let dbStats: Record<string, {
+      earliest_active: string | null;
+      latest_active: string | null;
+      real_data_rows: number;
+      sim_data_rows: number;
+      l0_count: number;
+      l1_count: number;
+      l2_count: number;
+      l3_plus_count: number;
+    }> = {};
+    
+    if (campaignCodes.length > 0) {
+      const { data, error } = await supabase.rpc("get_campaign_stats", {
+        campaign_codes: campaignCodes
+      });
+      
+      if (!error && data) {
+        for (const row of data) {
+          dbStats[row.campaign_code] = {
+            earliest_active: row.earliest_active,
+            latest_active: row.latest_active,
+            real_data_rows: Number(row.real_data_rows) || 0,
+            sim_data_rows: Number(row.sim_data_rows) || 0,
+            l0_count: Number(row.l0_count) || 0,
+            l1_count: Number(row.l1_count) || 0,
+            l2_count: Number(row.l2_count) || 0,
+            l3_plus_count: Number(row.l3_plus_count) || 0
+          };
+        }
+      }
+    }
+    
+    // Merge stats
+    for (const campaign of campaigns) {
+      const eoaStats = campaignEoaStats.get(campaign.id);
+      const db = dbStats[campaign.code] || {
+        earliest_active: null,
+        latest_active: null,
+        real_data_rows: 0,
+        sim_data_rows: 0,
+        l0_count: 0,
+        l1_count: 0,
+        l2_count: 0,
+        l3_plus_count: 0
+      };
+      
+      stats.set(campaign.id, {
+        totalEvents: eoaStats?.totalEvents || 0,
+        totalActions: eoaStats?.totalActions || 0,
+        activeEvents: eoaStats?.activeEvents || 0,
+        activeActions: eoaStats?.activeActions || 0,
+        earliestActive: db.earliest_active,
+        latestActive: db.latest_active,
+        totalEventsActions: eoaStats?.totalEventsActions || 0,
+        realDataRows: db.real_data_rows,
+        simDataRows: db.sim_data_rows,
+        l0Count: db.l0_count,
+        l1Count: db.l1_count,
+        l2Count: db.l2_count,
+        l3PlusCount: db.l3_plus_count,
+        chaptersCount: eoaStats?.chaptersCount || 0
       });
     }
     setCampaignStats(stats);
