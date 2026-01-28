@@ -1087,6 +1087,24 @@ export default function InteractiveTemplates() {
         ) : (
           <>
             <TabsContent value="all" className="space-y-8">
+              {/* Data Templates Section - Displayed First */}
+              {dataTemplates.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-6 w-1 bg-green-500 rounded-full" />
+                    <h2 className="text-lg font-semibold text-green-900 dark:text-green-100">
+                      DATA TEMPLATES
+                    </h2>
+                    <Badge variant="outline" className="ml-2 text-green-600 border-green-300">
+                      {dataTemplates.length}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {dataTemplates.map(renderTemplateCard)}
+                  </div>
+                </div>
+              )}
+
               {/* Action Templates Section */}
               {actionTemplates.length > 0 && (
                 <div>
@@ -1101,24 +1119,6 @@ export default function InteractiveTemplates() {
                   </div>
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {actionTemplates.map(renderTemplateCard)}
-                  </div>
-                </div>
-              )}
-
-              {/* Data Templates Section */}
-              {dataTemplates.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="h-6 w-1 bg-green-500 rounded-full" />
-                    <h2 className="text-lg font-semibold text-green-900 dark:text-green-100">
-                      DATA TEMPLATES
-                    </h2>
-                    <Badge variant="outline" className="ml-2 text-green-600 border-green-300">
-                      {dataTemplates.length}
-                    </Badge>
-                  </div>
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {dataTemplates.map(renderTemplateCard)}
                   </div>
                 </div>
               )}
