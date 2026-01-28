@@ -790,6 +790,14 @@ export type Database = {
           timezone: string
         }[]
       }
+      get_first_view_by_eoa_ids: {
+        Args: { eoa_ids: string[] }
+        Returns: {
+          eoa_id: string
+          first_view_at: string
+          mobilize_code: string
+        }[]
+      }
       get_nearest_zip_code: {
         Args: { p_latitude: number; p_longitude: number }
         Returns: {
