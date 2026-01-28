@@ -599,7 +599,6 @@ export function DataTemplateEditor({
             currentBounds={currentMapBounds}
             onZoomIn={mapControls?.zoomIn}
             onZoomOut={mapControls?.zoomOut}
-            onResetView={mapControls?.resetView}
           />
         )}
 
