@@ -162,17 +162,28 @@ export function DraggableHotspotOverlay({
                 </div>
               )}
 
-              {/* Lock indicator in upper right corner */}
-              <div 
-                className={`absolute top-0 right-0 w-7 h-7 flex items-center justify-center z-[1002] rounded-bl-lg ${
+              {/* Lock toggle button in upper right corner */}
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onUpdateHotspot(index, {
+                    mapConfig: {
+                      ...mapConfig,
+                      isLocked: !isMapLocked,
+                    },
+                  });
+                }}
+                className={`absolute top-0 right-0 w-7 h-7 flex items-center justify-center z-[1002] rounded-bl-lg cursor-pointer transition-colors ${
                   isMapLocked 
-                    ? "bg-amber-500 text-white" 
-                    : "bg-gray-500/60 text-white/80"
+                    ? "bg-amber-500 text-white hover:bg-amber-600" 
+                    : "bg-gray-500/60 text-white/80 hover:bg-gray-600"
                 }`}
-                title={isMapLocked ? "Map position locked" : "Map position unlocked"}
+                title={isMapLocked ? "Click to unlock map (enable pan/zoom)" : "Click to lock map position"}
               >
                 {isMapLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-              </div>
+              </button>
 
               {/* Drag handle - on the corner for map hotspots */}
               <div 
@@ -183,9 +194,9 @@ export function DraggableHotspotOverlay({
                 <Move className="w-4 h-4 text-white" />
               </div>
 
-              {/* Index badge */}
+              {/* Index badge - moved to bottom left to avoid confusion with resize handle */}
               <div
-                className={`absolute -bottom-3 -right-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
+                className={`absolute -bottom-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
                   isActive
                     ? "bg-purple-500 text-white"
                     : "bg-muted text-muted-foreground"
@@ -194,8 +205,7 @@ export function DraggableHotspotOverlay({
                 {index + 1}
               </div>
 
-              {/* Resize handle indicator */}
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-purple-500/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity z-[1001]" />
+              {/* Removed non-functional resize handle - use sliders in calibration panel for resizing */}
             </div>
           );
         }
