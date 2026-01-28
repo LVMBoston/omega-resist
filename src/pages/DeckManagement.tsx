@@ -454,7 +454,7 @@ const Index = () => {
         <div className="w-full px-6 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Deck Management</h1>
-            <p className="text-sm text-muted-foreground mt-1">Viral Deck Management</p>
+            <p className="text-sm text-muted-foreground mt-1">Add interactive slides, rearrange slides, add & remove slides. To edit an interactive slide use "Interactive Slide Editor"</p>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => fetchDecks(true)} variant="outline" disabled={refreshing} title="Refresh slide counts">
