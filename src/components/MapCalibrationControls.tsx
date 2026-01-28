@@ -1,8 +1,9 @@
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { Hotspot, MapConfig } from "@/types/viralTemplates";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Save, Trash2, ZoomIn, ZoomOut, Move, Hand, Lock, Unlock } from "lucide-react";
+import { Save, Trash2, Hand, Lock, Unlock } from "lucide-react";
 import { SliderWithButtons } from "@/components/ui/slider-with-buttons";
 
 interface MapCalibrationControlsProps {
@@ -11,7 +12,6 @@ interface MapCalibrationControlsProps {
   currentBounds?: { north: number; south: number; east: number; west: number } | null;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
-  onResetView?: () => void;
 }
 
 export function MapCalibrationControls({
@@ -20,7 +20,6 @@ export function MapCalibrationControls({
   currentBounds,
   onZoomIn,
   onZoomOut,
-  onResetView,
 }: MapCalibrationControlsProps) {
   const mapConfig = hotspot.mapConfig || {
     mapStyle: "channel_colors" as const,
@@ -57,43 +56,55 @@ export function MapCalibrationControls({
               Position the Map View
             </p>
             <p className="text-purple-700 dark:text-purple-300 mt-1">
-              Drag to pan, scroll to zoom, then click <strong>Save Current View</strong> to lock this position for runtime.
+              Drag to pan, use zoom controls or scroll to zoom, then click <strong>Save Current View</strong> to lock this position for runtime.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Zoom Controls */}
+      {/* Zoom Controls with fine-tune buttons */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium">Zoom Controls</Label>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onZoomIn}
-            className="flex-1 gap-1"
-          >
-            <ZoomIn className="w-4 h-4" />
-            Zoom In
-          </Button>
+        <Label className="text-sm font-medium">Zoom</Label>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={onZoomOut}
-            className="flex-1 gap-1"
+            className="px-3"
           >
-            <ZoomOut className="w-4 h-4" />
-            Zoom Out
+            −
           </Button>
+          <div className="flex-1 text-center text-sm text-muted-foreground">
+            Use buttons or scroll on map
+          </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={onResetView}
-            className="gap-1"
-            title="Reset to default US view"
+            onClick={onZoomIn}
+            className="px-3"
           >
-            <Move className="w-4 h-4" />
+            +
           </Button>
+          <div className="flex flex-col">
+            <button
+              type="button"
+              className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
+              onClick={onZoomIn}
+              tabIndex={-1}
+              title="Zoom in"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
+              onClick={onZoomOut}
+              tabIndex={-1}
+              title="Zoom out"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
         </div>
       </div>
 
