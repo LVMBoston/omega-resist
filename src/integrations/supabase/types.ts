@@ -780,6 +780,20 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_campaign_stats: {
+        Args: { campaign_codes: string[] }
+        Returns: {
+          campaign_code: string
+          earliest_active: string
+          l0_count: number
+          l1_count: number
+          l2_count: number
+          l3_plus_count: number
+          latest_active: string
+          real_data_rows: number
+          sim_data_rows: number
+        }[]
+      }
       get_coordinates_from_zip: {
         Args: { p_zip_code: string }
         Returns: {
