@@ -783,7 +783,7 @@ export default function InteractiveTemplates() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Interactive Slide Template Repository</h1>
+          <h1 className="text-3xl font-bold">Interactive Template Repository</h1>
           <p className="text-muted-foreground mt-2">
             Create reusable templates for interactive slides. Changes to templates cascade to all decks using them.
           </p>
