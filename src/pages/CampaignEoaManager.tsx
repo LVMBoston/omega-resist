@@ -120,15 +120,39 @@ export default function CampaignEoaManager() {
   }, []);
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchCampaign(), fetchEoas(), fetchExistingTokens(), fetchDeckSlides(), fetchFirstViewTimes()]);
+    
+    // Phase 1: Fetch campaign and EoAs in parallel (no dependencies)
+    const [, eoasResult] = await Promise.all([
+      fetchCampaign(),
+      fetchEoas(), // Returns data directly
+    ]);
+    
+    // Phase 2: Fetch dependent data using the returned EoAs
+    if (eoasResult && eoasResult.length > 0) {
+      await Promise.all([
+        fetchExistingTokens(eoasResult),
+        fetchDeckSlides(eoasResult),
+        fetchFirstViewTimes(eoasResult),
+      ]);
+    } else {
+      // Clear dependent state when no EoAs
+      setL00Tokens({});
+      setDeckSlides({});
+      setFirstViewTimes({});
+    }
+    
     setLoading(false);
   };
 
-  const fetchDeckSlides = async () => {
+  const fetchDeckSlides = async (eoaData?: EventAction[]) => {
+    const eoasToUse = eoaData || eoas;
     // Get all unique deck slugs from eoas
-    const deckSlugs = [...new Set(eoas.map(eoa => eoa.assigned_deck_slug).filter(Boolean))];
+    const deckSlugs = [...new Set(eoasToUse.map(eoa => eoa.assigned_deck_slug).filter(Boolean))] as string[];
     
-    if (deckSlugs.length === 0) return;
+    if (deckSlugs.length === 0) {
+      setDeckSlides({});
+      return;
+    }
 
     const { data, error } = await supabase
       .from("slide_items")
@@ -178,42 +202,58 @@ export default function CampaignEoaManager() {
     }
   };
 
-  const fetchExistingTokens = async () => {
+  const fetchExistingTokens = async (eoaData?: EventAction[]) => {
+    const eoasToUse = eoaData || eoas;
+    const eoaIds = eoasToUse.map(e => e.id);
+    
+    if (eoaIds.length === 0) {
+      setL00Tokens({});
+      return;
+    }
+    
+    // Fetch only L00 tokens for EoAs in this campaign (scoped query)
     const { data, error } = await supabase
       .from("tokens")
       .select("eoa_id, token, full_url")
       .eq("level", 0)
-      .is("parent_token", null); // Only base L00 tokens, not :legacy instances
+      .is("parent_token", null)
+      .in("eoa_id", eoaIds); // Scope to campaign's EoAs
 
     if (error) {
       console.error("Failed to fetch tokens:", error);
-    } else if (data) {
-      // Fetch shortened URLs for all full URLs
-      const { data: shortUrls, error: shortError } = await supabase
-        .from("shortened_urls")
-        .select("full_url, short_code")
-        .in("full_url", data.map(t => t.full_url));
-
-      if (shortError) {
-        console.error("Failed to fetch shortened URLs:", shortError);
-      }
-
-      // Create map of full_url -> short_code
-      const shortUrlMap = new Map<string, string>();
-      shortUrls?.forEach(su => {
-        shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
-      });
-
-      const tokenMap: Record<string, { token: string; url: string; shortUrl?: string }> = {};
-      data.forEach(t => {
-        tokenMap[t.eoa_id] = { 
-          token: t.token, 
-          url: t.full_url,
-          shortUrl: shortUrlMap.get(t.full_url)
-        };
-      });
-      setL00Tokens(tokenMap);
+      return;
     }
+    
+    if (!data || data.length === 0) {
+      setL00Tokens({});
+      return;
+    }
+
+    // Fetch shortened URLs for all full URLs
+    const { data: shortUrls, error: shortError } = await supabase
+      .from("shortened_urls")
+      .select("full_url, short_code")
+      .in("full_url", data.map(t => t.full_url));
+
+    if (shortError) {
+      console.error("Failed to fetch shortened URLs:", shortError);
+    }
+
+    // Create map of full_url -> short_code
+    const shortUrlMap = new Map<string, string>();
+    shortUrls?.forEach(su => {
+      shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
+    });
+
+    const tokenMap: Record<string, { token: string; url: string; shortUrl?: string }> = {};
+    data.forEach(t => {
+      tokenMap[t.eoa_id] = { 
+        token: t.token, 
+        url: t.full_url,
+        shortUrl: shortUrlMap.get(t.full_url)
+      };
+    });
+    setL00Tokens(tokenMap);
   };
   const fetchCampaign = async () => {
     const {
@@ -231,62 +271,39 @@ export default function CampaignEoaManager() {
       setCampaign(data);
     }
   };
-  const fetchEoas = async () => {
-    const {
-      data,
-      error
-    } = await supabase.from("events_actions").select("*").eq("campaign_id", campaignId).order("zip_code", {
-      ascending: true
-    });
+  // Returns EoA data directly for use by dependent fetches
+  const fetchEoas = async (): Promise<EventAction[] | null> => {
+    const { data, error } = await supabase
+      .from("events_actions")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .order("zip_code", { ascending: true });
+      
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to fetch events/actions: " + error.message
       });
-    } else {
-      setEoas(data || []);
-      // Fetch slides after eoas are updated
-      if (data && data.length > 0) {
-        const deckSlugs = [...new Set(data.map(eoa => eoa.assigned_deck_slug).filter(Boolean))];
-        if (deckSlugs.length > 0) {
-          const { data: slideData, error: slideError } = await supabase
-            .from("slide_items")
-            .select("id, deck_slug, position, type, content_url")
-            .in("deck_slug", deckSlugs)
-            .order("position", { ascending: true });
-
-          if (slideError) {
-            console.error("Failed to fetch deck slides:", slideError);
-          } else if (slideData) {
-            const slidesByDeck: Record<string, Array<{ id: string; position: number; type: string; content_url: string }>> = {};
-            slideData.forEach(slide => {
-              if (!slidesByDeck[slide.deck_slug]) {
-                slidesByDeck[slide.deck_slug] = [];
-              }
-              slidesByDeck[slide.deck_slug].push(slide);
-            });
-            setDeckSlides(slidesByDeck);
-          }
-        }
-      }
+      return null;
     }
+    
+    setEoas(data || []);
+    return data || [];
   };
 
   // Fetch first view times per mobilize_code group (or per individual EoA without code)
   // Uses optimized database function to batch all queries into one RPC call
-  const fetchFirstViewTimes = async () => {
-    if (!campaignId) return;
+  // Now accepts EoA data directly to avoid redundant database query
+  const fetchFirstViewTimes = async (eoaData?: EventAction[]) => {
+    const eoasToUse = eoaData || eoas;
+    
+    if (!eoasToUse.length) {
+      setFirstViewTimes({});
+      return;
+    }
 
-    // Get all EoAs for this campaign with their mobilize_codes
-    const { data: campaignEoas, error: eoaError } = await supabase
-      .from("events_actions")
-      .select("id, mobilize_code")
-      .eq("campaign_id", campaignId);
-
-    if (eoaError || !campaignEoas?.length) return;
-
-    const eoaIds = campaignEoas.map(e => e.id);
+    const eoaIds = eoasToUse.map(e => e.id);
 
     // Single RPC call to get first view times for all EoAs
     const { data: rpcData, error: rpcError } = await supabase.rpc(
@@ -311,7 +328,7 @@ export default function CampaignEoaManager() {
 
     // Group EoAs by mobilize_code and find earliest per group
     const eoaIdsByCode: Record<string, string[]> = {};
-    campaignEoas.forEach(eoa => {
+    eoasToUse.forEach(eoa => {
       if (eoa.mobilize_code) {
         if (!eoaIdsByCode[eoa.mobilize_code]) {
           eoaIdsByCode[eoa.mobilize_code] = [];
@@ -335,7 +352,7 @@ export default function CampaignEoaManager() {
     }
 
     // For EoAs without mobilize_code, use individual first view
-    campaignEoas
+    eoasToUse
       .filter(e => !e.mobilize_code)
       .forEach(eoa => {
         const viewAt = viewByEoaId.get(eoa.id);
