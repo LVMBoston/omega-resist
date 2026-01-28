@@ -51,7 +51,6 @@ const navigation = [
     items: [
       { title: "Campaign Orchestration", url: "/campaign-config", icon: Megaphone },
       { title: "Event Manager", url: "/campaign-config", icon: Calendar, infoOnly: true },
-      { title: "Campaign Config", url: "/campaign-config", icon: Cog, infoOnly: true },
     ],
   },
   {
