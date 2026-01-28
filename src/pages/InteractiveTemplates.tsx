@@ -106,7 +106,17 @@ export default function InteractiveTemplates() {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data as Template[];
+      
+      // Sort Data templates (stats_page) to the top
+      const sorted = (data as Template[]).sort((a, b) => {
+        const aIsData = a.template_type === 'stats_page';
+        const bIsData = b.template_type === 'stats_page';
+        if (aIsData && !bIsData) return -1;
+        if (!aIsData && bIsData) return 1;
+        return 0; // Preserve existing order within groups
+      });
+      
+      return sorted;
     },
   });
 
