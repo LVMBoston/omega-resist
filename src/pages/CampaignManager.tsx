@@ -18,7 +18,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 interface Campaign {
   id: string;
   code: string;
@@ -453,7 +455,8 @@ export default function CampaignManager() {
     const [deckDialogOpen, setDeckDialogOpen] = useState(false);
     const [deckSlides, setDeckSlides] = useState<any[]>([]);
     const [loadingDeck, setLoadingDeck] = useState(false);
-    const [deckSlug, setDeckSlug] = useState<string | null>(null);
+    const [deckSlugs, setDeckSlugs] = useState<string[]>([]);
+    const [selectedDeckSlug, setSelectedDeckSlug] = useState<string | null>(null);
     const [deploymentState, setDeploymentState] = useState<{
       ready: boolean;
       hasExistingTokens: boolean;
@@ -472,20 +475,23 @@ export default function CampaignManager() {
       isDragging,
     } = useSortable({ id: campaign.id });
 
-    // Fetch deck slug and deployment state when component mounts
+    // Fetch deck slugs and deployment state when component mounts
     useEffect(() => {
       const fetchCampaignData = async () => {
-        // Fetch deck slug
+        // Fetch all unique deck slugs
         const { data: eoaData } = await supabase
           .from("events_actions")
           .select("assigned_deck_slug")
           .eq("campaign_id", campaign.id)
-          .not("assigned_deck_slug", "is", null)
-          .limit(1)
-          .maybeSingle();
+          .not("assigned_deck_slug", "is", null);
 
-        if (eoaData?.assigned_deck_slug) {
-          setDeckSlug(eoaData.assigned_deck_slug);
+        if (eoaData && eoaData.length > 0) {
+          const uniqueSlugs = [...new Set(
+            eoaData
+              .map(e => e.assigned_deck_slug)
+              .filter((slug): slug is string => slug !== null)
+          )];
+          setDeckSlugs(uniqueSlugs);
         }
 
         // Check deployment state
@@ -628,38 +634,29 @@ export default function CampaignManager() {
       opacity: isDragging ? 0.5 : 1,
     };
 
-    const handleViewDeck = async (e: React.MouseEvent) => {
+    const handleViewDeck = async (e: React.MouseEvent, slug?: string) => {
       e.stopPropagation();
+      const targetSlug = slug || deckSlugs[0];
+      
+      if (!targetSlug) {
+        toast({
+          variant: "destructive",
+          title: "No deck assigned",
+          description: "This campaign doesn't have an assigned deck yet."
+        });
+        return;
+      }
+
+      setSelectedDeckSlug(targetSlug);
       setDeckDialogOpen(true);
       setLoadingDeck(true);
 
       try {
-        // Get the deck slug from events_actions for this campaign
-        const { data: eoaData } = await supabase
-          .from("events_actions")
-          .select("assigned_deck_slug")
-          .eq("campaign_id", campaign.id)
-          .not("assigned_deck_slug", "is", null)
-          .limit(1)
-          .single();
-
-        if (!eoaData?.assigned_deck_slug) {
-          toast({
-            variant: "destructive",
-            title: "No deck assigned",
-            description: "This campaign doesn't have an assigned deck yet."
-          });
-          setLoadingDeck(false);
-          return;
-        }
-
-        setDeckSlug(eoaData.assigned_deck_slug);
-
         // Fetch slides for the deck
         const { data: slidesData, error: slidesError } = await supabase
           .from("slide_items")
           .select("*")
-          .eq("deck_slug", eoaData.assigned_deck_slug)
+          .eq("deck_slug", targetSlug)
           .order("position", { ascending: true });
 
         if (slidesError) throw slidesError;
@@ -775,15 +772,51 @@ export default function CampaignManager() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={handleViewDeck}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  {deckSlug ? `View ${deckSlug}` : "No Deck Assigned"}
-                </Button>
+                {deckSlugs.length === 0 ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    disabled
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    No Deck Assigned
+                  </Button>
+                ) : deckSlugs.length === 1 ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={handleViewDeck}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View {deckSlugs[0]}
+                  </Button>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View {deckSlugs.length} Slide Decks
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      {deckSlugs.map((slug) => (
+                        <DropdownMenuItem 
+                          key={slug} 
+                          onClick={(e) => handleViewDeck(e as unknown as React.MouseEvent, slug)}
+                        >
+                          {slug}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 
                 {deploymentState.ready ? (
                   deploymentState.lastDeployed ? (
@@ -847,7 +880,7 @@ export default function CampaignManager() {
             <DialogHeader>
               <DialogTitle>Deck Thumbnail View</DialogTitle>
               <DialogDescription>
-                {deckSlug ? `Deck: ${deckSlug}` : "Loading deck..."}
+                {selectedDeckSlug ? `Deck: ${selectedDeckSlug}` : "Loading deck..."}
               </DialogDescription>
             </DialogHeader>
             {loadingDeck ? (
@@ -881,10 +914,10 @@ export default function CampaignManager() {
                 ))}
               </div>
             )}
-            {deckSlug && !loadingDeck && (
+            {selectedDeckSlug && !loadingDeck && (
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" asChild>
-                  <Link to={`/deck/${deckSlug}`} target="_blank">
+                  <Link to={`/deck/${selectedDeckSlug}`} target="_blank">
                     Open Full Deck
                   </Link>
                 </Button>
