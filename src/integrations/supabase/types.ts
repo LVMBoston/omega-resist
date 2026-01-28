@@ -923,6 +923,14 @@ export type Database = {
           short_url: string
         }[]
       }
+      shorten_urls_batch: {
+        Args: { _full_urls: string[] }
+        Returns: {
+          full_url: string
+          short_code: string
+          short_url: string
+        }[]
+      }
       track_redirect: { Args: { _short_code: string }; Returns: string }
     }
     Enums: {

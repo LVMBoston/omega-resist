@@ -76,7 +76,7 @@ export async function shortenUrl(fullUrl: string): Promise<string> {
 }
 
 /**
- * Shorten multiple URLs in parallel (batch operation)
+ * Shorten multiple URLs in a single database call (batch operation)
  * Returns Map<fullUrl, shortUrl> with successful shortenings
  */
 export async function shortenUrlsBatch(
@@ -100,29 +100,45 @@ export async function shortenUrlsBatch(
     return results;
   }
 
-  console.log(`🔗 Shortening ${uncached.length} URLs in parallel...`);
+  console.log(`🔗 Shortening ${uncached.length} URLs in single batch call...`);
 
-  // Process in parallel with concurrency limit (10 at a time)
-  const BATCH_SIZE = 10;
-  for (let i = 0; i < uncached.length; i += BATCH_SIZE) {
-    const batch = uncached.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(url => 
-      shortenUrl(url)
-        .then(shortUrl => ({ url, shortUrl, success: true }))
-        .catch(error => ({ url, error, success: false }))
-    );
-
-    const batchResults = await Promise.allSettled(promises);
-    
-    batchResults.forEach(result => {
-      if (result.status === "fulfilled" && result.value.success && 'shortUrl' in result.value) {
-        results.set(result.value.url, result.value.shortUrl);
-      }
+  try {
+    // Single RPC call to shorten all URLs at once
+    const { data, error } = await supabase.rpc("shorten_urls_batch", {
+      _full_urls: uncached
     });
-  }
 
-  console.log(`✅ Successfully shortened ${results.size}/${fullUrls.length} URLs`);
-  return results;
+    if (error) {
+      console.error("shorten_urls_batch error:", error);
+      throw new Error("BATCH_URL_SHORTENING_FAILED: " + error.message);
+    }
+
+    // Process results
+    if (Array.isArray(data)) {
+      data.forEach((row: { full_url: string; short_url: string }) => {
+        results.set(row.full_url, row.short_url);
+        shortUrlCache.set(row.full_url, row.short_url);
+      });
+      saveCache();
+    }
+
+    console.log(`✅ Successfully shortened ${results.size}/${fullUrls.length} URLs`);
+    return results;
+  } catch (error) {
+    console.error("Batch shortening failed, falling back to individual calls:", error);
+    
+    // Fallback to individual calls if batch fails
+    for (const url of uncached) {
+      try {
+        const shortUrl = await shortenUrl(url);
+        results.set(url, shortUrl);
+      } catch (e) {
+        console.error(`Failed to shorten ${url}:`, e);
+      }
+    }
+    
+    return results;
+  }
 }
 
 /**
