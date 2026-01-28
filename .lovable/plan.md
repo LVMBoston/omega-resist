@@ -1,138 +1,125 @@
 
-# Multi-Deck Selector for Campaign Cards
 
-## Overview
-Currently, the Campaign Orchestration page shows only one deck per campaign card, even when multiple decks are assigned across different Events/Actions (EoAs). This plan adds a deck selector that adapts based on the number of assigned decks.
+## Event Manager Performance Fix
 
-## Current Behavior
-- The campaign card fetches only the first assigned deck (`limit(1)`)
-- Displays "View {deckname}" button regardless of how many decks exist
-- Does not reflect the full deck assignments visible in the EoA table
+The Event Manager (`CampaignEoaManager.tsx`) has several performance issues causing slow or failed loading across all campaigns. This plan consolidates and optimizes the data fetching logic.
 
-## Proposed Behavior
-| Condition | Button Display | Action |
-|-----------|----------------|--------|
-| No decks assigned | "No Deck Assigned" (disabled) | Nothing |
-| 1 deck assigned | "View {deckname}" | Opens deck preview dialog |
-| 2+ decks assigned | "View # Slide Decks" | Shows dropdown with deck names |
+### Problem Summary
 
-When a deck is selected from the dropdown, it opens the same deck preview dialog that exists today.
+The Event Manager makes multiple redundant database calls and has race conditions:
 
----
+1. **Token fetching is unscoped** - Fetches ALL L00 tokens globally instead of just those for the current campaign
+2. **Stale state reads** - `fetchDeckSlides` reads from `eoas` state before it's been populated
+3. **Duplicate slide fetching** - Slides are fetched twice (once in parallel, once after EoAs load)
+4. **Redundant EoA queries** - `fetchFirstViewTimes` re-queries EoAs that were just fetched
 
-## Technical Implementation
+### Solution
 
-### File to Modify
-`src/pages/CampaignManager.tsx`
+Refactor `fetchData` to use a **sequential, dependency-aware pattern**:
 
-### Changes to SortableCard Component
-
-**1. Update State**
-Replace the single `deckSlug` state with an array of unique deck slugs:
-```typescript
-// Before
-const [deckSlug, setDeckSlug] = useState<string | null>(null);
-
-// After
-const [deckSlugs, setDeckSlugs] = useState<string[]>([]);
-const [selectedDeckSlug, setSelectedDeckSlug] = useState<string | null>(null);
+```text
+┌──────────────────────────────────────────────────┐
+│ 1. Parallel Initial Fetch                        │
+│    - fetchCampaign()                             │
+│    - fetchEoas() → returns EoAs directly         │
+│    - fetchExistingTokens(campaignId) [SCOPED]    │
+└────────────────────┬─────────────────────────────┘
+                     │
+                     ▼ eoas available
+┌──────────────────────────────────────────────────┐
+│ 2. Dependent Fetches (parallel, using eoas)     │
+│    - fetchDeckSlides(eoaData)                   │
+│    - fetchFirstViewTimes(eoaData)               │
+└──────────────────────────────────────────────────┘
 ```
 
-**2. Update Data Fetching (fetchCampaignData effect)**
-Fetch all unique assigned deck slugs instead of just the first one:
-```typescript
-const { data: eoaData } = await supabase
-  .from("events_actions")
-  .select("assigned_deck_slug")
-  .eq("campaign_id", campaign.id)
-  .not("assigned_deck_slug", "is", null);
+### Implementation Details
 
-if (eoaData) {
-  const uniqueSlugs = [...new Set(eoaData.map(e => e.assigned_deck_slug))];
-  setDeckSlugs(uniqueSlugs);
-}
-```
+#### 1. Scope Token Fetching to Campaign
 
-**3. Update handleViewDeck Function**
-Accept an optional deck slug parameter for direct selection:
+Modify `fetchExistingTokens` to only fetch tokens for EoAs belonging to the current campaign:
+
 ```typescript
-const handleViewDeck = async (e: React.MouseEvent, slug?: string) => {
-  e.stopPropagation();
-  const targetSlug = slug || deckSlugs[0];
-  if (!targetSlug) {
-    toast({ ... "No deck assigned" });
+const fetchExistingTokens = async () => {
+  // First get EoA IDs for this campaign
+  const eoaIds = eoas.map(e => e.id);
+  if (eoaIds.length === 0) {
+    setL00Tokens({});
     return;
   }
-  setSelectedDeckSlug(targetSlug);
-  setDeckDialogOpen(true);
-  setLoadingDeck(true);
-  // Fetch slides for targetSlug...
+  
+  // Fetch only L00 tokens for these EoAs
+  const { data, error } = await supabase
+    .from("tokens")
+    .select("eoa_id, token, full_url")
+    .eq("level", 0)
+    .is("parent_token", null)
+    .in("eoa_id", eoaIds); // <-- NEW: Scope to campaign
+  // ... rest of function
 };
 ```
 
-**4. Update Button Rendering**
-Replace the single button with conditional rendering:
+#### 2. Refactor fetchData for Proper Sequencing
 
-```text
-+--------------------------------------------+
-|  CONDITION: deckSlugs.length === 0         |
-|  Render: Disabled "No Deck Assigned"       |
-+--------------------------------------------+
-|  CONDITION: deckSlugs.length === 1         |
-|  Render: "View {deckSlugs[0]}" button      |
-+--------------------------------------------+
-|  CONDITION: deckSlugs.length > 1           |
-|  Render: Dropdown with:                    |
-|    - Trigger: "View {count} Slide Decks"   |
-|    - Items: Each deck slug as option       |
-+--------------------------------------------+
-```
-
-**5. Add Required Import**
 ```typescript
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+const fetchData = async () => {
+  setLoading(true);
+  
+  // Phase 1: Fetch campaign and EoAs (these have no dependencies)
+  const [campaignResult, eoasResult] = await Promise.all([
+    fetchCampaign(),
+    fetchEoas(), // Returns data instead of just setting state
+  ]);
+  
+  // Phase 2: Fetch dependent data using the EoAs
+  if (eoasResult && eoasResult.length > 0) {
+    await Promise.all([
+      fetchExistingTokens(eoasResult),  // Pass EoAs directly
+      fetchDeckSlides(eoasResult),      // Pass EoAs directly  
+      fetchFirstViewTimes(eoasResult),  // Pass EoAs directly
+    ]);
+  }
+  
+  setLoading(false);
+};
 ```
 
-**6. Update Dialog Description**
-Use `selectedDeckSlug` instead of `deckSlug` in the dialog:
+#### 3. Remove Duplicate Slide Fetching
+
+Remove the inline slide fetching from `fetchEoas` since it will be handled in the second phase.
+
+#### 4. Eliminate Redundant EoA Query in fetchFirstViewTimes
+
+Modify `fetchFirstViewTimes` to accept EoA data as a parameter instead of re-querying:
+
 ```typescript
-<DialogDescription>
-  {selectedDeckSlug ? `Deck: ${selectedDeckSlug}` : "Loading deck..."}
-</DialogDescription>
+const fetchFirstViewTimes = async (eoaData?: EventAction[]) => {
+  const eoasToUse = eoaData || eoas;
+  if (!eoasToUse.length) return;
+  
+  const eoaIds = eoasToUse.map(e => e.id);
+  // ... rest uses eoaData directly
+};
 ```
 
----
+### Files to Modify
 
-## UI Component Structure
+| File | Changes |
+|------|---------|
+| `src/pages/CampaignEoaManager.tsx` | Refactor `fetchData`, `fetchExistingTokens`, `fetchDeckSlides`, `fetchFirstViewTimes`, and `fetchEoas` |
 
-```text
-Single Deck:
-+---------------------------+
-| [Eye] View why-protest    |
-+---------------------------+
+### Expected Improvements
 
-Multiple Decks:
-+---------------------------+
-| [Eye] View 3 Slide Decks ▼|
-+---------------------------+
-      |  why-protest        |
-      |  resist-sister1     |
-      |  resist-sister2     |
-      +---------------------+
-```
+- **Fewer database calls**: 7 queries → 5 queries per page load
+- **No race conditions**: Dependent data fetched after EoAs are available
+- **Scoped data**: Only fetch tokens relevant to current campaign
+- **Faster perceived load**: Campaign info and EoAs appear first
 
----
+### Testing
 
-## Edge Cases Handled
-1. **No decks**: Button disabled with "No Deck Assigned" text
-2. **Single deck**: Current behavior preserved exactly
-3. **Multiple identical slugs**: Deduplicated using `Set`
-4. **Deck dialog**: Works the same, just accepts selected deck
+After implementation, verify:
+1. Event Manager loads for campaigns with many EoAs (e.g., "No Kings")
+2. First View times display correctly
+3. L00 tokens and short URLs load properly
+4. Deck slide previews render
 
----
-
-## Files Changed
-- `src/pages/CampaignManager.tsx` - Update SortableCard component
-
-## No Database Changes Required
-This is a UI-only change; the data relationship already exists in `events_actions.assigned_deck_slug`.
