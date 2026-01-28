@@ -3,8 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Save, Trash2, ZoomIn, ZoomOut, Move, Hand, Lock, Unlock } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { SliderWithButtons } from "@/components/ui/slider-with-buttons";
 
 interface MapCalibrationControlsProps {
   hotspot: Hotspot;
@@ -100,54 +99,46 @@ export function MapCalibrationControls({
 
       {/* Position Controls */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">X Position (%)</Label>
-          <Slider
-            value={[hotspot.x]}
-            onValueChange={([v]) => onUpdate({ x: v })}
-            min={0}
-            max={80}
-            step={0.5}
-          />
-          <span className="text-xs text-muted-foreground">{hotspot.x.toFixed(1)}%</span>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Y Position (%)</Label>
-          <Slider
-            value={[hotspot.y]}
-            onValueChange={([v]) => onUpdate({ y: v })}
-            min={0}
-            max={80}
-            step={0.5}
-          />
-          <span className="text-xs text-muted-foreground">{hotspot.y.toFixed(1)}%</span>
-        </div>
+        <SliderWithButtons
+          label="X"
+          value={hotspot.x}
+          onChange={(v) => onUpdate({ x: v })}
+          min={0}
+          max={80}
+          step={0.5}
+          fineStep={0.1}
+        />
+        <SliderWithButtons
+          label="Y"
+          value={hotspot.y}
+          onChange={(v) => onUpdate({ y: v })}
+          min={0}
+          max={80}
+          step={0.5}
+          fineStep={0.1}
+        />
       </div>
 
       {/* Size Controls */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Width (%)</Label>
-          <Slider
-            value={[hotspot.width]}
-            onValueChange={([v]) => onUpdate({ width: v })}
-            min={10}
-            max={95}
-            step={0.5}
-          />
-          <span className="text-xs text-muted-foreground">{hotspot.width.toFixed(1)}%</span>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Height (%)</Label>
-          <Slider
-            value={[hotspot.height]}
-            onValueChange={([v]) => onUpdate({ height: v })}
-            min={10}
-            max={80}
-            step={0.5}
-          />
-          <span className="text-xs text-muted-foreground">{hotspot.height.toFixed(1)}%</span>
-        </div>
+        <SliderWithButtons
+          label="W"
+          value={hotspot.width}
+          onChange={(v) => onUpdate({ width: v })}
+          min={10}
+          max={95}
+          step={0.5}
+          fineStep={0.1}
+        />
+        <SliderWithButtons
+          label="H"
+          value={hotspot.height}
+          onChange={(v) => onUpdate({ height: v })}
+          min={10}
+          max={80}
+          step={0.5}
+          fineStep={0.1}
+        />
       </div>
 
       {/* Map Settings */}
