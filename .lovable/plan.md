@@ -1,121 +1,138 @@
-# Enhanced Server-Side Stats Page Rendering
 
-## Status: ✅ Implemented
+# Multi-Deck Selector for Campaign Cards
 
 ## Overview
+Currently, the Campaign Orchestration page shows only one deck per campaign card, even when multiple decks are assigned across different Events/Actions (EoAs). This plan adds a deck selector that adapts based on the number of assigned decks.
 
-Server-side rendering for stats page slides with:
-1. A new **"Last Updated"** metric showing when the snapshot was last rendered
-2. **Campaign-level** snapshot interval configuration
-3. Reliable rendering across all platforms (iOS, Android, all browsers)
+## Current Behavior
+- The campaign card fetches only the first assigned deck (`limit(1)`)
+- Displays "View {deckname}" button regardless of how many decks exist
+- Does not reflect the full deck assignments visible in the EoA table
 
----
+## Proposed Behavior
+| Condition | Button Display | Action |
+|-----------|----------------|--------|
+| No decks assigned | "No Deck Assigned" (disabled) | Nothing |
+| 1 deck assigned | "View {deckname}" | Opens deck preview dialog |
+| 2+ decks assigned | "View # Slide Decks" | Shows dropdown with deck names |
 
-## Implementation Summary
-
-### Database Changes
-- Added `snapshot_interval_minutes` (default: 2) and `snapshot_enabled` (default: false) to `campaigns` table
-- Added `cached_snapshot_path` and `snapshot_rendered_at` to `viral_slide_configs` table
-- Created `slide-snapshots` storage bucket with public read access
-
-### Type System
-- Added `last_updated` to `LiveMetricKey` in `src/types/viralTemplates.ts`
-- Updated `METRIC_LABELS` in `src/hooks/useLiveMetrics.ts`
-- Updated `METRIC_OPTIONS` in `src/components/HotspotCalibrationControls.tsx`
-- Updated `METRIC_LABELS` in `src/pages/DataTemplateTestHarness.tsx`
-
-### Edge Function
-- Created `supabase/functions/render-stats-snapshot/index.ts`
-- Uses `og_edge` library for React-to-image rendering
-- Calculates live metrics server-side
-- Uploads PNG to storage bucket
-- Updates template with snapshot path and timestamp
-
-### Client-Side Integration
-- Updated `src/components/StatsPageSlide.tsx` with cache-first rendering logic
-- Updated `src/components/ViralSlideV2.tsx` to fetch and pass snapshot configuration
-- Added snapshot URL helper functions
-
-### Admin UI
-- Created `src/components/CampaignSnapshotSettings.tsx` component
-- Added to Campaign Dashboard's Filters tab
-- Includes enable toggle, interval selector, render buttons, and status badges
+When a deck is selected from the dropdown, it opens the same deck preview dialog that exists today.
 
 ---
 
-## Usage
+## Technical Implementation
 
-1. Go to Campaign Dashboard → Filters tab
-2. Enable "Server-Side Rendering" for the campaign
-3. Set the refresh interval (how often snapshots should update)
-4. Click "Render Now" on individual templates or "Render All" for all templates
-5. Viewers will see the cached static image instead of making API calls
+### File to Modify
+`src/pages/CampaignManager.tsx`
 
----
+### Changes to SortableCard Component
 
-## How It Works
+**1. Update State**
+Replace the single `deckSlug` state with an array of unique deck slugs:
+```typescript
+// Before
+const [deckSlug, setDeckSlug] = useState<string | null>(null);
+
+// After
+const [deckSlugs, setDeckSlugs] = useState<string[]>([]);
+const [selectedDeckSlug, setSelectedDeckSlug] = useState<string | null>(null);
+```
+
+**2. Update Data Fetching (fetchCampaignData effect)**
+Fetch all unique assigned deck slugs instead of just the first one:
+```typescript
+const { data: eoaData } = await supabase
+  .from("events_actions")
+  .select("assigned_deck_slug")
+  .eq("campaign_id", campaign.id)
+  .not("assigned_deck_slug", "is", null);
+
+if (eoaData) {
+  const uniqueSlugs = [...new Set(eoaData.map(e => e.assigned_deck_slug))];
+  setDeckSlugs(uniqueSlugs);
+}
+```
+
+**3. Update handleViewDeck Function**
+Accept an optional deck slug parameter for direct selection:
+```typescript
+const handleViewDeck = async (e: React.MouseEvent, slug?: string) => {
+  e.stopPropagation();
+  const targetSlug = slug || deckSlugs[0];
+  if (!targetSlug) {
+    toast({ ... "No deck assigned" });
+    return;
+  }
+  setSelectedDeckSlug(targetSlug);
+  setDeckDialogOpen(true);
+  setLoadingDeck(true);
+  // Fetch slides for targetSlug...
+};
+```
+
+**4. Update Button Rendering**
+Replace the single button with conditional rendering:
 
 ```text
-[Admin triggers render]
-       ↓
-[Edge function executes]
-  - Fetches template hotspots
-  - Calculates live metrics
-  - Renders composite PNG using og_edge
-  - Uploads to slide-snapshots bucket
-  - Updates template record
-       ↓
-[Viewer loads stats page]
-  - Checks if snapshot is fresh (< 2.5x interval)
-  - If fresh → Show static PNG (no API calls)
-  - If stale → Fall back to dynamic rendering
++--------------------------------------------+
+|  CONDITION: deckSlugs.length === 0         |
+|  Render: Disabled "No Deck Assigned"       |
++--------------------------------------------+
+|  CONDITION: deckSlugs.length === 1         |
+|  Render: "View {deckSlugs[0]}" button      |
++--------------------------------------------+
+|  CONDITION: deckSlugs.length > 1           |
+|  Render: Dropdown with:                    |
+|    - Trigger: "View {count} Slide Decks"   |
+|    - Items: Each deck slug as option       |
++--------------------------------------------+
+```
+
+**5. Add Required Import**
+```typescript
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+```
+
+**6. Update Dialog Description**
+Use `selectedDeckSlug` instead of `deckSlug` in the dialog:
+```typescript
+<DialogDescription>
+  {selectedDeckSlug ? `Deck: ${selectedDeckSlug}` : "Loading deck..."}
+</DialogDescription>
 ```
 
 ---
 
-## Files Modified/Created
+## UI Component Structure
 
-| File | Status |
-|------|--------|
-| `supabase/functions/render-stats-snapshot/index.ts` | Created |
-| `src/components/CampaignSnapshotSettings.tsx` | Created |
-| `src/types/viralTemplates.ts` | Modified |
-| `src/hooks/useLiveMetrics.ts` | Modified |
-| `src/components/HotspotCalibrationControls.tsx` | Modified |
-| `src/pages/DataTemplateTestHarness.tsx` | Modified |
-| `src/components/StatsPageSlide.tsx` | Modified |
-| `src/components/ViralSlideV2.tsx` | Modified |
-| `src/pages/CampaignDashboard.tsx` | Modified |
+```text
+Single Deck:
++---------------------------+
+| [Eye] View why-protest    |
++---------------------------+
 
----
-
-## Known Limitations
-
-- Chart hotspots are rendered as placeholder text in snapshots
-- Map hotspots are rendered as placeholder text in snapshots
-- Scheduled/cron-based rendering not yet implemented (manual trigger only)
+Multiple Decks:
++---------------------------+
+| [Eye] View 3 Slide Decks ▼|
++---------------------------+
+      |  why-protest        |
+      |  resist-sister1     |
+      |  resist-sister2     |
+      +---------------------+
+```
 
 ---
 
-## Technical Notes
+## Edge Cases Handled
+1. **No decks**: Button disabled with "No Deck Assigned" text
+2. **Single deck**: Current behavior preserved exactly
+3. **Multiple identical slugs**: Deduplicated using `Set`
+4. **Deck dialog**: Works the same, just accepts selected deck
 
-### Why Campaign-Level Configuration?
+---
 
-1. **Unified Control**: One place to manage refresh rates for all campaign templates
-2. **Resource Efficiency**: Render all campaign templates on same schedule
-3. **Simpler Mental Model**: "This campaign updates every 2 minutes" vs managing each template
+## Files Changed
+- `src/pages/CampaignManager.tsx` - Update SortableCard component
 
-### og_edge Image Generation
-
-The edge function uses `og_edge` (Deno-native library) to render React-style JSX as images:
-- Background image from template's `image_url`
-- Text overlays positioned per hotspot coordinates
-- Styles applied from `liveNumberStyle` configuration
-- Charts and maps: Show placeholder text in initial version
-
-### Fallback Behavior
-
-If snapshot rendering fails or is stale:
-- Dynamic rendering kicks in (current behavior)
-- Logs error for admin visibility
-- Doesn't break the viewer experience
+## No Database Changes Required
+This is a UI-only change; the data relationship already exists in `events_actions.assigned_deck_slug`.
