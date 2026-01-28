@@ -86,10 +86,16 @@ export function MapHotspotRenderer({
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
   const [isInteractive, setIsInteractive] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   
   // Long-press detection
   const touchStartRef = useRef<{ time: number; x: number; y: number } | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Store config in refs to avoid reinitializing the map
+  const isEditorModeRef = useRef(isEditorMode);
+  const savedBoundsRef = useRef(config.savedBounds);
+  const showClusteringRef = useRef(config.showClustering ?? false);
 
   // Fetch event data for the campaign
   useEffect(() => {
@@ -213,21 +219,24 @@ export function MapHotspotRenderer({
     fetchEvents();
   }, [campaignCode]);
 
-  // Store config in refs to avoid reinitializing the map
-  const savedBoundsRef = useRef(config.savedBounds);
-  const showClusteringRef = useRef(config.showClustering);
-  
   // Update refs when config changes (without triggering map reinit)
   useEffect(() => {
     savedBoundsRef.current = config.savedBounds;
   }, [config.savedBounds]);
+  
+  useEffect(() => {
+    isEditorModeRef.current = isEditorMode;
+  }, [isEditorMode]);
 
-  // Initialize map ONCE - stable dependencies only
+  // Initialize map ONCE - no dependencies to prevent reinit
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    // Use ref for initial editor mode value
+    const initialEditorMode = isEditorModeRef.current;
+    
     // In editor mode, enable interactivity by default
-    const interactiveOptions = isEditorMode ? {
+    const interactiveOptions = initialEditorMode ? {
       dragging: true,
       touchZoom: true,
       scrollWheelZoom: true,
@@ -286,58 +295,105 @@ export function MapHotspotRenderer({
     const regularLayer = L.layerGroup();
     markersLayerRef.current = regularLayer;
     
-    // Add the appropriate layer based on initial clustering setting
-    if (showClusteringRef.current) {
-      map.addLayer(clusterGroup);
+    // Add BOTH layers to the map - they'll both have markers
+    // The clustering toggle will just switch which one is visible
+    map.addLayer(regularLayer);
+    map.addLayer(clusterGroup);
+    
+    // Initially hide the clustering layer if not enabled
+    if (!showClusteringRef.current) {
+      map.removeLayer(clusterGroup);
     } else {
-      map.addLayer(regularLayer);
+      map.removeLayer(regularLayer);
     }
 
     // Report bounds changes in editor mode
-    if (isEditorMode && onBoundsChange) {
+    if (initialEditorMode) {
       map.on("moveend", () => {
+        // Use callback pattern to get fresh onBoundsChange
         const bounds = map.getBounds();
-        onBoundsChange({
+        // Store in a way that can be accessed
+        (map as any)._lastBounds = {
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest(),
-        });
+        };
       });
-      
-      // Report initial bounds
-      setTimeout(() => {
-        const bounds = map.getBounds();
-        onBoundsChange({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        });
-      }, 100);
     }
 
-    // Expose control functions in editor mode
-    if (isEditorMode && onMapReady) {
-      onMapReady({
-        zoomIn: () => map.zoomIn(),
-        zoomOut: () => map.zoomOut(),
-        resetView: () => map.setView([39.8283, -98.5795], 4),
-      });
-    }
+    // Mark map as ready
+    setMapReady(true);
 
     return () => {
       map.remove();
       mapRef.current = null;
       clusterGroupRef.current = null;
       markersLayerRef.current = null;
+      setMapReady(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditorMode]); // Only reinit if editor mode changes
+  }, []); // Empty deps - initialize ONCE only
+
+  // Handle bounds change reporting when map moves
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !isEditorMode || !onBoundsChange) return;
+    
+    const map = mapRef.current;
+    
+    const handleMoveEnd = () => {
+      const bounds = map.getBounds();
+      onBoundsChange({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    };
+    
+    map.on("moveend", handleMoveEnd);
+    
+    // Report initial bounds
+    setTimeout(handleMoveEnd, 100);
+    
+    return () => {
+      map.off("moveend", handleMoveEnd);
+    };
+  }, [mapReady, isEditorMode, onBoundsChange]);
+
+  // Expose control functions when in editor mode
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !isEditorMode || !onMapReady) return;
+    
+    const map = mapRef.current;
+    onMapReady({
+      zoomIn: () => map.zoomIn(),
+      zoomOut: () => map.zoomOut(),
+      resetView: () => map.setView([39.8283, -98.5795], 4),
+    });
+  }, [mapReady, isEditorMode, onMapReady]);
+
+  // Update map interactivity when isEditorMode changes (without reinit)
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    
+    const map = mapRef.current;
+    if (isEditorMode) {
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.scrollWheelZoom.enable();
+      map.doubleClickZoom.enable();
+    } else {
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.scrollWheelZoom.disable();
+      map.doubleClickZoom.disable();
+    }
+  }, [isEditorMode, mapReady]);
 
   // Toggle clustering layer without reinitializing the map
   useEffect(() => {
-    if (!mapRef.current || !clusterGroupRef.current || !markersLayerRef.current) return;
+    if (!mapRef.current || !mapReady || !clusterGroupRef.current || !markersLayerRef.current) return;
     
     const map = mapRef.current;
     const clusterGroup = clusterGroupRef.current;
@@ -350,12 +406,12 @@ export function MapHotspotRenderer({
       if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
       if (!map.hasLayer(regularLayer)) map.addLayer(regularLayer);
     }
-  }, [config.showClustering]);
+  }, [config.showClustering, mapReady]);
 
 
-  // Update map interactivity when mode changes
+  // Update map interactivity when runtime mode changes (separate from editor mode)
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapReady || isEditorMode) return;
 
     const map = mapRef.current;
     if (isInteractive) {
@@ -365,25 +421,29 @@ export function MapHotspotRenderer({
       map.dragging.disable();
       map.touchZoom.disable();
     }
-  }, [isInteractive]);
+  }, [isInteractive, mapReady, isEditorMode]);
 
   // Render markers to BOTH layers (they swap visibility based on clustering toggle)
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapReady) return;
 
     const clusterGroup = clusterGroupRef.current;
     const regularLayer = markersLayerRef.current;
     
+    if (!clusterGroup || !regularLayer) return;
+    
     // Clear both layers
-    if (clusterGroup) clusterGroup.clearLayers();
-    if (regularLayer) regularLayer.clearLayers();
+    clusterGroup.clearLayers();
+    regularLayer.clearLayers();
+
+    console.log(`MapHotspotRenderer: Rendering ${eventPoints.length} markers`);
 
     eventPoints.forEach((point) => {
       const color = MEDIUM_COLORS[point.utmMedium?.toLowerCase()] || DEFAULT_COLOR;
       const hasSpawns = (point.spawnCount || 0) > 0;
       const svgIcon = getMarkerSVG(color, 12, hasSpawns);
 
-      const icon = L.divIcon({
+      const markerIcon = L.divIcon({
         html: svgIcon,
         className: "map-hotspot-marker",
         iconSize: L.point(12, 12),
@@ -391,16 +451,13 @@ export function MapHotspotRenderer({
       });
 
       // Add marker to both layers - only the active one will be visible
-      if (clusterGroup) {
-        const clusterMarker = L.marker([point.latitude, point.longitude], { icon });
-        clusterGroup.addLayer(clusterMarker);
-      }
-      if (regularLayer) {
-        const regularMarker = L.marker([point.latitude, point.longitude], { icon });
-        regularLayer.addLayer(regularMarker);
-      }
+      const clusterMarker = L.marker([point.latitude, point.longitude], { icon: markerIcon });
+      clusterGroup.addLayer(clusterMarker);
+      
+      const regularMarker = L.marker([point.latitude, point.longitude], { icon: markerIcon });
+      regularLayer.addLayer(regularMarker);
     });
-  }, [eventPoints]);
+  }, [eventPoints, mapReady]);
 
   // Handle tap to zoom in
   const handleTap = useCallback(
