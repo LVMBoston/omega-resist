@@ -274,6 +274,7 @@ export default function CampaignEoaManager() {
   };
 
   // Fetch first view times per mobilize_code group (or per individual EoA without code)
+  // Uses optimized database function to batch all queries into one RPC call
   const fetchFirstViewTimes = async () => {
     if (!campaignId) return;
 
@@ -285,82 +286,63 @@ export default function CampaignEoaManager() {
 
     if (eoaError || !campaignEoas?.length) return;
 
-    const results: Record<string, string> = {};
-    
-    // Group EoAs by mobilize_code
-    const mobilizeCodes = [...new Set(campaignEoas.map(e => e.mobilize_code).filter(Boolean))] as string[];
-    const eoaIdsWithoutCode = campaignEoas.filter(e => !e.mobilize_code).map(e => e.id);
+    const eoaIds = campaignEoas.map(e => e.id);
 
-    // For EoAs with mobilize_code, find first view across EoAs sharing that code WITHIN THIS CAMPAIGN ONLY
-    if (mobilizeCodes.length > 0) {
-      // Group campaign EoAs by mobilize_code (only EoAs in this campaign)
-      const eoaIdsByCode: Record<string, string[]> = {};
-      campaignEoas.forEach(eoa => {
-        if (eoa.mobilize_code) {
-          if (!eoaIdsByCode[eoa.mobilize_code]) {
-            eoaIdsByCode[eoa.mobilize_code] = [];
-          }
-          eoaIdsByCode[eoa.mobilize_code].push(eoa.id);
+    // Single RPC call to get first view times for all EoAs
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      "get_first_view_by_eoa_ids",
+      { eoa_ids: eoaIds }
+    );
+
+    if (rpcError) {
+      console.error("Failed to fetch first view times:", rpcError);
+      return;
+    }
+
+    const results: Record<string, string> = {};
+
+    // Build lookup from RPC results
+    const viewByEoaId = new Map<string, string>();
+    rpcData?.forEach((row: { eoa_id: string; first_view_at: string | null }) => {
+      if (row.first_view_at) {
+        viewByEoaId.set(row.eoa_id, row.first_view_at);
+      }
+    });
+
+    // Group EoAs by mobilize_code and find earliest per group
+    const eoaIdsByCode: Record<string, string[]> = {};
+    campaignEoas.forEach(eoa => {
+      if (eoa.mobilize_code) {
+        if (!eoaIdsByCode[eoa.mobilize_code]) {
+          eoaIdsByCode[eoa.mobilize_code] = [];
+        }
+        eoaIdsByCode[eoa.mobilize_code].push(eoa.id);
+      }
+    });
+
+    // For each mobilize_code group, find the earliest first_view_at
+    for (const [code, eoaIdsForCode] of Object.entries(eoaIdsByCode)) {
+      let earliest: string | null = null;
+      for (const eoaId of eoaIdsForCode) {
+        const viewAt = viewByEoaId.get(eoaId);
+        if (viewAt && (!earliest || viewAt < earliest)) {
+          earliest = viewAt;
+        }
+      }
+      if (earliest) {
+        results[code] = earliest;
+      }
+    }
+
+    // For EoAs without mobilize_code, use individual first view
+    campaignEoas
+      .filter(e => !e.mobilize_code)
+      .forEach(eoa => {
+        const viewAt = viewByEoaId.get(eoa.id);
+        if (viewAt) {
+          results[`eoa_${eoa.id}`] = viewAt;
         }
       });
-
-      // For each mobilize_code group, find the earliest view event
-      for (const code of mobilizeCodes) {
-        const eoaIdsForCode = eoaIdsByCode[code] || [];
-        if (eoaIdsForCode.length === 0) continue;
-
-        // Get tokens for these EoAs
-        const { data: tokens } = await supabase
-          .from("tokens")
-          .select("token")
-          .in("eoa_id", eoaIdsForCode)
-          .eq("is_simulated", false);
-
-        if (!tokens?.length) continue;
-
-        const tokenList = tokens.map(t => t.token);
-
-        // Find earliest view event
-        const { data: events } = await supabase
-          .from("url_events")
-          .select("occurred_at")
-          .in("token", tokenList)
-          .eq("event_type", "view")
-          .eq("is_simulated", false)
-          .order("occurred_at", { ascending: true })
-          .limit(1);
-
-        if (events?.length) {
-          results[code] = events[0].occurred_at;
-        }
-      }
-    }
-
-    // For EoAs without mobilize_code, find first view for each individually
-    for (const eoaId of eoaIdsWithoutCode) {
-      const { data: tokens } = await supabase
-        .from("tokens")
-        .select("token")
-        .eq("eoa_id", eoaId)
-        .eq("is_simulated", false);
-
-      if (!tokens?.length) continue;
-
-      const tokenList = tokens.map(t => t.token);
-
-      const { data: events } = await supabase
-        .from("url_events")
-        .select("occurred_at")
-        .in("token", tokenList)
-        .eq("event_type", "view")
-        .eq("is_simulated", false)
-        .order("occurred_at", { ascending: true })
-        .limit(1);
-
-      if (events?.length) {
-        results[`eoa_${eoaId}`] = events[0].occurred_at;
-      }
-    }
 
     setFirstViewTimes(results);
   };
