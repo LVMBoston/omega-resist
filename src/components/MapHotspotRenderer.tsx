@@ -367,8 +367,14 @@ export function MapHotspotRenderer({
     
     const map = mapRef.current;
     onMapReady({
-      zoomIn: (delta = 1) => map.zoomIn(delta),
-      zoomOut: (delta = 1) => map.zoomOut(delta),
+      zoomIn: (delta = 1) => {
+        const currentZoom = map.getZoom();
+        map.setZoom(currentZoom + delta);
+      },
+      zoomOut: (delta = 1) => {
+        const currentZoom = map.getZoom();
+        map.setZoom(currentZoom - delta);
+      },
       resetView: () => map.setView([39.8283, -98.5795], 4),
     });
   }, [mapReady, isEditorMode, onMapReady]);
