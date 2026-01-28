@@ -446,9 +446,13 @@ export default function DeckViewer() {
 
   const effectiveFullscreen = isFullscreen || iOSFullscreen;
 
+  // Portrait slides (9:16) need different handling on landscape vs portrait screens
+  // iPhone (portrait): fill width, height scales naturally
+  // PC/iPad (landscape): fit to height with letterboxing (pillarboxing)
+  
   return (
     <div className="min-h-screen bg-background">
-      <main className="h-screen flex items-center justify-center bg-black">
+      <main className="h-screen flex items-center justify-center bg-black overflow-hidden">
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
@@ -456,7 +460,7 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className="w-full h-full md:max-w-[90vw] md:max-h-[90vh] md:aspect-video">
+          <Carousel className="w-full h-full">
             <CarouselContent className="h-full">
               {slides.map((slide, index) => {
                 console.log(`🎨 Rendering slide ${index + 1}:`, { 
@@ -467,9 +471,10 @@ export default function DeckViewer() {
                 });
                 return (
                 <CarouselItem key={slide.id} className="h-full flex items-center justify-center">
-                  <Card className="h-full w-full border-0 rounded-none">
+                  <Card className="h-full w-full border-0 rounded-none bg-black">
                     <CardContent className="p-0 h-full w-full flex items-center justify-center">
-                      <div className="relative bg-black h-full w-full max-w-full max-h-full flex items-center justify-center">
+                      {/* Portrait slide container: on landscape screens, constrain by height; on portrait screens, constrain by width */}
+                      <div className="relative bg-black flex items-center justify-center h-full w-full portrait:w-full portrait:h-auto landscape:h-full landscape:w-auto landscape:aspect-[9/16]">
                         {slide.type === "spread-word" ? (
                           <ViralSlide 
                             key={`viral-${slide.id}`}
