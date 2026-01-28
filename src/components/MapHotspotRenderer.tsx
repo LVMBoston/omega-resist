@@ -213,7 +213,16 @@ export function MapHotspotRenderer({
     fetchEvents();
   }, [campaignCode]);
 
-  // Initialize map
+  // Store config in refs to avoid reinitializing the map
+  const savedBoundsRef = useRef(config.savedBounds);
+  const showClusteringRef = useRef(config.showClustering);
+  
+  // Update refs when config changes (without triggering map reinit)
+  useEffect(() => {
+    savedBoundsRef.current = config.savedBounds;
+  }, [config.savedBounds]);
+
+  // Initialize map ONCE - stable dependencies only
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -247,9 +256,9 @@ export function MapHotspotRenderer({
       maxZoom: 19,
     }).addTo(map);
 
-    // Apply saved bounds if configured
-    if (config.savedBounds) {
-      const { north, south, east, west } = config.savedBounds;
+    // Apply saved bounds if configured (use ref for initial value)
+    if (savedBoundsRef.current) {
+      const { north, south, east, west } = savedBoundsRef.current;
       map.fitBounds([
         [south, west],
         [north, east],
@@ -258,27 +267,30 @@ export function MapHotspotRenderer({
 
     mapRef.current = map;
 
-    // Create cluster group or regular layer
-    if (config.showClustering) {
-      const clusterGroup = L.markerClusterGroup({
-        showCoverageOnHover: false,
-        maxClusterRadius: 50,
-        spiderfyOnMaxZoom: true,
-        iconCreateFunction: (cluster) => {
-          const count = cluster.getChildCount();
-          return L.divIcon({
-            html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-600 text-white text-xs font-bold border-2 border-white shadow-lg">${count}</div>`,
-            className: "custom-cluster-icon",
-            iconSize: L.point(32, 32),
-          });
-        },
-      });
-      clusterGroupRef.current = clusterGroup;
+    // Always create BOTH layers - we'll toggle visibility
+    const clusterGroup = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-600 text-white text-xs font-bold border-2 border-white shadow-lg">${count}</div>`,
+          className: "custom-cluster-icon",
+          iconSize: L.point(32, 32),
+        });
+      },
+    });
+    clusterGroupRef.current = clusterGroup;
+    
+    const regularLayer = L.layerGroup();
+    markersLayerRef.current = regularLayer;
+    
+    // Add the appropriate layer based on initial clustering setting
+    if (showClusteringRef.current) {
       map.addLayer(clusterGroup);
     } else {
-      const layer = L.layerGroup();
-      markersLayerRef.current = layer;
-      map.addLayer(layer);
+      map.addLayer(regularLayer);
     }
 
     // Report bounds changes in editor mode
@@ -320,7 +332,25 @@ export function MapHotspotRenderer({
       clusterGroupRef.current = null;
       markersLayerRef.current = null;
     };
-  }, [config.showClustering, config.savedBounds, isEditorMode, onBoundsChange, onMapReady]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditorMode]); // Only reinit if editor mode changes
+
+  // Toggle clustering layer without reinitializing the map
+  useEffect(() => {
+    if (!mapRef.current || !clusterGroupRef.current || !markersLayerRef.current) return;
+    
+    const map = mapRef.current;
+    const clusterGroup = clusterGroupRef.current;
+    const regularLayer = markersLayerRef.current;
+    
+    if (config.showClustering) {
+      if (map.hasLayer(regularLayer)) map.removeLayer(regularLayer);
+      if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+    } else {
+      if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+      if (!map.hasLayer(regularLayer)) map.addLayer(regularLayer);
+    }
+  }, [config.showClustering]);
 
 
   // Update map interactivity when mode changes
@@ -337,14 +367,16 @@ export function MapHotspotRenderer({
     }
   }, [isInteractive]);
 
-  // Render markers
+  // Render markers to BOTH layers (they swap visibility based on clustering toggle)
   useEffect(() => {
     if (!mapRef.current) return;
 
-    const targetLayer = config.showClustering ? clusterGroupRef.current : markersLayerRef.current;
-    if (!targetLayer) return;
-
-    targetLayer.clearLayers();
+    const clusterGroup = clusterGroupRef.current;
+    const regularLayer = markersLayerRef.current;
+    
+    // Clear both layers
+    if (clusterGroup) clusterGroup.clearLayers();
+    if (regularLayer) regularLayer.clearLayers();
 
     eventPoints.forEach((point) => {
       const color = MEDIUM_COLORS[point.utmMedium?.toLowerCase()] || DEFAULT_COLOR;
@@ -358,10 +390,17 @@ export function MapHotspotRenderer({
         iconAnchor: L.point(6, 6),
       });
 
-      const marker = L.marker([point.latitude, point.longitude], { icon });
-      targetLayer.addLayer(marker);
+      // Add marker to both layers - only the active one will be visible
+      if (clusterGroup) {
+        const clusterMarker = L.marker([point.latitude, point.longitude], { icon });
+        clusterGroup.addLayer(clusterMarker);
+      }
+      if (regularLayer) {
+        const regularMarker = L.marker([point.latitude, point.longitude], { icon });
+        regularLayer.addLayer(regularMarker);
+      }
     });
-  }, [eventPoints, config.showClustering]);
+  }, [eventPoints]);
 
   // Handle tap to zoom in
   const handleTap = useCallback(
