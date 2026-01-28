@@ -30,8 +30,8 @@ interface MapHotspotRendererProps {
 }
 
 export interface MapControls {
-  zoomIn: () => void;
-  zoomOut: () => void;
+  zoomIn: (delta?: number) => void;
+  zoomOut: (delta?: number) => void;
   resetView: () => void;
 }
 
@@ -367,8 +367,8 @@ export function MapHotspotRenderer({
     
     const map = mapRef.current;
     onMapReady({
-      zoomIn: () => map.zoomIn(),
-      zoomOut: () => map.zoomOut(),
+      zoomIn: (delta = 1) => map.zoomIn(delta),
+      zoomOut: (delta = 1) => map.zoomOut(delta),
       resetView: () => map.setView([39.8283, -98.5795], 4),
     });
   }, [mapReady, isEditorMode, onMapReady]);

@@ -10,8 +10,8 @@ interface MapCalibrationControlsProps {
   hotspot: Hotspot;
   onUpdate: (updates: Partial<Hotspot>) => void;
   currentBounds?: { north: number; south: number; east: number; west: number } | null;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
+  onZoomIn?: (delta?: number) => void;
+  onZoomOut?: (delta?: number) => void;
 }
 
 export function MapCalibrationControls({
@@ -69,7 +69,7 @@ export function MapCalibrationControls({
           <Button
             variant="outline"
             size="sm"
-            onClick={onZoomOut}
+            onClick={() => onZoomOut?.()}
             className="px-3"
           >
             −
@@ -80,7 +80,7 @@ export function MapCalibrationControls({
           <Button
             variant="outline"
             size="sm"
-            onClick={onZoomIn}
+            onClick={() => onZoomIn?.()}
             className="px-3"
           >
             +
@@ -89,18 +89,18 @@ export function MapCalibrationControls({
             <button
               type="button"
               className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
-              onClick={onZoomIn}
+              onClick={() => onZoomIn?.(0.25)}
               tabIndex={-1}
-              title="Zoom in"
+              title="Zoom in (fine)"
             >
               <ChevronUp className="h-3 w-3" />
             </button>
             <button
               type="button"
               className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
-              onClick={onZoomOut}
+              onClick={() => onZoomOut?.(0.25)}
               tabIndex={-1}
-              title="Zoom out"
+              title="Zoom out (fine)"
             >
               <ChevronDown className="h-3 w-3" />
             </button>
