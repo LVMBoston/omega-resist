@@ -17,9 +17,10 @@ interface EoaOption {
   timezone: string | null;
 }
 
-interface FirstViewByMobilizeCode {
-  mobilize_code: string;
-  first_view_at: string;
+interface FirstViewResult {
+  eoa_id: string;
+  mobilize_code: string | null;
+  first_view_at: string | null;
 }
 
 const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorProps) => {
@@ -48,7 +49,7 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
     enabled: !!campaignId,
   });
 
-  // Once EoAs are loaded, fetch first view dates - OPTIMIZED: single batched query
+  // Once EoAs are loaded, fetch first view dates using optimized database function
   useEffect(() => {
     const fetchFirstViewDates = async () => {
       if (!eoas?.length) {
@@ -59,63 +60,33 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
       const eoaIds = eoas.map(e => e.id);
       const results: Record<string, string> = {};
 
-      // OPTIMIZED: Fetch all tokens for all EoAs in ONE query
-      const { data: allTokens, error: tokensError } = await supabase
-        .from("tokens")
-        .select("token, eoa_id")
-        .in("eoa_id", eoaIds)
-        .eq("is_simulated", false);
-
-      if (tokensError || !allTokens?.length) {
-        console.log("No tokens found for EoAs");
-        setFirstViewDates({});
-        return;
-      }
-
-      // Build token -> eoa_id mapping
-      const tokenToEoaId = new Map<string, string>();
-      allTokens.forEach(t => tokenToEoaId.set(t.token, t.eoa_id));
-      const allTokenList = allTokens.map(t => t.token);
-
-      // OPTIMIZED: Fetch first view for ALL tokens in ONE query, grouped by token
-      // We get all view events ordered by time, then pick earliest per eoa_id
-      const { data: allEvents, error: eventsError } = await supabase
-        .from("url_events")
-        .select("token, occurred_at")
-        .in("token", allTokenList)
-        .eq("event_type", "view")
-        .eq("is_simulated", false)
-        .order("occurred_at", { ascending: true });
-
-      if (eventsError || !allEvents?.length) {
-        console.log("No view events found");
-        setFirstViewDates({});
-        return;
-      }
-
-      // Build eoa_id -> first_view mapping (first occurrence wins due to sort order)
-      const eoaFirstView = new Map<string, string>();
-      allEvents.forEach(event => {
-        const eoaId = tokenToEoaId.get(event.token);
-        if (eoaId && !eoaFirstView.has(eoaId)) {
-          eoaFirstView.set(eoaId, event.occurred_at);
-        }
+      // Single RPC call to get first view dates - all work done server-side
+      const { data, error } = await supabase.rpc("get_first_view_by_eoa_ids", {
+        eoa_ids: eoaIds,
       });
 
-      // Group EoAs by mobilize_code and find earliest first view per group
-      const mobilizeCodeFirstView = new Map<string, string>();
-      eoas.forEach(eoa => {
-        const firstView = eoaFirstView.get(eoa.id);
-        if (!firstView) return;
+      if (error) {
+        console.error("Error fetching first view dates:", error);
+        setFirstViewDates({});
+        return;
+      }
 
-        if (eoa.mobilize_code) {
-          const existing = mobilizeCodeFirstView.get(eoa.mobilize_code);
-          if (!existing || new Date(firstView) < new Date(existing)) {
-            mobilizeCodeFirstView.set(eoa.mobilize_code, firstView);
+      const firstViewResults = data as FirstViewResult[];
+
+      // Group by mobilize_code and find earliest first view per group
+      const mobilizeCodeFirstView = new Map<string, string>();
+      
+      firstViewResults.forEach((result) => {
+        if (!result.first_view_at) return;
+
+        if (result.mobilize_code) {
+          const existing = mobilizeCodeFirstView.get(result.mobilize_code);
+          if (!existing || new Date(result.first_view_at) < new Date(existing)) {
+            mobilizeCodeFirstView.set(result.mobilize_code, result.first_view_at);
           }
         } else {
           // EoA without mobilize_code uses its own key
-          results[`eoa_${eoa.id}`] = firstView;
+          results[`eoa_${result.eoa_id}`] = result.first_view_at;
         }
       });
 
