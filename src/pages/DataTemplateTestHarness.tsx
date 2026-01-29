@@ -6,9 +6,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Database, AlertCircle, Eye } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Loader2, RefreshCw, Database, AlertCircle, Eye, MapIcon, ChevronDown } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { LiveMetricKey, LiveNumberStyle } from "@/types/viralTemplates";
+import { MapCaptureTestSection } from "@/components/MapCaptureTestSection";
 
 interface HotspotData {
   id: string;
@@ -817,6 +819,31 @@ export default function DataTemplateTestHarness() {
           </CardContent>
         </Card>
       )}
+
+      {/* Map Capture Test Section */}
+      <Collapsible>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardTitle className="text-base flex items-center gap-2">
+                <MapIcon className="h-4 w-4" />
+                🗺️ Map Capture Test (Experimental)
+                <ChevronDown className="h-4 w-4 ml-auto transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+              </CardTitle>
+              <CardDescription>
+                Test client-side Leaflet map capture with html2canvas
+              </CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              <MapCaptureTestSection 
+                campaignCode={selectedCampaign?.code || ""} 
+              />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Instructions */}
       <Card className="bg-muted/50">
