@@ -361,9 +361,9 @@ export function MapHotspotRenderer({
     };
   }, [mapReady, isEditorMode, onBoundsChange]);
 
-  // Expose control functions when in editor mode
+  // Expose control functions (works in both editor and capture modes)
   useEffect(() => {
-    if (!mapRef.current || !mapReady || !isEditorMode || !onMapReady) return;
+    if (!mapRef.current || !mapReady || !onMapReady) return;
     
     const map = mapRef.current;
     onMapReady({
@@ -377,7 +377,7 @@ export function MapHotspotRenderer({
       },
       resetView: () => map.setView([39.8283, -98.5795], 4),
     });
-  }, [mapReady, isEditorMode, onMapReady]);
+  }, [mapReady, onMapReady]);
 
   // Update map interactivity when isEditorMode changes (without reinit)
   useEffect(() => {
