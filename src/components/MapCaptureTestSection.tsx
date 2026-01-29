@@ -139,21 +139,13 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
       // Step 1: Capture the map as canvas
       setCaptureProgress(20);
       
-      // Log actual rendered dimensions
-      const rect = mapContainerRef.current.getBoundingClientRect();
-      console.log(`[MapCaptureTest] Container rendered at: ${rect.width}x${rect.height}`);
-      
       const canvas = await html2canvas(mapContainerRef.current, {
         useCORS: true,
         allowTaint: false,
         backgroundColor: "#ffffff",
         scale: 2, // Higher resolution
         logging: false,
-        width: 800,  // Force exact dimensions
-        height: 500,
       });
-      
-      console.log(`[MapCaptureTest] Canvas created: ${canvas.width}x${canvas.height}`);
 
       setCaptureProgress(40);
 
