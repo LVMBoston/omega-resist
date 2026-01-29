@@ -1,125 +1,180 @@
 
+# Map Capture Test Tool
 
-## Event Manager Performance Fix
+## Overview
+Add a test tool to the existing `/data-template-test` page that validates the client-side Leaflet map capture approach. This will allow you to verify that:
 
-The Event Manager (`CampaignEoaManager.tsx`) has several performance issues causing slow or failed loading across all campaigns. This plan consolidates and optimizes the data fetching logic.
+1. A Leaflet map can be captured as a PNG image using `html2canvas`
+2. The captured image can be uploaded to Supabase storage
+3. The image can be retrieved and displayed correctly
 
-### Problem Summary
+## Scope
 
-The Event Manager makes multiple redundant database calls and has race conditions:
+This is a **test tool only** — not the full snapshot system. It will prove the concept before we build:
+- The admin registration workflow
+- The cron-based refresh system
+- The smartphone detection and display logic
 
-1. **Token fetching is unscoped** - Fetches ALL L00 tokens globally instead of just those for the current campaign
-2. **Stale state reads** - `fetchDeckSlides` reads from `eoas` state before it's been populated
-3. **Duplicate slide fetching** - Slides are fetched twice (once in parallel, once after EoAs load)
-4. **Redundant EoA queries** - `fetchFirstViewTimes` re-queries EoAs that were just fetched
+---
 
-### Solution
+## Implementation Steps
 
-Refactor `fetchData` to use a **sequential, dependency-aware pattern**:
+### 1. Add `html2canvas` Dependency
+Install the library needed for client-side DOM-to-canvas capture.
+
+**File**: `package.json`
+- Add `html2canvas` version `^1.4.1` to dependencies
+
+---
+
+### 2. Create Map Capture Test Section
+Add a new expandable section to the existing `DataTemplateTestHarness.tsx` page with:
+
+**UI Components**:
+- A collapsible "Map Capture Test" card (collapsed by default)
+- Campaign selector (reuse existing dropdown)
+- A preview map showing the Leaflet component with campaign data
+- "Capture Map" button to trigger the screenshot
+- Progress indicator during capture/upload
+- Result display showing:
+  - Captured image preview
+  - Storage path
+  - Public URL
+  - File size
+
+**Technical Flow**:
+```text
+User clicks "Capture Map"
+    |
+    v
+Render MapHotspotRenderer at fixed dimensions (e.g., 800x500)
+    |
+    v
+Use html2canvas to capture the map container as canvas
+    |
+    v
+Convert canvas to PNG blob via toBlob()
+    |
+    v
+Upload to Supabase storage bucket (slide-snapshots)
+    |
+    v
+Display result: preview image, path, URL
+```
+
+---
+
+### 3. New Component: `MapCaptureTestSection`
+
+**File**: `src/components/MapCaptureTestSection.tsx`
+
+**Props**:
+- `campaignCode: string` — selected campaign to render
+- `onCaptureComplete?: (result: CaptureResult) => void` — optional callback
+
+**State**:
+- `capturing: boolean`
+- `captureResult: { imagePath, publicUrl, fileSize } | null`
+- `error: string | null`
+
+**Key Logic**:
+```text
+1. Render MapHotspotRenderer inside a ref'd container with fixed pixel dimensions
+2. Wait for map to fully load (use mapReady callback)
+3. On "Capture" click:
+   a. Call html2canvas(containerRef.current, { useCORS: true })
+   b. Convert returned canvas to blob
+   c. Upload to slide-snapshots/test-captures/{timestamp}.png
+   d. Get public URL and display result
+```
+
+**Handling Tile Loading**:
+- The CartoDB tiles may not be fully loaded when html2canvas runs
+- Solution: Add a short delay (1-2 seconds) after mapReady before enabling capture button
+- Alternative: Use `leaflet-image` plugin for more reliable tile capture (evaluate if html2canvas has issues)
+
+---
+
+### 4. Wire Into DataTemplateTestHarness
+
+**File**: `src/pages/DataTemplateTestHarness.tsx`
+
+Add a new section at the bottom of the page:
 
 ```text
-┌──────────────────────────────────────────────────┐
-│ 1. Parallel Initial Fetch                        │
-│    - fetchCampaign()                             │
-│    - fetchEoas() → returns EoAs directly         │
-│    - fetchExistingTokens(campaignId) [SCOPED]    │
-└────────────────────┬─────────────────────────────┘
-                     │
-                     ▼ eoas available
-┌──────────────────────────────────────────────────┐
-│ 2. Dependent Fetches (parallel, using eoas)     │
-│    - fetchDeckSlides(eoaData)                   │
-│    - fetchFirstViewTimes(eoaData)               │
-└──────────────────────────────────────────────────┘
+<Collapsible>
+  <CollapsibleTrigger>
+    🗺️ Map Capture Test (Experimental)
+  </CollapsibleTrigger>
+  <CollapsibleContent>
+    <MapCaptureTestSection campaignCode={selectedCampaign?.code} />
+  </CollapsibleContent>
+</Collapsible>
 ```
 
-### Implementation Details
+---
 
-#### 1. Scope Token Fetching to Campaign
+### 5. Storage Bucket Verification
 
-Modify `fetchExistingTokens` to only fetch tokens for EoAs belonging to the current campaign:
+The `slide-snapshots` bucket already exists (used by the existing edge function). Test captures will go into a `test-captures/` subfolder to keep them separate from production snapshots.
 
-```typescript
-const fetchExistingTokens = async () => {
-  // First get EoA IDs for this campaign
-  const eoaIds = eoas.map(e => e.id);
-  if (eoaIds.length === 0) {
-    setL00Tokens({});
-    return;
-  }
-  
-  // Fetch only L00 tokens for these EoAs
-  const { data, error } = await supabase
-    .from("tokens")
-    .select("eoa_id, token, full_url")
-    .eq("level", 0)
-    .is("parent_token", null)
-    .in("eoa_id", eoaIds); // <-- NEW: Scope to campaign
-  // ... rest of function
-};
+---
+
+## Technical Details
+
+### Dependencies to Add
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `html2canvas` | `^1.4.1` | DOM-to-canvas capture |
+
+### Files to Create/Modify
+| File | Action |
+|------|--------|
+| `package.json` | Add html2canvas dependency |
+| `src/components/MapCaptureTestSection.tsx` | **New** — Test tool component |
+| `src/pages/DataTemplateTestHarness.tsx` | Add collapsible section with new component |
+
+### html2canvas Considerations
+- **CORS**: CartoDB tiles are served with CORS headers, so `useCORS: true` should work
+- **SVG Markers**: The custom SVG markers may render correctly since they're inline SVG
+- **Fallback**: If html2canvas struggles with tiles, we can evaluate `leaflet-image` which is specifically designed for Leaflet maps
+
+### Storage Path Convention
+```text
+slide-snapshots/
+  test-captures/
+    capture-{timestamp}.png    ← Test captures go here
+  {template_id}/
+    latest.png                 ← Production snapshots (existing)
 ```
 
-#### 2. Refactor fetchData for Proper Sequencing
+---
 
-```typescript
-const fetchData = async () => {
-  setLoading(true);
-  
-  // Phase 1: Fetch campaign and EoAs (these have no dependencies)
-  const [campaignResult, eoasResult] = await Promise.all([
-    fetchCampaign(),
-    fetchEoas(), // Returns data instead of just setting state
-  ]);
-  
-  // Phase 2: Fetch dependent data using the EoAs
-  if (eoasResult && eoasResult.length > 0) {
-    await Promise.all([
-      fetchExistingTokens(eoasResult),  // Pass EoAs directly
-      fetchDeckSlides(eoasResult),      // Pass EoAs directly  
-      fetchFirstViewTimes(eoasResult),  // Pass EoAs directly
-    ]);
-  }
-  
-  setLoading(false);
-};
-```
+## Success Criteria
 
-#### 3. Remove Duplicate Slide Fetching
+The test tool is successful when:
+1. You can select a campaign with map data (e.g., `rs-good-1`)
+2. The map renders with event dots
+3. Clicking "Capture Map" produces a PNG image
+4. The image is uploaded to storage and displays correctly
+5. The captured image shows the map tiles AND the event markers
 
-Remove the inline slide fetching from `fetchEoas` since it will be handled in the second phase.
+---
 
-#### 4. Eliminate Redundant EoA Query in fetchFirstViewTimes
+## What This Proves
 
-Modify `fetchFirstViewTimes` to accept EoA data as a parameter instead of re-querying:
+Once this test works, we'll know:
+- Client-side map capture is feasible
+- The approach can be extended to capture entire StatsPageSlide components (map + numbers)
+- The admin registration workflow can trigger captures on save
+- Captured maps can be composited with live numbers in the edge function
 
-```typescript
-const fetchFirstViewTimes = async (eoaData?: EventAction[]) => {
-  const eoasToUse = eoaData || eoas;
-  if (!eoasToUse.length) return;
-  
-  const eoaIds = eoasToUse.map(e => e.id);
-  // ... rest uses eoaData directly
-};
-```
+---
 
-### Files to Modify
+## Future Integration Path
 
-| File | Changes |
-|------|---------|
-| `src/pages/CampaignEoaManager.tsx` | Refactor `fetchData`, `fetchExistingTokens`, `fetchDeckSlides`, `fetchFirstViewTimes`, and `fetchEoas` |
-
-### Expected Improvements
-
-- **Fewer database calls**: 7 queries → 5 queries per page load
-- **No race conditions**: Dependent data fetched after EoAs are available
-- **Scoped data**: Only fetch tokens relevant to current campaign
-- **Faster perceived load**: Campaign info and EoAs appear first
-
-### Testing
-
-After implementation, verify:
-1. Event Manager loads for campaigns with many EoAs (e.g., "No Kings")
-2. First View times display correctly
-3. L00 tokens and short URLs load properly
-4. Deck slide previews render
-
+After this test validates the approach:
+1. **Phase 2**: Add "Capture Snapshot" button to the Data Template Editor
+2. **Phase 3**: Store captured map images per template+campaign pair
+3. **Phase 4**: Modify edge function to composite map images with live numbers
+4. **Phase 5**: Implement User-Agent detection for smartphone snapshot display
