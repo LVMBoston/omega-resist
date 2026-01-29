@@ -337,7 +337,7 @@ export function MapHotspotRenderer({
 
   // Handle bounds change reporting when map moves
   useEffect(() => {
-    if (!mapRef.current || !mapReady || !isEditorMode || !onBoundsChange) return;
+    if (!mapRef.current || !mapReady || !onBoundsChange) return;
     
     const map = mapRef.current;
     
@@ -351,13 +351,18 @@ export function MapHotspotRenderer({
       });
     };
     
-    map.on("moveend", handleMoveEnd);
+    // In editor mode, track all movements
+    if (isEditorMode) {
+      map.on("moveend", handleMoveEnd);
+    }
     
-    // Report initial bounds
+    // Always report initial bounds (for capture mode too)
     setTimeout(handleMoveEnd, 100);
     
     return () => {
-      map.off("moveend", handleMoveEnd);
+      if (isEditorMode) {
+        map.off("moveend", handleMoveEnd);
+      }
     };
   }, [mapReady, isEditorMode, onBoundsChange]);
 
