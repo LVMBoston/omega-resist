@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Camera, Loader2, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Camera, Loader2, CheckCircle, AlertCircle, ExternalLink, MapPin } from "lucide-react";
 import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { MapConfig } from "@/types/viralTemplates";
 
@@ -13,6 +14,12 @@ interface CaptureResult {
   imagePath: string;
   publicUrl: string;
   fileSize: number;
+}
+
+interface TestMarker {
+  zipCode: string;
+  latitude: number;
+  longitude: number;
 }
 
 interface MapCaptureTestSectionProps {
@@ -40,6 +47,12 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
   const [captureProgress, setCaptureProgress] = useState(0);
   const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Test marker state
+  const [zipInput, setZipInput] = useState("");
+  const [testMarkers, setTestMarkers] = useState<TestMarker[]>([]);
+  const [zipError, setZipError] = useState<string | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
 
   // Wait for tiles to load after map is ready
   useEffect(() => {
@@ -55,6 +68,57 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
 
   const handleMapReady = () => {
     setMapReady(true);
+  };
+
+  // Look up ZIP code and add marker
+  const handleAddMarker = async () => {
+    if (!zipInput.trim()) return;
+    
+    const zip = zipInput.trim();
+    if (!/^\d{5}$/.test(zip)) {
+      setZipError("Please enter a 5-digit ZIP code");
+      return;
+    }
+    
+    // Check if already added
+    if (testMarkers.some(m => m.zipCode === zip)) {
+      setZipError("This ZIP code is already on the map");
+      return;
+    }
+    
+    setLookingUp(true);
+    setZipError(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from("zip_codes")
+        .select("latitude, longitude")
+        .eq("zip_code", zip)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      if (!data) {
+        setZipError(`ZIP code ${zip} not found in database`);
+        return;
+      }
+      
+      setTestMarkers(prev => [...prev, {
+        zipCode: zip,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      }]);
+      setZipInput("");
+    } catch (err) {
+      console.error("ZIP lookup failed:", err);
+      setZipError("Failed to look up ZIP code");
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  const handleRemoveMarker = (zip: string) => {
+    setTestMarkers(prev => prev.filter(m => m.zipCode !== zip));
   };
 
   const captureMap = async () => {
@@ -182,6 +246,39 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
               onMapReady={handleMapReady}
             />
             
+            {/* Test markers overlay - green squares for ZIP codes */}
+            {testMarkers.map((marker) => {
+              // Convert lat/lng to pixel position within the map bounds
+              const bounds = DEFAULT_MAP_CONFIG.savedBounds!;
+              const latRange = bounds.north - bounds.south;
+              const lngRange = bounds.east - bounds.west;
+              
+              // Calculate percentage position
+              const xPercent = ((marker.longitude - bounds.west) / lngRange) * 100;
+              const yPercent = ((bounds.north - marker.latitude) / latRange) * 100;
+              
+              // Only show if within bounds
+              if (xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) {
+                return null;
+              }
+              
+              return (
+                <div
+                  key={marker.zipCode}
+                  className="absolute z-10 pointer-events-none"
+                  style={{
+                    left: `${xPercent}%`,
+                    top: `${yPercent}%`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <div className="w-4 h-4 bg-green-500 border-2 border-white shadow-lg" 
+                    title={`ZIP: ${marker.zipCode}`}
+                  />
+                </div>
+              );
+            })}
+            
             {/* Loading overlay */}
             {(!mapReady || !tilesLoaded) && (
               <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
@@ -192,6 +289,73 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ZIP Code Test Input */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Test Markers
+          </CardTitle>
+          <CardDescription>
+            Add green square markers by ZIP code to simulate map updates
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Input
+              value={zipInput}
+              onChange={(e) => {
+                setZipInput(e.target.value);
+                setZipError(null);
+              }}
+              placeholder="Enter 5-digit ZIP code"
+              maxLength={5}
+              className="w-40"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddMarker();
+              }}
+            />
+            <Button 
+              onClick={handleAddMarker} 
+              disabled={lookingUp || !zipInput.trim()}
+              variant="outline"
+              className="gap-2"
+            >
+              {lookingUp ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MapPin className="h-4 w-4" />
+              )}
+              Add Marker
+            </Button>
+          </div>
+          
+          {zipError && (
+            <p className="text-sm text-destructive">{zipError}</p>
+          )}
+          
+          {testMarkers.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {testMarkers.map((m) => (
+                <div
+                  key={m.zipCode}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm"
+                >
+                  <div className="w-2.5 h-2.5 bg-green-500" />
+                  {m.zipCode}
+                  <button
+                    onClick={() => handleRemoveMarker(m.zipCode)}
+                    className="ml-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
