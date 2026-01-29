@@ -275,14 +275,23 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
             {testMarkers.length > 0 && (
               <div className="absolute inset-0 z-[1000] pointer-events-none">
                 {testMarkers.map((marker) => {
-                  // Convert lat/lng to pixel position within the map bounds
+                  // Convert lat/lng to pixel position using Mercator projection (matches Leaflet)
                   const bounds = DEFAULT_MAP_CONFIG.savedBounds!;
-                  const latRange = bounds.north - bounds.south;
-                  const lngRange = bounds.east - bounds.west;
                   
-                  // Calculate percentage position
-                  const xPercent = ((marker.longitude - bounds.west) / lngRange) * 100;
-                  const yPercent = ((bounds.north - marker.latitude) / latRange) * 100;
+                  // Mercator projection helper: convert latitude to y coordinate
+                  const latToMercatorY = (lat: number): number => {
+                    const radLat = (lat * Math.PI) / 180;
+                    return Math.log(Math.tan(Math.PI / 4 + radLat / 2));
+                  };
+                  
+                  // Calculate Mercator Y values for bounds and marker
+                  const northY = latToMercatorY(bounds.north);
+                  const southY = latToMercatorY(bounds.south);
+                  const markerY = latToMercatorY(marker.latitude);
+                  
+                  // X is linear (longitude), Y uses Mercator
+                  const xPercent = ((marker.longitude - bounds.west) / (bounds.east - bounds.west)) * 100;
+                  const yPercent = ((northY - markerY) / (northY - southY)) * 100;
                   
                   console.log(`[MapCaptureTest] Marker ${marker.zipCode}: lat=${marker.latitude}, lng=${marker.longitude} -> x=${xPercent.toFixed(1)}%, y=${yPercent.toFixed(1)}%`);
                   
