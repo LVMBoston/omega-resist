@@ -247,37 +247,45 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
             />
             
             {/* Test markers overlay - green squares for ZIP codes */}
-            {testMarkers.map((marker) => {
-              // Convert lat/lng to pixel position within the map bounds
-              const bounds = DEFAULT_MAP_CONFIG.savedBounds!;
-              const latRange = bounds.north - bounds.south;
-              const lngRange = bounds.east - bounds.west;
-              
-              // Calculate percentage position
-              const xPercent = ((marker.longitude - bounds.west) / lngRange) * 100;
-              const yPercent = ((bounds.north - marker.latitude) / latRange) * 100;
-              
-              // Only show if within bounds
-              if (xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) {
-                return null;
-              }
-              
-              return (
-                <div
-                  key={marker.zipCode}
-                  className="absolute z-10 pointer-events-none"
-                  style={{
-                    left: `${xPercent}%`,
-                    top: `${yPercent}%`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  <div className="w-4 h-4 bg-green-500 border-2 border-white shadow-lg" 
-                    title={`ZIP: ${marker.zipCode}`}
-                  />
-                </div>
-              );
-            })}
+            {testMarkers.length > 0 && (
+              <div className="absolute inset-0 z-[1000] pointer-events-none">
+                {testMarkers.map((marker) => {
+                  // Convert lat/lng to pixel position within the map bounds
+                  const bounds = DEFAULT_MAP_CONFIG.savedBounds!;
+                  const latRange = bounds.north - bounds.south;
+                  const lngRange = bounds.east - bounds.west;
+                  
+                  // Calculate percentage position
+                  const xPercent = ((marker.longitude - bounds.west) / lngRange) * 100;
+                  const yPercent = ((bounds.north - marker.latitude) / latRange) * 100;
+                  
+                  console.log(`[MapCaptureTest] Marker ${marker.zipCode}: lat=${marker.latitude}, lng=${marker.longitude} -> x=${xPercent.toFixed(1)}%, y=${yPercent.toFixed(1)}%`);
+                  
+                  // Only show if within bounds
+                  if (xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) {
+                    console.log(`[MapCaptureTest] Marker ${marker.zipCode} is outside bounds, skipping`);
+                    return null;
+                  }
+                  
+                  return (
+                    <div
+                      key={marker.zipCode}
+                      className="absolute"
+                      style={{
+                        left: `${xPercent}%`,
+                        top: `${yPercent}%`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    >
+                      <div 
+                        className="w-6 h-6 bg-green-500 border-2 border-white shadow-lg"
+                        style={{ boxShadow: "0 0 10px rgba(0,255,0,0.8)" }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             
             {/* Loading overlay */}
             {(!mapReady || !tilesLoaded) && (
