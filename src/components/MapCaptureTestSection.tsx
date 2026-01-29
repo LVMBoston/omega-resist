@@ -161,14 +161,15 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
 
       setCaptureProgress(55);
 
-      // Step 3: Compress the image
+      // Step 3: Compress the image (preserve dimensions)
       const compressedBlob = await imageCompression(
         new File([originalBlob], "capture.png", { type: "image/png" }),
         {
           maxSizeMB: 0.5, // Target max 500KB
-          maxWidthOrHeight: 1600,
           useWebWorker: true,
           fileType: "image/webp", // WebP for better compression
+          preserveExif: false,
+          // No maxWidthOrHeight - preserve original 1600x1000 (800x500 * scale 2)
         }
       );
 
