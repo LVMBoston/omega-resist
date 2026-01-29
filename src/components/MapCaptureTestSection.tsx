@@ -51,6 +51,9 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
   const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   
+  // Actual rendered map bounds (from Leaflet)
+  const [actualBounds, setActualBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  
   // Test marker state
   const [zipInput, setZipInput] = useState("");
   const [testMarkers, setTestMarkers] = useState<TestMarker[]>([]);
@@ -71,6 +74,11 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
 
   const handleMapReady = () => {
     setMapReady(true);
+  };
+  
+  const handleBoundsChange = (bounds: { north: number; south: number; east: number; west: number }) => {
+    console.log(`[MapCaptureTest] Actual bounds: N=${bounds.north.toFixed(2)}, S=${bounds.south.toFixed(2)}, E=${bounds.east.toFixed(2)}, W=${bounds.west.toFixed(2)}`);
+    setActualBounds(bounds);
   };
 
   // Look up ZIP code and add marker
@@ -269,14 +277,16 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
               height={500}
               isEditorMode={false}
               onMapReady={handleMapReady}
+              onBoundsChange={handleBoundsChange}
             />
             
             {/* Test markers overlay - green squares for ZIP codes */}
-            {testMarkers.length > 0 && (
+            {testMarkers.length > 0 && actualBounds && (
               <div className="absolute inset-0 z-[1000] pointer-events-none">
                 {testMarkers.map((marker) => {
                   // Convert lat/lng to pixel position using Mercator projection (matches Leaflet)
-                  const bounds = DEFAULT_MAP_CONFIG.savedBounds!;
+                  // Use ACTUAL bounds from Leaflet, not the saved config bounds
+                  const bounds = actualBounds;
                   
                   // Mercator projection helper: convert latitude to y coordinate
                   const latToMercatorY = (lat: number): number => {
@@ -293,7 +303,7 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
                   const xPercent = ((marker.longitude - bounds.west) / (bounds.east - bounds.west)) * 100;
                   const yPercent = ((northY - markerY) / (northY - southY)) * 100;
                   
-                  console.log(`[MapCaptureTest] Marker ${marker.zipCode}: lat=${marker.latitude}, lng=${marker.longitude} -> x=${xPercent.toFixed(1)}%, y=${yPercent.toFixed(1)}%`);
+                  console.log(`[MapCaptureTest] Marker ${marker.zipCode}: lat=${marker.latitude}, lng=${marker.longitude} -> x=${xPercent.toFixed(1)}%, y=${yPercent.toFixed(1)}% (bounds: N=${bounds.north.toFixed(1)} S=${bounds.south.toFixed(1)} E=${bounds.east.toFixed(1)} W=${bounds.west.toFixed(1)})`);
                   
                   // Only show if within bounds
                   if (xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) {
