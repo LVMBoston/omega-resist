@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import html2canvas from "html2canvas";
+import imageCompression from "browser-image-compression";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,8 @@ interface CaptureResult {
   imagePath: string;
   publicUrl: string;
   fileSize: number;
+  originalSize: number;
+  compressionRatio: number;
 }
 
 interface TestMarker {
@@ -143,27 +146,45 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
         logging: false,
       });
 
-      setCaptureProgress(50);
+      setCaptureProgress(40);
 
       // Step 2: Convert canvas to blob
-      const blob = await new Promise<Blob>((resolve, reject) => {
+      const originalBlob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((b) => {
           if (b) resolve(b);
           else reject(new Error("Failed to convert canvas to blob"));
         }, "image/png", 0.95);
       });
 
+      const originalSize = originalBlob.size;
+      console.log(`[MapCaptureTest] Original size: ${(originalSize / 1024).toFixed(1)} KB`);
+
+      setCaptureProgress(55);
+
+      // Step 3: Compress the image
+      const compressedBlob = await imageCompression(
+        new File([originalBlob], "capture.png", { type: "image/png" }),
+        {
+          maxSizeMB: 0.5, // Target max 500KB
+          maxWidthOrHeight: 1600,
+          useWebWorker: true,
+          fileType: "image/webp", // WebP for better compression
+        }
+      );
+
+      console.log(`[MapCaptureTest] Compressed size: ${(compressedBlob.size / 1024).toFixed(1)} KB (${((1 - compressedBlob.size / originalSize) * 100).toFixed(0)}% reduction)`);
+
       setCaptureProgress(70);
 
-      // Step 3: Upload to Supabase storage
+      // Step 4: Upload to Supabase storage
       const timestamp = Date.now();
-      const filename = `capture-${campaignCode}-${timestamp}.png`;
+      const filename = `capture-${campaignCode}-${timestamp}.webp`;
       const storagePath = `test-captures/${filename}`;
 
       const { error: uploadError } = await supabase.storage
         .from("slide-snapshots")
-        .upload(storagePath, blob, {
-          contentType: "image/png",
+        .upload(storagePath, compressedBlob, {
+          contentType: "image/webp",
           upsert: true,
         });
 
@@ -173,7 +194,7 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
 
       setCaptureProgress(90);
 
-      // Step 4: Get public URL
+      // Step 5: Get public URL
       const { data: urlData } = supabase.storage
         .from("slide-snapshots")
         .getPublicUrl(storagePath);
@@ -183,7 +204,9 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
       const result: CaptureResult = {
         imagePath: storagePath,
         publicUrl: urlData.publicUrl,
-        fileSize: blob.size,
+        fileSize: compressedBlob.size,
+        originalSize,
+        compressionRatio: 1 - (compressedBlob.size / originalSize),
       };
 
       setCaptureResult(result);
@@ -417,14 +440,19 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Result Details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Storage Path:</span>
                 <p className="font-mono text-xs break-all">{captureResult.imagePath}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">File Size:</span>
-                <p className="font-semibold">{formatFileSize(captureResult.fileSize)}</p>
+                <span className="text-muted-foreground">Original Size:</span>
+                <p className="text-muted-foreground">{formatFileSize(captureResult.originalSize)}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Compressed Size:</span>
+                <p className="font-semibold text-green-600">{formatFileSize(captureResult.fileSize)}</p>
+                <p className="text-xs text-green-600">({(captureResult.compressionRatio * 100).toFixed(0)}% smaller)</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Public URL:</span>
