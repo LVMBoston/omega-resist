@@ -259,7 +259,7 @@ export function MapCaptureTestSection({ campaignCode, onCaptureComplete }: MapCa
           <div 
             ref={mapContainerRef}
             className="relative border border-border rounded-lg overflow-hidden bg-muted"
-            style={{ width: "800px", height: "500px", maxWidth: "100%" }}
+            style={{ width: "800px", height: "500px" }}
           >
             <MapHotspotRenderer
               campaignCode={campaignCode}
