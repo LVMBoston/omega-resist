@@ -44,11 +44,23 @@ export async function captureTemplateSnapshot(
   hotspotElements.forEach((el, i) => {
     const htmlEl = el as HTMLElement;
     originalTops[i] = htmlEl.style.top;
-    // Parse the current top percentage and subtract a small offset
     const currentTop = parseFloat(htmlEl.style.top) || 0;
-    // Subtract ~0.5% which is roughly 3-4px on a 700px tall container
-    htmlEl.style.top = `${currentTop - 0.5}%`;
+    // Log before modification
+    console.log(`[snapshotCapture] Hotspot ${i}: original top = ${currentTop}%`);
+    // Subtract ~1% which is roughly 7-8px on a 700px tall container
+    const newTop = currentTop - 1;
+    htmlEl.style.top = `${newTop}%`;
+    console.log(`[snapshotCapture] Hotspot ${i}: new top = ${newTop}%`);
   });
+
+  // CRITICAL: Force synchronous reflow to ensure browser updates layout
+  void containerElement.offsetHeight;
+  console.log("[snapshotCapture] Forced reflow complete");
+
+  // Wait for browser paint cycle to complete
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  console.log("[snapshotCapture] Paint cycle delay complete, starting capture");
 
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(containerElement, {
