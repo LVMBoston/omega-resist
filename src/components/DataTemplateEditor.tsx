@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -111,9 +111,11 @@ export function DataTemplateEditor({
   const [isCapturing, setIsCapturing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isRefreshingServer, setIsRefreshingServer] = useState(false);
   const [savedTemplateId, setSavedTemplateId] = useState<string | undefined>(templateId);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [lastSnapshotAt, setLastSnapshotAt] = useState<Date | null>(null);
+  const [lastServerRefreshAt, setLastServerRefreshAt] = useState<Date | null>(null);
 
   // Form state
   const [name, setName] = useState(templateName);
@@ -423,6 +425,43 @@ export function DataTemplateEditor({
     }
   };
 
+  // Handle server-side snapshot refresh (calls edge function)
+  const handleServerRefresh = async () => {
+    const templateIdToUse = savedTemplateId || templateId;
+    if (!templateIdToUse) {
+      toast.error("Please save the template first before refreshing server snapshot");
+      return;
+    }
+    if (!campaignId) {
+      toast.error("Please select a campaign to refresh server snapshot");
+      return;
+    }
+
+    setIsRefreshingServer(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("render-stats-snapshot", {
+        body: {
+          template_id: templateIdToUse,
+          campaign_code: campaignId,
+        },
+      });
+
+      if (error) throw error;
+
+      setLastServerRefreshAt(new Date());
+      toast.success(`Server snapshot refreshed! ${data.hotspots_rendered} hotspots rendered.`, { duration: 4000 });
+      
+      // Log the public URL for easy access
+      console.log("[Server Refresh] Public URL:", data.public_url);
+      
+    } catch (error: any) {
+      console.error("Server refresh failed:", error);
+      toast.error(`Server refresh failed: ${error.message}`);
+    } finally {
+      setIsRefreshingServer(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Form Fields */}
@@ -716,13 +755,23 @@ export function DataTemplateEditor({
             </Button>
             <Button
               onClick={handleSaveAndCapture}
-              disabled={isSaving || isAutoSaving || isCapturing || !imageUrl || !name || !slug}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !imageUrl || !name || !slug}
               className="bg-blue-600 hover:bg-blue-700 gap-1"
             >
               <Camera className="w-4 h-4" />
               {isCapturing
                 ? "Capturing..."
                 : "Save & Capture"}
+            </Button>
+            <Button
+              onClick={handleServerRefresh}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !savedTemplateId || !campaignId}
+              variant="outline"
+              className="gap-1 border-orange-500 text-orange-600 hover:bg-orange-50"
+              title="Call server-side edge function to regenerate snapshot with live metrics"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshingServer ? "animate-spin" : ""}`} />
+              {isRefreshingServer ? "Refreshing..." : "Server Refresh"}
             </Button>
           </div>
         </div>
