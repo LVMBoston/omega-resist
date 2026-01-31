@@ -36,24 +36,7 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = 'none';
   });
 
-  // Apply vertical offset to hotspot overlays to correct html2canvas alignment
-  // Directly modify the 'top' style since these are percentage-positioned absolute elements
-  const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
-  console.log("[snapshotCapture] Applying vertical offset to hotspots:", hotspotElements.length);
-  const originalTops: string[] = [];
-  hotspotElements.forEach((el, i) => {
-    const htmlEl = el as HTMLElement;
-    originalTops[i] = htmlEl.style.top;
-    const currentTop = parseFloat(htmlEl.style.top) || 0;
-    // Log before modification
-    console.log(`[snapshotCapture] Hotspot ${i}: original top = ${currentTop}%`);
-    // Subtract ~1% which is roughly 7-8px on a 700px tall container
-    const newTop = currentTop - 1;
-    htmlEl.style.top = `${newTop}%`;
-    console.log(`[snapshotCapture] Hotspot ${i}: new top = ${newTop}%`);
-  });
-
-  // CRITICAL: Force synchronous reflow to ensure browser updates layout
+  // Force synchronous reflow to ensure browser layout is stable
   void containerElement.offsetHeight;
   console.log("[snapshotCapture] Forced reflow complete");
 
@@ -81,10 +64,6 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = '';
   });
 
-  // Restore hotspot top positions
-  hotspotElements.forEach((el, i) => {
-    (el as HTMLElement).style.top = originalTops[i] || '';
-  });
 
   // Convert to WebP with quality targeting ~500KB
   const blob = await new Promise<Blob>((resolve, reject) => {
