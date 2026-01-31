@@ -37,10 +37,14 @@ export async function captureTemplateSnapshot(
   });
 
   // Apply vertical offset to hotspot overlays to correct html2canvas alignment
+  // Using marginTop instead of transform as transform may not work with html2canvas
   const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
   console.log("[snapshotCapture] Applying vertical offset to hotspots:", hotspotElements.length);
-  hotspotElements.forEach((el) => {
-    (el as HTMLElement).style.transform = 'translateY(-3px)';
+  const originalMargins: string[] = [];
+  hotspotElements.forEach((el, i) => {
+    const htmlEl = el as HTMLElement;
+    originalMargins[i] = htmlEl.style.marginTop;
+    htmlEl.style.marginTop = '-4px';
   });
 
   // Capture at 2x scale for retina quality
@@ -62,9 +66,9 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = '';
   });
 
-  // Restore hotspot transforms
-  hotspotElements.forEach((el) => {
-    (el as HTMLElement).style.transform = '';
+  // Restore hotspot margins
+  hotspotElements.forEach((el, i) => {
+    (el as HTMLElement).style.marginTop = originalMargins[i] || '';
   });
 
   // Convert to WebP with quality targeting ~500KB
