@@ -132,6 +132,7 @@ export function DraggableHotspotOverlay({
           return (
             <div
               key={hotspot.id}
+              data-hotspot-overlay
               className={`absolute select-none transition-shadow overflow-hidden rounded-lg ${
                 isActive ? "ring-2 ring-purple-500 ring-offset-2" : ""
               } ${isDragging ? "z-50 shadow-2xl cursor-move" : "z-10"}`}
@@ -222,6 +223,7 @@ export function DraggableHotspotOverlay({
           return (
             <div
               key={hotspot.id}
+              data-hotspot-overlay
               className={`absolute flex items-center justify-center select-none transition-shadow cursor-move ${
                 isActive ? "ring-2 ring-blue-500 ring-offset-2" : ""
               } ${isDragging ? "z-50 shadow-2xl" : "z-10"}`}
@@ -284,6 +286,7 @@ export function DraggableHotspotOverlay({
         return (
           <div
             key={hotspot.id}
+            data-hotspot-overlay
             className={`absolute flex items-center justify-center select-none transition-shadow overflow-visible ${
               isEditMode ? "cursor-text" : "cursor-move"
             } ${isActive ? "ring-2 ring-primary ring-offset-2" : ""} ${

@@ -22,6 +22,18 @@ export async function captureTemplateSnapshot(
   // Wait for any pending renders (maps, charts) to stabilize
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
+  // Hide elements marked with capture-hide class
+  const hideElements = containerElement.querySelectorAll('.capture-hide');
+  hideElements.forEach((el) => {
+    (el as HTMLElement).style.display = 'none';
+  });
+
+  // Apply vertical offset to hotspot overlays for html2canvas alignment
+  const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
+  hotspotElements.forEach((el) => {
+    (el as HTMLElement).style.transform = 'translateY(-3px)';
+  });
+
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(containerElement, {
     useCORS: true,
@@ -29,6 +41,16 @@ export async function captureTemplateSnapshot(
     scale: 2,
     logging: false,
     backgroundColor: null,
+  });
+
+  // Restore hidden elements
+  hideElements.forEach((el) => {
+    (el as HTMLElement).style.display = '';
+  });
+
+  // Restore hotspot transforms
+  hotspotElements.forEach((el) => {
+    (el as HTMLElement).style.transform = '';
   });
 
   // Convert to WebP with quality targeting ~500KB
