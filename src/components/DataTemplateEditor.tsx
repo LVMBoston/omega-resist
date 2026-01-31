@@ -396,6 +396,10 @@ export function DataTemplateEditor({
       
       // Now capture the snapshot
       setIsCapturing(true);
+      
+      // Add capture mode class to adjust vertical alignment for html2canvas
+      captureContainerRef.current.classList.add("capture-mode");
+      
       toast.info("Capturing snapshot...", { duration: 2000 });
       
       const captureResult = await captureTemplateSnapshot(
@@ -410,6 +414,10 @@ export function DataTemplateEditor({
     } catch (error: any) {
       toast.error(`Failed: ${error.message}`);
     } finally {
+      // Remove capture mode class
+      if (captureContainerRef.current) {
+        captureContainerRef.current.classList.remove("capture-mode");
+      }
       setIsSaving(false);
       setIsCapturing(false);
     }
@@ -524,8 +532,8 @@ export function DataTemplateEditor({
                 />
               )}
 
-              {/* Replace Image Button */}
-              <div className="absolute top-2 right-2">
+              {/* Replace Image Button - hidden during capture */}
+              <div className="absolute top-2 right-2 capture-hide">
                 <label className="cursor-pointer">
                   <input
                     type="file"

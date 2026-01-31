@@ -120,3 +120,13 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Snapshot capture mode adjustments */
+.capture-mode .capture-hide {
+  display: none !important;
+}
+
+/* Adjust hotspot vertical alignment for html2canvas rendering differences */
+.capture-mode [class*="absolute"][class*="flex"][class*="items-center"] {
+  transform: translateY(-3px);
+}
