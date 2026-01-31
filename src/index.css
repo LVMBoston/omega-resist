@@ -121,12 +121,7 @@ All colors MUST be HSL.
   }
 }
 
-/* Snapshot capture mode adjustments */
+/* Snapshot capture mode adjustments - elements with capture-hide will be hidden via JS */
 .capture-mode .capture-hide {
   display: none !important;
-}
-
-/* Adjust hotspot vertical alignment for html2canvas rendering differences */
-.capture-mode [class*="absolute"][class*="flex"][class*="items-center"] {
-  transform: translateY(-3px);
 }
