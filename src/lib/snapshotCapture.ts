@@ -37,14 +37,17 @@ export async function captureTemplateSnapshot(
   });
 
   // Apply vertical offset to hotspot overlays to correct html2canvas alignment
-  // Using marginTop instead of transform as transform may not work with html2canvas
+  // Directly modify the 'top' style since these are percentage-positioned absolute elements
   const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
   console.log("[snapshotCapture] Applying vertical offset to hotspots:", hotspotElements.length);
-  const originalMargins: string[] = [];
+  const originalTops: string[] = [];
   hotspotElements.forEach((el, i) => {
     const htmlEl = el as HTMLElement;
-    originalMargins[i] = htmlEl.style.marginTop;
-    htmlEl.style.marginTop = '-4px';
+    originalTops[i] = htmlEl.style.top;
+    // Parse the current top percentage and subtract a small offset
+    const currentTop = parseFloat(htmlEl.style.top) || 0;
+    // Subtract ~0.5% which is roughly 3-4px on a 700px tall container
+    htmlEl.style.top = `${currentTop - 0.5}%`;
   });
 
   // Capture at 2x scale for retina quality
@@ -66,9 +69,9 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = '';
   });
 
-  // Restore hotspot margins
+  // Restore hotspot top positions
   hotspotElements.forEach((el, i) => {
-    (el as HTMLElement).style.marginTop = originalMargins[i] || '';
+    (el as HTMLElement).style.top = originalTops[i] || '';
   });
 
   // Convert to WebP with quality targeting ~500KB
