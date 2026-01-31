@@ -28,11 +28,22 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = 'none';
   });
 
-  // Apply vertical offset to hotspot overlays for html2canvas alignment
-  const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
-  hotspotElements.forEach((el) => {
-    (el as HTMLElement).style.transform = 'translateY(-3px)';
+  // Hide index badges (the numbered circles on hotspots)
+  const indexBadges = containerElement.querySelectorAll('[data-hotspot-overlay] > div.-top-3, [data-hotspot-overlay] > div.-bottom-3');
+  indexBadges.forEach((el) => {
+    (el as HTMLElement).style.display = 'none';
   });
+
+  // Hide edit/drag toggle buttons and resize handles
+  const editButtons = containerElement.querySelectorAll('[data-hotspot-overlay] button, [data-hotspot-overlay] > div.absolute.bottom-0.right-0');
+  editButtons.forEach((el) => {
+    (el as HTMLElement).style.display = 'none';
+  });
+
+  // Remove vertical offset - the badges were likely causing the misalignment
+  // If still needed, adjust value here
+  const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
+  // No transform needed now that badges are hidden
 
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(containerElement, {
@@ -48,9 +59,14 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = '';
   });
 
-  // Restore hotspot transforms
-  hotspotElements.forEach((el) => {
-    (el as HTMLElement).style.transform = '';
+  // Restore index badges
+  indexBadges.forEach((el) => {
+    (el as HTMLElement).style.display = '';
+  });
+
+  // Restore edit buttons
+  editButtons.forEach((el) => {
+    (el as HTMLElement).style.display = '';
   });
 
   // Convert to WebP with quality targeting ~500KB
