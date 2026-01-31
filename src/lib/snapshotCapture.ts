@@ -43,16 +43,18 @@ export async function captureTemplateSnapshot(
     );
   });
 
-  // Generate storage path
+  // Generate storage path - use slide-snapshots bucket directly
   const timestamp = new Date().toISOString();
   const fileName = campaignCode 
     ? `snapshot-${campaignCode}.webp`
     : "latest.webp";
-  const storagePath = `slide-snapshots/${templateId}/${fileName}`;
+  const storagePath = `${templateId}/${fileName}`;
+
+  console.log("[snapshotCapture] Uploading to slide-snapshots bucket:", storagePath);
 
   // Upload to storage (upsert - replace if exists)
   const { error: uploadError } = await supabase.storage
-    .from("slides")
+    .from("slide-snapshots")
     .upload(storagePath, blob, {
       cacheControl: "300", // 5 minute cache
       upsert: true,
@@ -60,13 +62,16 @@ export async function captureTemplateSnapshot(
     });
 
   if (uploadError) {
+    console.error("[snapshotCapture] Upload error:", uploadError);
     throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
   }
 
   // Get the public URL
   const { data: { publicUrl } } = supabase.storage
-    .from("slides")
+    .from("slide-snapshots")
     .getPublicUrl(storagePath);
+  
+  console.log("[snapshotCapture] Upload successful, public URL:", publicUrl);
 
   // Update the template record with snapshot info
   const { error: updateError } = await supabase
