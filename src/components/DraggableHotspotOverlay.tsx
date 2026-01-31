@@ -287,11 +287,19 @@ export function DraggableHotspotOverlay({
         }
 
         // Live number hotspot rendering
+        // Map alignment values to flexbox properties
+        const justifyContent = 
+          style.textAlign === 'left' ? 'flex-start' : 
+          style.textAlign === 'right' ? 'flex-end' : 'center';
+        const alignItems = 
+          style.verticalAlign === 'top' ? 'flex-start' : 
+          style.verticalAlign === 'bottom' ? 'flex-end' : 'center';
+
         return (
           <div
             key={hotspot.id}
             data-hotspot-overlay
-            className={`absolute flex items-center justify-center select-none transition-shadow overflow-visible ${
+            className={`absolute flex select-none transition-shadow overflow-visible ${
               isEditMode ? "cursor-text" : "cursor-move"
             } ${isActive ? "ring-2 ring-primary ring-offset-2" : ""} ${
               isDragging ? "z-50 shadow-2xl" : "z-10"
@@ -305,7 +313,8 @@ export function DraggableHotspotOverlay({
               fontWeight: style.fontWeight || "700",
               color: style.color || "#1a1a1a",
               backgroundColor: style.backgroundColor || "#e8dcc8",
-              textAlign: (style.textAlign as React.CSSProperties["textAlign"]) || "center",
+              justifyContent,
+              alignItems,
               fontFamily: style.fontFamily || "Calibri, sans-serif",
               padding: style.padding || "4px",
               borderRadius: style.borderRadius || "0px",
