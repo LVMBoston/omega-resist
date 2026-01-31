@@ -36,6 +36,13 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = 'none';
   });
 
+  // Apply vertical offset to hotspot overlays to correct html2canvas alignment
+  const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
+  console.log("[snapshotCapture] Applying vertical offset to hotspots:", hotspotElements.length);
+  hotspotElements.forEach((el) => {
+    (el as HTMLElement).style.transform = 'translateY(-3px)';
+  });
+
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(containerElement, {
     useCORS: true,
@@ -53,6 +60,11 @@ export async function captureTemplateSnapshot(
   // Restore badge elements
   badgeElements.forEach((el) => {
     (el as HTMLElement).style.display = '';
+  });
+
+  // Restore hotspot transforms
+  hotspotElements.forEach((el) => {
+    (el as HTMLElement).style.transform = '';
   });
 
   // Convert to WebP with quality targeting ~500KB
