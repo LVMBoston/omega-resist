@@ -22,28 +22,19 @@ export async function captureTemplateSnapshot(
   // Wait for any pending renders (maps, charts) to stabilize
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  // Hide elements marked with capture-hide class
+  // Hide elements marked with capture-hide class (Replace button, etc.)
   const hideElements = containerElement.querySelectorAll('.capture-hide');
+  console.log("[snapshotCapture] Hiding capture-hide elements:", hideElements.length);
   hideElements.forEach((el) => {
     (el as HTMLElement).style.display = 'none';
   });
 
-  // Hide index badges (the numbered circles on hotspots)
-  const indexBadges = containerElement.querySelectorAll('[data-hotspot-overlay] > div.-top-3, [data-hotspot-overlay] > div.-bottom-3');
-  indexBadges.forEach((el) => {
+  // Hide index badges and UI controls inside hotspots using data attribute
+  const badgeElements = containerElement.querySelectorAll('[data-capture-hide]');
+  console.log("[snapshotCapture] Hiding data-capture-hide elements:", badgeElements.length);
+  badgeElements.forEach((el) => {
     (el as HTMLElement).style.display = 'none';
   });
-
-  // Hide edit/drag toggle buttons and resize handles
-  const editButtons = containerElement.querySelectorAll('[data-hotspot-overlay] button, [data-hotspot-overlay] > div.absolute.bottom-0.right-0');
-  editButtons.forEach((el) => {
-    (el as HTMLElement).style.display = 'none';
-  });
-
-  // Remove vertical offset - the badges were likely causing the misalignment
-  // If still needed, adjust value here
-  const hotspotElements = containerElement.querySelectorAll('[data-hotspot-overlay]');
-  // No transform needed now that badges are hidden
 
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(containerElement, {
@@ -59,13 +50,8 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = '';
   });
 
-  // Restore index badges
-  indexBadges.forEach((el) => {
-    (el as HTMLElement).style.display = '';
-  });
-
-  // Restore edit buttons
-  editButtons.forEach((el) => {
+  // Restore badge elements
+  badgeElements.forEach((el) => {
     (el as HTMLElement).style.display = '';
   });
 
