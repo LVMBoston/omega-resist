@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -16,6 +16,7 @@ import { MapControls } from "@/components/MapHotspotRenderer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
+import { captureTemplateSnapshot } from "@/lib/snapshotCapture";
 
 
 // Default hotspot template for data templates (live_number)
@@ -104,12 +105,15 @@ export function DataTemplateEditor({
   mode,
 }: DataTemplateEditorProps) {
   const imageRef = useRef<HTMLImageElement>(null);
+  const captureContainerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [savedTemplateId, setSavedTemplateId] = useState<string | undefined>(templateId);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [lastSnapshotAt, setLastSnapshotAt] = useState<Date | null>(null);
 
   // Form state
   const [name, setName] = useState(templateName);
@@ -349,6 +353,68 @@ export function DataTemplateEditor({
     }
   };
 
+  // Handle save and capture snapshot
+  const handleSaveAndCapture = async () => {
+    if (!name.trim()) {
+      toast.error("Template name is required");
+      return;
+    }
+    if (!slug.trim()) {
+      toast.error("Template slug is required");
+      return;
+    }
+    if (!imageUrl) {
+      toast.error("Please upload an image");
+      return;
+    }
+    if (!captureContainerRef.current) {
+      toast.error("Cannot capture: image container not ready");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // First save the template to get/confirm the ID
+      const result = await onSave({
+        hotspots,
+        imageUrl,
+        name: name.trim(),
+        slug: slug.trim(),
+        description: description.trim() || undefined,
+      });
+      
+      const templateIdToUse = result || savedTemplateId;
+      if (!templateIdToUse) {
+        throw new Error("No template ID available for snapshot");
+      }
+      
+      if (result && !savedTemplateId) {
+        setSavedTemplateId(result);
+      }
+      
+      setLastSavedAt(new Date());
+      
+      // Now capture the snapshot
+      setIsCapturing(true);
+      toast.info("Capturing snapshot...", { duration: 2000 });
+      
+      const captureResult = await captureTemplateSnapshot(
+        templateIdToUse,
+        captureContainerRef.current,
+        campaignId || undefined
+      );
+      
+      setLastSnapshotAt(new Date(captureResult.timestamp));
+      toast.success("Template saved and snapshot captured!", { duration: 3000 });
+      
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+      setIsCapturing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Form Fields */}
@@ -435,7 +501,7 @@ export function DataTemplateEditor({
         {/* Image Upload / Preview */}
         <div className="flex-1 flex items-start justify-center p-4 bg-black/95 min-h-[400px] overflow-auto">
           {imageUrl ? (
-            <div className="relative max-w-4xl w-full">
+            <div ref={captureContainerRef} className="relative max-w-4xl w-full">
               <img
                 ref={imageRef}
                 src={imageUrl}
@@ -610,6 +676,14 @@ export function DataTemplateEditor({
               <span className="text-amber-600 flex items-center gap-1">
                 <Loader2 className="w-4 h-4 animate-spin" /> Saving...
               </span>
+            ) : isCapturing ? (
+              <span className="text-blue-600 flex items-center gap-1">
+                <Loader2 className="w-4 h-4 animate-spin" /> Capturing...
+              </span>
+            ) : lastSnapshotAt ? (
+              <span className="text-blue-600 flex items-center gap-1">
+                <Camera className="w-4 h-4" /> Snapshot: {lastSnapshotAt.toLocaleTimeString()}
+              </span>
             ) : lastSavedAt ? (
               <span className="text-green-600 flex items-center gap-1">
                 <Check className="w-4 h-4" /> Saved
@@ -623,14 +697,24 @@ export function DataTemplateEditor({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving || isAutoSaving || !imageUrl || !name || !slug}
-              className="bg-green-600 hover:bg-green-700"
+              disabled={isSaving || isAutoSaving || isCapturing || !imageUrl || !name || !slug}
+              variant="outline"
             >
-              {isSaving
+              {isSaving && !isCapturing
                 ? "Saving..."
                 : savedTemplateId || mode === "edit"
                 ? "Update Template"
                 : "Create Template"}
+            </Button>
+            <Button
+              onClick={handleSaveAndCapture}
+              disabled={isSaving || isAutoSaving || isCapturing || !imageUrl || !name || !slug}
+              className="bg-blue-600 hover:bg-blue-700 gap-1"
+            >
+              <Camera className="w-4 h-4" />
+              {isCapturing
+                ? "Capturing..."
+                : "Save & Capture"}
             </Button>
           </div>
         </div>

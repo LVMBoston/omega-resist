@@ -1,0 +1,105 @@
+import html2canvas from "html2canvas";
+import { supabase } from "@/integrations/supabase/client";
+
+export interface CaptureResult {
+  snapshotPath: string;
+  timestamp: string;
+}
+
+/**
+ * Captures a template's visual content as a WebP image and uploads to storage.
+ * 
+ * @param templateId - The ID of the template being captured
+ * @param containerElement - The DOM element to capture (should contain the rendered template)
+ * @param campaignCode - Optional campaign code for file naming
+ * @returns The storage path and timestamp of the captured snapshot
+ */
+export async function captureTemplateSnapshot(
+  templateId: string,
+  containerElement: HTMLElement,
+  campaignCode?: string
+): Promise<CaptureResult> {
+  // Wait for any pending renders (maps, charts) to stabilize
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Capture at 2x scale for retina quality
+  const canvas = await html2canvas(containerElement, {
+    useCORS: true,
+    allowTaint: false,
+    scale: 2,
+    logging: false,
+    backgroundColor: null,
+  });
+
+  // Convert to WebP with quality targeting ~500KB
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b) => {
+        if (b) resolve(b);
+        else reject(new Error("Failed to create blob from canvas"));
+      },
+      "image/webp",
+      0.85 // Quality setting
+    );
+  });
+
+  // Generate storage path
+  const timestamp = new Date().toISOString();
+  const fileName = campaignCode 
+    ? `snapshot-${campaignCode}.webp`
+    : "latest.webp";
+  const storagePath = `slide-snapshots/${templateId}/${fileName}`;
+
+  // Upload to storage (upsert - replace if exists)
+  const { error: uploadError } = await supabase.storage
+    .from("slides")
+    .upload(storagePath, blob, {
+      cacheControl: "300", // 5 minute cache
+      upsert: true,
+      contentType: "image/webp",
+    });
+
+  if (uploadError) {
+    throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
+  }
+
+  // Get the public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from("slides")
+    .getPublicUrl(storagePath);
+
+  // Update the template record with snapshot info
+  const { error: updateError } = await supabase
+    .from("viral_slide_configs")
+    .update({
+      cached_snapshot_path: publicUrl,
+      snapshot_rendered_at: timestamp,
+    })
+    .eq("id", templateId);
+
+  if (updateError) {
+    console.warn("Failed to update template snapshot metadata:", updateError);
+    // Don't throw - the snapshot was still captured successfully
+  }
+
+  return {
+    snapshotPath: publicUrl,
+    timestamp,
+  };
+}
+
+/**
+ * Checks if a snapshot needs refresh based on last render time.
+ */
+export function isSnapshotStale(
+  snapshotRenderedAt: string | null,
+  maxAgeMinutes: number = 5
+): boolean {
+  if (!snapshotRenderedAt) return true;
+  
+  const renderedAt = new Date(snapshotRenderedAt);
+  const now = new Date();
+  const ageMinutes = (now.getTime() - renderedAt.getTime()) / (1000 * 60);
+  
+  return ageMinutes > maxAgeMinutes;
+}
