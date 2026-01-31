@@ -166,6 +166,7 @@ export function DraggableHotspotOverlay({
               {/* Lock toggle button in upper right corner */}
               <button 
                 type="button"
+                data-capture-hide
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
@@ -188,6 +189,7 @@ export function DraggableHotspotOverlay({
 
               {/* Drag handle - on the corner for map hotspots */}
               <div 
+                data-capture-hide
                 className="absolute top-0 left-0 w-8 h-8 bg-purple-500/80 rounded-br-lg flex items-center justify-center cursor-move z-[1002]"
                 onMouseDown={(e) => handleMouseDown(e, index)}
                 title="Drag to reposition"
@@ -197,6 +199,7 @@ export function DraggableHotspotOverlay({
 
               {/* Index badge - moved to bottom left to avoid confusion with resize handle */}
               <div
+                data-capture-hide
                 className={`absolute -bottom-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
                   isActive
                     ? "bg-purple-500 text-white"
@@ -267,6 +270,7 @@ export function DraggableHotspotOverlay({
 
               {/* Index badge */}
               <div
+                data-capture-hide
                 className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                   isActive
                     ? "bg-blue-500 text-white"
@@ -277,7 +281,7 @@ export function DraggableHotspotOverlay({
               </div>
 
               {/* Resize handle indicator */}
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity" />
+              <div data-capture-hide className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity" />
             </div>
           );
         }
@@ -335,6 +339,7 @@ export function DraggableHotspotOverlay({
             
             {/* Index badge */}
             <div
+              data-capture-hide
               className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                 isActive
                   ? "bg-primary text-primary-foreground"
@@ -348,6 +353,7 @@ export function DraggableHotspotOverlay({
             {isManualEntry && (
               <button
                 type="button"
+                data-capture-hide
                 onClick={(e) => toggleEditMode(e, index)}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -363,7 +369,7 @@ export function DraggableHotspotOverlay({
             )}
 
             {/* Resize handle indicator */}
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity" />
+            <div data-capture-hide className="absolute bottom-0 right-0 w-3 h-3 bg-primary/50 rounded-tl opacity-0 hover:opacity-100 transition-opacity" />
           </div>
         );
       })}
