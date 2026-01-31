@@ -69,6 +69,8 @@ export function HotspotCalibrationControls({
   const fontFamily = style.fontFamily || "Calibri, sans-serif";
   const textColor = style.color || "#1a1a1a";
   const bgColor = style.backgroundColor || "#e8dcc8";
+  const textAlign = style.textAlign || "center";
+  const verticalAlign = style.verticalAlign || "center";
 
   const isManualEntry = hotspot.metricKey === "manual_entry";
 
@@ -201,6 +203,36 @@ export function HotspotCalibrationControls({
             <SelectItem value="600" className="text-xs">Semibold</SelectItem>
             <SelectItem value="700" className="text-xs">Bold</SelectItem>
             <SelectItem value="800" className="text-xs">Extra Bold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Horizontal Align */}
+      <div className="space-y-2">
+        <Label className="text-xs">H-Align</Label>
+        <Select value={textAlign} onValueChange={(val) => updateStyle({ textAlign: val as 'left' | 'center' | 'right' })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="left" className="text-xs">Left</SelectItem>
+            <SelectItem value="center" className="text-xs">Center</SelectItem>
+            <SelectItem value="right" className="text-xs">Right</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Vertical Align */}
+      <div className="space-y-2">
+        <Label className="text-xs">V-Align</Label>
+        <Select value={verticalAlign} onValueChange={(val) => updateStyle({ verticalAlign: val as 'top' | 'center' | 'bottom' })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="top" className="text-xs">Top</SelectItem>
+            <SelectItem value="center" className="text-xs">Center</SelectItem>
+            <SelectItem value="bottom" className="text-xs">Bottom</SelectItem>
           </SelectContent>
         </Select>
       </div>

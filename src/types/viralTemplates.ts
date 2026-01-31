@@ -118,6 +118,7 @@ export interface LiveNumberStyle {
   color?: string;
   backgroundColor?: string;
   textAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'center' | 'bottom';
   fontFamily?: string;
   padding?: string;
   borderRadius?: string;
