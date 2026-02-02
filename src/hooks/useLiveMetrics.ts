@@ -111,6 +111,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       const viewerTimezone = getViewerTimezone();
 
       // Query tokens for this campaign
+      console.log("[useLiveMetrics] Querying tokens for campaign code:", campaign.code);
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
         .select("token, level, utm_medium")
@@ -118,6 +119,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         .is("deleted_at", null);
       
       if (tokensError) throw tokensError;
+      console.log("[useLiveMetrics] Tokens found:", tokens?.length || 0);
 
       // Query url_events for these tokens
       const tokenStrings = tokens?.map(t => t.token) || [];
@@ -143,6 +145,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       }
 
       // Calculate metrics
+      console.log("[useLiveMetrics] Calculating metrics from", tokens?.length || 0, "tokens and", events.length, "events");
       const metricResults: MetricResult[] = [];
       
       // L00 count (seeds)
@@ -218,7 +221,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       } else {
         metricResults.push({ key: "latest_active", label: METRIC_LABELS.latest_active, value: "(no activity)", source: "url_events" });
       }
-
+      console.log("[useLiveMetrics] Final metrics count:", metricResults.length, metricResults.map(m => m.key));
       setMetrics(metricResults);
     } catch (err) {
       console.error("useLiveMetrics error:", err);

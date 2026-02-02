@@ -168,11 +168,13 @@ export function DataTemplateEditor({
 
   // Update display values when metrics are resolved
   useEffect(() => {
+    console.log("[DataTemplateEditor] metricsMap updated:", Object.keys(metricsMap).length, "keys", metricsMap);
     if (Object.keys(metricsMap).length > 0) {
       setDisplayValues((prev) => {
         const updated = { ...prev };
         hotspots.forEach((h) => {
           if (h.metricKey && metricsMap[h.metricKey] !== undefined) {
+            console.log(`[DataTemplateEditor] Hotspot ${h.id}: metricKey=${h.metricKey} -> value=${metricsMap[h.metricKey]}`);
             updated[h.id] = String(metricsMap[h.metricKey]);
           }
         });
