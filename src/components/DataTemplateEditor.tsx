@@ -428,6 +428,7 @@ export function DataTemplateEditor({
   };
 
   // Handle server-side snapshot refresh (calls edge function)
+  // Includes retry logic for iPad Safari which can drop the first request
   const handleServerRefresh = async () => {
     const templateIdToUse = savedTemplateId || templateId;
     if (!templateIdToUse) {
@@ -440,28 +441,42 @@ export function DataTemplateEditor({
     }
 
     setIsRefreshingServer(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("render-stats-snapshot", {
-        body: {
-          template_id: templateIdToUse,
-          campaign_code: campaignId,
-        },
-      });
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-      if (error) throw error;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Server Refresh] Attempt ${attempt}/${maxRetries}...`);
+        
+        const { data, error } = await supabase.functions.invoke("render-stats-snapshot", {
+          body: {
+            template_id: templateIdToUse,
+            campaign_code: campaignId,
+          },
+        });
 
-      setLastServerRefreshAt(new Date());
-      toast.success(`Server snapshot refreshed! ${data.hotspots_rendered} hotspots rendered.`, { duration: 4000 });
-      
-      // Log the public URL for easy access
-      console.log("[Server Refresh] Public URL:", data.public_url);
-      
-    } catch (error: any) {
-      console.error("Server refresh failed:", error);
-      toast.error(`Server refresh failed: ${error.message}`);
-    } finally {
-      setIsRefreshingServer(false);
+        if (error) throw error;
+
+        setLastServerRefreshAt(new Date());
+        toast.success(`Server snapshot refreshed! ${data.hotspots_rendered} hotspots rendered.`, { duration: 4000 });
+        console.log("[Server Refresh] Public URL:", data.public_url);
+        setIsRefreshingServer(false);
+        return; // Success - exit the function
+        
+      } catch (err: any) {
+        console.error(`[Server Refresh] Attempt ${attempt} failed:`, err);
+        lastError = err;
+        
+        if (attempt < maxRetries) {
+          toast.info(`Retrying... (attempt ${attempt + 1}/${maxRetries})`, { duration: 1500 });
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        }
+      }
     }
+
+    // All retries exhausted
+    setIsRefreshingServer(false);
+    toast.error(`Server refresh failed: ${lastError?.message || "Unknown error"}`);
   };
 
   return (
