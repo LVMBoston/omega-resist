@@ -236,7 +236,21 @@ Deno.serve(async (req) => {
       );
     });
 
-    // Create the composite image with base image and overlays
+    // Create all elements for the composite (background + all hotspots as siblings)
+    const allElements = [
+      // Background image
+      React.createElement("img", {
+        key: "bg",
+        src: baseImageUrl,
+        width: width,
+        height: height,
+      }),
+      // All hotspot overlays (each as absolutely positioned div)
+      ...overlayElements
+    ];
+
+    // Create the composite image - satori requires display:flex on parent
+    // We render hotspots as absolutely positioned children
     const imageResponse = new ImageResponse(
       React.createElement(
         "div",
@@ -248,33 +262,7 @@ Deno.serve(async (req) => {
             position: "relative",
           },
         },
-        // Background image as an img element
-        React.createElement("img", {
-          src: baseImageUrl,
-          style: {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          },
-        }),
-        // Overlay container for hotspots
-        React.createElement(
-          "div",
-          {
-            style: {
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              display: "flex",
-            },
-          },
-          overlayElements
-        )
+        ...allElements
       ),
       {
         width,
