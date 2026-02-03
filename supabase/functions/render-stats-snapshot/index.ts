@@ -176,8 +176,20 @@ Deno.serve(async (req) => {
 
     console.log(`[render-stats-snapshot] Found ${liveNumberHotspots.length} live_number hotspots`);
 
-    // Fetch the base image dimensions
+    // Fetch the base image and convert to data URL for satori
     const baseImageUrl = template.image_url;
+    console.log(`[render-stats-snapshot] Fetching base image: ${baseImageUrl}`);
+    
+    const bgImageResponse = await fetch(baseImageUrl);
+    if (!bgImageResponse.ok) {
+      throw new Error(`Failed to fetch base image: ${bgImageResponse.status}`);
+    }
+    const bgImageBuffer = await bgImageResponse.arrayBuffer();
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(bgImageBuffer)));
+    const mimeType = bgImageResponse.headers.get("content-type") || "image/png";
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    
+    console.log(`[render-stats-snapshot] Base image fetched, size: ${bgImageBuffer.byteLength} bytes`);
     
     // Create the image response using og_edge
     // We'll use a fixed 1920x1080 canvas for high quality
@@ -241,7 +253,7 @@ Deno.serve(async (req) => {
       // Background image
       React.createElement("img", {
         key: "bg",
-        src: baseImageUrl,
+        src: dataUrl,
         width: width,
         height: height,
       }),
