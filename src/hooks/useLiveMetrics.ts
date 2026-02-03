@@ -111,15 +111,18 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       const viewerTimezone = getViewerTimezone();
 
       // Query tokens for this campaign
-      console.log("[useLiveMetrics] Querying tokens for campaign code:", campaign.code);
+      console.log("[useLiveMetrics] Querying tokens for campaign code:", campaign.code, "campaign:", campaign);
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
         .select("token, level, utm_medium")
         .eq("utm_campaign", campaign.code)
         .is("deleted_at", null);
       
-      if (tokensError) throw tokensError;
-      console.log("[useLiveMetrics] Tokens found:", tokens?.length || 0);
+      if (tokensError) {
+        console.error("[useLiveMetrics] Token query error:", tokensError);
+        throw tokensError;
+      }
+      console.log("[useLiveMetrics] Tokens found:", tokens?.length || 0, tokens?.slice(0, 3));
 
       // Query url_events for these tokens
       const tokenStrings = tokens?.map(t => t.token) || [];
