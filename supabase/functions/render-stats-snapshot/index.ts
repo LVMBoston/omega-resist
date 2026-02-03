@@ -185,14 +185,22 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to fetch base image: ${bgImageResponse.status}`);
     }
     const bgImageBuffer = await bgImageResponse.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(bgImageBuffer)));
+    
+    // Use chunked base64 encoding to avoid stack overflow
+    const uint8Array = new Uint8Array(bgImageBuffer);
+    let binaryString = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binaryString += String.fromCharCode(...chunk);
+    }
+    const base64Image = btoa(binaryString);
     const mimeType = bgImageResponse.headers.get("content-type") || "image/png";
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
     
     console.log(`[render-stats-snapshot] Base image fetched, size: ${bgImageBuffer.byteLength} bytes`);
     
-    // Create the image response using og_edge
-    // We'll use a fixed 1920x1080 canvas for high quality
+    // Use 16:9 aspect ratio at 1920x1080 for standard slide dimensions
     const width = 1920;
     const height = 1080;
 
