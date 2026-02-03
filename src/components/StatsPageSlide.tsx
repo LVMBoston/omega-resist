@@ -58,6 +58,7 @@ export const StatsPageSlide = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ 
     width: 0, 
     height: 0, 
@@ -224,6 +225,21 @@ export const StatsPageSlide = ({
   }
 
   // Dynamic rendering with live metrics
+  if (imageError) {
+    return (
+      <div 
+        ref={containerRef}
+        className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
+      >
+        <div className="text-center text-white p-8">
+          <p className="text-lg font-semibold mb-2">Template Image Missing</p>
+          <p className="text-sm text-gray-400 mb-4">The background image for this Data Template could not be loaded.</p>
+          <p className="text-xs text-gray-500 break-all max-w-md">{imageUrl}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       ref={containerRef}
@@ -234,7 +250,11 @@ export const StatsPageSlide = ({
         src={imageUrl}
         alt="Stats page"
         className="max-w-full max-h-full object-contain"
-        onLoad={() => setImageLoaded(true)}
+        onLoad={() => {
+          setImageLoaded(true);
+          setImageError(false);
+        }}
+        onError={() => setImageError(true)}
       />
       
       {/* Loading indicator for metrics */}
