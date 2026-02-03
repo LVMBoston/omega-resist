@@ -202,8 +202,12 @@ Deno.serve(async (req) => {
       const hotspotWidth = (hotspot.width / 100) * width;
       const hotspotHeight = (hotspot.height / 100) * height;
 
-      // Scale font size proportionally (assuming original was for ~1920 width)
-      const baseFontSize = parseInt(style.fontSize || "56") || 56;
+      // Scale font size: hotspots are configured for browser preview (~960px wide)
+      // We need to scale up for 1920px canvas (2x)
+      const baseFontSize = parseInt(style.fontSize || "24") || 24;
+      const scaledFontSize = baseFontSize * 2;
+
+      console.log(`[render-stats-snapshot] Hotspot ${hotspot.id}: value="${value}", fontSize=${scaledFontSize}px, pos=(${left.toFixed(0)}, ${top.toFixed(0)})`);
       
       return React.createElement(
         "div",
@@ -218,7 +222,7 @@ Deno.serve(async (req) => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: `${baseFontSize}px`,
+            fontSize: `${scaledFontSize}px`,
             fontWeight: style.fontWeight || "700",
             color: style.color || "#1a1a1a",
             backgroundColor: style.backgroundColor || "transparent",
