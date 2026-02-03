@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
       );
     });
 
-    // Create the composite image
+    // Create the composite image with base image and overlays
     const imageResponse = new ImageResponse(
       React.createElement(
         "div",
@@ -246,12 +246,34 @@ Deno.serve(async (req) => {
             height: `${height}px`,
             display: "flex",
             position: "relative",
-            backgroundImage: `url(${baseImageUrl})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
           },
         },
-        ...overlayElements
+        // Background image as an img element
+        React.createElement("img", {
+          src: baseImageUrl,
+          style: {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          },
+        }),
+        // Overlay container for hotspots
+        React.createElement(
+          "div",
+          {
+            style: {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+            },
+          },
+          overlayElements
+        )
       ),
       {
         width,
