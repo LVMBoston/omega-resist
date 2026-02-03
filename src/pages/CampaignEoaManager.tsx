@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatFloatingLocalTime } from "@/lib/dateUtils";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
@@ -419,6 +419,41 @@ export default function CampaignEoaManager() {
       toast({
         title: "Success",
         description: "Event/Action duplicated with blank utm_id"
+      });
+      fetchEoas();
+    }
+  };
+
+  // Clone EoA with everything the same except deck assignment (cleared)
+  const cloneEoaForDeck = async (eoa: EventAction) => {
+    const { error } = await supabase.from("events_actions").insert({
+      campaign_id: eoa.campaign_id,
+      mobilize_id: eoa.mobilize_id,
+      mobilize_code: eoa.mobilize_code,
+      utm_id: eoa.utm_id, // Keep the same utm_id
+      title: eoa.title, // Keep the same title
+      site_name: eoa.site_name,
+      city: eoa.city,
+      state: eoa.state,
+      zip_code: eoa.zip_code,
+      type: eoa.type,
+      start_date: eoa.start_date,
+      end_date: eoa.end_date,
+      timezone: eoa.timezone,
+      assigned_deck_slug: null, // Clear deck assignment
+      description: eoa.description,
+      utm_content: eoa.utm_content,
+    });
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to clone event/action: " + error.message
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "EoA cloned — assign a different deck to complete"
       });
       fetchEoas();
     }
@@ -1060,6 +1095,14 @@ export default function CampaignEoaManager() {
               title="Duplicate with blank utm_id"
             >
               <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => cloneEoaForDeck(eoa)}
+              title="Clone for different deck (keeps utm_id)"
+            >
+              <Files className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" disabled title="Kit feature coming soon">
               <Package className="h-4 w-4 opacity-50" />
