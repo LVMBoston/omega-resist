@@ -1,26 +1,41 @@
 
+# Plan: Add Missing CORS Headers (`cache-control`, `pragma`)
 
-# Plan: Fix Edge Function CORS Headers
+## Root Cause
 
-## Problem Analysis
-The `render-stats-snapshot` edge function works when called server-side but fails with "Load failed" from the browser. The network logs show the POST request errors out without a response.
+The Supabase client in this project is configured to send `Cache-Control` and `Pragma` headers on every request:
 
-**Root Cause:** The Supabase JS client sends additional headers that aren't included in the edge function's `Access-Control-Allow-Headers`:
-- Current allowed: `authorization, x-client-info, apikey, content-type`
-- Client is sending: `x-supabase-client-platform`, `x-supabase-client-platform-version`, `x-supabase-client-runtime`, `x-supabase-client-runtime-version`
+```typescript
+// src/integrations/supabase/client.ts
+global: {
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+  },
+},
+```
 
-When the browser's preflight (OPTIONS) request doesn't get back these headers as "allowed", the actual POST is blocked.
+The `render-stats-snapshot` edge function's CORS configuration does **not** include these headers:
+
+```typescript
+// Current - missing cache-control and pragma
+'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, ...'
+```
+
+When the browser sends a preflight (OPTIONS) request, it checks if all headers the client intends to send are listed in `Access-Control-Allow-Headers`. Since `cache-control` and `pragma` are missing, the browser blocks the actual POST request with "Load failed".
+
+Other edge functions in this project (like `geoip` and `get-mapbox-token`) already include these headers and work correctly.
 
 ---
 
 ## Solution
 
-Update the CORS headers in `supabase/functions/render-stats-snapshot/index.ts` to include all headers that the Supabase JS client might send:
+Update the CORS headers in the `render-stats-snapshot` edge function to include `cache-control` and `pragma`:
 
 ```typescript
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 ```
 
@@ -30,7 +45,7 @@ const corsHeaders = {
 
 | File | Change |
 |------|--------|
-| `supabase/functions/render-stats-snapshot/index.ts` | Update `corsHeaders` object on lines 5-8 to include all Supabase client headers |
+| `supabase/functions/render-stats-snapshot/index.ts` | Add `cache-control, pragma` to the `Access-Control-Allow-Headers` string (line 7) |
 
 ---
 
@@ -39,14 +54,11 @@ const corsHeaders = {
 1. Deploy the updated edge function
 2. Navigate to Interactive Templates page
 3. Select a Data Template and campaign
-4. Click the **Server Refresh** button
-5. Confirm the toast shows success instead of the "Load failed" error
+4. Click **Server Refresh**
+5. Confirm success toast appears instead of error
 
 ---
 
-## Technical Notes
+## Why This Was Missed
 
-- The edge function logic is already working correctly (confirmed via direct test)
-- This is purely a browser CORS preflight issue
-- No changes needed to the config.toml since `verify_jwt = false` is already set
-
+The initial CORS fix added the `x-supabase-client-*` headers based on the standard Supabase client docs, but this project has a custom client configuration that adds `Cache-Control` and `Pragma` headers. The other working edge functions were created with these headers already included.
