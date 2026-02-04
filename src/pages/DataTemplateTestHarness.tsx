@@ -59,6 +59,7 @@ interface MetricResult {
 const METRIC_LABELS: Record<LiveMetricKey, string> = {
   manual_entry: "Manual Entry",
   seeds: "Seeds (L00 count)",
+  seeds_with_spawns: "Seeds with Spawns",
   shares: "Shares (L01+ count)",
   opens: "Opens (total views)",
   opens_us: "Opens US",
