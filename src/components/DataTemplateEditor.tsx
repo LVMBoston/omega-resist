@@ -525,24 +525,43 @@ export function DataTemplateEditor({
       </div>
 
       {/* Live Data Preview Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20">
         <div className="space-y-1">
           <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-green-600" />
             Campaign
           </Label>
-          <Select value={campaignId} onValueChange={setCampaignId}>
-            <SelectTrigger className="h-9 bg-background">
-              <SelectValue placeholder="Select a campaign..." />
-            </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
-              {campaigns.map((campaign) => (
-                <SelectItem key={campaign.id} value={campaign.code}>
-                  {campaign.title} ({campaign.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={campaignId} onValueChange={setCampaignId}>
+              <SelectTrigger className="h-9 bg-background flex-1">
+                <SelectValue placeholder="Select a campaign..." />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {campaigns.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.code}>
+                    {campaign.title} ({campaign.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-3"
+              onClick={() => {
+                if (campaignId.trim()) {
+                  resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
+                  toast.success("Metrics refreshed", { duration: 1500 });
+                } else {
+                  toast.error("Select a campaign first");
+                }
+              }}
+              disabled={metricsLoading || !campaignId}
+              title="Refresh metrics (including current time)"
+            >
+              <RefreshCw className={`w-4 h-4 ${metricsLoading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="mobilize-id" className="text-sm flex items-center gap-1.5">
@@ -557,6 +576,11 @@ export function DataTemplateEditor({
             placeholder="e.g., 12345"
             className="h-9"
           />
+        </div>
+        <div className="flex items-end">
+          <p className="text-xs text-muted-foreground">
+            Click <RefreshCw className="w-3 h-3 inline" /> to update time-based metrics
+          </p>
         </div>
       </div>
 
