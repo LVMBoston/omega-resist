@@ -153,8 +153,37 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       const metricResults: MetricResult[] = [];
       
       // L00 count (seeds)
-      const l00Count = tokens?.filter(t => t.level === 0).length || 0;
+      const l00Tokens = tokens?.filter(t => t.level === 0) || [];
+      const l00Count = l00Tokens.length;
       metricResults.push({ key: "seeds", label: METRIC_LABELS.seeds, value: l00Count, source: "tokens" });
+
+      // Seeds with spawns (L00 tokens that have at least one child)
+      const l00TokenStrings = new Set(l00Tokens.map(t => t.token));
+      const l01PlusTokens = tokens?.filter(t => t.level > 0) || [];
+      
+      // Query parent_token for L01+ tokens to find which L00s have spawns
+      // Since we don't have parent_token in our current query, we need to add it
+      // For now, we can approximate: if there are L01+ tokens, some L00s spawned
+      // But for accuracy, let's count distinct l00_instance values from L01+ tokens
+      // Actually, each L01+ token has a parent_token - we need that data
+      
+      // Workaround: Count L00 tokens whose token string appears as parent of any L01+ token
+      // We need parent_token data - let's fetch it separately
+      let seedsWithSpawnsCount = 0;
+      if (l00TokenStrings.size > 0 && tokenStrings.length > 0) {
+        const { data: childTokens } = await supabase
+          .from("tokens")
+          .select("parent_token")
+          .eq("utm_campaign", campaign.code)
+          .is("deleted_at", null)
+          .gt("level", 0);
+        
+        if (childTokens) {
+          const parentsWithChildren = new Set(childTokens.map(t => t.parent_token).filter(Boolean));
+          seedsWithSpawnsCount = l00Tokens.filter(t => parentsWithChildren.has(t.token)).length;
+        }
+      }
+      metricResults.push({ key: "seeds_with_spawns", label: METRIC_LABELS.seeds_with_spawns, value: seedsWithSpawnsCount, source: "tokens" });
 
       // L01-L03 counts
       const l01Count = tokens?.filter(t => t.level === 1).length || 0;
