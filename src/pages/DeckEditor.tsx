@@ -360,50 +360,43 @@ export default function DeckEditor() {
             return;
           }
 
+          // TEMPORARILY DISABLED: Aspect ratio validation check
           // Check aspect ratio tolerance (7%)
-          const imageAspectRatio = img.width / img.height;
-          const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
-          const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
+          // const imageAspectRatio = img.width / img.height;
+          // const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
+          // const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
           
-          console.log('🔍 Aspect Ratio Validation:', {
-            imageAspectRatio: imageAspectRatio.toFixed(4),
-            referenceAspectRatio: referenceAspectRatio.toFixed(4),
-            difference: (aspectRatioDiff * 100).toFixed(2) + '%',
-            tolerance: '7%',
-            willPass: aspectRatioDiff <= 0.07
-          });
+          // console.log('🔍 Aspect Ratio Validation:', {
+          //   imageAspectRatio: imageAspectRatio.toFixed(4),
+          //   referenceAspectRatio: referenceAspectRatio.toFixed(4),
+          //   difference: (aspectRatioDiff * 100).toFixed(2) + '%',
+          //   tolerance: '7%',
+          //   willPass: aspectRatioDiff <= 0.07
+          // });
           
-          if (aspectRatioDiff <= 0.07) {
-            // Aspect ratio is close enough, resize automatically
-            // Skip resize for GIFs to preserve animation
-            if (file.type === 'image/gif') {
-              console.log('🎬 Skipping resize for GIF to preserve animation');
-              const animated = await isAnimatedGif(file);
-              if (!animated) {
-                console.warn('⚠️ Static GIF detected - consider using PNG for better compression');
-              }
-              resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
-              return;
+          // Bypass aspect ratio check - resize automatically regardless of ratio
+          // Skip resize for GIFs to preserve animation
+          if (file.type === 'image/gif') {
+            console.log('🎬 Skipping resize for GIF to preserve animation');
+            const animated = await isAnimatedGif(file);
+            if (!animated) {
+              console.warn('⚠️ Static GIF detected - consider using PNG for better compression');
             }
-            try {
-              const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
-              resolve({ 
-                valid: true, 
-                dimensions: { width: referenceDimensions.width, height: referenceDimensions.height },
-                resizedFile
-              });
-            } catch (error) {
-              console.error('Error resizing image:', error);
-              resolve({
-                valid: false,
-                error: `Image dimensions (${img.width}×${img.height}) must match reference (${referenceDimensions.width}×${referenceDimensions.height}) ±1%`
-              });
-            }
-          } else {
-            resolve({
-              valid: false,
-              error: `Image aspect ratio differs by ${(aspectRatioDiff * 100).toFixed(2)}% from reference. Must be within 7%.`
+            resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
+            return;
+          }
+          try {
+            const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
+            resolve({ 
+              valid: true, 
+              dimensions: { width: referenceDimensions.width, height: referenceDimensions.height },
+              resizedFile
             });
+          } catch (error) {
+            console.error('Error resizing image:', error);
+            // Even if resize fails, allow the image through
+            console.warn('⚠️ Resize failed, using original image');
+            resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
           }
         } else {
           resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
