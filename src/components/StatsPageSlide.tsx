@@ -266,8 +266,7 @@ export const StatsPageSlide = ({
       )}
       
       {/* Render live_number hotspots */}
-      {/* Temporarily disabled size check: imageLoaded && imageDimensions.width > 0 */}
-      {liveNumberHotspots.map((hotspot) => {
+      {imageLoaded && imageDimensions.width > 0 && liveNumberHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
@@ -309,8 +308,7 @@ export const StatsPageSlide = ({
       })}
 
       {/* Render chart hotspots */}
-      {/* Temporarily disabled size check: imageLoaded && imageDimensions.width > 0 */}
-      {campaignCode && chartHotspots.map((hotspot) => {
+      {imageLoaded && imageDimensions.width > 0 && campaignCode && chartHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
@@ -347,8 +345,7 @@ export const StatsPageSlide = ({
       })}
 
       {/* Render map hotspots */}
-      {/* Temporarily disabled size check: imageLoaded && imageDimensions.width > 0 */}
-      {campaignCode && mapHotspots.map((hotspot) => {
+      {imageLoaded && imageDimensions.width > 0 && campaignCode && mapHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
