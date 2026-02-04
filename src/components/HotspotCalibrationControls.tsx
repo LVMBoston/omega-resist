@@ -21,6 +21,7 @@ const FONT_OPTIONS = [
 const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
   { value: "manual_entry", label: "✏️ Manual Entry" },
   { value: "seeds", label: "Seeds (L00 count)" },
+  { value: "seeds_with_spawns", label: "Seeds with Spawns" },
   { value: "shares", label: "Shares (L01+ count)" },
   { value: "opens", label: "Opens (total views)" },
   { value: "opens_us", label: "Opens US" },
