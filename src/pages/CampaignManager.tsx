@@ -90,6 +90,23 @@ export default function CampaignManager() {
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [showStatsMap, setShowStatsMap] = useState<Map<string, boolean>>(new Map());
+  
+  // Initialize showStatsMap to true for all campaigns when campaigns load
+  useEffect(() => {
+    if (campaigns.length > 0) {
+      setShowStatsMap(prev => {
+        const next = new Map(prev);
+        for (const campaign of campaigns) {
+          // Only set to true if not already in the map (preserve user preferences)
+          if (!next.has(campaign.id)) {
+            next.set(campaign.id, true);
+          }
+        }
+        return next;
+      });
+    }
+  }, [campaigns]);
+  
   useEffect(() => {
     fetchData();
   }, []);
