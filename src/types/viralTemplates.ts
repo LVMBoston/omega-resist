@@ -128,6 +128,7 @@ export interface LiveNumberStyle {
 export type LiveMetricKey = 
   | 'manual_entry'      // User-defined manual text
   | 'seeds'             // Count of L00 tokens
+  | 'seeds_with_spawns' // Count of L00 tokens that have child shares
   | 'shares'            // Count of child tokens minted
   | 'opens'             // Total view events
   | 'opens_us'          // US-based views
