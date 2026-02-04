@@ -72,7 +72,7 @@ export function ChartCalibrationControls({
         value={hotspot.width}
         onChange={(val) => onUpdate({ width: val })}
         min={5}
-        max={80}
+        max={100}
         step={0.5}
         fineStep={0.1}
       />
