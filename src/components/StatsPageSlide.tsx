@@ -285,7 +285,7 @@ export const StatsPageSlide = ({
         return (
           <div
             key={hotspot.id}
-            className="absolute flex items-center justify-center"
+            className="absolute flex items-center justify-center overflow-hidden"
             style={{
               left: `${left}px`,
               top: `${top}px`,
@@ -300,6 +300,10 @@ export const StatsPageSlide = ({
               padding: style.padding || '0',
               borderRadius: style.borderRadius || '0',
               pointerEvents: 'none',
+              // Clip long text to prevent overflow bleeding
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             {value}
