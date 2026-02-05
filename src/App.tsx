@@ -33,6 +33,7 @@ import DevTools from "./pages/DevTools";
 import GeoipTest from "./pages/GeoipTest";
 import DataTemplateTestHarness from "./pages/DataTemplateTestHarness";
 import MapDebugTest from "./pages/MapDebugTest";
+import TemplateEditorPage from "./pages/TemplateEditorPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
