@@ -13,6 +13,7 @@ interface ViralSlideProps {
   slideId: string;
   deckSlug: string;
   viralToken: string | null;
+  templateId?: string;
 }
 
 interface Hotspot {
