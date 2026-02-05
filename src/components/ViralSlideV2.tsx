@@ -50,6 +50,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
+  const [resolvedTemplateId, setResolvedTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchConfig = async () => {
