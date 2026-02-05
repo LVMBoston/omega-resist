@@ -308,7 +308,8 @@ Deno.serve(async (req) => {
     const imageUint8 = new Uint8Array(imageBuffer);
 
     // Upload to storage
-    const snapshotPath = `${template_id}/latest.png`;
+    // Campaign-specific snapshot path to avoid overwrites when templates are shared
+    const snapshotPath = `${template_id}/snapshot-${campaign_code}.png`;
     const { error: uploadError } = await supabase.storage
       .from("slide-snapshots")
       .upload(snapshotPath, imageUint8, {

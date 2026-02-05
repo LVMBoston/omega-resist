@@ -480,7 +480,8 @@ export default function DeckViewer() {
                             key={`viral-${slide.id}`}
                             slideId={slide.id} 
                             deckSlug={slug || ""} 
-                            viralToken={activeToken} 
+                            viralToken={activeToken}
+                            templateId={slide.template_id}
                           />
                         ) : (
                           <div className="relative w-full h-full flex items-center justify-center">

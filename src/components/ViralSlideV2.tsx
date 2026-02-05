@@ -280,12 +280,16 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
   }
 
   if (templateType === 'stats_page') {
+    // Use propTemplateId if passed from DeckViewer, otherwise use the one from slideData query
+    const effectiveTemplateId = propTemplateId;
+    
     return (
       <StatsPageSlide 
         imageUrl={config.image_url} 
         hotspots={config.hotspots} 
         deckSlug={deckSlug}
         viralToken={viralToken}
+        templateId={effectiveTemplateId}
         cachedSnapshotPath={config.cached_snapshot_path}
         snapshotRenderedAt={config.snapshot_rendered_at}
         snapshotEnabled={config.snapshot_enabled}

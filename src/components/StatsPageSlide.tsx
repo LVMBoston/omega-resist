@@ -52,6 +52,7 @@ export const StatsPageSlide = ({
   hotspots, 
   deckSlug, 
   viralToken,
+  templateId,
   cachedSnapshotPath,
   snapshotRenderedAt,
   snapshotEnabled,
