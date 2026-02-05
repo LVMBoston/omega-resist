@@ -1,111 +1,65 @@
 
-# Fix: Campaign-Specific Snapshot Paths for Data Templates
+# Fix: Mobile Template Rendering Race Condition
 
-## Problem Statement
+## Problem Summary
+The deployed Data Template slide shows broken layout on mobile because:
+1. `campaignCode` is resolved asynchronously in a `useEffect`
+2. On first render, `campaignCode` is empty, making `campaignSnapshotUrl` null
+3. With no snapshot URL, mobile falls back to dynamic hotspot rendering
+4. Dynamic rendering breaks on small screens (overlapping text, layout issues)
 
-When you refresh the deck on your iPhone, the Data Template slide shows incorrect/stale data because **all campaigns share the same snapshot file**. The current implementation:
+Additionally, `effectiveTemplateId` in `ViralSlideV2.tsx` has no fallback when the prop is missing.
 
-1. **Edge function** (`render-stats-snapshot`) saves ALL snapshots to `{template_id}/latest.png`
-2. When "Deploy to Campaigns" runs for BUGTEST, no-kings, and ra-intro, each one overwrites the previous
-3. Only the **last-rendered campaign's** metrics are visible to everyone
+## Technical Solution
 
-This is why you see "No Kings" data instead of "BUGTEST" data - whoever was deployed last wins.
+### File 1: `src/components/ViralSlideV2.tsx`
+**Change**: Add fallback for `effectiveTemplateId` using the template ID from the database query.
 
-## Solution Overview
+```text
+Current (line 284):
+const effectiveTemplateId = propTemplateId;
 
-Store snapshots at **campaign-specific paths** and resolve the correct one dynamically on the frontend.
-
-| Current | Fixed |
-|---------|-------|
-| `{template_id}/latest.png` | `{template_id}/snapshot-{campaign_code}.png` |
-
----
-
-## Implementation Details
-
-### 1. Edge Function: `render-stats-snapshot/index.ts`
-
-Change the storage path to include campaign code:
-
-```typescript
-// Line 206: Change from
-const snapshotPath = `${template_id}/latest.png`;
-
-// To
-const snapshotPath = `${template_id}/snapshot-${campaign_code}.png`;
+Fixed:
+const effectiveTemplateId = propTemplateId || slideData?.template_id;
 ```
 
-Also update the database record to store this campaign-specific path or skip updating the shared field.
+However, `slideData` is not in scope at line 284 (it's inside the `useEffect`). We need to store it in state:
+- Add state: `const [resolvedTemplateId, setResolvedTemplateId] = useState<string | null>(null);`
+- In `fetchConfig`, after querying `slideData`: `setResolvedTemplateId(slideData.template_id);`
+- At line 284: `const effectiveTemplateId = propTemplateId || resolvedTemplateId;`
 
----
+### File 2: `src/components/StatsPageSlide.tsx`
+**Change**: Add a loading gate for mobile devices while campaign code is being resolved.
 
-### 2. Frontend: Pass `templateId` Through the Component Chain
+1. Add state to track resolution status:
+   ```typescript
+   const [campaignResolved, setCampaignResolved] = useState(false);
+   ```
 
-**DeckViewer.tsx** → **ViralSlide** → **StatsPageSlide**
+2. Update the `extractCampaignCode` effect to set this flag when done:
+   ```typescript
+   // At the end of extractCampaignCode async function:
+   setCampaignResolved(true);
+   ```
 
-Currently `template_id` is available in `DeckViewer` but not passed down. The fix:
+3. Add early return for mobile while resolving:
+   ```typescript
+   // Before the main render, after the shouldUseCachedSnapshot logic:
+   if (isMobile && !campaignResolved) {
+     return (
+       <div className="relative w-full h-full bg-black flex items-center justify-center">
+         <Loader2 className="w-8 h-8 animate-spin text-white" />
+       </div>
+     );
+   }
+   ```
 
-a) **ViralSlide props**: Add `templateId?: string` parameter
-
-b) **DeckViewer**: Pass `template_id` when rendering `ViralSlide`:
-```tsx
-<ViralSlide 
-  slideId={slide.id} 
-  deckSlug={slug || ""} 
-  viralToken={activeToken}
-  templateId={slide.template_id}  // NEW
-/>
-```
-
-c) **ViralSlideV2**: Pass `templateId` to `StatsPageSlide`:
-```tsx
-<StatsPageSlide 
-  ...
-  templateId={templateId || slideData.template_id}  // NEW
-/>
-```
-
----
-
-### 3. Frontend: `StatsPageSlide.tsx` - Dynamic Snapshot URL
-
-Instead of using `cachedSnapshotPath` from the database (which is template-level), construct the URL dynamically using `templateId` + resolved `campaignCode`:
-
-a) **Add prop**: `templateId?: string`
-
-b) **Build campaign-specific URL** after resolving `campaignCode`:
-```typescript
-const campaignSnapshotUrl = useMemo(() => {
-  if (!templateId || !campaignCode) return null;
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.png`;
-}, [templateId, campaignCode]);
-```
-
-c) **Use dynamic URL** in the cached snapshot rendering logic instead of `cachedSnapshotPath`.
-
----
+## Expected Outcome
+- Mobile devices will show a loading spinner while `campaignCode` resolves
+- Once resolved, if a snapshot exists at `{templateId}/snapshot-{campaignCode}.png`, it displays
+- If no snapshot exists, dynamic rendering occurs (less ideal but functional)
+- The `templateId` prop will correctly fall back to the database value
 
 ## Files to Modify
-
-| File | Change |
-|------|--------|
-| `supabase/functions/render-stats-snapshot/index.ts` | Campaign-specific storage path |
-| `src/pages/DeckViewer.tsx` | Pass `templateId` to `ViralSlide` |
-| `src/components/ViralSlideV2.tsx` | Accept and forward `templateId` to `StatsPageSlide` |
-| `src/components/StatsPageSlide.tsx` | Accept `templateId`, construct dynamic snapshot URL |
-
----
-
-## Post-Fix Behavior
-
-1. Deploy to BUGTEST → saves to `template_id/snapshot-bugtest.png`
-2. Deploy to no-kings → saves to `template_id/snapshot-no-kings.png`  
-3. Deploy to ra-intro → saves to `template_id/snapshot-ra-intro.png`
-4. iPhone refresh on BUGTEST deck → loads `snapshot-bugtest.png` with correct metrics
-
----
-
-## Edge Case: What if snapshot doesn't exist?
-
-If a campaign hasn't been deployed yet (no snapshot file exists), the component will fall back to live metrics fetching - which is the existing behavior for fresh/non-cached slides.
+1. `src/components/ViralSlideV2.tsx` - Add `resolvedTemplateId` state and fallback logic
+2. `src/components/StatsPageSlide.tsx` - Add `campaignResolved` state and mobile loading gate
