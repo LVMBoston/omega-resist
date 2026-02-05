@@ -12,6 +12,8 @@ interface StatsPageSlideProps {
   hotspots: Hotspot[];
   deckSlug: string;
   viralToken: string | null;
+  // Template ID for constructing campaign-specific snapshot URLs
+  templateId?: string;
   // Snapshot props for server-side rendered version
   cachedSnapshotPath?: string | null;
   snapshotRenderedAt?: string | null;
