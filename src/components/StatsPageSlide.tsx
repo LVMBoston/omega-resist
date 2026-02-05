@@ -70,10 +70,9 @@ export const StatsPageSlide = ({
   });
 
   // Determine if we should use the cached snapshot
-  const shouldUseCachedSnapshot = 
-    snapshotEnabled && 
-    cachedSnapshotPath && 
-    isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes);
+  // Note: We now build the campaign-specific URL dynamically using templateId + campaignCode
+  // so we don't rely on the shared cachedSnapshotPath field which gets overwritten
+  const [snapshotReady, setSnapshotReady] = useState(false);
 
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
