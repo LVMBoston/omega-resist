@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { captureTemplateSnapshot } from "@/lib/snapshotCapture";
+import { useTemplateCampaigns } from "@/hooks/useTemplateCampaigns";
 
 
 // Default hotspot template for data templates (live_number)
@@ -112,10 +113,14 @@ export function DataTemplateEditor({
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isRefreshingServer, setIsRefreshingServer] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
   const [savedTemplateId, setSavedTemplateId] = useState<string | undefined>(templateId);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [lastSnapshotAt, setLastSnapshotAt] = useState<Date | null>(null);
   const [lastServerRefreshAt, setLastServerRefreshAt] = useState<Date | null>(null);
+
+  // Fetch campaigns using this template
+  const { data: templateCampaigns = [], isLoading: campaignsLoading } = useTemplateCampaigns(savedTemplateId);
 
   // Form state
   const [name, setName] = useState(templateName);
@@ -479,6 +484,53 @@ export function DataTemplateEditor({
     toast.error(`Server refresh failed: ${lastError?.message || "Unknown error"}`);
   };
 
+  // Handle deploy to all campaigns using this template
+  const handleDeployToCampaigns = async () => {
+    const templateIdToUse = savedTemplateId || templateId;
+    if (!templateIdToUse) {
+      toast.error("Please save the template first before deploying");
+      return;
+    }
+    if (templateCampaigns.length === 0) {
+      toast.error("No campaigns are using this template");
+      return;
+    }
+
+    setIsDeploying(true);
+    toast.info(`Deploying snapshots to ${templateCampaigns.length} campaign(s)...`, { duration: 3000 });
+
+    try {
+      const { data, error } = await supabase.functions.invoke("deploy-template-snapshots", {
+        body: {
+          template_id: templateIdToUse,
+          only_enabled: false,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.campaigns_failed > 0) {
+        toast.warning(
+          `Deployed to ${data.campaigns_rendered}/${data.campaigns_found} campaigns. ${data.campaigns_failed} failed.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(
+          `Successfully deployed to ${data.campaigns_rendered} campaign(s)!`,
+          { duration: 4000 }
+        );
+      }
+
+      console.log("[Deploy Results]", data.results);
+      
+    } catch (err: any) {
+      console.error("[Deploy] Failed:", err);
+      toast.error(`Deploy failed: ${err.message}`);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Form Fields */}
@@ -806,13 +858,31 @@ export function DataTemplateEditor({
             </Button>
             <Button
               onClick={handleServerRefresh}
-              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !savedTemplateId || !campaignId}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || isDeploying || !savedTemplateId || !campaignId}
               variant="outline"
               className="gap-1 border-orange-500 text-orange-600 hover:bg-orange-50"
               title="Call server-side edge function to regenerate snapshot with live metrics"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshingServer ? "animate-spin" : ""}`} />
               {isRefreshingServer ? "Refreshing..." : "Server Refresh"}
+            </Button>
+            <Button
+              onClick={handleDeployToCampaigns}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || isDeploying || !savedTemplateId || templateCampaigns.length === 0}
+              variant="outline"
+              className="gap-1 border-purple-500 text-purple-600 hover:bg-purple-50"
+              title={templateCampaigns.length > 0 
+                ? `Deploy snapshots to ${templateCampaigns.length} campaign(s) using this template`
+                : "No campaigns are using this template"}
+            >
+              <Rocket className={`w-4 h-4 ${isDeploying ? "animate-pulse" : ""}`} />
+              {isDeploying 
+                ? "Deploying..." 
+                : campaignsLoading 
+                  ? "Loading..." 
+                  : templateCampaigns.length > 0 
+                    ? `Deploy to ${templateCampaigns.length} Campaign${templateCampaigns.length > 1 ? "s" : ""}`
+                    : "No Campaigns"}
             </Button>
           </div>
         </div>
