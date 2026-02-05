@@ -101,13 +101,16 @@ export const StatsPageSlide = ({
         }
 
         // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
+        // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
+        // Using limit(1) to get any valid campaign association
         if (!campaignCode && deckSlug) {
-          const { data: eoaData } = await supabase
+          const { data: eoaRows } = await supabase
             .from("events_actions")
             .select("campaign_id, campaigns(code)")
             .eq("assigned_deck_slug", deckSlug)
-            .limit(1)
-            .maybeSingle();
+            .limit(1);
+          
+          const eoaData = eoaRows?.[0];
           
           if (eoaData?.campaigns?.code) {
             campaignCode = eoaData.campaigns.code;
@@ -185,13 +188,15 @@ export const StatsPageSlide = ({
         }
 
         // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
+        // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
         if (deckSlug) {
-          const { data: eoaData } = await supabase
+          const { data: eoaRows } = await supabase
             .from("events_actions")
             .select("campaign_id, campaigns(code)")
             .eq("assigned_deck_slug", deckSlug)
-            .limit(1)
-            .maybeSingle();
+            .limit(1);
+          
+          const eoaData = eoaRows?.[0];
           
           if (eoaData?.campaigns?.code) {
             setCampaignCode(eoaData.campaigns.code);
