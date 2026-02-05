@@ -180,6 +180,7 @@ export const StatsPageSlide = ({
 
   // Extract campaign code for chart hotspots
   const [campaignCode, setCampaignCode] = useState<string>("");
+  const [campaignResolved, setCampaignResolved] = useState(false);
 
   useEffect(() => {
     const extractCampaignCode = async () => {
@@ -194,6 +195,7 @@ export const StatsPageSlide = ({
           
           if (tokenData?.utm_campaign) {
             setCampaignCode(tokenData.utm_campaign);
+            setCampaignResolved(true);
             return;
           }
         }
@@ -215,6 +217,9 @@ export const StatsPageSlide = ({
         }
       } catch (error) {
         console.error("📊 StatsPageSlide: Error extracting campaign code:", error);
+      } finally {
+        // Always mark as resolved, even if no campaign found
+        setCampaignResolved(true);
       }
     };
 
