@@ -13,6 +13,7 @@ interface ViralSlideProps {
   slideId: string;
   deckSlug: string;
   viralToken: string | null;
+  templateId?: string;
 }
 
 interface Hotspot {
@@ -40,7 +41,7 @@ interface ViralConfig {
   snapshot_interval_minutes?: number;
 }
 
-export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
+export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemplateId }: ViralSlideProps) => {
   const COMPONENT_VERSION = "v2.2.0-FORCE-REBUILD-NOW"; // Force rebuild
   console.log(`🎯🎯🎯 ViralSlide ${COMPONENT_VERSION} - Mounting with slideId:`, slideId);
   console.log(`🔥🔥🔥 NEW CODE IS RUNNING - slideId:`, slideId);
@@ -279,12 +280,16 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) =
   }
 
   if (templateType === 'stats_page') {
+    // Use propTemplateId if passed from DeckViewer, otherwise use the one from slideData query
+    const effectiveTemplateId = propTemplateId;
+    
     return (
       <StatsPageSlide 
         imageUrl={config.image_url} 
         hotspots={config.hotspots} 
         deckSlug={deckSlug}
         viralToken={viralToken}
+        templateId={effectiveTemplateId}
         cachedSnapshotPath={config.cached_snapshot_path}
         snapshotRenderedAt={config.snapshot_rendered_at}
         snapshotEnabled={config.snapshot_enabled}

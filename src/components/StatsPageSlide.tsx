@@ -12,6 +12,8 @@ interface StatsPageSlideProps {
   hotspots: Hotspot[];
   deckSlug: string;
   viralToken: string | null;
+  // Template ID for constructing campaign-specific snapshot URLs
+  templateId?: string;
   // Snapshot props for server-side rendered version
   cachedSnapshotPath?: string | null;
   snapshotRenderedAt?: string | null;
@@ -50,6 +52,7 @@ export const StatsPageSlide = ({
   hotspots, 
   deckSlug, 
   viralToken,
+  templateId,
   cachedSnapshotPath,
   snapshotRenderedAt,
   snapshotEnabled,
@@ -67,25 +70,25 @@ export const StatsPageSlide = ({
   });
 
   // Determine if we should use the cached snapshot
-  const shouldUseCachedSnapshot = 
-    snapshotEnabled && 
-    cachedSnapshotPath && 
-    isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes);
+  // Note: We now build the campaign-specific URL dynamically using templateId + campaignCode
+  // so we don't rely on the shared cachedSnapshotPath field which gets overwritten
+  const [snapshotReady, setSnapshotReady] = useState(false);
 
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
 
-  // Resolve campaign from viralToken or deckSlug (only when not using cached snapshot)
-  useEffect(() => {
-    // Skip API calls if using cached snapshot
-    if (shouldUseCachedSnapshot) {
-      console.log("📊 StatsPageSlide: Using cached snapshot, skipping API calls");
-      return;
-    }
+  // Build campaign-specific snapshot URL dynamically
+  const getCampaignSnapshotUrl = (code: string): string | null => {
+    if (!templateId || !code) return null;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
+  };
 
+  // Resolve campaign from viralToken or deckSlug and optionally resolve metrics
+  useEffect(() => {
     const resolveCampaign = async () => {
       try {
-        let campaignCode: string | null = null;
+        let resolvedCode: string | null = null;
 
         // First try to get campaign from token
         if (viralToken) {
@@ -96,14 +99,14 @@ export const StatsPageSlide = ({
             .maybeSingle();
           
           if (tokenData?.utm_campaign) {
-            campaignCode = tokenData.utm_campaign;
+            resolvedCode = tokenData.utm_campaign;
           }
         }
 
         // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
         // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
         // Using limit(1) to get any valid campaign association
-        if (!campaignCode && deckSlug) {
+        if (!resolvedCode && deckSlug) {
           const { data: eoaRows } = await supabase
             .from("events_actions")
             .select("campaign_id, campaigns(code)")
@@ -113,13 +116,13 @@ export const StatsPageSlide = ({
           const eoaData = eoaRows?.[0];
           
           if (eoaData?.campaigns?.code) {
-            campaignCode = eoaData.campaigns.code;
+            resolvedCode = eoaData.campaigns.code;
           }
         }
 
-        if (campaignCode) {
-          console.log("📊 StatsPageSlide: Resolving metrics for campaign:", campaignCode);
-          await resolveMetrics(campaignCode);
+        if (resolvedCode) {
+          console.log("📊 StatsPageSlide: Resolving metrics for campaign:", resolvedCode);
+          await resolveMetrics(resolvedCode);
         } else {
           console.warn("📊 StatsPageSlide: Could not resolve campaign from token or deck");
         }
@@ -129,7 +132,7 @@ export const StatsPageSlide = ({
     };
 
     resolveCampaign();
-  }, [viralToken, deckSlug, resolveMetrics, shouldUseCachedSnapshot]);
+  }, [viralToken, deckSlug, resolveMetrics]);
 
   // Calculate image dimensions when loaded
   useEffect(() => {
@@ -210,10 +213,21 @@ export const StatsPageSlide = ({
     extractCampaignCode();
   }, [viralToken, deckSlug]);
 
-  // If using cached snapshot, render simple static image (no API calls)
-  if (shouldUseCachedSnapshot && cachedSnapshotPath) {
-    const snapshotUrl = getSnapshotUrl(cachedSnapshotPath);
-    console.log("📊 StatsPageSlide: Rendering cached snapshot:", snapshotUrl);
+  // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
+  const campaignSnapshotUrl = campaignCode && templateId 
+    ? getCampaignSnapshotUrl(campaignCode)
+    : null;
+
+  // Determine if we should use the cached snapshot
+  // Now uses campaign-specific path instead of shared template-level path
+  const shouldUseCachedSnapshot = 
+    snapshotEnabled && 
+    campaignSnapshotUrl &&
+    isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes);
+
+  // If using cached snapshot, render simple static image
+  if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
+    console.log("📊 StatsPageSlide: Rendering campaign-specific snapshot:", campaignSnapshotUrl);
     
     return (
       <div 
@@ -221,7 +235,7 @@ export const StatsPageSlide = ({
         className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
       >
         <img
-          src={snapshotUrl}
+          src={campaignSnapshotUrl}
           alt="Stats page (cached)"
           className="max-w-full max-h-full object-contain"
         />
