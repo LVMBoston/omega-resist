@@ -41,7 +41,7 @@ interface ViralConfig {
   snapshot_interval_minutes?: number;
 }
 
-export const ViralSlide = ({ slideId, deckSlug, viralToken }: ViralSlideProps) => {
+export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemplateId }: ViralSlideProps) => {
   const COMPONENT_VERSION = "v2.2.0-FORCE-REBUILD-NOW"; // Force rebuild
   console.log(`🎯🎯🎯 ViralSlide ${COMPONENT_VERSION} - Mounting with slideId:`, slideId);
   console.log(`🔥🔥🔥 NEW CODE IS RUNNING - slideId:`, slideId);
