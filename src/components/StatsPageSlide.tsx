@@ -77,13 +77,12 @@ export const StatsPageSlide = ({
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
 
-  // Resolve campaign from viralToken or deckSlug (only when not using cached snapshot)
-  useEffect(() => {
-    // Skip API calls if using cached snapshot
-    if (shouldUseCachedSnapshot) {
-      console.log("📊 StatsPageSlide: Using cached snapshot, skipping API calls");
-      return;
-    }
+  // Build campaign-specific snapshot URL dynamically
+  const getCampaignSnapshotUrl = (code: string): string | null => {
+    if (!templateId || !code) return null;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
+  };
 
     const resolveCampaign = async () => {
       try {
