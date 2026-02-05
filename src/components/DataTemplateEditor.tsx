@@ -113,10 +113,14 @@ export function DataTemplateEditor({
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isRefreshingServer, setIsRefreshingServer] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
   const [savedTemplateId, setSavedTemplateId] = useState<string | undefined>(templateId);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [lastSnapshotAt, setLastSnapshotAt] = useState<Date | null>(null);
   const [lastServerRefreshAt, setLastServerRefreshAt] = useState<Date | null>(null);
+
+  // Fetch campaigns using this template
+  const { data: templateCampaigns = [], isLoading: campaignsLoading } = useTemplateCampaigns(savedTemplateId);
 
   // Form state
   const [name, setName] = useState(templateName);
