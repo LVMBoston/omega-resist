@@ -84,9 +84,11 @@ export const StatsPageSlide = ({
     return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
   };
 
+  // Resolve campaign from viralToken or deckSlug and optionally resolve metrics
+  useEffect(() => {
     const resolveCampaign = async () => {
       try {
-        let campaignCode: string | null = null;
+        let resolvedCode: string | null = null;
 
         // First try to get campaign from token
         if (viralToken) {
@@ -97,14 +99,14 @@ export const StatsPageSlide = ({
             .maybeSingle();
           
           if (tokenData?.utm_campaign) {
-            campaignCode = tokenData.utm_campaign;
+            resolvedCode = tokenData.utm_campaign;
           }
         }
 
         // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
         // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
         // Using limit(1) to get any valid campaign association
-        if (!campaignCode && deckSlug) {
+        if (!resolvedCode && deckSlug) {
           const { data: eoaRows } = await supabase
             .from("events_actions")
             .select("campaign_id, campaigns(code)")
@@ -114,13 +116,13 @@ export const StatsPageSlide = ({
           const eoaData = eoaRows?.[0];
           
           if (eoaData?.campaigns?.code) {
-            campaignCode = eoaData.campaigns.code;
+            resolvedCode = eoaData.campaigns.code;
           }
         }
 
-        if (campaignCode) {
-          console.log("📊 StatsPageSlide: Resolving metrics for campaign:", campaignCode);
-          await resolveMetrics(campaignCode);
+        if (resolvedCode) {
+          console.log("📊 StatsPageSlide: Resolving metrics for campaign:", resolvedCode);
+          await resolveMetrics(resolvedCode);
         } else {
           console.warn("📊 StatsPageSlide: Could not resolve campaign from token or deck");
         }
@@ -130,7 +132,7 @@ export const StatsPageSlide = ({
     };
 
     resolveCampaign();
-  }, [viralToken, deckSlug, resolveMetrics, shouldUseCachedSnapshot]);
+  }, [viralToken, deckSlug, resolveMetrics]);
 
   // Calculate image dimensions when loaded
   useEffect(() => {
