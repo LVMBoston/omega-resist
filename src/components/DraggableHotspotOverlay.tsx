@@ -295,11 +295,19 @@ export function DraggableHotspotOverlay({
           style.verticalAlign === 'top' ? 'flex-start' : 
           style.verticalAlign === 'bottom' ? 'flex-end' : 'center';
 
+        // Calculate scaled font size based on image width
+        // The original font sizes were designed for ~1080px width, so we scale accordingly
+        const imageBounds = imageRef.current?.getBoundingClientRect();
+        const baseWidth = 1080; // Reference width for calibration
+        const scaleFactor = imageBounds ? imageBounds.width / baseWidth : 1;
+        const baseFontSize = parseInt(style.fontSize || "56") || 56;
+        const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor));
+
         return (
           <div
             key={hotspot.id}
             data-hotspot-overlay
-            className={`absolute flex select-none transition-shadow overflow-visible ${
+            className={`absolute flex select-none transition-shadow overflow-hidden ${
               isEditMode ? "cursor-text" : "cursor-move"
             } ${isActive ? "ring-2 ring-primary ring-offset-2" : ""} ${
               isDragging ? "z-50 shadow-2xl" : "z-10"
@@ -309,7 +317,7 @@ export function DraggableHotspotOverlay({
               top: `${hotspot.y}%`,
               width: `${hotspot.width}%`,
               height: `${hotspot.height}%`,
-              fontSize: style.fontSize || "56px",
+              fontSize: `${scaledFontSize}px`,
               fontWeight: style.fontWeight || "700",
               color: style.color || "#1a1a1a",
               backgroundColor: style.backgroundColor || "#e8dcc8",
