@@ -47,6 +47,13 @@ function getSnapshotUrl(path: string): string {
   return `${supabaseUrl}/storage/v1/object/public/slide-snapshots${path}`;
 }
 
+// Detect if user is on a mobile device
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod|android|mobile|phone/i.test(ua);
+}
+
 export const StatsPageSlide = ({ 
   imageUrl, 
   hotspots, 
@@ -58,6 +65,7 @@ export const StatsPageSlide = ({
   snapshotEnabled,
   snapshotIntervalMinutes = 2,
 }: StatsPageSlideProps) => {
+  const isMobile = isMobileDevice();
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -219,15 +227,16 @@ export const StatsPageSlide = ({
     : null;
 
   // Determine if we should use the cached snapshot
-  // Now uses campaign-specific path instead of shared template-level path
-  const shouldUseCachedSnapshot = 
-    snapshotEnabled && 
-    campaignSnapshotUrl &&
-    isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes);
+  // On mobile: always use snapshot if available (regardless of freshness) to avoid layout issues
+  // On desktop: use snapshot only if enabled and fresh
+  const shouldUseCachedSnapshot = campaignSnapshotUrl && (
+    isMobile || // Mobile always uses snapshot when available
+    (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes))
+  );
 
   // If using cached snapshot, render simple static image
   if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
-    console.log("📊 StatsPageSlide: Rendering campaign-specific snapshot:", campaignSnapshotUrl);
+    console.log(`📊 StatsPageSlide: Rendering snapshot (mobile=${isMobile}):`, campaignSnapshotUrl);
     
     return (
       <div 
