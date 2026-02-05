@@ -6,6 +6,7 @@ import { Hotspot } from "@/types/viralTemplates";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Json } from "@/integrations/supabase/types";
 
 export default function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +49,7 @@ export default function TemplateEditorPage() {
             slug: data.slug,
             description: data.description,
             image_url: data.imageUrl,
-            hotspots: data.hotspots as unknown as Record<string, unknown>[],
+            hotspots: data.hotspots as unknown as Json,
             template_type: "stats_page",
           })
           .select("id")
@@ -65,7 +66,7 @@ export default function TemplateEditorPage() {
             slug: data.slug,
             description: data.description,
             image_url: data.imageUrl,
-            hotspots: data.hotspots as unknown as Record<string, unknown>[],
+            hotspots: data.hotspots as unknown as Json,
           })
           .eq("id", id);
 
