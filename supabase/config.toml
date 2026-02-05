@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.render-stats-snapshot]
 verify_jwt = false
+
+[functions.deploy-template-snapshots]
+verify_jwt = false
