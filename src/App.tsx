@@ -33,6 +33,7 @@ import DevTools from "./pages/DevTools";
 import GeoipTest from "./pages/GeoipTest";
 import DataTemplateTestHarness from "./pages/DataTemplateTestHarness";
 import MapDebugTest from "./pages/MapDebugTest";
+import TemplateEditorPage from "./pages/TemplateEditorPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/r/:code" element={<ShortUrlRedirect />} />
             <Route path="/s/:code" element={<ShortUrlRedirect />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
+            <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
             
             {/* Routes with sidebar */}
             <Route path="/" element={<LayoutWithSidebar><Navigate to="/campaign-config" replace /></LayoutWithSidebar>} />

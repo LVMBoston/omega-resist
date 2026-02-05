@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3 } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor, generateAndUploadThumbnail } from "@/components/FullResolutionHotspotEditor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -637,6 +637,7 @@ export default function InteractiveTemplates() {
   // Render a template card
   const renderTemplateCard = (template: Template) => {
     const isAction = isActionTemplate(template);
+    const isData = isDataTemplate(template);
     const templateType = template.template_type || 'interactive_share';
     
     // Color scheme based on template type
@@ -776,6 +777,16 @@ export default function InteractiveTemplates() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
+            {isData && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`/template-editor/${template.id}`, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                New Tab
+              </Button>
+            )}
             <Button
               variant="destructive"
               size="sm"
