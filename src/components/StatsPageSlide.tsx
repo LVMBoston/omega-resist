@@ -47,6 +47,13 @@ function getSnapshotUrl(path: string): string {
   return `${supabaseUrl}/storage/v1/object/public/slide-snapshots${path}`;
 }
 
+// Detect if user is on a mobile device
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod|android|mobile|phone/i.test(ua);
+}
+
 export const StatsPageSlide = ({ 
   imageUrl, 
   hotspots, 
@@ -58,6 +65,7 @@ export const StatsPageSlide = ({
   snapshotEnabled,
   snapshotIntervalMinutes = 2,
 }: StatsPageSlideProps) => {
+  const isMobile = isMobileDevice();
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
