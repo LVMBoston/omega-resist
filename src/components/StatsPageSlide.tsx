@@ -180,6 +180,7 @@ export const StatsPageSlide = ({
 
   // Extract campaign code for chart hotspots
   const [campaignCode, setCampaignCode] = useState<string>("");
+  const [campaignResolved, setCampaignResolved] = useState(false);
 
   useEffect(() => {
     const extractCampaignCode = async () => {
@@ -194,6 +195,7 @@ export const StatsPageSlide = ({
           
           if (tokenData?.utm_campaign) {
             setCampaignCode(tokenData.utm_campaign);
+            setCampaignResolved(true);
             return;
           }
         }
@@ -215,6 +217,9 @@ export const StatsPageSlide = ({
         }
       } catch (error) {
         console.error("📊 StatsPageSlide: Error extracting campaign code:", error);
+      } finally {
+        // Always mark as resolved, even if no campaign found
+        setCampaignResolved(true);
       }
     };
 
@@ -233,6 +238,19 @@ export const StatsPageSlide = ({
     isMobile || // Mobile always uses snapshot when available
     (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes))
   );
+
+  // Mobile loading gate: wait for campaign resolution before rendering
+  // This prevents broken dynamic rendering before snapshot URL is available
+  if (isMobile && !campaignResolved) {
+    return (
+      <div 
+        ref={containerRef}
+        className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
+      >
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
+      </div>
+    );
+  }
 
   // If using cached snapshot, render simple static image
   if (shouldUseCachedSnapshot && campaignSnapshotUrl) {

@@ -50,6 +50,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
   const [loading, setLoading] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
+  const [resolvedTemplateId, setResolvedTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -79,6 +80,9 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
         setLoading(false);
         return;
       }
+
+      // Store the template_id for fallback use
+      setResolvedTemplateId(slideData.template_id || null);
 
       if (!slideData?.template_id) {
         console.error(`❌ ${COMPONENT_VERSION} - CRITICAL: No template_id found for slide:`, {
@@ -281,7 +285,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
 
   if (templateType === 'stats_page') {
     // Use propTemplateId if passed from DeckViewer, otherwise use the one from slideData query
-    const effectiveTemplateId = propTemplateId;
+    const effectiveTemplateId = propTemplateId || resolvedTemplateId;
     
     return (
       <StatsPageSlide 
