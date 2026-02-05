@@ -858,13 +858,31 @@ export function DataTemplateEditor({
             </Button>
             <Button
               onClick={handleServerRefresh}
-              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !savedTemplateId || !campaignId}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || isDeploying || !savedTemplateId || !campaignId}
               variant="outline"
               className="gap-1 border-orange-500 text-orange-600 hover:bg-orange-50"
               title="Call server-side edge function to regenerate snapshot with live metrics"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshingServer ? "animate-spin" : ""}`} />
               {isRefreshingServer ? "Refreshing..." : "Server Refresh"}
+            </Button>
+            <Button
+              onClick={handleDeployToCampaigns}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || isDeploying || !savedTemplateId || templateCampaigns.length === 0}
+              variant="outline"
+              className="gap-1 border-purple-500 text-purple-600 hover:bg-purple-50"
+              title={templateCampaigns.length > 0 
+                ? `Deploy snapshots to ${templateCampaigns.length} campaign(s) using this template`
+                : "No campaigns are using this template"}
+            >
+              <Rocket className={`w-4 h-4 ${isDeploying ? "animate-pulse" : ""}`} />
+              {isDeploying 
+                ? "Deploying..." 
+                : campaignsLoading 
+                  ? "Loading..." 
+                  : templateCampaigns.length > 0 
+                    ? `Deploy to ${templateCampaigns.length} Campaign${templateCampaigns.length > 1 ? "s" : ""}`
+                    : "No Campaigns"}
             </Button>
           </div>
         </div>
