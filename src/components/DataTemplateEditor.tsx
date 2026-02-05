@@ -484,6 +484,53 @@ export function DataTemplateEditor({
     toast.error(`Server refresh failed: ${lastError?.message || "Unknown error"}`);
   };
 
+  // Handle deploy to all campaigns using this template
+  const handleDeployToCampaigns = async () => {
+    const templateIdToUse = savedTemplateId || templateId;
+    if (!templateIdToUse) {
+      toast.error("Please save the template first before deploying");
+      return;
+    }
+    if (templateCampaigns.length === 0) {
+      toast.error("No campaigns are using this template");
+      return;
+    }
+
+    setIsDeploying(true);
+    toast.info(`Deploying snapshots to ${templateCampaigns.length} campaign(s)...`, { duration: 3000 });
+
+    try {
+      const { data, error } = await supabase.functions.invoke("deploy-template-snapshots", {
+        body: {
+          template_id: templateIdToUse,
+          only_enabled: false,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.campaigns_failed > 0) {
+        toast.warning(
+          `Deployed to ${data.campaigns_rendered}/${data.campaigns_found} campaigns. ${data.campaigns_failed} failed.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(
+          `Successfully deployed to ${data.campaigns_rendered} campaign(s)!`,
+          { duration: 4000 }
+        );
+      }
+
+      console.log("[Deploy Results]", data.results);
+      
+    } catch (err: any) {
+      console.error("[Deploy] Failed:", err);
+      toast.error(`Deploy failed: ${err.message}`);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Form Fields */}
