@@ -637,6 +637,7 @@ export default function InteractiveTemplates() {
   // Render a template card
   const renderTemplateCard = (template: Template) => {
     const isAction = isActionTemplate(template);
+    const isData = isDataTemplate(template);
     const templateType = template.template_type || 'interactive_share';
     
     // Color scheme based on template type
