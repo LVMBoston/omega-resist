@@ -81,6 +81,9 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
         return;
       }
 
+      // Store the template_id for fallback use
+      setResolvedTemplateId(slideData.template_id || null);
+
       if (!slideData?.template_id) {
         console.error(`❌ ${COMPONENT_VERSION} - CRITICAL: No template_id found for slide:`, {
           slideId,
