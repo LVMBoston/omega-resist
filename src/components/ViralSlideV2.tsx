@@ -285,7 +285,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
 
   if (templateType === 'stats_page') {
     // Use propTemplateId if passed from DeckViewer, otherwise use the one from slideData query
-    const effectiveTemplateId = propTemplateId;
+    const effectiveTemplateId = propTemplateId || resolvedTemplateId;
     
     return (
       <StatsPageSlide 

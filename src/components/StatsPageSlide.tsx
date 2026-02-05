@@ -239,6 +239,19 @@ export const StatsPageSlide = ({
     (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes))
   );
 
+  // Mobile loading gate: wait for campaign resolution before rendering
+  // This prevents broken dynamic rendering before snapshot URL is available
+  if (isMobile && !campaignResolved) {
+    return (
+      <div 
+        ref={containerRef}
+        className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
+      >
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
+      </div>
+    );
+  }
+
   // If using cached snapshot, render simple static image
   if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
     console.log(`📊 StatsPageSlide: Rendering snapshot (mobile=${isMobile}):`, campaignSnapshotUrl);
