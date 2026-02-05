@@ -532,7 +532,7 @@ export function DataTemplateEditor({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col min-h-full">
       {/* Form Fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-muted/30">
         <div className="space-y-1">
