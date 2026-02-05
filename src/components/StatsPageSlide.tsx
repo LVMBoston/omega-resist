@@ -213,10 +213,21 @@ export const StatsPageSlide = ({
     extractCampaignCode();
   }, [viralToken, deckSlug]);
 
-  // If using cached snapshot, render simple static image (no API calls)
-  if (shouldUseCachedSnapshot && cachedSnapshotPath) {
-    const snapshotUrl = getSnapshotUrl(cachedSnapshotPath);
-    console.log("📊 StatsPageSlide: Rendering cached snapshot:", snapshotUrl);
+  // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
+  const campaignSnapshotUrl = campaignCode && templateId 
+    ? getCampaignSnapshotUrl(campaignCode)
+    : null;
+
+  // Determine if we should use the cached snapshot
+  // Now uses campaign-specific path instead of shared template-level path
+  const shouldUseCachedSnapshot = 
+    snapshotEnabled && 
+    campaignSnapshotUrl &&
+    isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes);
+
+  // If using cached snapshot, render simple static image
+  if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
+    console.log("📊 StatsPageSlide: Rendering campaign-specific snapshot:", campaignSnapshotUrl);
     
     return (
       <div 
@@ -224,7 +235,7 @@ export const StatsPageSlide = ({
         className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
       >
         <img
-          src={snapshotUrl}
+          src={campaignSnapshotUrl}
           alt="Stats page (cached)"
           className="max-w-full max-h-full object-contain"
         />
