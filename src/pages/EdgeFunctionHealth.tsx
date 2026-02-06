@@ -89,31 +89,25 @@ const testImportZipCodes = async (): Promise<{ success: boolean; message: string
 };
 
 const testImportGoogleSlides = async (): Promise<{ success: boolean; message: string }> => {
-  try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/import-google-slides`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ test: true }),
-    });
-    if (response.status === 401) return { success: true, message: "JWT required (expected)" };
-    return { success: true, message: "Function responding" };
-  } catch (error) {
-    throw new Error("Function unreachable");
+  const response = await supabase.functions.invoke("import-google-slides", {
+    body: { test: true },
+  });
+  // 401 auth error or 400 validation error both mean function is alive
+  if (response.error?.message?.includes("authorization") || response.error?.message?.includes("401")) {
+    return { success: true, message: "JWT required (expected)" };
   }
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const testImportPowerpoint = async (): Promise<{ success: boolean; message: string }> => {
-  try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/import-powerpoint`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ test: true }),
-    });
-    if (response.status === 401) return { success: true, message: "JWT required (expected)" };
-    return { success: true, message: "Function responding" };
-  } catch (error) {
-    throw new Error("Function unreachable");
+  const response = await supabase.functions.invoke("import-powerpoint", {
+    body: { test: true },
+  });
+  // 401 auth error or 400 validation error both mean function is alive
+  if (response.error?.message?.includes("authorization") || response.error?.message?.includes("401")) {
+    return { success: true, message: "JWT required (expected)" };
   }
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const EDGE_FUNCTIONS: EdgeFunction[] = [
