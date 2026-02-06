@@ -17,6 +17,7 @@ import {
   Globe,
   Map,
   TestTube,
+  HeartPulse,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -73,6 +74,7 @@ const navigation = [
       { title: "Data Template Test", url: "/data-template-test", icon: TestTube },
       { title: "Map Debug", url: "/map-debug", icon: Map },
       { title: "Simulator", url: "/simulator", icon: FlaskConical },
+      { title: "System Health", url: "/edge-health", icon: HeartPulse },
     ],
   },
 ]

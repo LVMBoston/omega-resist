@@ -34,6 +34,7 @@ import GeoipTest from "./pages/GeoipTest";
 import DataTemplateTestHarness from "./pages/DataTemplateTestHarness";
 import MapDebugTest from "./pages/MapDebugTest";
 import TemplateEditorPage from "./pages/TemplateEditorPage";
+import EdgeFunctionHealth from "./pages/EdgeFunctionHealth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -180,6 +181,16 @@ const App = () => (
                 <LayoutWithSidebar>
                   <ProtectedRoute requiredRole="admin">
                     <MapDebugTest />
+                  </ProtectedRoute>
+                </LayoutWithSidebar>
+              } 
+            />
+            <Route 
+              path="/edge-health"
+              element={
+                <LayoutWithSidebar>
+                  <ProtectedRoute requiredRole="admin">
+                    <EdgeFunctionHealth />
                   </ProtectedRoute>
                 </LayoutWithSidebar>
               } 
