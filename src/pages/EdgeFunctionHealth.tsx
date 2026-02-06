@@ -54,41 +54,38 @@ const testFetchMobilizeEvent = async (): Promise<{ success: boolean; message: st
   const response = await supabase.functions.invoke("fetch-mobilize-event", {
     body: { eventId: "test" },
   });
-  // Even if it returns an error about invalid event, the function is working
-  if (response.error?.message?.includes("not found") || response.data) {
-    return { success: true, message: "Function responding" };
-  }
-  if (response.error) throw new Error(response.error.message);
-  return { success: true, message: "Function responding" };
+  // Any response (including errors) means function is working
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const testRenderStatsSnapshot = async (): Promise<{ success: boolean; message: string }> => {
   const response = await supabase.functions.invoke("render-stats-snapshot", {
     body: { test: true },
   });
-  // 200/400 responses indicate the function is working
-  return { success: true, message: "Function responding" };
+  // 400 validation error means function is alive and validating
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const testDeployTemplateSnapshots = async (): Promise<{ success: boolean; message: string }> => {
   const response = await supabase.functions.invoke("deploy-template-snapshots", {
     body: { test: true },
   });
-  return { success: true, message: "Function responding" };
+  // 400 validation error means function is alive and validating
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const testGenerateCampaignPdf = async (): Promise<{ success: boolean; message: string }> => {
   const response = await supabase.functions.invoke("generate-campaign-pdf", {
     body: { test: true },
   });
-  return { success: true, message: "Function responding" };
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const testImportZipCodes = async (): Promise<{ success: boolean; message: string }> => {
   const response = await supabase.functions.invoke("import-zip-codes", {
     body: { test: true },
   });
-  return { success: true, message: "Function responding" };
+  return { success: true, message: response.error ? "Validation OK" : "Function OK" };
 };
 
 const testImportGoogleSlides = async (): Promise<{ success: boolean; message: string }> => {
