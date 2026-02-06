@@ -1,65 +1,116 @@
 
-# Fix: Mobile Template Rendering Race Condition
 
-## Problem Summary
-The deployed Data Template slide shows broken layout on mobile because:
-1. `campaignCode` is resolved asynchronously in a `useEffect`
-2. On first render, `campaignCode` is empty, making `campaignSnapshotUrl` null
-3. With no snapshot URL, mobile falls back to dynamic hotspot rendering
-4. Dynamic rendering breaks on small screens (overlapping text, layout issues)
+# Edge Function Health Check System
 
-Additionally, `effectiveTemplateId` in `ViralSlideV2.tsx` has no fallback when the prop is missing.
+## Summary
+Create a comprehensive health check page that tests all 10 edge functions and provides visual status for monitoring. This ensures you can quickly verify all backend functions are operational.
 
-## Technical Solution
+## What Was Just Completed
 
-### File 1: `src/components/ViralSlideV2.tsx`
-**Change**: Add fallback for `effectiveTemplateId` using the template ID from the database query.
+All 10 edge functions have been deployed:
+- deploy-template-snapshots
+- fetch-mobilize-event
+- generate-campaign-pdf
+- geoip
+- get-mapbox-token
+- import-google-slides
+- import-powerpoint
+- import-zip-codes
+- render-stats-snapshot
+- reverse-geocode
+
+## Health Check Page Features
+
+### Visual Status Dashboard
+- Grid of cards showing each edge function
+- Color-coded status indicators: green (healthy), red (failed), yellow (testing)
+- Response time displayed for each function
+- Last tested timestamp
+- "Test All" button to run health checks on all functions
+- Individual "Test" buttons for each function
+
+### Test Methods by Function
+
+| Function | Test Method | Expected Response |
+|----------|-------------|-------------------|
+| geoip | POST (empty body) | JSON with ip, latitude, longitude |
+| reverse-geocode | POST with test coordinates | JSON with city, zip_code |
+| get-mapbox-token | POST | JSON with token field |
+| fetch-mobilize-event | POST with test event ID | JSON response |
+| render-stats-snapshot | POST (basic test) | 200 status |
+| deploy-template-snapshots | POST (basic test) | 200 status |
+| generate-campaign-pdf | POST (basic test) | 200 status |
+| import-zip-codes | POST (basic test) | 200 status |
+| import-google-slides | POST (basic test) | 401 or 200 (JWT required) |
+| import-powerpoint | POST (basic test) | 401 or 200 (JWT required) |
+
+### Implementation Details
+
+#### New File: `src/pages/EdgeFunctionHealth.tsx`
+A dedicated health monitoring page that:
+1. Lists all 10 edge functions with their configuration (JWT required or not)
+2. Tests each function with a lightweight request
+3. Shows pass/fail status, response time, and error details
+4. Provides a "Deploy All" instruction reminder
+5. Auto-refreshes status periodically (optional toggle)
+
+#### Route Addition: `src/App.tsx`
+Add route at `/edge-health` accessible to admins.
+
+#### Integration with Sidebar
+Add a "System Health" link under the admin section of the sidebar.
+
+## Files to Create/Modify
+
+1. **Create** `src/pages/EdgeFunctionHealth.tsx` - Health check dashboard
+2. **Modify** `src/App.tsx` - Add route for `/edge-health`
+3. **Modify** `src/components/AppSidebar.tsx` - Add navigation link
+
+## UI Design
 
 ```text
-Current (line 284):
-const effectiveTemplateId = propTemplateId;
-
-Fixed:
-const effectiveTemplateId = propTemplateId || slideData?.template_id;
++------------------------------------------+
+|        Edge Function Health Check        |
+|  Last checked: 2 minutes ago    [Test All]|
++------------------------------------------+
+|                                          |
+|  +--------+  +--------+  +--------+      |
+|  | geoip  |  |reverse |  |mapbox  |      |
+|  |   OK   |  |geocode |  | token  |      |
+|  | 156ms  |  |   OK   |  |   OK   |      |
+|  +--------+  | 234ms  |  |  89ms  |      |
+|              +--------+  +--------+      |
+|                                          |
+|  +--------+  +--------+  +--------+      |
+|  |mobilize|  |snapshot|  |deploy  |      |
+|  | event  |  | render |  |snapshot|      |
+|  |   OK   |  |   OK   |  |   OK   |      |
+|  | 445ms  |  | 892ms  |  | 123ms  |      |
+|  +--------+  +--------+  +--------+      |
+|                                          |
+|  +--------+  +--------+  +--------+      |
+|  |campaign|  | import |  | import |      |
+|  |  pdf   |  | slides |  |  pptx  |      |
+|  |   OK   |  | AUTH   |  | AUTH   |      |
+|  | 234ms  |  | (jwt)  |  | (jwt)  |      |
+|  +--------+  +--------+  +--------+      |
+|                                          |
+|  +--------+                              |
+|  | import |                              |
+|  |zipcodes|                              |
+|  |   OK   |                              |
+|  | 567ms  |                              |
+|  +--------+                              |
++------------------------------------------+
 ```
 
-However, `slideData` is not in scope at line 284 (it's inside the `useEffect`). We need to store it in state:
-- Add state: `const [resolvedTemplateId, setResolvedTemplateId] = useState<string | null>(null);`
-- In `fetchConfig`, after querying `slideData`: `setResolvedTemplateId(slideData.template_id);`
-- At line 284: `const effectiveTemplateId = propTemplateId || resolvedTemplateId;`
+## Why Functions Become Inactive
 
-### File 2: `src/components/StatsPageSlide.tsx`
-**Change**: Add a loading gate for mobile devices while campaign code is being resolved.
+For reference, edge functions can become inactive due to:
+- Platform updates requiring redeployment
+- Cold start timeouts on the hosting infrastructure
+- Failed previous deployments due to syntax/import errors
+- Manual deletion from the dashboard (if accessed externally)
 
-1. Add state to track resolution status:
-   ```typescript
-   const [campaignResolved, setCampaignResolved] = useState(false);
-   ```
+The health check page provides early warning when functions stop responding.
 
-2. Update the `extractCampaignCode` effect to set this flag when done:
-   ```typescript
-   // At the end of extractCampaignCode async function:
-   setCampaignResolved(true);
-   ```
-
-3. Add early return for mobile while resolving:
-   ```typescript
-   // Before the main render, after the shouldUseCachedSnapshot logic:
-   if (isMobile && !campaignResolved) {
-     return (
-       <div className="relative w-full h-full bg-black flex items-center justify-center">
-         <Loader2 className="w-8 h-8 animate-spin text-white" />
-       </div>
-     );
-   }
-   ```
-
-## Expected Outcome
-- Mobile devices will show a loading spinner while `campaignCode` resolves
-- Once resolved, if a snapshot exists at `{templateId}/snapshot-{campaignCode}.png`, it displays
-- If no snapshot exists, dynamic rendering occurs (less ideal but functional)
-- The `templateId` prop will correctly fall back to the database value
-
-## Files to Modify
-1. `src/components/ViralSlideV2.tsx` - Add `resolvedTemplateId` state and fallback logic
-2. `src/components/StatsPageSlide.tsx` - Add `campaignResolved` state and mobile loading gate
