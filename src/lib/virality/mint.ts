@@ -274,8 +274,13 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<{
   }
 }
 
+// Extended interface that includes IP for storage
+interface GeoLocationDataWithIP extends GeoLocationData {
+  ip: string | null;
+}
+
 // Export so DeckViewer can use it for location-based instance detection
-export async function fetchGeolocation(): Promise<GeoLocationData> {
+export async function fetchGeolocation(): Promise<GeoLocationDataWithIP> {
   try {
     // Try to get GPS coordinates first (mobile devices)
     const gpsCoords = await getGPSLocation();
@@ -309,7 +314,8 @@ export async function fetchGeolocation(): Promise<GeoLocationData> {
           country: reverseGeoResult.country,
           country_code: reverseGeoResult.country_code,
           zip_code: isUS ? reverseGeoResult.zip_code : null, // Only store zip for US
-          location_source: 'gps' as const
+          location_source: 'gps' as const,
+          ip: null // GPS doesn't need IP - we have accurate location
         };
         
         console.log("✅ Using GPS coordinates with reverse-geocoded location:", result);
@@ -345,7 +351,8 @@ export async function fetchGeolocation(): Promise<GeoLocationData> {
           country: isLikelyUS ? 'United States' : null,
           country_code: isLikelyUS ? 'US' : null,
           zip_code: null,
-          location_source: 'gps'
+          location_source: 'gps',
+          ip: null // No IP available
         };
       }
       return {
@@ -356,11 +363,13 @@ export async function fetchGeolocation(): Promise<GeoLocationData> {
         country: null,
         country_code: null,
         zip_code: null,
-        location_source: 'unknown'
+        location_source: 'unknown',
+        ip: null
       };
     }
     
     const isUS = data?.country_code === 'US';
+    const detectedIP = data?.ip || null;
     
     // For US: use GPS with zip lookup OR IP-based location
     // For non-US: round GPS coordinates to 1 decimal place (~11km precision)
@@ -393,7 +402,10 @@ export async function fetchGeolocation(): Promise<GeoLocationData> {
       country: data?.country || null,
       country_code: data?.country_code || null,
       zip_code: isUS ? data?.zip_code || null : null, // Only store zip for US
-      location_source: (gpsCoords ? 'gps' : 'ip') as 'gps' | 'ip' | 'unknown'
+      location_source: (gpsCoords ? 'gps' : 'ip') as 'gps' | 'ip' | 'unknown',
+      // Only store IP if we don't have a zip code yet (for potential backfill)
+      // Database trigger will clear IP once zip is populated
+      ip: (isUS && data?.zip_code) ? null : detectedIP
     };
     
     if (gpsCoords) {
@@ -413,7 +425,8 @@ export async function fetchGeolocation(): Promise<GeoLocationData> {
       country: null,
       country_code: null,
       zip_code: null,
-      location_source: 'unknown'
+      location_source: 'unknown',
+      ip: null
     };
   }
 }
@@ -487,14 +500,18 @@ export async function maybeReinstantiateL00(
 export async function logEvent(input: z.infer<typeof LogEventInput>) {
   const { token, eventType, utmSnapshot, ip, ua } = LogEventInput.parse(input);
   
-  // Fetch geolocation data
+  // Fetch geolocation data (now includes IP from geoip function)
   const geoData = await fetchGeolocation();
+  
+  // Use IP from geoip response, fallback to explicit ip param if provided
+  // Database trigger will clear IP once zip_code is populated (privacy)
+  const ipToStore = geoData.ip ?? ip ?? null;
   
   const { data, error } = await supabase.rpc("log_event", {
     _token: token,
     _event_type: eventType,
     _utm_snapshot: utmSnapshot ?? null,
-    _ip_address: ip ?? null,
+    _ip_address: ipToStore,
     _user_agent: ua ?? null,
     _latitude: geoData.latitude,
     _longitude: geoData.longitude,
