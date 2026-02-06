@@ -100,14 +100,11 @@ export const StatsPageSlide = ({
 
         // First try to get campaign from token
         if (viralToken) {
-          console.log("📊 StatsPageSlide: Looking up token:", viralToken);
-          const { data: tokenData, error: tokenError } = await supabase
+          const { data: tokenData } = await supabase
             .from("tokens")
             .select("utm_campaign")
             .eq("token", viralToken)
             .maybeSingle();
-          
-          console.log("📊 StatsPageSlide: Token lookup result:", { tokenData, tokenError });
           
           if (tokenData?.utm_campaign) {
             resolvedCode = tokenData.utm_campaign;
