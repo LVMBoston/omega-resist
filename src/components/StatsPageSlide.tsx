@@ -319,8 +319,8 @@ export const StatsPageSlide = ({
         </div>
       )}
       
-      {/* Render live_number hotspots */}
-      {imageLoaded && imageDimensions.width > 0 && liveNumberHotspots.map((hotspot) => {
+      {/* Render live_number hotspots - gate on !metricsLoading to prevent partial renders on iOS */}
+      {imageLoaded && imageDimensions.width > 0 && !metricsLoading && liveNumberHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
@@ -365,8 +365,8 @@ export const StatsPageSlide = ({
         );
       })}
 
-      {/* Render chart hotspots */}
-      {imageLoaded && imageDimensions.width > 0 && campaignCode && chartHotspots.map((hotspot) => {
+      {/* Render chart hotspots - gate on !metricsLoading for consistency */}
+      {imageLoaded && imageDimensions.width > 0 && !metricsLoading && campaignCode && chartHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
@@ -402,8 +402,8 @@ export const StatsPageSlide = ({
         );
       })}
 
-      {/* Render map hotspots */}
-      {imageLoaded && imageDimensions.width > 0 && campaignCode && mapHotspots.map((hotspot) => {
+      {/* Render map hotspots - gate on !metricsLoading for consistency */}
+      {imageLoaded && imageDimensions.width > 0 && !metricsLoading && campaignCode && mapHotspots.map((hotspot) => {
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
         const width = (hotspot.width / 100) * imageDimensions.width;
