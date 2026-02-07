@@ -77,6 +77,10 @@ export const StatsPageSlide = ({
     offsetY: 0 
   });
 
+  // Detect if imageUrl is a solid color (format: "solid:#hexcolor")
+  const isSolidColor = imageUrl?.startsWith("solid:");
+  const solidColor = isSolidColor ? imageUrl.replace("solid:", "") : null;
+
 
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
@@ -139,13 +143,44 @@ export const StatsPageSlide = ({
     resolveCampaign();
   }, [viralToken, deckSlug, resolveMetrics]);
 
-  // Calculate image dimensions when loaded
+  // Calculate image dimensions when loaded (or for solid color)
   useEffect(() => {
     const updateDimensions = () => {
-      if (!imageRef.current || !containerRef.current) return;
+      if (!containerRef.current) return;
+      
+      const container = containerRef.current;
+      
+      // For solid color, use container dimensions with 9:16 aspect ratio
+      if (isSolidColor) {
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        // Calculate dimensions maintaining 9:16 aspect ratio
+        let renderedWidth = containerWidth;
+        let renderedHeight = containerWidth * (16 / 9);
+        
+        if (renderedHeight > containerHeight) {
+          renderedHeight = containerHeight;
+          renderedWidth = containerHeight * (9 / 16);
+        }
+        
+        const offsetX = (containerWidth - renderedWidth) / 2;
+        const offsetY = (containerHeight - renderedHeight) / 2;
+        
+        setImageDimensions({
+          width: renderedWidth,
+          height: renderedHeight,
+          offsetX: Math.max(0, offsetX),
+          offsetY: Math.max(0, offsetY)
+        });
+        setImageLoaded(true);
+        return;
+      }
+      
+      // For image, use image ref dimensions
+      if (!imageRef.current) return;
       
       const img = imageRef.current;
-      const container = containerRef.current;
       
       const renderedWidth = img.clientWidth;
       const renderedHeight = img.clientHeight;
@@ -163,13 +198,18 @@ export const StatsPageSlide = ({
       });
     };
 
-    if (imageLoaded) {
+    if (isSolidColor) {
+      // For solid color, calculate dimensions immediately
+      setTimeout(updateDimensions, 100);
+      window.addEventListener('resize', updateDimensions);
+      return () => window.removeEventListener('resize', updateDimensions);
+    } else if (imageLoaded) {
       // Small delay to ensure layout is complete
       setTimeout(updateDimensions, 100);
       window.addEventListener('resize', updateDimensions);
       return () => window.removeEventListener('resize', updateDimensions);
     }
-  }, [imageLoaded]);
+  }, [imageLoaded, isSolidColor]);
 
   const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
   const chartHotspots = hotspots.filter(h => h.type === 'chart');
@@ -300,17 +340,32 @@ export const StatsPageSlide = ({
       ref={containerRef}
       className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
     >
-      <img
-        ref={imageRef}
-        src={imageUrl}
-        alt="Stats page"
-        className="max-w-full max-h-full object-contain"
-        onLoad={() => {
-          setImageLoaded(true);
-          setImageError(false);
-        }}
-        onError={() => setImageError(true)}
-      />
+      {/* Background: solid color or image */}
+      {isSolidColor ? (
+        <div
+          ref={imageRef as any}
+          className="absolute rounded-lg"
+          style={{
+            backgroundColor: solidColor || '#1a1a2e',
+            width: imageDimensions.width || '100%',
+            height: imageDimensions.height || '100%',
+            left: imageDimensions.offsetX,
+            top: imageDimensions.offsetY,
+          }}
+        />
+      ) : (
+        <img
+          ref={imageRef}
+          src={imageUrl}
+          alt="Stats page"
+          className="max-w-full max-h-full object-contain"
+          onLoad={() => {
+            setImageLoaded(true);
+            setImageError(false);
+          }}
+          onError={() => setImageError(true)}
+        />
+      )}
       
       {/* Loading indicator for metrics */}
       {metricsLoading && (
