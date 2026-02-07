@@ -7,46 +7,71 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Metric calculation helper functions
+// Retry helper - we have all the time we need for server-side snapshots
+async function fetchWithRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  description: string,
+  maxAttempts = 5,
+  delayMs = 1000
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const { data, error } = await queryFn();
+      if (!error) {
+        console.log(`[render-stats-snapshot] ${description}: success on attempt ${attempt}`);
+        return data;
+      }
+      console.warn(`[render-stats-snapshot] ${description}: attempt ${attempt} failed:`, error.message);
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    } catch (e) {
+      console.error(`[render-stats-snapshot] ${description}: attempt ${attempt} exception:`, e);
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+  }
+  console.error(`[render-stats-snapshot] Failed to fetch ${description} after ${maxAttempts} attempts`);
+  return null;
+}
+
+// Metric calculation helper functions with retry logic
 async function calculateMetrics(supabase: any, campaignCode: string): Promise<Record<string, string | number>> {
   const metrics: Record<string, string | number> = {};
   
-  // Query tokens for this campaign
-  const { data: tokens, error: tokensError } = await supabase
-    .from("tokens")
-    .select("token, level, utm_medium")
-    .eq("utm_campaign", campaignCode)
-    .is("deleted_at", null);
-  
-  if (tokensError) {
-    console.error("Error fetching tokens:", tokensError);
-    throw new Error(`Failed to fetch tokens: ${tokensError.message}`);
-  }
+  // Query tokens for this campaign with retry
+  const tokens = await fetchWithRetry(
+    () => supabase
+      .from("tokens")
+      .select("token, level, utm_medium")
+      .eq("utm_campaign", campaignCode)
+      .is("deleted_at", null),
+    "tokens query"
+  ) || [];
 
-  // Query url_events for these tokens
-  const tokenStrings = tokens?.map((t: any) => t.token) || [];
+  // Query url_events for these tokens with retry
+  const tokenStrings = Array.isArray(tokens) ? tokens.map((t: any) => t.token) : [];
   let events: any[] = [];
   
   if (tokenStrings.length > 0) {
-    const { data: eventsData, error: eventsError } = await supabase
-      .from("url_events")
-      .select("event_type, country_code, zip_code, utm_snapshot, occurred_at")
-      .in("token", tokenStrings)
-      .is("deleted_at", null);
-    
-    if (eventsError) {
-      console.error("Error fetching events:", eventsError);
-      throw new Error(`Failed to fetch events: ${eventsError.message}`);
-    }
-    events = eventsData || [];
+    events = await fetchWithRetry(
+      () => supabase
+        .from("url_events")
+        .select("event_type, country_code, zip_code, utm_snapshot, occurred_at")
+        .in("token", tokenStrings)
+        .is("deleted_at", null),
+      "url_events query"
+    ) || [];
   }
 
   // Calculate metrics
-  const l00Count = tokens?.filter((t: any) => t.level === 0).length || 0;
-  const l01Count = tokens?.filter((t: any) => t.level === 1).length || 0;
-  const l02Count = tokens?.filter((t: any) => t.level === 2).length || 0;
-  const l03Count = tokens?.filter((t: any) => t.level === 3).length || 0;
-  const sharesCount = tokens?.filter((t: any) => t.level > 0).length || 0;
+  const tokenArray = Array.isArray(tokens) ? tokens : [];
+  const l00Count = tokenArray.filter((t: any) => t.level === 0).length;
+  const l01Count = tokenArray.filter((t: any) => t.level === 1).length;
+  const l02Count = tokenArray.filter((t: any) => t.level === 2).length;
+  const l03Count = tokenArray.filter((t: any) => t.level === 3).length;
+  const sharesCount = tokenArray.filter((t: any) => t.level > 0).length;
 
   metrics.seeds = l00Count.toLocaleString();
   metrics.l01_count = l01Count.toLocaleString();
@@ -55,12 +80,13 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.shares = sharesCount.toLocaleString();
 
   // Opens (view events)
-  const viewEvents = events.filter((e: any) => e.event_type === "view");
+  const eventArray = Array.isArray(events) ? events : [];
+  const viewEvents = eventArray.filter((e: any) => e.event_type === "view");
   metrics.opens = viewEvents.length.toLocaleString();
 
   // Opens by location
-  const opensUS = events.filter((e: any) => e.event_type === "view" && e.country_code === "US").length;
-  const opensIntl = events.filter((e: any) => e.event_type === "view" && e.country_code && e.country_code !== "US").length;
+  const opensUS = eventArray.filter((e: any) => e.event_type === "view" && e.country_code === "US").length;
+  const opensIntl = eventArray.filter((e: any) => e.event_type === "view" && e.country_code && e.country_code !== "US").length;
   metrics.opens_us = opensUS.toLocaleString();
   metrics.opens_intl = opensIntl.toLocaleString();
 
@@ -74,25 +100,46 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.opens_mail = opensMail.toLocaleString();
 
   // Neighborhoods (distinct zip codes)
-  const distinctZips = new Set(events.filter((e: any) => e.zip_code).map((e: any) => e.zip_code));
+  const distinctZips = new Set(eventArray.filter((e: any) => e.zip_code).map((e: any) => e.zip_code));
   metrics.neighborhoods = distinctZips.size.toLocaleString();
 
   // Max depth
-  const maxDepth = tokens && tokens.length > 0 ? Math.max(...tokens.map((t: any) => t.level)) : 0;
+  const maxDepth = tokenArray.length > 0 ? Math.max(...tokenArray.map((t: any) => t.level)) : 0;
   metrics.depth = maxDepth.toString();
 
   // Viral coefficient
   const viralCoef = l00Count > 0 ? (sharesCount / l00Count).toFixed(2) : "0.00";
   metrics.viral_coefficient = viralCoef;
 
-  // Get campaign title
-  const { data: campaignData } = await supabase
-    .from("campaigns")
-    .select("title")
-    .eq("code", campaignCode)
-    .maybeSingle();
+  // Seeds with spawns (L00 tokens that have at least one child)
+  const l00Tokens = tokenArray.filter((t: any) => t.level === 0).map((t: any) => t.token);
+  let seedsWithSpawns = 0;
+  if (l00Tokens.length > 0) {
+    const childTokens = await fetchWithRetry(
+      () => supabase
+        .from("tokens")
+        .select("parent_token")
+        .in("parent_token", l00Tokens)
+        .is("deleted_at", null),
+      "child tokens query"
+    ) || [];
+    const parentSet = new Set((Array.isArray(childTokens) ? childTokens : []).map((t: any) => t.parent_token));
+    seedsWithSpawns = parentSet.size;
+  }
+  metrics.seeds_with_spawns = seedsWithSpawns.toLocaleString();
+
+  // Get campaign title with retry
+  const campaignData = await fetchWithRetry(
+    () => supabase
+      .from("campaigns")
+      .select("title")
+      .eq("code", campaignCode)
+      .maybeSingle(),
+    "campaign title query"
+  );
   
   metrics.campaign_name = campaignData?.title || campaignCode;
+  console.log(`[render-stats-snapshot] Campaign name resolved: "${metrics.campaign_name}"`);
 
   // Date/time metrics - use a standard format
   const now = new Date();
@@ -110,7 +157,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.last_updated = now.toLocaleString('en-US', formatOptions);
 
   // Earliest/Latest active
-  const viewEventsWithTime = events.filter((e: any) => e.event_type === "view" && e.occurred_at);
+  const viewEventsWithTime = eventArray.filter((e: any) => e.event_type === "view" && e.occurred_at);
   if (viewEventsWithTime.length > 0) {
     viewEventsWithTime.sort((a: any, b: any) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
     const earliest = new Date(viewEventsWithTime[0].occurred_at);
@@ -149,15 +196,18 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch template data
-    const { data: template, error: templateError } = await supabase
-      .from("viral_slide_configs")
-      .select("*")
-      .eq("id", template_id)
-      .single();
+    // Fetch template data with retry
+    const template = await fetchWithRetry(
+      () => supabase
+        .from("viral_slide_configs")
+        .select("*")
+        .eq("id", template_id)
+        .single(),
+      "template fetch"
+    );
 
-    if (templateError || !template) {
-      console.error("[render-stats-snapshot] Template not found:", templateError);
+    if (!template) {
+      console.error("[render-stats-snapshot] Template not found after retries");
       return new Response(
         JSON.stringify({ error: "Template not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -166,9 +216,10 @@ Deno.serve(async (req) => {
 
     console.log(`[render-stats-snapshot] Template loaded: ${template.name || template.slug}`);
 
-    // Calculate live metrics
+    // Calculate live metrics with retry logic built in
     const metrics = await calculateMetrics(supabase, campaign_code);
     console.log("[render-stats-snapshot] Metrics calculated:", Object.keys(metrics).length, "metrics");
+    console.log("[render-stats-snapshot] Metrics summary:", Object.entries(metrics).map(([k, v]) => `${k}=${v}`).join(", "));
 
     // Parse hotspots
     const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
@@ -190,7 +241,6 @@ Deno.serve(async (req) => {
     console.log(`[render-stats-snapshot] Base image fetched: ${bgImageArrayBuffer.byteLength} bytes, type: ${mimeType}`);
     
     // Convert ArrayBuffer to base64 using TextDecoder to avoid stack overflow
-    // This is the correct way to encode large images
     const bytes = new Uint8Array(bgImageArrayBuffer);
     let binary = '';
     const len = bytes.byteLength;
@@ -201,11 +251,11 @@ Deno.serve(async (req) => {
     const dataUrl = `data:${mimeType};base64,${base64}`;
     console.log(`[render-stats-snapshot] Base64 encoded, length: ${base64.length}`);
     
-    // Use fixed 16:9 dimensions for OG images
-    const width = 1920;
-    const height = 1080;
+    // Use PORTRAIT 9:16 dimensions for mobile-first Data Templates
+    const width = 1080;
+    const height = 1920;
     
-    console.log(`[render-stats-snapshot] Rendering at ${width}x${height}`);
+    console.log(`[render-stats-snapshot] Rendering at ${width}x${height} (portrait)`);
 
     // Build the overlay elements for each hotspot
     const overlayElements = liveNumberHotspots.map((hotspot: any) => {
@@ -226,11 +276,11 @@ Deno.serve(async (req) => {
       const hotspotHeight = (hotspot.height / 100) * height;
 
       // Scale font size: hotspots are configured for browser preview (~960px wide)
-      // We need to scale up for 1920px canvas (2x)
+      // For 1080px portrait canvas, scale factor is ~1.125x
       const baseFontSize = parseInt(style.fontSize || "24") || 24;
-      const scaledFontSize = baseFontSize * 2;
+      const scaledFontSize = Math.round(baseFontSize * (width / 960));
 
-      console.log(`[render-stats-snapshot] Hotspot ${hotspot.id}: value="${value}", fontSize=${scaledFontSize}px, pos=(${left.toFixed(0)}, ${top.toFixed(0)})`);
+      console.log(`[render-stats-snapshot] Hotspot ${hotspot.id}: metric="${hotspot.metricKey}", value="${value}", fontSize=${scaledFontSize}px, pos=(${left.toFixed(0)}, ${top.toFixed(0)})`);
       
       return React.createElement(
         "div",
@@ -350,6 +400,7 @@ Deno.serve(async (req) => {
         rendered_at: new Date().toISOString(),
         metrics_count: Object.keys(metrics).length,
         hotspots_rendered: liveNumberHotspots.length,
+        dimensions: { width, height },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
