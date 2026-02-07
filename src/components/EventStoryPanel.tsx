@@ -684,7 +684,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                 </>
               )}
 
-              {/* Viral Journey (L01+ with full chain) */}
+              {/* Viral Journey (L01+ with full chain) - Visual numbered flow */}
               {tokenDetails.level > 0 && viralChain.length > 0 && (
                 <>
                   <Separator />
@@ -694,49 +694,72 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                       <span>Viral Journey</span>
                     </div>
 
-                    <div className="space-y-1 text-sm pl-2">
+                    <div className="space-y-0 text-sm">
+                      {/* Chain steps with numbered circles */}
                       {viralChain.map((step, idx) => {
+                        const stepNumber = idx + 1;
                         const stepIsInstance = isInstanceToken(step.token);
-                        const stepInstanceCode = stepIsInstance ? getInstanceCode(step.token) : null;
+                        const nextStep = viralChain[idx + 1];
+                        const shareMedium = nextStep?.utm_medium || (idx === viralChain.length - 1 ? tokenDetails.utm_medium : null);
+                        
                         return (
                           <div key={step.token}>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-3 h-3 text-muted-foreground" />
-                              <span>
-                                {formatShortLocation(step.city, step.region)}
-                                {step.level === 0 
-                                  ? stepIsInstance 
-                                    ? ` (origin, scan ${stepInstanceCode})` 
-                                    : " (origin)"
-                                  : ` (L${step.level.toString().padStart(2, "0")})`
-                                }
-                                {step.level === 0 && `, ${getMediumLabel(step.utm_medium)}`}
-                              </span>
+                            {/* Step row */}
+                            <div className="flex items-start gap-3 py-1">
+                              {/* Numbered circle */}
+                              <div className="w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                                {stepNumber}
+                              </div>
+                              {/* Location and context */}
+                              <div className="flex items-center gap-1.5 pt-0.5">
+                                <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                <span>
+                                  {formatShortLocation(step.city, step.region)}
+                                  {step.level === 0 ? " (origin)" : ` (L${step.level.toString().padStart(2, "0")})`}
+                                  {step.level === 0 && `, ${getMediumLabel(step.utm_medium)}`}
+                                </span>
+                              </div>
                             </div>
-                            {idx < viralChain.length && (
-                              <div className="ml-1.5 pl-0.5 text-muted-foreground flex items-center gap-1">
+                            {/* Arrow with share method */}
+                            {shareMedium && (
+                              <div className="ml-3 pl-0 text-muted-foreground flex items-center gap-1 py-0.5">
                                 <ArrowDown className="w-3 h-3" />
-                                <span className="text-xs">shared via {getMediumLabel(viralChain[idx + 1]?.utm_medium || tokenDetails.utm_medium)}</span>
+                                <span className="text-xs">shared via {getMediumLabel(shareMedium)}</span>
                               </div>
                             )}
                           </div>
                         );
                       })}
 
-                      <div className="flex items-center gap-2 font-medium">
-                        <MapPin className="w-3 h-3 text-primary" />
-                        <span>
-                          {formatShortLocation(eventDetails.city, eventDetails.region)} (L{tokenDetails.level.toString().padStart(2, "0")}) ← current
-                        </span>
+                      {/* Current event (the clicked one) - bolded */}
+                      <div className="flex items-start gap-3 py-1">
+                        {/* Numbered circle for current */}
+                        <div className="w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                          {viralChain.length + 1}
+                        </div>
+                        {/* Location - bolded to show this is the clicked event */}
+                        <div className="flex items-center gap-1.5 pt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                          <span className="font-bold">
+                            {formatShortLocation(eventDetails.city, eventDetails.region)} (L{tokenDetails.level.toString().padStart(2, "0")}) — current
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="text-sm space-y-1 pl-2">
+                    {/* Time stats */}
+                    <div className="text-sm space-y-1 pt-2">
                       {timeDelta !== null && (
-                        <div>⏱️ {formatTimeDelta(timeDelta)} since last share</div>
+                        <div className="flex items-center gap-2">
+                          <span>⏱️</span>
+                          <span>{formatTimeDelta(timeDelta)} since last share</span>
+                        </div>
                       )}
                       {originTimeDelta !== null && viralChain.length > 0 && (
-                        <div>⏱️ {formatTimeDelta(originTimeDelta)} from origin</div>
+                        <div className="flex items-center gap-2">
+                          <span>⏱️</span>
+                          <span>{formatTimeDelta(originTimeDelta)} from origin</span>
+                        </div>
                       )}
                     </div>
                   </div>
