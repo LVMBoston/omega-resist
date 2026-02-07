@@ -1,79 +1,56 @@
 
-# Plan: Unassign Campaigns and Fix iOS Rendering Race Condition
+# Fix: Missing Hotspot Controls in Solid Color Mode
 
-## Part 1: Unassign `no-kings` and `ra-intro` from the `why-protest` Deck
+## Problem
+When using **Solid Color** background mode in the Data Template Editor, all hotspot calibration controls (X/Y positioning, metric selection, font styling, etc.) disappear. The hotspots are visible on the canvas but cannot be edited.
 
-This is a database update that sets `assigned_deck_slug = NULL` for all EOAs from those two campaigns.
+## Root Cause
+The hotspot control panels are conditionally rendered with a check for `imageUrl`:
 
-**SQL Migration:**
-```sql
-UPDATE events_actions
-SET assigned_deck_slug = NULL, updated_at = NOW()
-WHERE assigned_deck_slug = 'why-protest'
-  AND campaign_id IN (
-    SELECT id FROM campaigns WHERE code IN ('no-kings', 'ra-intro')
-  );
+```tsx
+{activeHotspot && imageUrl && activeHotspot.type === "live_number" && (
+  <HotspotCalibrationControls ... />
+)}
 ```
 
-**Result**: Only the `bugtest` campaign (EOA: "L00=em Copy") will remain assigned to `why-protest`.
+In solid color mode, `imageUrl` is empty (the background is stored in `backgroundColor`), so this condition evaluates to `false` and the controls are hidden.
 
----
+## Solution
+Update the condition to account for both background modes:
 
-## Part 2: Fix iOS Text Metrics Not Rendering
+```tsx
+// Replace:
+{activeHotspot && imageUrl && ...}
 
-### The Problem
-When iOS falls back to dynamic rendering (because the snapshot failed to load), there's a race condition:
-- Hotspots render when `imageLoaded && imageDimensions.width > 0`
-- But `metricsMap` may still be incomplete
-
-Numeric metrics (like `seeds_with_spawns`) appear because they're resolved first in the async chain. Text/timestamp metrics (`campaign_name`, `earliest_active`, `latest_active`) are added later and may not be ready.
-
-### The Solution
-Modify `StatsPageSlide.tsx` to wait for metrics to fully load before rendering hotspots:
-
-1. **Add a `metricsResolved` state** that tracks when `useLiveMetrics` has completed
-2. **Gate hotspot rendering** on both `imageLoaded` AND `metricsResolved` (or `!metricsLoading`)
-3. **Show a loading indicator** while waiting for metrics
-
-### Code Changes
-
-**File: `src/components/StatsPageSlide.tsx`**
-
-```text
-Current (line 323):
-  {imageLoaded && imageDimensions.width > 0 && liveNumberHotspots.map((hotspot) => {
-
-New:
-  {imageLoaded && imageDimensions.width > 0 && !metricsLoading && liveNumberHotspots.map((hotspot) => {
+// With:
+{activeHotspot && (imageUrl || backgroundMode === "solid") && ...}
 ```
 
-This ensures hotspots only render once ALL metrics are fully resolved, preventing the partial render where numeric values appear but text/timestamps don't.
+---
+
+## Technical Changes
+
+### File: `src/components/DataTemplateEditor.tsx`
+
+**Lines 882-906** - Update all three control panel conditions:
+
+1. **Line 882** - Live Number controls:
+   - Change: `activeHotspot && imageUrl &&` 
+   - To: `activeHotspot && (imageUrl || backgroundMode === "solid") &&`
+
+2. **Line 891** - Chart controls:
+   - Change: `activeHotspot && imageUrl &&`
+   - To: `activeHotspot && (imageUrl || backgroundMode === "solid") &&`
+
+3. **Line 898** - Map controls:
+   - Change: `activeHotspot && imageUrl &&`
+   - To: `activeHotspot && (imageUrl || backgroundMode === "solid") &&`
 
 ---
 
-## Technical Details
-
-### Why This Race Condition Occurs
-
-The `useLiveMetrics` hook builds metrics sequentially:
-1. Lines 156-231: Numeric metrics (seeds, opens, shares, etc.) - **fast**
-2. Lines 233-234: `campaign_name` from `campaign.title` - requires campaign lookup
-3. Lines 243-256: `earliest_active` and `latest_active` - requires filtering/sorting events
-
-On iOS, the component may trigger a render after step 1 completes but before steps 2-3 finish.
-
-### Files to Modify
-- `src/components/StatsPageSlide.tsx` - Add loading gate for metrics
-
-### Verification
-- Test on iOS device with the `bugtest` campaign URL
-- Confirm that Name, Activity period, AND numeric metrics all appear together
-- Check that the "Loading metrics..." indicator shows briefly before content appears
-
----
-
-## Sequence of Actions
-
-1. **Create migration** to unassign `no-kings` and `ra-intro` from `why-protest`
-2. **Update `StatsPageSlide.tsx`** to gate hotspot rendering on `!metricsLoading`
-3. **Test on iOS** to verify all fields render correctly
+## Testing
+After the fix, verify:
+1. Create a new Data Template with **Solid Color** mode
+2. Add a hotspot - controls should appear
+3. X/Y sliders, metric dropdown, font settings should all be functional
+4. Switch between Solid Color and Image modes - controls should persist
