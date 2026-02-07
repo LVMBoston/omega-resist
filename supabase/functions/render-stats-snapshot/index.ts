@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
 
     console.log(`[render-stats-snapshot] Found ${liveNumberHotspots.length} live_number hotspots`);
 
-    // Fetch the base image and convert to data URL for satori
+    // Fetch the base image and convert to base64 data URL
     const baseImageUrl = template.image_url;
     console.log(`[render-stats-snapshot] Fetching base image: ${baseImageUrl}`);
     
@@ -184,34 +184,28 @@ Deno.serve(async (req) => {
     if (!bgImageResponse.ok) {
       throw new Error(`Failed to fetch base image: ${bgImageResponse.status}`);
     }
-    const bgImageBuffer = await bgImageResponse.arrayBuffer();
     
-    // Use chunked base64 encoding to avoid stack overflow
-    const uint8Array = new Uint8Array(bgImageBuffer);
-    let binaryString = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.slice(i, i + chunkSize);
-      binaryString += String.fromCharCode(...chunk);
+    const bgImageArrayBuffer = await bgImageResponse.arrayBuffer();
+    const mimeType = bgImageResponse.headers.get("content-type") || "image/jpeg";
+    console.log(`[render-stats-snapshot] Base image fetched: ${bgImageArrayBuffer.byteLength} bytes, type: ${mimeType}`);
+    
+    // Convert ArrayBuffer to base64 using TextDecoder to avoid stack overflow
+    // This is the correct way to encode large images
+    const bytes = new Uint8Array(bgImageArrayBuffer);
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
-    const base64Image = btoa(binaryString);
-    const mimeType = bgImageResponse.headers.get("content-type") || "image/png";
-    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    const base64 = btoa(binary);
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    console.log(`[render-stats-snapshot] Base64 encoded, length: ${base64.length}`);
     
-    // Decode the image to get its actual dimensions
-    // We'll use the image's natural aspect ratio to avoid distortion
-    // For now, parse dimensions from the response or use a reasonable default
-    // og_edge/satori needs explicit dimensions, so we'll scale to max 1920 width
-    const maxWidth = 1920;
-    const maxHeight = 1080;
+    // Use fixed 16:9 dimensions for OG images
+    const width = 1920;
+    const height = 1080;
     
-    // Try to get image dimensions from content - for JPEGs we can parse the header
-    // For simplicity, we'll assume 16:9 source images and scale proportionally
-    // The key fix is using objectFit: "contain" to prevent stretching
-    const width = maxWidth;
-    const height = maxHeight;
-    
-    console.log(`[render-stats-snapshot] Base image fetched, size: ${bgImageBuffer.byteLength} bytes, rendering at ${width}x${height}`);
+    console.log(`[render-stats-snapshot] Rendering at ${width}x${height}`);
 
     // Build the overlay elements for each hotspot
     const overlayElements = liveNumberHotspots.map((hotspot: any) => {
@@ -266,17 +260,14 @@ Deno.serve(async (req) => {
     });
 
     // Create all elements for the composite (background + all hotspots as siblings)
+    // Use base64 data URL for the background image
     const allElements = [
-      // Background image - use objectFit contain to preserve aspect ratio
+      // Background image using base64 data URL
       React.createElement("img", {
         key: "bg",
         src: dataUrl,
-        style: {
-          width: `${width}px`,
-          height: `${height}px`,
-          objectFit: "cover",
-          objectPosition: "center",
-        },
+        width: width,
+        height: height,
       }),
       // All hotspot overlays (each as absolutely positioned div)
       ...overlayElements
