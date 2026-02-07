@@ -677,13 +677,13 @@ export default function CampaignDashboard({
       
       if (error) throw error;
       
-      // Group by l00_instance and find latest activity
+      // Group by l00_instance and find latest activity + count spawns
       const instanceMap = new Map<string, { 
         l00_instance: string; 
         latestActivity: string; 
         city: string | null;
         state: string | null;
-        eventCount: number;
+        spawnCount: number;
       }>();
       
       tokens?.forEach((t: any) => {
@@ -693,16 +693,21 @@ export default function CampaignDashboard({
         const existing = instanceMap.get(instance);
         const mintedAt = t.minted_at;
         
-        if (!existing || new Date(mintedAt) > new Date(existing.latestActivity)) {
+        if (!existing) {
           instanceMap.set(instance, {
             l00_instance: instance,
             latestActivity: mintedAt,
             city: t.events_actions?.city || null,
             state: t.events_actions?.state || null,
-            eventCount: (existing?.eventCount || 0) + 1
+            spawnCount: 1
           });
         } else {
-          existing.eventCount++;
+          existing.spawnCount++;
+          if (new Date(mintedAt) > new Date(existing.latestActivity)) {
+            existing.latestActivity = mintedAt;
+            existing.city = t.events_actions?.city || existing.city;
+            existing.state = t.events_actions?.state || existing.state;
+          }
         }
       });
       
@@ -1296,6 +1301,7 @@ export default function CampaignDashboard({
                         return (
                           <SelectItem key={instance.l00_instance} value={instance.l00_instance}>
                             <span className="font-mono text-xs">{instanceCode}</span>
+                            <span className="text-primary font-medium ml-2">({instance.spawnCount})</span>
                             {location && <span className="text-muted-foreground ml-2">• {location}</span>}
                             <span className="text-muted-foreground ml-2">• {dateStr}</span>
                           </SelectItem>
