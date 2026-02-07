@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -106,6 +106,7 @@ export function DataTemplateEditor({
   mode,
 }: DataTemplateEditorProps) {
   const imageRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const captureContainerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -118,6 +119,14 @@ export function DataTemplateEditor({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [lastSnapshotAt, setLastSnapshotAt] = useState<Date | null>(null);
   const [lastServerRefreshAt, setLastServerRefreshAt] = useState<Date | null>(null);
+  
+  // Background mode: "image" or "solid"
+  const [backgroundMode, setBackgroundMode] = useState<"image" | "solid">(
+    initialImageUrl && !initialImageUrl.startsWith("solid:") ? "image" : "solid"
+  );
+  const [backgroundColor, setBackgroundColor] = useState(
+    initialImageUrl?.startsWith("solid:") ? initialImageUrl.replace("solid:", "") : "#1a1a2e"
+  );
 
   // Fetch campaigns using this template
   const { data: templateCampaigns = [], isLoading: campaignsLoading } = useTemplateCampaigns(savedTemplateId);
@@ -194,15 +203,18 @@ export function DataTemplateEditor({
   // Auto-save function
   const performAutoSave = useCallback(async (hotspotsToSave: Hotspot[]) => {
     // Only auto-save if we have the minimum required fields
-    if (!name.trim() || !slug.trim() || !imageUrl) {
+    const hasBackground = backgroundMode === "solid" || imageUrl;
+    if (!name.trim() || !slug.trim() || !hasBackground) {
       return;
     }
+    
+    const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
     
     setIsAutoSaving(true);
     try {
       const result = await onSave({
         hotspots: hotspotsToSave,
-        imageUrl,
+        imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
@@ -221,7 +233,7 @@ export function DataTemplateEditor({
     } finally {
       setIsAutoSaving(false);
     }
-  }, [name, slug, imageUrl, description, onSave, savedTemplateId]);
+  }, [name, slug, imageUrl, backgroundColor, backgroundMode, description, onSave, savedTemplateId]);
 
   // Update a hotspot by index
   const updateHotspot = useCallback((index: number, updates: Partial<Hotspot>) => {
@@ -344,16 +356,19 @@ export function DataTemplateEditor({
       toast.error("Template slug is required");
       return;
     }
-    if (!imageUrl) {
-      toast.error("Please upload an image");
+    const hasBackground = backgroundMode === "solid" || imageUrl;
+    if (!hasBackground) {
+      toast.error("Please set a background (image or solid color)");
       return;
     }
+
+    const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
 
     setIsSaving(true);
     try {
       await onSave({
         hotspots,
-        imageUrl,
+        imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
@@ -375,21 +390,24 @@ export function DataTemplateEditor({
       toast.error("Template slug is required");
       return;
     }
-    if (!imageUrl) {
-      toast.error("Please upload an image");
+    const hasBackground = backgroundMode === "solid" || imageUrl;
+    if (!hasBackground) {
+      toast.error("Please set a background (image or solid color)");
       return;
     }
     if (!captureContainerRef.current) {
-      toast.error("Cannot capture: image container not ready");
+      toast.error("Cannot capture: container not ready");
       return;
     }
+
+    const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
 
     setIsSaving(true);
     try {
       // First save the template to get/confirm the ID
       const result = await onSave({
         hotspots,
-        imageUrl,
+        imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
@@ -642,9 +660,84 @@ export function DataTemplateEditor({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-        {/* Image Upload / Preview */}
-        <div className="flex-1 flex items-start justify-center p-4 bg-black/95 min-h-[400px] overflow-auto">
-          {imageUrl ? (
+        {/* Background Mode Toggle + Preview */}
+        <div className="flex-1 flex flex-col items-center p-4 bg-black/95 min-h-[400px] overflow-auto">
+          {/* Background Mode Toggle */}
+          <div className="flex items-center gap-2 mb-4 capture-hide">
+            <Button
+              variant={backgroundMode === "solid" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setBackgroundMode("solid");
+                setImageLoaded(true); // Solid color is always "loaded"
+              }}
+              className="gap-1"
+            >
+              <Palette className="w-4 h-4" />
+              Solid Color
+            </Button>
+            <Button
+              variant={backgroundMode === "image" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setBackgroundMode("image");
+                setImageLoaded(!!imageUrl);
+              }}
+              className="gap-1"
+            >
+              <ImageIcon className="w-4 h-4" />
+              Image
+            </Button>
+            
+            {backgroundMode === "solid" && (
+              <div className="flex items-center gap-2 ml-4">
+                <Label className="text-sm text-muted-foreground">Color:</Label>
+                <input
+                  type="color"
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-10 h-8 rounded border border-border cursor-pointer"
+                />
+                <Input
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-24 h-8 text-xs font-mono"
+                  placeholder="#1a1a2e"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Preview Area */}
+          {backgroundMode === "solid" ? (
+            <div 
+              ref={captureContainerRef} 
+              className="relative max-w-4xl w-full rounded-lg shadow-2xl"
+              style={{ 
+                backgroundColor,
+                aspectRatio: "9/16",
+                maxHeight: "80vh"
+              }}
+            >
+              <div 
+                ref={canvasRef}
+                className="absolute inset-0"
+                style={{ backgroundColor }}
+              />
+              
+              <DraggableHotspotOverlay
+                hotspots={hotspots}
+                activeIndex={activeIndex}
+                imageRef={canvasRef as any}
+                displayValues={displayValues}
+                onUpdateHotspot={updateHotspot}
+                onSelectHotspot={setActiveIndex}
+                campaignCode={campaignId}
+                onMapBoundsChange={setCurrentMapBounds}
+                onMapControlsReady={setMapControls}
+              />
+            </div>
+          ) : imageUrl ? (
             <div ref={captureContainerRef} className="relative max-w-4xl w-full">
               <img
                 ref={imageRef}
