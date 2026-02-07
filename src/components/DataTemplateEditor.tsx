@@ -122,9 +122,12 @@ export function DataTemplateEditor({
   // Fetch campaigns using this template
   const { data: templateCampaigns = [], isLoading: campaignsLoading } = useTemplateCampaigns(savedTemplateId);
 
-  // Form state
+  // Helper to strip timestamp suffixes from slug (e.g., "template-123456" or "template-123-456")
+  const normalizeSlug = (s: string) => s.replace(/-\d{10,}(-\d{10,})?$/g, '');
+
+  // Form state - normalize slug to strip any timestamp suffixes
   const [name, setName] = useState(templateName);
-  const [slug, setSlug] = useState(templateSlug);
+  const [slug, setSlug] = useState(normalizeSlug(templateSlug));
   const [description, setDescription] = useState(templateDescription);
   const [imageUrl, setImageUrl] = useState(initialImageUrl);
 
@@ -548,16 +551,17 @@ export function DataTemplateEditor({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="template-slug" className="text-sm">
+          <Label htmlFor="template-slug" className="text-sm flex items-center gap-1.5">
             Template ID *
+            <span className="text-xs text-muted-foreground font-normal">(base name only)</span>
           </Label>
           <Input
             id="template-slug"
             value={slug}
             onChange={(e) =>
-              setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))
+              setSlug(normalizeSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")))
             }
-            placeholder="e.g., stats-page-v1"
+            placeholder="e.g., samizdat-template"
             className="h-9"
           />
         </div>

@@ -584,8 +584,10 @@ export default function InteractiveTemplates() {
       return existingId;
     } else {
       // Create new template - use direct insert to get the ID back
-      // Generate a unique slug by appending timestamp to avoid collisions
-      const uniqueSlug = `${data.slug}-${Date.now()}`;
+      // Strip any existing timestamp suffixes before appending a fresh one
+      // This handles slugs like "template-123456" or "template-123-456" (double timestamps)
+      const baseSlug = data.slug.replace(/-\d{10,}(-\d{10,})?$/g, '');
+      const uniqueSlug = `${baseSlug}-${Date.now()}`;
       
       const { data: inserted, error } = await supabase
         .from("viral_slide_configs")
