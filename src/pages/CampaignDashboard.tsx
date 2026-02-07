@@ -656,6 +656,63 @@ export default function CampaignDashboard({
   const viewsCount = eventCounts?.views || 0;
   const sharesCount = eventCounts?.shares || 0;
 
+  // Fetch L00 instances for chain filter dropdown (sorted by most recent activity)
+  const {
+    data: l00Instances
+  } = useQuery({
+    queryKey: ["l00Instances", selectedCampaignId, dataSourceFilter],
+    queryFn: async () => {
+      // Get all unique l00_instance values with their latest activity
+      const { data: tokens, error } = await supabase
+        .from("tokens")
+        .select(`
+          l00_instance,
+          minted_at,
+          eoa_id,
+          events_actions!inner(campaign_id, city, state)
+        `)
+        .eq("events_actions.campaign_id", selectedCampaignId)
+        .eq("is_simulated", dataSourceFilter === "simulated")
+        .not("l00_instance", "is", null);
+      
+      if (error) throw error;
+      
+      // Group by l00_instance and find latest activity
+      const instanceMap = new Map<string, { 
+        l00_instance: string; 
+        latestActivity: string; 
+        city: string | null;
+        state: string | null;
+        eventCount: number;
+      }>();
+      
+      tokens?.forEach((t: any) => {
+        const instance = t.l00_instance;
+        if (!instance) return;
+        
+        const existing = instanceMap.get(instance);
+        const mintedAt = t.minted_at;
+        
+        if (!existing || new Date(mintedAt) > new Date(existing.latestActivity)) {
+          instanceMap.set(instance, {
+            l00_instance: instance,
+            latestActivity: mintedAt,
+            city: t.events_actions?.city || null,
+            state: t.events_actions?.state || null,
+            eventCount: (existing?.eventCount || 0) + 1
+          });
+        } else {
+          existing.eventCount++;
+        }
+      });
+      
+      // Convert to array and sort by latest activity (most recent first)
+      return Array.from(instanceMap.values())
+        .sort((a, b) => new Date(b.latestActivity).getTime() - new Date(a.latestActivity).getTime());
+    },
+    enabled: !!selectedCampaignId
+  });
+
   // Fetch EventsV2 data
   const {
     data: eventsV2Data,
@@ -1203,6 +1260,62 @@ export default function CampaignDashboard({
                     Hide L00 with No Spawns
                   </Label>
                   <span className="text-xs text-muted-foreground">(L00 events that didn't generate shares)</span>
+                </div>
+
+                {/* L00 Instance Filter Dropdown */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Filter by Viral Chain</label>
+                  <Select 
+                    value={selectedL00Instance || "all"} 
+                    onValueChange={(value) => {
+                      if (value === "all") {
+                        // Clear the chain filter
+                        setChainFilter(null, null);
+                        setSelectedL00Instance(null);
+                      } else {
+                        // Set the chain filter - extract a token from this instance for the URL
+                        const instance = l00Instances?.find(i => i.l00_instance === value);
+                        if (instance) {
+                          // Use the l00_instance as the chainToken (it will resolve correctly)
+                          setChainFilter(value, value);
+                          setSelectedL00Instance(value);
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="All chains" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px] bg-popover z-50">
+                      <SelectItem value="all">All chains</SelectItem>
+                      {l00Instances?.map((instance) => {
+                        const instanceCode = instance.l00_instance.split(':')[1] || instance.l00_instance.slice(-6);
+                        const location = [instance.city, instance.state].filter(Boolean).join(', ');
+                        const date = new Date(instance.latestActivity);
+                        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                        return (
+                          <SelectItem key={instance.l00_instance} value={instance.l00_instance}>
+                            <span className="font-mono text-xs">{instanceCode}</span>
+                            {location && <span className="text-muted-foreground ml-2">• {location}</span>}
+                            <span className="text-muted-foreground ml-2">• {dateStr}</span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {selectedL00Instance && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 text-xs"
+                      onClick={() => {
+                        setChainFilter(null, null);
+                        setSelectedL00Instance(null);
+                      }}
+                    >
+                      Clear chain filter
+                    </Button>
+                  )}
                 </div>
 
                 <div>
