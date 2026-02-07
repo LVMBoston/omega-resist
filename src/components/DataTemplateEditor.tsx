@@ -879,7 +879,7 @@ export function DataTemplateEditor({
           </div>
 
         {/* Active Hotspot Controls - different controls for different types */}
-        {activeHotspot && imageUrl && activeHotspot.type === "live_number" && (
+        {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "live_number" && (
           <HotspotCalibrationControls
             hotspot={activeHotspot}
             displayValue={displayValues[activeHotspot.id] || "0"}
@@ -888,14 +888,14 @@ export function DataTemplateEditor({
           />
         )}
         
-        {activeHotspot && imageUrl && activeHotspot.type === "chart" && (
+        {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "chart" && (
           <ChartCalibrationControls
             hotspot={activeHotspot}
             onUpdate={(updates) => updateHotspot(activeIndex, updates)}
           />
         )}
 
-        {activeHotspot && imageUrl && activeHotspot.type === "map" && (
+        {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "map" && (
           <MapCalibrationControls
             hotspot={activeHotspot}
             onUpdate={(updates) => updateHotspot(activeIndex, updates)}
