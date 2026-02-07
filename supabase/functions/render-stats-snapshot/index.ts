@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import React from "https://esm.sh/react@18.2.0";
+import { ImageResponse } from "https://deno.land/x/og_edge@0.0.6/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,99 +128,72 @@ Deno.serve(async (req) => {
 
     // Parse hotspots from template
     const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
-    console.log(`[render-stats-snapshot] Processing ${hotspots.length} hotspots`);
+    console.log(`[render-stats-snapshot] Processing ${hotspots.length} text hotspots`);
 
-    // Fetch background image using Supabase storage client
-    // Extract bucket and path from URL
+    // Build the image URL for background
     const imageUrl = template.image_url as string;
-    console.log("[render-stats-snapshot] Fetching background image:", imageUrl);
-    
-    // Parse the storage URL to get bucket and path
-    const storageMatch = imageUrl.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
-    let imageBytes: Uint8Array;
-    
-    if (storageMatch) {
-      const [, bucket, path] = storageMatch;
-      const { data, error } = await supabase.storage.from(bucket).download(path);
-      if (error || !data) {
-        console.error("[render-stats-snapshot] Storage download failed:", error);
-        throw new Error(`Failed to download image: ${error?.message}`);
-      }
-      imageBytes = new Uint8Array(await data.arrayBuffer());
-    } else {
-      // Fallback to direct fetch for external URLs
-      const imageResponse = await fetch(imageUrl);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
-      }
-      imageBytes = new Uint8Array(await imageResponse.arrayBuffer());
-    }
-    
-    // Use chunked base64 encoding to handle large images
-    let base64Image = "";
-    const chunkSize = 32768;
-    for (let i = 0; i < imageBytes.length; i += chunkSize) {
-      const chunk = imageBytes.slice(i, i + chunkSize);
-      base64Image += btoa(String.fromCharCode.apply(null, [...chunk]));
-    }
-    
-    const contentType = "image/jpeg"; // Assume JPEG for slides
-    const imageDataUri = `data:${contentType};base64,${base64Image}`;
-    console.log(`[render-stats-snapshot] Image fetched: ${imageBytes.length} bytes`);
+    console.log("[render-stats-snapshot] Background image URL:", imageUrl);
 
-    // Portrait dimensions for mobile (1080x1920)
+    // Target dimensions (portrait for mobile)
     const width = 1080;
     const height = 1920;
-    
-    // Build SVG with embedded background image and text overlays
-    const hotspotSvgElements = hotspots.map((hotspot: any) => {
-      const metricValue = metrics[hotspot.metric] ?? "—";
-      const x = (hotspot.x / 100) * width;
-      const y = (hotspot.y / 100) * height;
-      const hsWidth = ((hotspot.width || 10) / 100) * width;
-      const hsHeight = ((hotspot.height || 5) / 100) * height;
-      
-      // Calculate text anchor and alignment
-      const textAnchor = hotspot.textAlign === "left" ? "start" : 
-                        hotspot.textAlign === "right" ? "end" : "middle";
-      const textX = hotspot.textAlign === "left" ? x : 
-                   hotspot.textAlign === "right" ? x + hsWidth : x + hsWidth / 2;
-      
-      // Vertical alignment
-      const dominantBaseline = hotspot.verticalAlign === "top" ? "hanging" :
-                              hotspot.verticalAlign === "bottom" ? "auto" : "central";
-      const textY = hotspot.verticalAlign === "top" ? y :
-                   hotspot.verticalAlign === "bottom" ? y + hsHeight : y + hsHeight / 2;
-      
-      // Escape special characters in metric value for XML
-      const escapedValue = String(metricValue)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      
-      return `<text 
-        x="${textX}" 
-        y="${textY}" 
-        font-family="Inter, system-ui, sans-serif" 
-        font-size="${hotspot.fontSize || 24}" 
-        font-weight="${hotspot.fontWeight === "bold" ? "700" : "400"}"
-        fill="${hotspot.color || "#000000"}"
-        text-anchor="${textAnchor}"
-        dominant-baseline="${dominantBaseline}"
-      >${escapedValue}</text>`;
-    }).join("\n");
 
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <image href="${imageDataUri}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>
-  ${hotspotSvgElements}
-</svg>`;
+    // Build hotspot elements for JSX rendering
+    const hotspotElements = hotspots
+      .filter((h: any) => h.type !== "chart" && h.type !== "map") // Only text/number hotspots
+      .map((hotspot: any, idx: number) => {
+        const metricValue = metrics[hotspot.metric] ?? "—";
+        const x = (hotspot.x / 100) * width;
+        const y = (hotspot.y / 100) * height;
+        const hsWidth = ((hotspot.width || 10) / 100) * width;
+        const hsHeight = ((hotspot.height || 5) / 100) * height;
 
-    console.log("[render-stats-snapshot] SVG generated");
+        // Alignment styles
+        const justifyContent = hotspot.textAlign === "left" ? "flex-start" :
+                              hotspot.textAlign === "right" ? "flex-end" : "center";
+        const alignItems = hotspot.verticalAlign === "top" ? "flex-start" :
+                          hotspot.verticalAlign === "bottom" ? "flex-end" : "center";
 
-    // Convert SVG to PNG using deno.land/x/resvg_wasm
-    const { render } = await import("https://deno.land/x/resvg_wasm@0.2.0/mod.ts");
-    const pngBuffer = await render(svg);
+        return React.createElement("div", {
+          key: idx,
+          style: {
+            position: "absolute",
+            left: x,
+            top: y,
+            width: hsWidth,
+            height: hsHeight,
+            display: "flex",
+            justifyContent,
+            alignItems,
+            fontFamily: "Inter, sans-serif",
+            fontSize: hotspot.fontSize || 24,
+            fontWeight: hotspot.fontWeight === "bold" ? 700 : 400,
+            color: hotspot.color || "#000000",
+          }
+        }, String(metricValue));
+      });
+
+    // Create JSX element with background image and hotspot overlays
+    const element = React.createElement("div", {
+      style: {
+        width,
+        height,
+        display: "flex",
+        position: "relative",
+        backgroundImage: `url(${imageUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    }, ...hotspotElements);
+
+    // Generate PNG using og_edge (Satori + resvg under the hood)
+    const imageResponse = new ImageResponse(element, {
+      width,
+      height,
+    });
+
+    // Get the PNG buffer from the response
+    const pngBuffer = new Uint8Array(await imageResponse.arrayBuffer());
     console.log(`[render-stats-snapshot] PNG generated: ${pngBuffer.length} bytes`);
 
     // Upload to storage
