@@ -500,14 +500,19 @@ export default function DeckEditor() {
     if (!slug) return;
 
     try {
-      // Download template image for validation only
-      const response = await fetch(template.image_url);
-      const blob = await response.blob();
+      // Check if this is a solid color background (no image to validate)
+      const isSolidColor = template.image_url.startsWith('solid:');
+      
+      if (!isSolidColor) {
+        // Download template image for validation only
+        const response = await fetch(template.image_url);
+        const blob = await response.blob();
 
-      const validation = await validateImage(blob);
-      if (!validation.valid) {
-        toast.error(validation.error);
-        return;
+        const validation = await validateImage(blob);
+        if (!validation.valid) {
+          toast.error(validation.error);
+          return;
+        }
       }
 
       const targetPosition = slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1;
