@@ -663,7 +663,7 @@ export default function CampaignDashboard({
     queryKey: ["l00Instances", selectedCampaignId, dataSourceFilter],
     queryFn: async () => {
       // Get all unique l00_instance values with their latest activity
-      const { data: tokens, error } = await supabase
+      let query = supabase
         .from("tokens")
         .select(`
           l00_instance,
@@ -672,8 +672,17 @@ export default function CampaignDashboard({
           events_actions!inner(campaign_id, city, state)
         `)
         .eq("events_actions.campaign_id", selectedCampaignId)
-        .eq("is_simulated", dataSourceFilter === "simulated")
         .not("l00_instance", "is", null);
+      
+      // Apply data source filter
+      if (dataSourceFilter === "real") {
+        query = query.eq("is_simulated", false);
+      } else if (dataSourceFilter === "simulated") {
+        query = query.eq("is_simulated", true);
+      }
+      // "both" - no filter applied
+      
+      const { data: tokens, error } = await query;
       
       if (error) throw error;
       
