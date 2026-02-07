@@ -934,7 +934,7 @@ export function DataTemplateEditor({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving || isAutoSaving || isCapturing || !imageUrl || !name || !slug}
+              disabled={isSaving || isAutoSaving || isCapturing || !(imageUrl || backgroundMode === "solid") || !name || !slug}
               variant="outline"
             >
               {isSaving && !isCapturing
@@ -945,7 +945,7 @@ export function DataTemplateEditor({
             </Button>
             <Button
               onClick={handleSaveAndCapture}
-              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !imageUrl || !name || !slug}
+              disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !(imageUrl || backgroundMode === "solid") || !name || !slug}
               className="bg-blue-600 hover:bg-blue-700 gap-1"
             >
               <Camera className="w-4 h-4" />
