@@ -85,7 +85,8 @@ export const StatsPageSlide = ({
   const getCampaignSnapshotUrl = (code: string): string | null => {
     if (!templateId || !code) return null;
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
+    // Snapshots are saved as .webp by snapshotCapture.ts
+    return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.webp`;
   };
 
   // Resolve campaign from viralToken or deckSlug and optionally resolve metrics
