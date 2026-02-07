@@ -1,116 +1,176 @@
 
+# Documentation Plan: Privacy-Preserving IP Capture for Geolocation Recovery
 
-# Edge Function Health Check System
+## Overview
 
-## Summary
-Create a comprehensive health check page that tests all 10 edge functions and provides visual status for monitoring. This ensures you can quickly verify all backend functions are operational.
+This plan creates a new documentation file (`docs/IP_CAPTURE_PRIVACY_ARCHITECTURE.md`) that explains the problem, the privacy-first solution, and provides technical reference for the implementation.
 
-## What Was Just Completed
+---
 
-All 10 edge functions have been deployed:
-- deploy-template-snapshots
-- fetch-mobilize-event
-- generate-campaign-pdf
-- geoip
-- get-mapbox-token
-- import-google-slides
-- import-powerpoint
-- import-zip-codes
-- render-stats-snapshot
-- reverse-geocode
+## Document Structure
 
-## Health Check Page Features
+### 1. Executive Summary
+- Problem statement: Geolocation failures leave events unrecoverable
+- Privacy commitment: IP addresses are toxic PII that must not persist
+- Solution: Temporary IP capture with automatic deletion triggers
 
-### Visual Status Dashboard
-- Grid of cards showing each edge function
-- Color-coded status indicators: green (healthy), red (failed), yellow (testing)
-- Response time displayed for each function
-- Last tested timestamp
-- "Test All" button to run health checks on all functions
-- Individual "Test" buttons for each function
+### 2. The Problem
 
-### Test Methods by Function
+**The Data Loss Scenario**
+When the `geoip` edge function fails (network issues, API rate limits, service outage), events were previously logged with:
+- `ip_address: NULL`
+- `zip_code: NULL`
+- `latitude/longitude: NULL`
 
-| Function | Test Method | Expected Response |
-|----------|-------------|-------------------|
-| geoip | POST (empty body) | JSON with ip, latitude, longitude |
-| reverse-geocode | POST with test coordinates | JSON with city, zip_code |
-| get-mapbox-token | POST | JSON with token field |
-| fetch-mobilize-event | POST with test event ID | JSON response |
-| render-stats-snapshot | POST (basic test) | 200 status |
-| deploy-template-snapshots | POST (basic test) | 200 status |
-| generate-campaign-pdf | POST (basic test) | 200 status |
-| import-zip-codes | POST (basic test) | 200 status |
-| import-google-slides | POST (basic test) | 401 or 200 (JWT required) |
-| import-powerpoint | POST (basic test) | 401 or 200 (JWT required) |
+Once logged without an IP address, these events became **permanently unrecoverable** - no backfill process could ever determine their geographic origin.
 
-### Implementation Details
+**Evidence from Production**
+- Audit of campaign `4d7a58f3-255c-4aec-9f1b-3aa030f00067` revealed 7 "unknown" events
+- All 7 had `ip_address: NULL` - the source data was never captured
+- No technical path exists to recover their location
 
-#### New File: `src/pages/EdgeFunctionHealth.tsx`
-A dedicated health monitoring page that:
-1. Lists all 10 edge functions with their configuration (JWT required or not)
-2. Tests each function with a lightweight request
-3. Shows pass/fail status, response time, and error details
-4. Provides a "Deploy All" instruction reminder
-5. Auto-refreshes status periodically (optional toggle)
+### 3. Privacy Requirements (CRITICAL SECTION)
 
-#### Route Addition: `src/App.tsx`
-Add route at `/edge-health` accessible to admins.
+**Why IP Addresses Are Sensitive**
+- IP addresses are classified as Personally Identifiable Information (PII)
+- Combined with timestamps, they can identify individual users
+- Regulatory frameworks (GDPR, CCPA) require minimization of PII retention
+- Long-term storage creates legal liability and breach exposure
 
-#### Integration with Sidebar
-Add a "System Health" link under the admin section of the sidebar.
+**Privacy Principles for This System**
+1. **Data Minimization**: Capture only what's needed for recovery
+2. **Purpose Limitation**: IP stored solely as a geocoding lookup key
+3. **Automatic Deletion**: Database-enforced purge once zip code is resolved
+4. **No Manual Intervention**: Privacy cleanup cannot be forgotten or bypassed
 
-## Files to Create/Modify
+### 4. Technical Architecture
 
-1. **Create** `src/pages/EdgeFunctionHealth.tsx` - Health check dashboard
-2. **Modify** `src/App.tsx` - Add route for `/edge-health`
-3. **Modify** `src/components/AppSidebar.tsx` - Add navigation link
-
-## UI Design
-
+**Data Flow Diagram**
 ```text
-+------------------------------------------+
-|        Edge Function Health Check        |
-|  Last checked: 2 minutes ago    [Test All]|
-+------------------------------------------+
-|                                          |
-|  +--------+  +--------+  +--------+      |
-|  | geoip  |  |reverse |  |mapbox  |      |
-|  |   OK   |  |geocode |  | token  |      |
-|  | 156ms  |  |   OK   |  |   OK   |      |
-|  +--------+  | 234ms  |  |  89ms  |      |
-|              +--------+  +--------+      |
-|                                          |
-|  +--------+  +--------+  +--------+      |
-|  |mobilize|  |snapshot|  |deploy  |      |
-|  | event  |  | render |  |snapshot|      |
-|  |   OK   |  |   OK   |  |   OK   |      |
-|  | 445ms  |  | 892ms  |  | 123ms  |      |
-|  +--------+  +--------+  +--------+      |
-|                                          |
-|  +--------+  +--------+  +--------+      |
-|  |campaign|  | import |  | import |      |
-|  |  pdf   |  | slides |  |  pptx  |      |
-|  |   OK   |  | AUTH   |  | AUTH   |      |
-|  | 234ms  |  | (jwt)  |  | (jwt)  |      |
-|  +--------+  +--------+  +--------+      |
-|                                          |
-|  +--------+                              |
-|  | import |                              |
-|  |zipcodes|                              |
-|  |   OK   |                              |
-|  | 567ms  |                              |
-|  +--------+                              |
-+------------------------------------------+
++----------------+     +------------------+     +----------------+
+|  User Device   | --> |  geoip function  | --> |  url_events    |
+|  (IP visible)  |     |  (returns IP)    |     |  (stores IP    |
+|                |     |                  |     |   temporarily) |
++----------------+     +------------------+     +----------------+
+                                                       |
+                                                       v
+                                              +----------------+
+                                              |  DB Trigger    |
+                                              |  (clears IP    |
+                                              |   when zip     |
+                                              |   populated)   |
+                                              +----------------+
 ```
 
-## Why Functions Become Inactive
+**Component 1: geoip Edge Function Enhancement**
+- File: `supabase/functions/geoip/index.ts`
+- Change: Now returns `ip` field in response (line 61)
+- The IP is extracted from request headers (`x-forwarded-for`, `x-real-ip`, etc.)
 
-For reference, edge functions can become inactive due to:
-- Platform updates requiring redeployment
-- Cold start timeouts on the hosting infrastructure
-- Failed previous deployments due to syntax/import errors
-- Manual deletion from the dashboard (if accessed externally)
+**Component 2: Frontend IP Capture**
+- File: `src/lib/virality/mint.ts`
+- New interface: `GeoLocationDataWithIP` extends `GeoLocationData` with `ip: string | null`
+- Logic: IP is passed to `logEvent()` only if zip code is not already resolved
+- Smart handling: GPS-based locations don't need IP (already have accurate location)
 
-The health check page provides early warning when functions stop responding.
+**Component 3: Database Privacy Triggers**
 
+*Trigger 1: clear_ip_on_insert_trigger*
+```sql
+CREATE TRIGGER clear_ip_on_insert_trigger
+  BEFORE INSERT ON public.url_events
+  FOR EACH ROW
+  EXECUTE FUNCTION public.clear_ip_on_insert_if_zip_exists();
+```
+Function logic:
+```sql
+BEGIN
+  IF NEW.zip_code IS NOT NULL THEN
+    NEW.ip_address := NULL;
+  END IF;
+  RETURN NEW;
+END;
+```
+
+*Trigger 2: clear_ip_when_zip_populated_trigger*
+```sql
+CREATE TRIGGER clear_ip_when_zip_populated_trigger
+  BEFORE UPDATE ON public.url_events
+  FOR EACH ROW
+  EXECUTE FUNCTION public.clear_ip_when_zip_populated();
+```
+Function logic:
+```sql
+BEGIN
+  IF OLD.zip_code IS NULL AND NEW.zip_code IS NOT NULL THEN
+    NEW.ip_address := NULL;
+  END IF;
+  RETURN NEW;
+END;
+```
+
+### 5. Privacy Guarantees
+
+**What This Architecture Ensures**
+| Scenario | IP Stored? | IP Retention |
+|----------|-----------|--------------|
+| Geolocation succeeds on first try | NO | Never stored |
+| GPS provides accurate location | NO | Never stored |
+| Geolocation fails, later backfilled | YES → NO | Until backfill completes |
+| Geolocation permanently fails | YES | See "Cleanup Job" below |
+
+**The Safety Net**
+- IP is only stored when zip_code cannot be determined
+- Once zip_code is set (by insert OR update), IP is immediately cleared
+- This is enforced at the DATABASE level - not dependent on application code
+
+### 6. Future Work: Backfill Job
+
+**Purpose**
+Periodically retry geocoding for events that have `ip_address IS NOT NULL` but `zip_code IS NULL`.
+
+**Proposed Implementation**
+- Edge function or scheduled job queries events with IP but no zip
+- Calls geoip service to resolve location
+- Updates event with location data
+- Database trigger automatically clears IP when zip is set
+
+**Cleanup Job (for permanently unresolvable IPs)**
+- After N days, clear IP addresses that could never be resolved
+- Prevents indefinite PII retention for edge cases
+- Recommended: 30-day maximum retention
+
+### 7. Critical Files Reference
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/geoip/index.ts` | Returns IP in response for frontend capture |
+| `src/lib/virality/mint.ts` | Captures IP from geoip, passes to logEvent |
+| `supabase/migrations/20260206231557_*.sql` | Creates privacy triggers |
+
+### 8. Verification Checklist
+
+- [ ] Events with successful geolocation have `ip_address: NULL`
+- [ ] Events with failed geolocation have `ip_address` populated
+- [ ] After manual backfill, IP is cleared when zip is set
+- [ ] New events via GPS never store IP addresses
+
+---
+
+## Files to Create
+
+**`docs/IP_CAPTURE_PRIVACY_ARCHITECTURE.md`**
+- Full documentation following the structure above
+- Approximately 200-250 lines
+- Includes code samples, diagrams, and verification steps
+
+---
+
+## Implementation Notes
+
+This is a documentation-only change. No code modifications required - the implementation was completed in the previous message. This document serves as:
+
+1. **Architectural record** for future developers
+2. **Privacy compliance evidence** for audits
+3. **Troubleshooting guide** for debugging location issues
+4. **Reference material** for the memory system
