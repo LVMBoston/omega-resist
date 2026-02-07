@@ -77,10 +77,6 @@ export const StatsPageSlide = ({
     offsetY: 0 
   });
 
-  // Determine if we should use the cached snapshot
-  // Note: We now build the campaign-specific URL dynamically using templateId + campaignCode
-  // so we don't rely on the shared cachedSnapshotPath field which gets overwritten
-  const [snapshotReady, setSnapshotReady] = useState(false);
 
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
@@ -226,6 +222,14 @@ export const StatsPageSlide = ({
     extractCampaignCode();
   }, [viralToken, deckSlug]);
 
+  // Snapshot loading state for error handling and fallback
+  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
+
+  // Reset snapshot failure state when campaign changes
+  useEffect(() => {
+    setSnapshotLoadFailed(false);
+  }, [campaignCode]);
+
   // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
   const campaignSnapshotUrl = campaignCode && templateId 
     ? getCampaignSnapshotUrl(campaignCode)
@@ -234,10 +238,10 @@ export const StatsPageSlide = ({
   // Determine if we should use the cached snapshot
   // On mobile: always use snapshot if available (regardless of freshness) to avoid layout issues
   // On desktop: use snapshot only if enabled and fresh
-  const shouldUseCachedSnapshot = campaignSnapshotUrl && (
-    isMobile || // Mobile always uses snapshot when available
-    (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes))
-  );
+  // CRITICAL: Skip snapshot if previous load attempt failed (triggers fallback to dynamic)
+  const shouldUseCachedSnapshot = campaignSnapshotUrl && 
+    !snapshotLoadFailed && // Skip if snapshot failed to load
+    (isMobile || (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes)));
 
   // Mobile loading gate: wait for campaign resolution before rendering
   // This prevents broken dynamic rendering before snapshot URL is available
@@ -252,7 +256,7 @@ export const StatsPageSlide = ({
     );
   }
 
-  // If using cached snapshot, render simple static image
+  // If using cached snapshot, render simple static image with error handling
   if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
     console.log(`📊 StatsPageSlide: Rendering snapshot (mobile=${isMobile}):`, campaignSnapshotUrl);
     
@@ -265,6 +269,10 @@ export const StatsPageSlide = ({
           src={campaignSnapshotUrl}
           alt="Stats page (cached)"
           className="max-w-full max-h-full object-contain"
+          onError={() => {
+            console.warn(`📊 StatsPageSlide: Snapshot failed to load, falling back to dynamic rendering:`, campaignSnapshotUrl);
+            setSnapshotLoadFailed(true);
+          }}
         />
       </div>
     );
