@@ -1,4 +1,5 @@
 import html2canvas from "html2canvas";
+import imageCompression from "browser-image-compression";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CaptureResult {
@@ -7,7 +8,8 @@ export interface CaptureResult {
 }
 
 /**
- * Captures a template's visual content as a WebP image and uploads to storage.
+ * Captures a template's visual content as a compressed PNG image and uploads to storage.
+ * Uses browser-image-compression for optimal file size while maintaining quality.
  * 
  * @param templateId - The ID of the template being captured
  * @param containerElement - The DOM element to capture (should contain the rendered template)
@@ -65,23 +67,35 @@ export async function captureTemplateSnapshot(
   });
 
 
-  // Convert to WebP with quality targeting ~500KB
-  const blob = await new Promise<Blob>((resolve, reject) => {
+  // Convert canvas to PNG blob first
+  const rawBlob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (b) => {
         if (b) resolve(b);
         else reject(new Error("Failed to create blob from canvas"));
       },
-      "image/webp",
-      0.85 // Quality setting
+      "image/png"
     );
   });
+
+  // Compress the PNG using browser-image-compression (same approach as zip imports)
+  const compressedBlob = await imageCompression(
+    new File([rawBlob], "snapshot.png", { type: "image/png" }),
+    {
+      maxSizeMB: 0.5, // Target ~500KB
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      fileType: "image/png",
+    }
+  );
+
+  console.log(`[snapshotCapture] Compressed from ${(rawBlob.size / 1024).toFixed(0)}KB to ${(compressedBlob.size / 1024).toFixed(0)}KB`);
 
   // Generate storage path - use slide-snapshots bucket directly
   const timestamp = new Date().toISOString();
   const fileName = campaignCode 
-    ? `snapshot-${campaignCode}.webp`
-    : "latest.webp";
+    ? `snapshot-${campaignCode}.png`
+    : "latest.png";
   const storagePath = `${templateId}/${fileName}`;
 
   console.log("[snapshotCapture] Uploading to slide-snapshots bucket:", storagePath);
@@ -89,10 +103,10 @@ export async function captureTemplateSnapshot(
   // Upload to storage (upsert - replace if exists)
   const { error: uploadError } = await supabase.storage
     .from("slide-snapshots")
-    .upload(storagePath, blob, {
+    .upload(storagePath, compressedBlob, {
       cacheControl: "300", // 5 minute cache
       upsert: true,
-      contentType: "image/webp",
+      contentType: "image/png",
     });
 
   if (uploadError) {
