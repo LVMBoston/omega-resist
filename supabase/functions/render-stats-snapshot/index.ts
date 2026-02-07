@@ -83,6 +83,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   const now = new Date();
   metrics.current_date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
   return metrics;
 }
@@ -123,21 +124,133 @@ Deno.serve(async (req) => {
     const metrics = await calculateMetrics(supabase, campaign_code);
     console.log("[render-stats-snapshot] Metrics calculated:", Object.keys(metrics).length);
 
-    // Store metrics snapshot as JSON (server-side image rendering deferred to Phase 2)
-    // Mobile devices will use dynamic rendering with cached metrics
-    const snapshotData = {
-      template_id,
-      campaign_code,
-      metrics,
-      rendered_at: new Date().toISOString(),
-      hotspots: template.hotspots,
-      image_url: template.image_url,
-    };
+    // Parse hotspots from template
+    const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
+    console.log(`[render-stats-snapshot] Processing ${hotspots.length} hotspots`);
 
-    // Update template with snapshot timestamp (signals fresh data available)
+    // Fetch background image using Supabase storage client
+    // Extract bucket and path from URL
+    const imageUrl = template.image_url as string;
+    console.log("[render-stats-snapshot] Fetching background image:", imageUrl);
+    
+    // Parse the storage URL to get bucket and path
+    const storageMatch = imageUrl.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/);
+    let imageBytes: Uint8Array;
+    
+    if (storageMatch) {
+      const [, bucket, path] = storageMatch;
+      const { data, error } = await supabase.storage.from(bucket).download(path);
+      if (error || !data) {
+        console.error("[render-stats-snapshot] Storage download failed:", error);
+        throw new Error(`Failed to download image: ${error?.message}`);
+      }
+      imageBytes = new Uint8Array(await data.arrayBuffer());
+    } else {
+      // Fallback to direct fetch for external URLs
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+      }
+      imageBytes = new Uint8Array(await imageResponse.arrayBuffer());
+    }
+    
+    // Use chunked base64 encoding to handle large images
+    let base64Image = "";
+    const chunkSize = 32768;
+    for (let i = 0; i < imageBytes.length; i += chunkSize) {
+      const chunk = imageBytes.slice(i, i + chunkSize);
+      base64Image += btoa(String.fromCharCode.apply(null, [...chunk]));
+    }
+    
+    const contentType = "image/jpeg"; // Assume JPEG for slides
+    const imageDataUri = `data:${contentType};base64,${base64Image}`;
+    console.log(`[render-stats-snapshot] Image fetched: ${imageBytes.length} bytes`);
+
+    // Portrait dimensions for mobile (1080x1920)
+    const width = 1080;
+    const height = 1920;
+    
+    // Build SVG with embedded background image and text overlays
+    const hotspotSvgElements = hotspots.map((hotspot: any) => {
+      const metricValue = metrics[hotspot.metric] ?? "—";
+      const x = (hotspot.x / 100) * width;
+      const y = (hotspot.y / 100) * height;
+      const hsWidth = ((hotspot.width || 10) / 100) * width;
+      const hsHeight = ((hotspot.height || 5) / 100) * height;
+      
+      // Calculate text anchor and alignment
+      const textAnchor = hotspot.textAlign === "left" ? "start" : 
+                        hotspot.textAlign === "right" ? "end" : "middle";
+      const textX = hotspot.textAlign === "left" ? x : 
+                   hotspot.textAlign === "right" ? x + hsWidth : x + hsWidth / 2;
+      
+      // Vertical alignment
+      const dominantBaseline = hotspot.verticalAlign === "top" ? "hanging" :
+                              hotspot.verticalAlign === "bottom" ? "auto" : "central";
+      const textY = hotspot.verticalAlign === "top" ? y :
+                   hotspot.verticalAlign === "bottom" ? y + hsHeight : y + hsHeight / 2;
+      
+      // Escape special characters in metric value for XML
+      const escapedValue = String(metricValue)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      
+      return `<text 
+        x="${textX}" 
+        y="${textY}" 
+        font-family="Inter, system-ui, sans-serif" 
+        font-size="${hotspot.fontSize || 24}" 
+        font-weight="${hotspot.fontWeight === "bold" ? "700" : "400"}"
+        fill="${hotspot.color || "#000000"}"
+        text-anchor="${textAnchor}"
+        dominant-baseline="${dominantBaseline}"
+      >${escapedValue}</text>`;
+    }).join("\n");
+
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <image href="${imageDataUri}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>
+  ${hotspotSvgElements}
+</svg>`;
+
+    console.log("[render-stats-snapshot] SVG generated");
+
+    // Convert SVG to PNG using deno.land/x/resvg_wasm
+    const { render } = await import("https://deno.land/x/resvg_wasm@0.2.0/mod.ts");
+    const pngBuffer = await render(svg);
+    console.log(`[render-stats-snapshot] PNG generated: ${pngBuffer.length} bytes`);
+
+    // Upload to storage
+    const storagePath = `${template_id}/snapshot-${campaign_code}.png`;
+    const { error: uploadError } = await supabase.storage
+      .from("slide-snapshots")
+      .upload(storagePath, pngBuffer, {
+        cacheControl: "300",
+        upsert: true,
+        contentType: "image/png",
+      });
+
+    if (uploadError) {
+      console.error("[render-stats-snapshot] Upload error:", uploadError);
+      throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from("slide-snapshots")
+      .getPublicUrl(storagePath);
+
+    console.log("[render-stats-snapshot] Uploaded to:", publicUrl);
+
+    // Update template with snapshot path and timestamp
+    const now = new Date().toISOString();
     await supabase
       .from("viral_slide_configs")
-      .update({ snapshot_rendered_at: new Date().toISOString() })
+      .update({ 
+        cached_snapshot_path: publicUrl,
+        snapshot_rendered_at: now,
+      })
       .eq("id", template_id);
 
     console.log(`[render-stats-snapshot] Complete for campaign: ${campaign_code}`);
@@ -145,9 +258,10 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        rendered_at: snapshotData.rendered_at,
+        rendered_at: now,
+        snapshot_url: publicUrl,
         metrics_count: Object.keys(metrics).length,
-        note: "Server-side image rendering pending - mobile uses dynamic rendering with retry logic",
+        size_bytes: pngBuffer.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
