@@ -2,18 +2,38 @@
 
 ## Problem Summary
 
-Data Templates on iOS Safari show **partial data** - some metrics render while others show placeholders:
+Data Templates on iOS Safari show **blank screens** (iPhone: white, iPad: black):
 
-- **Working**: Token-based metrics (seeds, shares, levels)
-- **NOT working**: Campaign name, activity dates, opens, ZIP codes
+1. **Original Issue**: Race conditions in dynamic rendering
+2. **Snapshot Issue**: Satori/og_edge produces blank images when using `<img>` elements
 
-Root cause: Race conditions in dynamic rendering where some Supabase queries complete while others fail or timeout on iOS Safari.
+Root cause: Satori does NOT render `<img>` elements reliably - must use CSS `backgroundImage` instead.
 
 ---
 
-## Solution: Server-Side Snapshot Rendering with Retry Logic
+## Solution: Multi-Part Fix
 
-Since snapshots are pre-rendered and cached, we have unlimited time to ensure data completeness. The edge function can retry failed queries without affecting user-perceived latency.
+### Part 0: Satori Background Image Fix (CRITICAL)
+
+Satori/og_edge cannot render `<img>` elements properly. Changed from:
+
+```jsx
+// BROKEN - produces blank images
+React.createElement("img", { src: dataUrl, width, height })
+```
+
+To:
+
+```jsx
+// WORKING - uses CSS backgroundImage
+React.createElement("div", {
+  style: {
+    backgroundImage: `url(${dataUrl})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  }
+})
+```
 
 ---
 

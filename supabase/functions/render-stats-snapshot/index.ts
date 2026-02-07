@@ -309,22 +309,9 @@ Deno.serve(async (req) => {
       );
     });
 
-    // Create all elements for the composite (background + all hotspots as siblings)
-    // Use base64 data URL for the background image
-    const allElements = [
-      // Background image using base64 data URL
-      React.createElement("img", {
-        key: "bg",
-        src: dataUrl,
-        width: width,
-        height: height,
-      }),
-      // All hotspot overlays (each as absolutely positioned div)
-      ...overlayElements
-    ];
-
-    // Create the composite image - satori requires display:flex on parent
-    // We render hotspots as absolutely positioned children
+    // Create the composite image using backgroundImage CSS property
+    // CRITICAL: Satori does NOT render <img> elements reliably - use backgroundImage instead
+    // The data URL must be passed to backgroundImage for proper rendering
     const imageResponse = new ImageResponse(
       React.createElement(
         "div",
@@ -334,9 +321,13 @@ Deno.serve(async (req) => {
             height: `${height}px`,
             display: "flex",
             position: "relative",
+            backgroundImage: `url(${dataUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
           },
         },
-        ...allElements
+        // All hotspot overlays (each as absolutely positioned div)
+        ...overlayElements
       ),
       {
         width,
