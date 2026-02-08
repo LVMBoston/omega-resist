@@ -200,6 +200,15 @@ export function DataTemplateEditor({
     }
   }, [metricsMap, hotspots]);
 
+  // Auto-populate campaign from templateCampaigns if not already selected
+  useEffect(() => {
+    if (!campaignId && templateCampaigns.length > 0) {
+      const firstCampaign = templateCampaigns[0];
+      console.log("[DataTemplateEditor] Auto-selecting campaign from template:", firstCampaign.code);
+      setCampaignId(firstCampaign.code);
+    }
+  }, [templateCampaigns, campaignId]);
+
   // Auto-save function
   const performAutoSave = useCallback(async (hotspotsToSave: Hotspot[]) => {
     // Only auto-save if we have the minimum required fields
@@ -435,7 +444,8 @@ export function DataTemplateEditor({
       const captureResult = await captureTemplateSnapshot(
         templateIdToUse,
         captureContainerRef.current,
-        campaignId || undefined
+        campaignId || undefined,
+        backgroundMode === "solid" ? backgroundColor : undefined
       );
       
       setLastSnapshotAt(new Date(captureResult.timestamp));
