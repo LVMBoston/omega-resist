@@ -149,12 +149,17 @@ export const StatsPageSlide = ({
       if (!containerRef.current) return;
       
       const container = containerRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      
+      // iOS Safari often reports 0 dimensions initially - poll until valid
+      if (containerWidth === 0 || containerHeight === 0) {
+        console.log("📊 StatsPageSlide: Container dimensions not ready, retrying...");
+        return false; // Signal to retry
+      }
       
       // For solid color, use container dimensions with 9:16 aspect ratio
       if (isSolidColor) {
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        
         // Calculate dimensions maintaining 9:16 aspect ratio
         let renderedWidth = containerWidth;
         let renderedHeight = containerWidth * (16 / 9);
@@ -167,6 +172,10 @@ export const StatsPageSlide = ({
         const offsetX = (containerWidth - renderedWidth) / 2;
         const offsetY = (containerHeight - renderedHeight) / 2;
         
+        console.log("📊 StatsPageSlide: Solid color dimensions calculated:", {
+          containerWidth, containerHeight, renderedWidth, renderedHeight
+        });
+        
         setImageDimensions({
           width: renderedWidth,
           height: renderedHeight,
@@ -174,19 +183,22 @@ export const StatsPageSlide = ({
           offsetY: Math.max(0, offsetY)
         });
         setImageLoaded(true);
-        return;
+        return true;
       }
       
       // For image, use image ref dimensions
-      if (!imageRef.current) return;
+      if (!imageRef.current) return false;
       
       const img = imageRef.current;
       
       const renderedWidth = img.clientWidth;
       const renderedHeight = img.clientHeight;
       
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
+      // iOS Safari may report 0 initially
+      if (renderedWidth === 0 || renderedHeight === 0) {
+        return false;
+      }
+      
       const offsetX = (containerWidth - renderedWidth) / 2;
       const offsetY = (containerHeight - renderedHeight) / 2;
       
@@ -196,16 +208,25 @@ export const StatsPageSlide = ({
         offsetX: Math.max(0, offsetX),
         offsetY: Math.max(0, offsetY)
       });
+      return true;
+    };
+
+    // Polling for iOS Safari which often reports zero dimensions initially
+    const pollDimensions = (attempts = 0, maxAttempts = 20) => {
+      const success = updateDimensions();
+      if (!success && attempts < maxAttempts) {
+        setTimeout(() => pollDimensions(attempts + 1, maxAttempts), 100);
+      }
     };
 
     if (isSolidColor) {
-      // For solid color, calculate dimensions immediately
-      setTimeout(updateDimensions, 100);
+      // For solid color, start polling immediately
+      pollDimensions();
       window.addEventListener('resize', updateDimensions);
       return () => window.removeEventListener('resize', updateDimensions);
     } else if (imageLoaded) {
-      // Small delay to ensure layout is complete
-      setTimeout(updateDimensions, 100);
+      // For images, start polling after image loaded
+      pollDimensions();
       window.addEventListener('resize', updateDimensions);
       return () => window.removeEventListener('resize', updateDimensions);
     }
@@ -342,17 +363,24 @@ export const StatsPageSlide = ({
     >
       {/* Background: solid color or image */}
       {isSolidColor ? (
-        <div
-          ref={imageRef as any}
-          className="absolute rounded-lg"
-          style={{
-            backgroundColor: solidColor || '#1a1a2e',
-            width: imageDimensions.width || '100%',
-            height: imageDimensions.height || '100%',
-            left: imageDimensions.offsetX,
-            top: imageDimensions.offsetY,
-          }}
-        />
+        // Only render solid color div once dimensions are calculated
+        imageDimensions.width > 0 && imageDimensions.height > 0 ? (
+          <div
+            className="absolute rounded-lg"
+            style={{
+              backgroundColor: solidColor || '#1a1a2e',
+              width: `${imageDimensions.width}px`,
+              height: `${imageDimensions.height}px`,
+              left: `${imageDimensions.offsetX}px`,
+              top: `${imageDimensions.offsetY}px`,
+            }}
+          />
+        ) : (
+          // Show loading while dimensions are being calculated
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-white" />
+          </div>
+        )
       ) : (
         <img
           ref={imageRef}
