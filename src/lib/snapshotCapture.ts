@@ -14,12 +14,14 @@ export interface CaptureResult {
  * @param templateId - The ID of the template being captured
  * @param containerElement - The DOM element to capture (should contain the rendered template)
  * @param campaignCode - Optional campaign code for file naming
+ * @param backgroundColor - Optional explicit background color (e.g., "#1a1a2e" for solid color templates)
  * @returns The storage path and timestamp of the captured snapshot
  */
 export async function captureTemplateSnapshot(
   templateId: string,
   containerElement: HTMLElement,
-  campaignCode?: string
+  campaignCode?: string,
+  backgroundColor?: string
 ): Promise<CaptureResult> {
   // Wait for any pending renders (maps, charts) to stabilize
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -47,13 +49,30 @@ export async function captureTemplateSnapshot(
   await new Promise((resolve) => setTimeout(resolve, 50));
   console.log("[snapshotCapture] Paint cycle delay complete, starting capture");
 
+  // Determine the background color to use
+  // Priority: explicit parameter > computed style > transparent (null)
+  let captureBackground: string | null = null;
+  if (backgroundColor) {
+    captureBackground = backgroundColor;
+    console.log("[snapshotCapture] Using explicit background color:", captureBackground);
+  } else {
+    const computedStyle = window.getComputedStyle(containerElement);
+    const bgColor = computedStyle.backgroundColor;
+    if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+      captureBackground = bgColor;
+      console.log("[snapshotCapture] Using computed background color:", captureBackground);
+    } else {
+      console.log("[snapshotCapture] No background color detected, using transparent");
+    }
+  }
+
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(containerElement, {
     useCORS: true,
     allowTaint: false,
     scale: 2,
     logging: false,
-    backgroundColor: null,
+    backgroundColor: captureBackground,
   });
 
   // Restore hidden elements
