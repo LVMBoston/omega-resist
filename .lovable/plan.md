@@ -1,56 +1,48 @@
 
 
-# Document: Data Integrity Hardening & Multi-Tenant Vision
+## Create Timezone Capture Hardening Documentation
 
-## Goal
-Create `docs/DATA_INTEGRITY_HARDENING.md` that serves as both a risk register and a design document for protecting campaign data integrity, framed within the planned evolution toward a multi-tenant chapter model.
+### Overview
+Add a reference document capturing the known timezone issues and hardening recommendations for the Mobilize API integration. This documents the data quality findings from our investigation and provides a validation allowlist for all US timezone designations.
 
-## Document Structure
+### File to Create
+**`docs/TIMEZONE_CAPTURE_HARDENING.md`**
 
-### Section 1: Problem Statement
-- How administrator edits can silently corrupt campaign data
-- Real example: duplicate mobilize_code across decks in BUGTEST campaign
-- Real risk: campaign code change orphans all tokens
-- CASCADE delete destroying viral lineage permanently
+### Content Summary
 
-### Section 2: Current Risk Register
-A table documenting every dangerous field and action across all forms:
-- Campaign: `code` (unprotected), delete (cascade)
-- EoA: `mobilize_code`, `utm_id`, `assigned_deck_slug` (partially protected via UI lock), delete (cascade, unprotected)
-- Deck: delete (breaks existing token URLs, unprotected)
-- Safe fields documented for completeness (title, description, metadata)
+1. **Problem Statement** -- The `fetch-mobilize-event` edge function passes timezone strings from the Mobilize API without sanitization. At least one invalid value (`America/New York` with a space instead of underscore) has entered the `events_actions` table. The `TBD` placeholder also exists for manually-created EoAs.
 
-### Section 3: Hardening Plan
-- Phase 1: Lock campaign code when tokens exist (UI + database trigger)
-- Phase 2: Enhanced delete confirmations with token counts and type-to-confirm
-- Phase 3: Partial unique constraint on `(campaign_id, mobilize_code)` to prevent deck ambiguity
-- Phase 4: Visual conflict detection in EoA table
+2. **Known Data Quality Issues**
+   - `America/New York` (space) should be `America/New_York`
+   - `TBD` placeholder used when timezone is unknown
 
-### Section 4: Multi-Tenant Evolution Context
-- Current flat role model (`admin / manager / viewer`)
-- Planned chapter-scoped model where mobilize_code/zipcode defines a tenant boundary
-- How hardening decisions should be tenant-aware (e.g., constraints scoped to campaign, not global)
-- Asset ownership: platform-provided libraries vs. chapter-created campaigns
-- Campaign types beyond Samizdat
+3. **Valid IANA Timezone Allowlist for Mobilize Events** -- A reference table of all US timezones that Mobilize.us may return, including territories:
 
-### Section 5: Future — Backup & Restore
-- Placeholder section noting this will be designed separately
-- Requirements: per-campaign export preserving token lineage
-- Must handle cross-table relationships (tokens, url_events, EoAs)
-- Building on existing `exportCampaignData.ts` foundation
+   | IANA Timezone | Region | UTC Offset (Std / DST) |
+   |---|---|---|
+   | `America/New_York` | Eastern | -5 / -4 |
+   | `America/Chicago` | Central | -6 / -5 |
+   | `America/Denver` | Mountain | -7 / -6 |
+   | `America/Los_Angeles` | Pacific | -8 / -7 |
+   | `America/Anchorage` | Alaska | -9 / -8 |
+   | `Pacific/Honolulu` | Hawaii | -10 / no DST |
+   | `America/Phoenix` | Arizona | -7 / no DST |
+   | `America/Puerto_Rico` | PR / USVI | -4 / no DST |
+   | `Pacific/Guam` | Guam / CNMI | +10 / no DST |
+   | `Pacific/Pago_Pago` | American Samoa | -11 / no DST |
 
-## Technical Details
+4. **Hardening Recommendations**
+   - Sanitize timezone strings in `fetch-mobilize-event` edge function (replace spaces with underscores)
+   - Validate against the IANA allowlist; fall back to `America/New_York` with a console warning if unrecognized
+   - Fix existing `America/New York` rows in `events_actions` via a one-time migration
+   - Consider a shared timezone validation utility in `src/lib/dateUtils.ts` to centralize formatting and validation
 
-### Source Material
-- Risk analysis from prior conversation (form-by-form audit)
-- Database schema: `campaigns`, `tokens`, `url_events`, `events_actions` tables
-- Existing protections in `EoaForm.tsx` (field locking logic)
-- Existing gaps in `CampaignManager.tsx` (no code locking)
-- Current role system in `user_roles` table
+5. **Existing Timezone Handling Locations** -- Cross-references to where timezone logic currently lives:
+   - `src/lib/dateUtils.ts` -- floating local time formatter
+   - `src/hooks/useLiveMetrics.ts` -- viewer-local display via `date-fns-tz`
+   - `supabase/functions/fetch-mobilize-event/index.ts` -- Mobilize API timezone conversion
 
-### File Created
-- `docs/DATA_INTEGRITY_HARDENING.md` — single comprehensive document
-
-### No Code Changes
-This task creates documentation only. Implementation of the hardening measures will follow as a separate step after review.
+### Technical Details
+- Single new file: `docs/TIMEZONE_CAPTURE_HARDENING.md`
+- No code changes; documentation only
 
