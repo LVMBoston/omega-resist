@@ -994,7 +994,7 @@ export default function CampaignManager() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <Label>Title *</Label>
+                      <Label>Campaign Name * (can be changed without harm)</Label>
                       <Input value={campaignForm.title} onChange={e => setCampaignForm({
                       ...campaignForm,
                       title: e.target.value
