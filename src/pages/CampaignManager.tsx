@@ -1001,7 +1001,7 @@ export default function CampaignManager() {
                     })} placeholder="e.g., 'No Kings Nationwide Protests', 'Citizens Bank Events and Actions'" />
                     </div>
                     <div>
-                      <Label>Code *</Label>
+                      <Label>Campaign Code * (cannot be changed once tokens exist)</Label>
                       <Input value={campaignForm.code} onChange={e => handleCodeChange(e.target.value)} placeholder="e.g. 'no-kings', 'citizens-bank'" className={codeError ? "border-destructive" : ""} />
                       {codeError && <p className="text-sm text-destructive mt-1">{codeError}</p>}
                       <p className="text-xs text-muted-foreground mt-1">
