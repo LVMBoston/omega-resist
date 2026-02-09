@@ -1,56 +1,56 @@
 
-# Fix: Missing Hotspot Controls in Solid Color Mode
 
-## Problem
-When using **Solid Color** background mode in the Data Template Editor, all hotspot calibration controls (X/Y positioning, metric selection, font styling, etc.) disappear. The hotspots are visible on the canvas but cannot be edited.
+# Document: Data Integrity Hardening & Multi-Tenant Vision
 
-## Root Cause
-The hotspot control panels are conditionally rendered with a check for `imageUrl`:
+## Goal
+Create `docs/DATA_INTEGRITY_HARDENING.md` that serves as both a risk register and a design document for protecting campaign data integrity, framed within the planned evolution toward a multi-tenant chapter model.
 
-```tsx
-{activeHotspot && imageUrl && activeHotspot.type === "live_number" && (
-  <HotspotCalibrationControls ... />
-)}
-```
+## Document Structure
 
-In solid color mode, `imageUrl` is empty (the background is stored in `backgroundColor`), so this condition evaluates to `false` and the controls are hidden.
+### Section 1: Problem Statement
+- How administrator edits can silently corrupt campaign data
+- Real example: duplicate mobilize_code across decks in BUGTEST campaign
+- Real risk: campaign code change orphans all tokens
+- CASCADE delete destroying viral lineage permanently
 
-## Solution
-Update the condition to account for both background modes:
+### Section 2: Current Risk Register
+A table documenting every dangerous field and action across all forms:
+- Campaign: `code` (unprotected), delete (cascade)
+- EoA: `mobilize_code`, `utm_id`, `assigned_deck_slug` (partially protected via UI lock), delete (cascade, unprotected)
+- Deck: delete (breaks existing token URLs, unprotected)
+- Safe fields documented for completeness (title, description, metadata)
 
-```tsx
-// Replace:
-{activeHotspot && imageUrl && ...}
+### Section 3: Hardening Plan
+- Phase 1: Lock campaign code when tokens exist (UI + database trigger)
+- Phase 2: Enhanced delete confirmations with token counts and type-to-confirm
+- Phase 3: Partial unique constraint on `(campaign_id, mobilize_code)` to prevent deck ambiguity
+- Phase 4: Visual conflict detection in EoA table
 
-// With:
-{activeHotspot && (imageUrl || backgroundMode === "solid") && ...}
-```
+### Section 4: Multi-Tenant Evolution Context
+- Current flat role model (`admin / manager / viewer`)
+- Planned chapter-scoped model where mobilize_code/zipcode defines a tenant boundary
+- How hardening decisions should be tenant-aware (e.g., constraints scoped to campaign, not global)
+- Asset ownership: platform-provided libraries vs. chapter-created campaigns
+- Campaign types beyond Samizdat
 
----
+### Section 5: Future — Backup & Restore
+- Placeholder section noting this will be designed separately
+- Requirements: per-campaign export preserving token lineage
+- Must handle cross-table relationships (tokens, url_events, EoAs)
+- Building on existing `exportCampaignData.ts` foundation
 
-## Technical Changes
+## Technical Details
 
-### File: `src/components/DataTemplateEditor.tsx`
+### Source Material
+- Risk analysis from prior conversation (form-by-form audit)
+- Database schema: `campaigns`, `tokens`, `url_events`, `events_actions` tables
+- Existing protections in `EoaForm.tsx` (field locking logic)
+- Existing gaps in `CampaignManager.tsx` (no code locking)
+- Current role system in `user_roles` table
 
-**Lines 882-906** - Update all three control panel conditions:
+### File Created
+- `docs/DATA_INTEGRITY_HARDENING.md` — single comprehensive document
 
-1. **Line 882** - Live Number controls:
-   - Change: `activeHotspot && imageUrl &&` 
-   - To: `activeHotspot && (imageUrl || backgroundMode === "solid") &&`
+### No Code Changes
+This task creates documentation only. Implementation of the hardening measures will follow as a separate step after review.
 
-2. **Line 891** - Chart controls:
-   - Change: `activeHotspot && imageUrl &&`
-   - To: `activeHotspot && (imageUrl || backgroundMode === "solid") &&`
-
-3. **Line 898** - Map controls:
-   - Change: `activeHotspot && imageUrl &&`
-   - To: `activeHotspot && (imageUrl || backgroundMode === "solid") &&`
-
----
-
-## Testing
-After the fix, verify:
-1. Create a new Data Template with **Solid Color** mode
-2. Add a hotspot - controls should appear
-3. X/Y sliders, metric dropdown, font settings should all be functional
-4. Switch between Solid Color and Image modes - controls should persist
