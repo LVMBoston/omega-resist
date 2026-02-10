@@ -214,8 +214,8 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       if (tokenStrings.length > 0) {
         const eventsData = await withRetry<any[]>(
           "url_events",
-          () =>
-            supabase
+          async () =>
+            await supabase
               .from("url_events")
               .select("event_type, country_code, zip_code, utm_snapshot, occurred_at")
               .in("token", tokenStrings)
