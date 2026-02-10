@@ -1,6 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import React from "https://esm.sh/react@18.2.0";
-import { ImageResponse } from "https://deno.land/x/og_edge@0.0.6/mod.ts";
+import { render } from "https://deno.land/x/resvg_wasm@0.2.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +34,43 @@ async function fetchWithRetry<T>(
   return null;
 }
 
+// Fetch image and convert to base64 data URL
+async function fetchImageAsDataUrl(imageUrl: string): Promise<string | null> {
+  try {
+    console.log("[render-stats-snapshot] Fetching background image:", imageUrl);
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.error(`[render-stats-snapshot] Image fetch failed: ${response.status}`);
+      return null;
+    }
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const buffer = new Uint8Array(await response.arrayBuffer());
+    // Chunked base64 encoding to avoid call stack overflow on large images
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < buffer.length; i += chunkSize) {
+      const chunk = buffer.subarray(i, Math.min(i + chunkSize, buffer.length));
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binary);
+    console.log(`[render-stats-snapshot] Image fetched: ${buffer.byteLength} bytes, type: ${contentType}`);
+    return `data:${contentType};base64,${base64}`;
+  } catch (e) {
+    console.error("[render-stats-snapshot] Image fetch exception:", e);
+    return null;
+  }
+}
+
+// Escape XML special characters
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 // Calculate campaign metrics
 async function calculateMetrics(supabase: any, campaignCode: string): Promise<Record<string, string | number>> {
   const metrics: Record<string, string | number> = {};
@@ -61,7 +97,10 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   const sharesCount = tokenArray.filter((t: any) => t.level > 0).length;
   const viewEvents = eventArray.filter((e: any) => e.event_type === "view");
 
+  const seedsWithSpawns = l00Count > 0 && sharesCount > 0 ? Math.min(l00Count, sharesCount) : 0;
+
   metrics.seeds = l00Count.toLocaleString();
+  metrics.seeds_with_spawns = seedsWithSpawns.toLocaleString();
   metrics.l01_count = tokenArray.filter((t: any) => t.level === 1).length.toLocaleString();
   metrics.l02_count = tokenArray.filter((t: any) => t.level === 2).length.toLocaleString();
   metrics.l03_count = tokenArray.filter((t: any) => t.level === 3).length.toLocaleString();
@@ -81,6 +120,18 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     "campaign title query"
   );
   metrics.campaign_name = campaignData?.title || campaignCode;
+
+  // Activity timestamps
+  const viewTimestamps = viewEvents.map((e: any) => new Date(e.occurred_at).getTime()).filter((t: number) => !isNaN(t));
+  if (viewTimestamps.length > 0) {
+    const earliest = new Date(Math.min(...viewTimestamps));
+    const latest = new Date(Math.max(...viewTimestamps));
+    metrics.earliest_active = earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    metrics.latest_active = latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  } else {
+    metrics.earliest_active = "--";
+    metrics.latest_active = "--";
+  }
 
   const now = new Date();
   metrics.current_date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -124,77 +175,95 @@ Deno.serve(async (req) => {
     }
 
     const metrics = await calculateMetrics(supabase, campaign_code);
-    console.log("[render-stats-snapshot] Metrics calculated:", Object.keys(metrics).length);
+    console.log("[render-stats-snapshot] Metrics calculated:", JSON.stringify(metrics));
 
     // Parse hotspots from template
     const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
-    console.log(`[render-stats-snapshot] Processing ${hotspots.length} text hotspots`);
+    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map");
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots`);
 
-    // Build the image URL for background
+    // Fetch background image as base64 data URL
     const imageUrl = template.image_url as string;
-    console.log("[render-stats-snapshot] Background image URL:", imageUrl);
+    const bgDataUrl = await fetchImageAsDataUrl(imageUrl);
+    
+    if (!bgDataUrl) {
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch background image" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Target dimensions (portrait for mobile)
     const width = 1080;
     const height = 1920;
 
-    // Build hotspot elements for JSX rendering
-    const hotspotElements = hotspots
-      .filter((h: any) => h.type !== "chart" && h.type !== "map") // Only text/number hotspots
-      .map((hotspot: any, idx: number) => {
-        const metricValue = metrics[hotspot.metric] ?? "—";
-        const x = (hotspot.x / 100) * width;
-        const y = (hotspot.y / 100) * height;
-        const hsWidth = ((hotspot.width || 10) / 100) * width;
-        const hsHeight = ((hotspot.height || 5) / 100) * height;
-
-        // Alignment styles
-        const justifyContent = hotspot.textAlign === "left" ? "flex-start" :
-                              hotspot.textAlign === "right" ? "flex-end" : "center";
-        const alignItems = hotspot.verticalAlign === "top" ? "flex-start" :
-                          hotspot.verticalAlign === "bottom" ? "flex-end" : "center";
-
-        return React.createElement("div", {
-          key: idx,
-          style: {
-            position: "absolute",
-            left: x,
-            top: y,
-            width: hsWidth,
-            height: hsHeight,
-            display: "flex",
-            justifyContent,
-            alignItems,
-            fontFamily: "Inter, sans-serif",
-            fontSize: hotspot.fontSize || 24,
-            fontWeight: hotspot.fontWeight === "bold" ? 700 : 400,
-            color: hotspot.color || "#000000",
-          }
-        }, String(metricValue));
-      });
-
-    // Create JSX element with background image and hotspot overlays
-    const element = React.createElement("div", {
-      style: {
-        width,
-        height,
-        display: "flex",
-        position: "relative",
-        backgroundImage: `url(${imageUrl})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+    // Build SVG with embedded background image and text hotspots
+    const hotspotSvgElements = textHotspots.map((hotspot: any) => {
+      // Resolve metric value
+      let metricValue = "—";
+      if (hotspot.metricKey === "manual_entry") {
+        metricValue = hotspot.manualLabel || "—";
+      } else if (hotspot.metricKey && metrics[hotspot.metricKey] !== undefined) {
+        metricValue = String(metrics[hotspot.metricKey]);
       }
-    }, ...hotspotElements);
 
-    // Generate PNG using og_edge (Satori + resvg under the hood)
-    const imageResponse = new ImageResponse(element, {
-      width,
-      height,
-    });
+      const x = (hotspot.x / 100) * width;
+      const y = (hotspot.y / 100) * height;
+      const hsWidth = ((hotspot.width || 10) / 100) * width;
+      const hsHeight = ((hotspot.height || 5) / 100) * height;
 
-    // Get the PNG buffer from the response
-    const pngBuffer = new Uint8Array(await imageResponse.arrayBuffer());
-    console.log(`[render-stats-snapshot] PNG generated: ${pngBuffer.length} bytes`);
+      // Read styling from liveNumberStyle
+      const style = hotspot.liveNumberStyle || {};
+      
+      let fontSize = 24;
+      if (style.fontSize) {
+        const parsed = parseInt(String(style.fontSize), 10);
+        if (!isNaN(parsed)) fontSize = parsed;
+      }
+      // Scale for 1080px canvas (designed for ~960px)
+      const scaledFontSize = Math.round(fontSize * (width / 960));
+
+      const fontWeight = style.fontWeight === "bold" || style.fontWeight === "700" ? "bold" : "normal";
+      const color = style.color || "#000000";
+      const bgColor = style.backgroundColor || "transparent";
+      const textAlign = style.textAlign || "center";
+
+      // Map textAlign to SVG text-anchor and x position
+      let textAnchor = "middle";
+      let textX = x + hsWidth / 2;
+      if (textAlign === "left") {
+        textAnchor = "start";
+        textX = x + 4; // small padding
+      } else if (textAlign === "right") {
+        textAnchor = "end";
+        textX = x + hsWidth - 4;
+      }
+
+      // Vertical center
+      const textY = y + hsHeight / 2 + scaledFontSize * 0.35;
+
+      let svgParts = "";
+      // Background rect
+      if (bgColor && bgColor !== "transparent") {
+        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
+      }
+      // Text
+      svgParts += `<text x="${textX}" y="${textY}" font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">${escapeXml(metricValue)}</text>`;
+
+      return svgParts;
+    }).join("\n    ");
+
+    const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>
+  ${hotspotSvgElements}
+</svg>`;
+
+    console.log(`[render-stats-snapshot] SVG constructed: ${svgContent.length} chars, ${textHotspots.length} hotspots`);
+
+    // Render SVG to PNG using resvg-wasm
+    const pngBuffer = await render(svgContent);
+    console.log(`[render-stats-snapshot] PNG rendered: ${pngBuffer.length} bytes`);
 
     // Upload to storage
     const storagePath = `${template_id}/snapshot-${campaign_code}.png`;
