@@ -548,6 +548,106 @@ export default function DeckEditor() {
     }
   };
 
+  const openSaveAsDialog = () => {
+    setNewDeckSlug(`${slug}-copy`);
+    setSaveAsError('');
+    setSaveAsDialogOpen(true);
+  };
+
+  const handleSaveAs = async () => {
+    if (!slug) return;
+
+    // Validate slug format
+    const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    const trimmedSlug = newDeckSlug.trim().toLowerCase();
+    if (!slugPattern.test(trimmedSlug)) {
+      setSaveAsError('Slug must be lowercase alphanumeric with hyphens only');
+      return;
+    }
+    if (trimmedSlug === slug) {
+      setSaveAsError('New slug must be different from the current slug');
+      return;
+    }
+
+    setSavingAs(true);
+    setSaveAsError('');
+
+    try {
+      // Check if slug already exists
+      const { data: existing } = await supabase
+        .from('decks')
+        .select('slug')
+        .eq('slug', trimmedSlug)
+        .maybeSingle();
+
+      if (existing) {
+        setSaveAsError('A deck with this slug already exists');
+        setSavingAs(false);
+        return;
+      }
+
+      // Create the new deck
+      const { error: deckError } = await supabase
+        .from('decks')
+        .insert({ slug: trimmedSlug });
+
+      if (deckError) throw deckError;
+
+      // Copy slides from DB (originalSlides), not draft state
+      for (const slide of originalSlides) {
+        const { data: newSlide, error: slideError } = await supabase
+          .from('slide_items')
+          .insert({
+            deck_slug: trimmedSlug,
+            position: slide.position,
+            type: slide.type,
+            content_url: slide.content_url,
+            is_compressed: slide.is_compressed,
+            template_id: slide.template_id || null,
+          })
+          .select()
+          .single();
+
+        if (slideError) throw slideError;
+
+        // Copy viral_slide_configs if the slide has one
+        if (newSlide) {
+          const { data: config } = await supabase
+            .from('viral_slide_configs')
+            .select('*')
+            .eq('slide_id', slide.id)
+            .maybeSingle();
+
+          if (config) {
+            await supabase
+              .from('viral_slide_configs')
+              .insert({
+                slide_id: newSlide.id,
+                deck_slug: trimmedSlug,
+                name: config.name,
+                slug: `${trimmedSlug}-slide-${newSlide.position}`,
+                image_url: config.image_url,
+                hotspots: config.hotspots,
+                config: config.config,
+                template_type: config.template_type,
+                description: config.description,
+                thumbnail_url: config.thumbnail_url,
+              } as any);
+          }
+        }
+      }
+
+      setSaveAsDialogOpen(false);
+      toast.success(`Deck duplicated as "${trimmedSlug}"`);
+      navigate(`/deck-editor/${trimmedSlug}`);
+    } catch (error: any) {
+      console.error('Save As error:', error);
+      setSaveAsError(error.message || 'Failed to duplicate deck');
+    } finally {
+      setSavingAs(false);
+    }
+  };
+
   const handleCancel = () => {
     setSlides([...originalSlides]);
     setPendingUploads([]);
