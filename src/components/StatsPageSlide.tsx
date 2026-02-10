@@ -293,8 +293,14 @@ export const StatsPageSlide = ({
   }, [campaignCode]);
 
   // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
+  // Add cache-busting param based on snapshotRenderedAt to force CDN/browser refresh
   const campaignSnapshotUrl = campaignCode && templateId 
-    ? getCampaignSnapshotUrl(campaignCode)
+    ? (() => {
+        const base = getCampaignSnapshotUrl(campaignCode);
+        if (!base) return null;
+        const cacheBust = snapshotRenderedAt ? new Date(snapshotRenderedAt).getTime() : Date.now();
+        return `${base}?v=${cacheBust}`;
+      })()
     : null;
 
   // Determine if we should use the cached snapshot
