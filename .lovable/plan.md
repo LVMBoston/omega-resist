@@ -1,52 +1,73 @@
 
+# Add Template Details to Slide Badges in Deck Editor
 
-# Add "Save As" Button to Deck Editor
+## What Changes
 
-## Overview
-Add a "Save As" button that duplicates the current deck under a new slug, copying all slides and interactive template configurations. This lets users create a variant of an existing deck without modifying the original.
+Enhance the slide thumbnail badges in `src/pages/DeckEditor.tsx` to show:
+1. The **template name** (instead of generic "Interactive")
+2. The **template type** -- "Solid Color" or "Image" (for Data Templates)
+3. The **hotspot count** (e.g., "4 hotspots")
 
-## User Flow
-1. User clicks "Save As" in the header toolbar (next to "Save Changes")
-2. A dialog prompts for a new deck slug (pre-filled with `{current-slug}-copy`)
-3. On confirm, the system creates the new deck and copies all slides
-4. User is navigated to the new deck's editor page
+## Implementation (single file: `src/pages/DeckEditor.tsx`)
 
-## Changes
+### 1. Expand the `Template` interface (line 33-41)
 
-### File: `src/pages/DeckEditor.tsx`
+Add `template_type` and keep `image_url` (already present) so we can detect solid color mode:
 
-**1. Add state for the Save As dialog**
-- `saveAsDialogOpen` (boolean)
-- `newDeckSlug` (string, initialized to `{slug}-copy`)
-- `savingAs` (boolean, for loading state)
+```typescript
+interface Template {
+  id: string;
+  name: string;
+  slug: string;
+  image_url: string;
+  thumbnail_url?: string;
+  hotspots: any;
+  is_default: boolean;
+  template_type?: string;  // NEW
+}
+```
 
-**2. Add `handleSaveAs` function**
-The function will:
-- Validate the new slug (no spaces, lowercase, alphanumeric + hyphens only)
-- Check if a deck with that slug already exists (query `decks` table)
-- Insert a new row into `decks` with the new slug
-- For each slide in the current deck (from DB, not draft state):
-  - Insert a new `slide_items` row with `deck_slug = newSlug`, preserving `position`, `type`, `content_url`, `is_compressed`, and `template_id`
-  - If the slide has an associated `viral_slide_configs` record (via `slide_id`), copy that config with the new slide's ID
-- Navigate to `/deck-editor/{newSlug}`
-- Show success toast
+### 2. Update `SortableSlide` props and rendering (lines 49-111)
 
-Note: Storage files are NOT duplicated -- the new slides reference the same `content_url`. This is safe since slide images are immutable once uploaded.
+Add a `templateInfo` prop containing resolved details:
 
-**3. Add the button and dialog to the UI**
-- Place a "Save As" button in the header bar, between "Cancel" and "Save Changes"
-- Use the existing Dialog component for the slug input prompt
-- Include slug validation feedback (e.g., "Slug already exists" error)
+```typescript
+templateInfo?: {
+  name: string;
+  isDataTemplate: boolean;
+  backgroundType: 'Solid Color' | 'Image';
+  hotspotCount: number;
+}
+```
 
-## Technical Details
+Update the badge area (lines 85-89) to render:
+- **Line 1**: Template name (truncated, max ~140px)
+- **Line 2** (Data Templates only): Background type + hotspot count (e.g., "Solid Color | 4 hotspots")
 
-- The `decks` table uses `slug` as its primary key (text, not UUID)
-- `slide_items.deck_slug` references the deck
-- `viral_slide_configs` links to slides via `slide_id` (UUID FK)
-- The copy uses the saved state from DB (`originalSlides`), not the draft state, to avoid copying unsaved temp slides
-- If the user has unsaved changes, warn them that only the last saved version will be copied
+Color coding:
+- Action templates: blue badge (existing)
+- Data templates: green badge to match the repository color scheme
+
+### 3. Pass template info when rendering slides
+
+Where `SortableSlide` is rendered in the slide list, look up the template from the existing `templates` array and compute:
+- `name`: from `template.name` or fallback to "Interactive"
+- `isDataTemplate`: `template.template_type === 'stats_page'`
+- `backgroundType`: `template.image_url?.startsWith('solid:') ? 'Solid Color' : 'Image'`
+- `hotspotCount`: `Array.isArray(template.hotspots) ? template.hotspots.length : 0`
+
+### Visual Result
+
+```
++-------------------+
+| [1]               |
+|   [slide image]   |
+| "Stats Dashboard" | <- template name (green for data, blue for action)
+| "Image | 12 spots"| <- type + count (data templates only)
++-------------------+
+```
 
 ## What Does NOT Change
-- The existing Save/Cancel workflow
-- The deck's relationship to campaigns or EOAs (the copy starts unassigned)
-- Storage files (shared references, no duplication)
+- Template picker dialog
+- Save/delete/reorder logic
+- No new database queries (data already fetched via `select('*')`)
