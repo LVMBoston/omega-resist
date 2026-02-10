@@ -1346,12 +1346,18 @@ export default function CampaignEoaManager() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="bulk-deck">Assign Deck</Label>
-                    <Input
-                      id="bulk-deck"
-                      placeholder="Deck slug (optional)"
-                      value={bulkDeckSlug}
-                      onChange={(e) => setBulkDeckSlug(e.target.value)}
-                    />
+                    <Select value={bulkDeckSlug} onValueChange={setBulkDeckSlug}>
+                      <SelectTrigger id="bulk-deck" className="w-full">
+                        <SelectValue placeholder="Deck slug (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableDecks.map((slug) => (
+                          <SelectItem key={slug} value={slug}>
+                            {slug}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="bulk-utm">Assign UTM ID</Label>
