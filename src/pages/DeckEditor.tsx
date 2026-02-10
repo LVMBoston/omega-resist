@@ -153,6 +153,10 @@ export default function DeckEditor() {
   const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string }>>([]);
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const [newDeckSlug, setNewDeckSlug] = useState('');
+  const [savingAs, setSavingAs] = useState(false);
+  const [saveAsError, setSaveAsError] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
