@@ -47,7 +47,7 @@ interface ViralConfig {
   hotspots: any;
 }
 
-const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean }) => {
+const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: slide.id });
   
   const style = {
