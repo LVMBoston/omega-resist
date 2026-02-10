@@ -84,8 +84,17 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: 
         {slide.position}
       </div>
       {slide.type === 'spread-word' && (
-        <div className="absolute top-1 right-8 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-          {slide.template_id ? 'Interactive' : 'Legacy'}
+        <div className="absolute top-1 right-8 flex flex-col items-end gap-0.5">
+          <div className={`px-2 py-0.5 rounded text-xs font-medium max-w-[140px] truncate ${
+            templateInfo?.isDataTemplate ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+          }`}>
+            {templateInfo?.name || (slide.template_id ? 'Interactive' : 'Legacy')}
+          </div>
+          {templateInfo?.isDataTemplate && (
+            <div className="bg-green-600/80 text-white px-1.5 py-0.5 rounded text-[10px]">
+              {templateInfo.backgroundType} | {templateInfo.hotspotCount} hotspot{templateInfo.hotspotCount !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       )}
       <button
