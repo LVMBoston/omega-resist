@@ -197,8 +197,8 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       console.log("[useLiveMetrics] Querying tokens for campaign code:", campaign.code);
       const tokens = await withRetry<any[]>(
         "tokens",
-        () =>
-          supabase
+        async () =>
+          await supabase
             .from("tokens")
             .select("token, level, utm_medium")
             .eq("utm_campaign", campaign.code)
