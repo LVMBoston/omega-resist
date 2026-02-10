@@ -936,11 +936,16 @@ const SamizdatMap = ({
            </div>`
         : '';
       
+      const instanceLabel = event.l00Instance
+        ? `<div style="color:#64748b;font-family:monospace;font-size:10px;word-break:break-all;">${event.l00Instance}</div>`
+        : '';
+
       return `
         <div style="font-family:system-ui;font-size:12px;line-height:1.4;min-width:140px;">
           <div style="font-weight:600;margin-bottom:4px;">${levelLabel} • ${mediumLabel}</div>
           <div style="color:#64748b;">${locationLabel}</div>
           <div style="color:#64748b;">${timestamp}</div>
+          ${instanceLabel}
           ${spawnInfo}
         </div>
       `;
