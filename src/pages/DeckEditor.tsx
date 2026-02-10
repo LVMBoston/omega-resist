@@ -953,6 +953,14 @@ export default function DeckEditor() {
             >
               Cancel
             </Button>
+            <Button
+              variant="outline"
+              onClick={openSaveAsDialog}
+              disabled={saving || savingAs}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Save As
+            </Button>
             <Button 
               onClick={handleSaveChanges}
               disabled={!hasChanges || saving}
