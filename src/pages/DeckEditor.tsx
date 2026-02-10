@@ -1041,6 +1041,18 @@ export default function DeckEditor() {
                           setSlideToDelete(slide);
                           setDeleteDialogOpen(true);
                         }}
+                        templateInfo={(() => {
+                          if (!slide.template_id) return undefined;
+                          const t = templates.find(tp => tp.id === slide.template_id);
+                          if (!t) return undefined;
+                          const isData = t.template_type === 'stats_page';
+                          return {
+                            name: t.name || 'Interactive',
+                            isDataTemplate: isData,
+                            backgroundType: t.image_url?.startsWith('solid:') ? 'Solid Color' : 'Image',
+                            hotspotCount: Array.isArray(t.hotspots) ? t.hotspots.length : 0,
+                          };
+                        })()}
                       />
                     ))}
                   </div>
