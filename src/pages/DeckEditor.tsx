@@ -38,6 +38,7 @@ interface Template {
   thumbnail_url?: string;
   hotspots: any;
   is_default: boolean;
+  template_type?: string;
 }
 
 interface ViralConfig {
