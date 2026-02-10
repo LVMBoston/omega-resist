@@ -1222,6 +1222,52 @@ export default function DeckEditor() {
         campaigns={campaigns}
         isDeploying={isDeploying}
       />
+
+      {/* Save As Dialog */}
+      <Dialog open={saveAsDialogOpen} onOpenChange={setSaveAsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Deck As</DialogTitle>
+            <DialogDescription>
+              {hasChanges
+                ? 'Only the last saved version will be copied. Unsaved changes will not be included.'
+                : 'Create a duplicate of this deck under a new slug.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-slug">New Deck Slug</Label>
+              <Input
+                id="new-slug"
+                value={newDeckSlug}
+                onChange={(e) => {
+                  setNewDeckSlug(e.target.value.toLowerCase().replace(/\s/g, '-'));
+                  setSaveAsError('');
+                }}
+                placeholder="my-new-deck"
+              />
+              {saveAsError && (
+                <p className="text-sm text-destructive">{saveAsError}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveAsDialogOpen(false)} disabled={savingAs}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAs} disabled={savingAs || !newDeckSlug.trim()}>
+              {savingAs ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Duplicating...
+                </>
+              ) : (
+                'Duplicate Deck'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
