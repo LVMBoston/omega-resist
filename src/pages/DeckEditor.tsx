@@ -6,7 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import imageCompression from "browser-image-compression";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -150,6 +153,10 @@ export default function DeckEditor() {
   const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string }>>([]);
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const [newDeckSlug, setNewDeckSlug] = useState('');
+  const [savingAs, setSavingAs] = useState(false);
+  const [saveAsError, setSaveAsError] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -541,6 +548,106 @@ export default function DeckEditor() {
     }
   };
 
+  const openSaveAsDialog = () => {
+    setNewDeckSlug(`${slug}-copy`);
+    setSaveAsError('');
+    setSaveAsDialogOpen(true);
+  };
+
+  const handleSaveAs = async () => {
+    if (!slug) return;
+
+    // Validate slug format
+    const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    const trimmedSlug = newDeckSlug.trim().toLowerCase();
+    if (!slugPattern.test(trimmedSlug)) {
+      setSaveAsError('Slug must be lowercase alphanumeric with hyphens only');
+      return;
+    }
+    if (trimmedSlug === slug) {
+      setSaveAsError('New slug must be different from the current slug');
+      return;
+    }
+
+    setSavingAs(true);
+    setSaveAsError('');
+
+    try {
+      // Check if slug already exists
+      const { data: existing } = await supabase
+        .from('decks')
+        .select('slug')
+        .eq('slug', trimmedSlug)
+        .maybeSingle();
+
+      if (existing) {
+        setSaveAsError('A deck with this slug already exists');
+        setSavingAs(false);
+        return;
+      }
+
+      // Create the new deck
+      const { error: deckError } = await supabase
+        .from('decks')
+        .insert({ slug: trimmedSlug });
+
+      if (deckError) throw deckError;
+
+      // Copy slides from DB (originalSlides), not draft state
+      for (const slide of originalSlides) {
+        const { data: newSlide, error: slideError } = await supabase
+          .from('slide_items')
+          .insert({
+            deck_slug: trimmedSlug,
+            position: slide.position,
+            type: slide.type,
+            content_url: slide.content_url,
+            is_compressed: slide.is_compressed,
+            template_id: slide.template_id || null,
+          })
+          .select()
+          .single();
+
+        if (slideError) throw slideError;
+
+        // Copy viral_slide_configs if the slide has one
+        if (newSlide) {
+          const { data: config } = await supabase
+            .from('viral_slide_configs')
+            .select('*')
+            .eq('slide_id', slide.id)
+            .maybeSingle();
+
+          if (config) {
+            await supabase
+              .from('viral_slide_configs')
+              .insert({
+                slide_id: newSlide.id,
+                deck_slug: trimmedSlug,
+                name: config.name,
+                slug: `${trimmedSlug}-slide-${newSlide.position}`,
+                image_url: config.image_url,
+                hotspots: config.hotspots,
+                config: config.config,
+                template_type: config.template_type,
+                description: config.description,
+                thumbnail_url: config.thumbnail_url,
+              } as any);
+          }
+        }
+      }
+
+      setSaveAsDialogOpen(false);
+      toast.success(`Deck duplicated as "${trimmedSlug}"`);
+      navigate(`/deck-editor/${trimmedSlug}`);
+    } catch (error: any) {
+      console.error('Save As error:', error);
+      setSaveAsError(error.message || 'Failed to duplicate deck');
+    } finally {
+      setSavingAs(false);
+    }
+  };
+
   const handleCancel = () => {
     setSlides([...originalSlides]);
     setPendingUploads([]);
@@ -846,6 +953,14 @@ export default function DeckEditor() {
             >
               Cancel
             </Button>
+            <Button
+              variant="outline"
+              onClick={openSaveAsDialog}
+              disabled={saving || savingAs}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Save As
+            </Button>
             <Button 
               onClick={handleSaveChanges}
               disabled={!hasChanges || saving}
@@ -1107,6 +1222,52 @@ export default function DeckEditor() {
         campaigns={campaigns}
         isDeploying={isDeploying}
       />
+
+      {/* Save As Dialog */}
+      <Dialog open={saveAsDialogOpen} onOpenChange={setSaveAsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Deck As</DialogTitle>
+            <DialogDescription>
+              {hasChanges
+                ? 'Only the last saved version will be copied. Unsaved changes will not be included.'
+                : 'Create a duplicate of this deck under a new slug.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-slug">New Deck Slug</Label>
+              <Input
+                id="new-slug"
+                value={newDeckSlug}
+                onChange={(e) => {
+                  setNewDeckSlug(e.target.value.toLowerCase().replace(/\s/g, '-'));
+                  setSaveAsError('');
+                }}
+                placeholder="my-new-deck"
+              />
+              {saveAsError && (
+                <p className="text-sm text-destructive">{saveAsError}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveAsDialogOpen(false)} disabled={savingAs}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAs} disabled={savingAs || !newDeckSlug.trim()}>
+              {savingAs ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Duplicating...
+                </>
+              ) : (
+                'Duplicate Deck'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
