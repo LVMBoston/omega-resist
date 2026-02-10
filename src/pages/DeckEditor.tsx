@@ -38,6 +38,7 @@ interface Template {
   thumbnail_url?: string;
   hotspots: any;
   is_default: boolean;
+  template_type?: string;
 }
 
 interface ViralConfig {
@@ -46,7 +47,7 @@ interface ViralConfig {
   hotspots: any;
 }
 
-const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean }) => {
+const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: slide.id });
   
   const style = {
@@ -83,8 +84,17 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected }: { slide: Slide
         {slide.position}
       </div>
       {slide.type === 'spread-word' && (
-        <div className="absolute top-1 right-8 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-          {slide.template_id ? 'Interactive' : 'Legacy'}
+        <div className="absolute top-1 right-8 flex flex-col items-end gap-0.5">
+          <div className={`px-2 py-0.5 rounded text-xs font-medium max-w-[140px] truncate ${
+            templateInfo?.isDataTemplate ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+          }`}>
+            {templateInfo?.name || (slide.template_id ? 'Interactive' : 'Legacy')}
+          </div>
+          {templateInfo?.isDataTemplate && (
+            <div className="bg-green-600/80 text-white px-1.5 py-0.5 rounded text-[10px]">
+              {templateInfo.backgroundType} | {templateInfo.hotspotCount} hotspot{templateInfo.hotspotCount !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       )}
       <button
@@ -1031,6 +1041,18 @@ export default function DeckEditor() {
                           setSlideToDelete(slide);
                           setDeleteDialogOpen(true);
                         }}
+                        templateInfo={(() => {
+                          if (!slide.template_id) return undefined;
+                          const t = templates.find(tp => tp.id === slide.template_id);
+                          if (!t) return undefined;
+                          const isData = t.template_type === 'stats_page';
+                          return {
+                            name: t.name || 'Interactive',
+                            isDataTemplate: isData,
+                            backgroundType: t.image_url?.startsWith('solid:') ? 'Solid Color' : 'Image',
+                            hotspotCount: Array.isArray(t.hotspots) ? t.hotspots.length : 0,
+                          };
+                        })()}
                       />
                     ))}
                   </div>
