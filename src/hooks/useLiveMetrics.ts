@@ -246,8 +246,8 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       if (l00TokenStrings.size > 0 && tokenStrings.length > 0) {
         const childTokens = await withRetry<any[]>(
           "child-tokens",
-          () =>
-            supabase
+          async () =>
+            await supabase
               .from("tokens")
               .select("parent_token")
               .eq("utm_campaign", campaign.code)
