@@ -175,8 +175,8 @@ export function useLiveMetrics(): UseLiveMetricsResult {
 
       const campaign = await withRetry<Campaign>(
         isUuid ? "campaign-by-id" : "campaign-by-code",
-        () =>
-          supabase
+        async () =>
+          await supabase
             .from("campaigns")
             .select("id, title, code")
             .eq(isUuid ? "id" : "code", campaignIdOrCode)
