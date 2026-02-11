@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -24,6 +24,13 @@ interface StatsTemplate {
   snapshot_rendered_at: string | null;
 }
 
+interface TemplateContext {
+  templateId: string;
+  deckSlug: string;
+  mobilizeCode: string;
+  sampleToken: string | null;
+}
+
 const INTERVAL_OPTIONS = [
   { value: "1", label: "1 minute" },
   { value: "2", label: "2 minutes" },
@@ -33,6 +40,8 @@ const INTERVAL_OPTIONS = [
   { value: "30", label: "30 minutes" },
   { value: "60", label: "1 hour" },
 ];
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: string | null; intervalMinutes: number }) {
   if (!renderedAt) {
@@ -48,7 +57,6 @@ function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: stri
   const now = new Date();
   const ageMinutes = (now.getTime() - renderedDate.getTime()) / (1000 * 60);
   
-  // Green if < interval, Yellow if < 2x interval, Red if > 2x interval
   const isFresh = ageMinutes < intervalMinutes;
   const isStale = ageMinutes >= intervalMinutes && ageMinutes < intervalMinutes * 2.5;
   
@@ -75,6 +83,30 @@ function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: stri
       <AlertCircle className="w-3 h-3 mr-1" />
       {formatDistanceToNow(renderedDate, { addSuffix: true })}
     </Badge>
+  );
+}
+
+function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId: string; campaignCode: string; context: TemplateContext | undefined }) {
+  const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.png`;
+
+  return (
+    <div className="mt-2 space-y-0.5 text-xs text-muted-foreground border-t pt-2">
+      <p><span className="font-medium">Campaign:</span> {campaignCode}</p>
+      {context ? (
+        <>
+          <p><span className="font-medium">Deck / Instance:</span> {context.deckSlug} / {context.mobilizeCode}</p>
+          <p><span className="font-medium">viralToken:</span> {context.sampleToken ?? "none found"}</p>
+        </>
+      ) : (
+        <p className="italic">No deck linkage found for this campaign</p>
+      )}
+      <p>
+        <span className="font-medium">PNG:</span>{" "}
+        <a href={pngUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+          View snapshot <ExternalLink className="w-3 h-3" />
+        </a>
+      </p>
+    </div>
   );
 }
 
@@ -108,6 +140,87 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
       if (error) throw error;
       return data as StatsTemplate[];
     },
+  });
+
+  // Fetch per-template campaign context (deck linkage + sample token)
+  const { data: templateContexts } = useQuery({
+    queryKey: ["template-campaign-context", campaignCode, templates.map(t => t.id)],
+    queryFn: async (): Promise<Record<string, TemplateContext>> => {
+      if (templates.length === 0) return {};
+
+      const templateIds = templates.map(t => t.id);
+
+      // Get slide_items for these templates to find deck_slugs
+      const { data: slideItems, error: siErr } = await supabase
+        .from("slide_items")
+        .select("template_id, deck_slug")
+        .in("template_id", templateIds);
+      if (siErr) throw siErr;
+      if (!slideItems || slideItems.length === 0) return {};
+
+      // Build template -> deck_slug map
+      const templateDeckMap: Record<string, string> = {};
+      for (const si of slideItems) {
+        if (si.template_id) templateDeckMap[si.template_id] = si.deck_slug;
+      }
+
+      const deckSlugs = [...new Set(Object.values(templateDeckMap))];
+
+      // Get events_actions for these deck_slugs filtered by this campaign
+      const { data: eoas, error: eoaErr } = await supabase
+        .from("events_actions")
+        .select("assigned_deck_slug, mobilize_code, campaign_id")
+        .in("assigned_deck_slug", deckSlugs)
+        .eq("campaign_id", campaignId);
+      if (eoaErr) throw eoaErr;
+
+      // Build deck_slug -> mobilize_code map
+      const deckMobilizeMap: Record<string, string> = {};
+      for (const eoa of eoas || []) {
+        if (eoa.assigned_deck_slug && eoa.mobilize_code) {
+          deckMobilizeMap[eoa.assigned_deck_slug] = eoa.mobilize_code;
+        }
+      }
+
+      // Get sample L00 tokens for this campaign
+      const { data: tokens, error: tokErr } = await supabase
+        .from("tokens")
+        .select("token, utm_campaign")
+        .eq("utm_campaign", campaignCode)
+        .eq("level", 0)
+        .is("deleted_at", null)
+        .limit(10);
+      if (tokErr) throw tokErr;
+
+      // Build mobilize_code -> sample token map
+      // L00 tokens follow pattern: l00-{mobilize_code}-{utm_id}
+      const mobilizeTokenMap: Record<string, string> = {};
+      for (const t of tokens || []) {
+        const match = t.token.match(/^l00-([^-]+)-/);
+        if (match) {
+          const mc = match[1];
+          if (!mobilizeTokenMap[mc]) mobilizeTokenMap[mc] = t.token;
+        }
+      }
+
+      // Assemble per-template context
+      const result: Record<string, TemplateContext> = {};
+      for (const templateId of templateIds) {
+        const deckSlug = templateDeckMap[templateId];
+        if (!deckSlug) continue;
+        const mobilizeCode = deckMobilizeMap[deckSlug];
+        if (!mobilizeCode) continue;
+        result[templateId] = {
+          templateId,
+          deckSlug,
+          mobilizeCode,
+          sampleToken: mobilizeTokenMap[mobilizeCode] ?? null,
+        };
+      }
+      return result;
+    },
+    enabled: templates.length > 0,
+    staleTime: 30000,
   });
 
   // Update campaign settings mutation
@@ -256,28 +369,35 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
               {templates.map((template) => (
                 <div
                   key={template.id}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  className="p-3 bg-muted/50 rounded-lg"
                 >
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">{template.name || template.slug}</p>
-                    <SnapshotStatusBadge
-                      renderedAt={template.snapshot_rendered_at}
-                      intervalMinutes={intervalMinutes}
-                    />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm">{template.name || template.slug}</p>
+                      <SnapshotStatusBadge
+                        renderedAt={template.snapshot_rendered_at}
+                        intervalMinutes={intervalMinutes}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => renderSnapshotMutation.mutate(template.id)}
+                      disabled={renderingTemplates.has(template.id)}
+                    >
+                      {renderingTemplates.has(template.id) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      <span className="ml-1">Render</span>
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => renderSnapshotMutation.mutate(template.id)}
-                    disabled={renderingTemplates.has(template.id)}
-                  >
-                    {renderingTemplates.has(template.id) ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    <span className="ml-1">Render</span>
-                  </Button>
+                  <TemplateDiagnostics
+                    templateId={template.id}
+                    campaignCode={campaignCode}
+                    context={templateContexts?.[template.id]}
+                  />
                 </div>
               ))}
             </div>
