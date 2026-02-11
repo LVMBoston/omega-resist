@@ -97,7 +97,18 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   const sharesCount = tokenArray.filter((t: any) => t.level > 0).length;
   const viewEvents = eventArray.filter((e: any) => e.event_type === "view");
 
-  const seedsWithSpawns = l00Count > 0 && sharesCount > 0 ? Math.min(l00Count, sharesCount) : 0;
+  // Count L00 seeds that actually have child tokens (matching useLiveMetrics logic)
+  let seedsWithSpawns = 0;
+  if (l00Count > 0 && sharesCount > 0) {
+    const l00TokenStrings = new Set(tokenArray.filter((t: any) => t.level === 0).map((t: any) => t.token));
+    const childTokens = await fetchWithRetry(
+      () => supabase.from("tokens").select("parent_token").eq("utm_campaign", campaignCode).is("deleted_at", null).gt("level", 0),
+      "child tokens for seeds_with_spawns"
+    ) || [];
+    const childArray = Array.isArray(childTokens) ? childTokens : [];
+    const parentsWithChildren = new Set(childArray.map((t: any) => t.parent_token).filter(Boolean));
+    seedsWithSpawns = tokenArray.filter((t: any) => t.level === 0 && parentsWithChildren.has(t.token)).length;
+  }
 
   metrics.seeds = l00Count.toLocaleString();
   metrics.seeds_with_spawns = seedsWithSpawns.toLocaleString();
