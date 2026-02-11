@@ -239,12 +239,22 @@ export const StatsPageSlide = ({
     (isMobile || (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes)));
 
   // Fetch-based snapshot pre-check: validates URL before rendering img
+  // On mobile, skip HEAD pre-check entirely (iOS ITP blocks cross-origin fetch)
+  // Rely on <img> onError handler instead
   useEffect(() => {
     if (!shouldUseCachedSnapshot || !campaignSnapshotUrl) {
       setValidatedSnapshotUrl(null);
       return;
     }
 
+    // Mobile: skip HEAD fetch, render <img> directly (ITP-safe)
+    if (isMobile) {
+      console.log("📊 StatsPageSlide: Mobile detected, skipping HEAD pre-check, using snapshot directly");
+      setValidatedSnapshotUrl(campaignSnapshotUrl);
+      return;
+    }
+
+    // Desktop: existing HEAD validation logic
     let cancelled = false;
     const validateSnapshot = async () => {
       try {
@@ -266,7 +276,7 @@ export const StatsPageSlide = ({
 
     validateSnapshot();
     return () => { cancelled = true; };
-  }, [shouldUseCachedSnapshot, campaignSnapshotUrl]);
+  }, [shouldUseCachedSnapshot, campaignSnapshotUrl, isMobile]);
 
   // Hotspot filters (must be before any early returns that use them)
   const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
