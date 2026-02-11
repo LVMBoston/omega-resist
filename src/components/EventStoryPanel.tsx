@@ -175,9 +175,10 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
           setIsFirstEventForToken(firstEventForToken?.id === eventId);
         }
 
-        // If L01+, walk the parent chain back to L00 (viral journey)
+        // If L01+, walk the parent chain back to L00 (viral journey) and fetch children
         if (token.level > 0) {
           await fetchViralChain(token.parent_token, token.level, event.occurred_at, eoa);
+          await fetchChildTokens(token.token, event.occurred_at);
         }
       } catch (error) {
         console.error("Error fetching event story:", error);
@@ -471,6 +472,27 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       ? ` (scan instance ${getInstanceCode(originStep.token)})`
       : "";
 
+    // Build spawn note for L01+ events
+    const buildSpawnNote = (): string => {
+      const spawns = childTokens.filter(c => c.level > tokenDetails.level);
+      if (spawns.length === 0) return "";
+      if (spawns.length === 1) {
+        const spawn = spawns[0];
+        const spawnMedium = getMediumLabel(spawn.utm_medium);
+        const spawnLoc = formatShortLocation(spawn.city, spawn.region);
+        return ` This event spawned 1 share via ${spawnMedium} to ${spawnLoc}.`;
+      }
+      const byMedium: Record<string, number> = {};
+      spawns.forEach(s => {
+        const m = getMediumLabel(s.utm_medium);
+        byMedium[m] = (byMedium[m] || 0) + 1;
+      });
+      const breakdown = Object.entries(byMedium)
+        .map(([m, count]) => `${count} via ${m}`)
+        .join(", ");
+      return ` This event spawned ${spawns.length} shares (${breakdown}).`;
+    };
+
     if (tokenDetails.level === 1) {
       let timePhrase = deltaStr 
         ? ` (${deltaStr} later)`
@@ -479,7 +501,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
         ? ` Total time from origin: ${originDeltaStr}.`
         : "";
       
-      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}. It was accessed in ${location} ${eventDateTime}${timePhrase}${locationNote}.${originPhrase}`;
+      return `This is a Level 1 viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}. It was accessed in ${location} ${eventDateTime}${timePhrase}${locationNote}.${originPhrase}${buildSpawnNote()}`;
     }
 
     // Build chain with time details
@@ -516,7 +538,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       ? ` Total journey time from origin: ${originDeltaStr}.`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}`;
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}${buildSpawnNote()}`;
   };
 
   const instanceTokens = childTokens.filter(c => c.isInstance);
