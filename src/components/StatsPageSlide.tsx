@@ -93,7 +93,8 @@ export const StatsPageSlide = ({
     return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
   };
 
-  // Resolve campaign from viralToken or deckSlug and optionally resolve metrics
+  // Unified campaign resolution: resolves campaign code, sets state, fetches metrics
+  // Single effect eliminates race condition between duplicate hooks
   useEffect(() => {
     const resolveCampaign = async () => {
       try {
@@ -112,14 +113,14 @@ export const StatsPageSlide = ({
           }
         }
 
-        // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
-        // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
-        // Using limit(1) to get any valid campaign association
+        // Fallback: get campaign from deck's assigned EOA
+        // Deterministic ordering ensures all devices resolve to the same campaign
         if (!resolvedCode && deckSlug) {
           const { data: eoaRows } = await supabase
             .from("events_actions")
             .select("campaign_id, campaigns(code)")
             .eq("assigned_deck_slug", deckSlug)
+            .order("created_at", { ascending: false })
             .limit(1);
           
           const eoaData = eoaRows?.[0];
@@ -130,170 +131,22 @@ export const StatsPageSlide = ({
         }
 
         if (resolvedCode) {
-          console.log("📊 StatsPageSlide: Resolving metrics for campaign:", resolvedCode);
+          console.log("📊 StatsPageSlide: Resolved campaign:", resolvedCode);
+          setCampaignCode(resolvedCode);
+          setSnapshotLoadFailed(false);
           await resolveMetrics(resolvedCode);
         } else {
           console.warn("📊 StatsPageSlide: Could not resolve campaign from token or deck");
         }
       } catch (error) {
         console.error("📊 StatsPageSlide: Error resolving campaign:", error);
+      } finally {
+        setCampaignResolved(true);
       }
     };
 
     resolveCampaign();
   }, [viralToken, deckSlug, resolveMetrics]);
-
-  // Calculate image dimensions when loaded (or for solid color)
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (!containerRef.current) return;
-      
-      const container = containerRef.current;
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-      
-      // iOS Safari often reports 0 dimensions initially - poll until valid
-      if (containerWidth === 0 || containerHeight === 0) {
-        console.log("📊 StatsPageSlide: Container dimensions not ready, retrying...");
-        return false; // Signal to retry
-      }
-      
-      // For solid color, use container dimensions with 9:16 aspect ratio
-      if (isSolidColor) {
-        // Calculate dimensions maintaining 9:16 aspect ratio
-        let renderedWidth = containerWidth;
-        let renderedHeight = containerWidth * (16 / 9);
-        
-        if (renderedHeight > containerHeight) {
-          renderedHeight = containerHeight;
-          renderedWidth = containerHeight * (9 / 16);
-        }
-        
-        const offsetX = (containerWidth - renderedWidth) / 2;
-        const offsetY = (containerHeight - renderedHeight) / 2;
-        
-        console.log("📊 StatsPageSlide: Solid color dimensions calculated:", {
-          containerWidth, containerHeight, renderedWidth, renderedHeight
-        });
-        
-        setImageDimensions({
-          width: renderedWidth,
-          height: renderedHeight,
-          offsetX: Math.max(0, offsetX),
-          offsetY: Math.max(0, offsetY)
-        });
-        setImageLoaded(true);
-        return true;
-      }
-      
-      // For image, use image ref dimensions
-      if (!imageRef.current) return false;
-      
-      const img = imageRef.current;
-      
-      const renderedWidth = img.clientWidth;
-      const renderedHeight = img.clientHeight;
-      
-      // iOS Safari may report 0 initially
-      if (renderedWidth === 0 || renderedHeight === 0) {
-        return false;
-      }
-      
-      const offsetX = (containerWidth - renderedWidth) / 2;
-      const offsetY = (containerHeight - renderedHeight) / 2;
-      
-      setImageDimensions({
-        width: renderedWidth,
-        height: renderedHeight,
-        offsetX: Math.max(0, offsetX),
-        offsetY: Math.max(0, offsetY)
-      });
-      return true;
-    };
-
-    // Polling for iOS Safari which often reports zero dimensions initially
-    const pollDimensions = (attempts = 0, maxAttempts = 20) => {
-      const success = updateDimensions();
-      if (!success && attempts < maxAttempts) {
-        setTimeout(() => pollDimensions(attempts + 1, maxAttempts), 100);
-      }
-    };
-
-    if (isSolidColor) {
-      // For solid color, start polling immediately
-      pollDimensions();
-      window.addEventListener('resize', updateDimensions);
-      return () => window.removeEventListener('resize', updateDimensions);
-    } else if (imageLoaded) {
-      // For images, start polling after image loaded
-      pollDimensions();
-      window.addEventListener('resize', updateDimensions);
-      return () => window.removeEventListener('resize', updateDimensions);
-    }
-  }, [imageLoaded, isSolidColor]);
-
-  const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
-  const chartHotspots = hotspots.filter(h => h.type === 'chart');
-  const mapHotspots = hotspots.filter(h => h.type === 'map');
-
-  // Extract campaign code for chart hotspots
-  const [campaignCode, setCampaignCode] = useState<string>("");
-  const [campaignResolved, setCampaignResolved] = useState(false);
-
-  useEffect(() => {
-    const extractCampaignCode = async () => {
-      try {
-        // First try to get campaign from token
-        if (viralToken) {
-          const { data: tokenData } = await supabase
-            .from("tokens")
-            .select("utm_campaign")
-            .eq("token", viralToken)
-            .maybeSingle();
-          
-          if (tokenData?.utm_campaign) {
-            setCampaignCode(tokenData.utm_campaign);
-            setCampaignResolved(true);
-            return;
-          }
-        }
-
-        // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
-        // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
-        if (deckSlug) {
-          const { data: eoaRows } = await supabase
-            .from("events_actions")
-            .select("campaign_id, campaigns(code)")
-            .eq("assigned_deck_slug", deckSlug)
-            .limit(1);
-          
-          const eoaData = eoaRows?.[0];
-          
-          if (eoaData?.campaigns?.code) {
-            setCampaignCode(eoaData.campaigns.code);
-          }
-        }
-      } catch (error) {
-        console.error("📊 StatsPageSlide: Error extracting campaign code:", error);
-      } finally {
-        // Always mark as resolved, even if no campaign found
-        setCampaignResolved(true);
-      }
-    };
-
-    extractCampaignCode();
-  }, [viralToken, deckSlug]);
-
-  // Snapshot loading state for error handling and fallback
-  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
-  
-  // Debug overlay state
-  const [snapshotStatus, setSnapshotStatus] = useState<'loading' | 'ok' | 'failed-fallback'>('loading');
-
-  // Reset snapshot failure state when campaign changes
-  useEffect(() => {
-    setSnapshotLoadFailed(false);
-  }, [campaignCode]);
 
   // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
   // Add cache-busting param based on snapshotRenderedAt to force CDN/browser refresh
