@@ -5,7 +5,7 @@ import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { Loader2 } from "lucide-react";
-import { formatInTimeZone } from "date-fns-tz";
+
 
 interface StatsPageSlideProps {
   imageUrl: string;
