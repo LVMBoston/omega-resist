@@ -87,7 +87,7 @@ function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: stri
 }
 
 function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId: string; campaignCode: string; context: TemplateContext | undefined }) {
-  const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.png`;
+  const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.svg`;
 
   return (
     <div className="mt-2 space-y-0.5 text-xs text-muted-foreground border-t pt-2">

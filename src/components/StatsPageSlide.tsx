@@ -85,8 +85,8 @@ export const StatsPageSlide = ({
   const getCampaignSnapshotUrl = (code: string): string | null => {
     if (!templateId || !code) return null;
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    // Snapshots are saved as compressed .png by snapshotCapture.ts
-    return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
+    // Snapshots are now saved as .svg (avoids CPU-heavy PNG rasterization in edge function)
+    return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.svg`;
   };
 
   // Unified campaign resolution: resolves campaign code, sets state, fetches metrics
