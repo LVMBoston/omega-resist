@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Hotspot } from "@/types/viralTemplates";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
@@ -224,14 +224,13 @@ export const StatsPageSlide = ({
     }
   }, [imageLoaded, isSolidColor]);
 
-  // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
-  const campaignSnapshotUrl = campaignCode && templateId 
-    ? (() => {
-        const base = getCampaignSnapshotUrl(campaignCode);
-        if (!base) return null;
-        return `${base}?v=${Date.now()}`;
-      })()
-    : null;
+  // Build campaign-specific snapshot URL (stable per campaign resolution, cache-bust once)
+  const campaignSnapshotUrl = useMemo(() => {
+    if (!campaignCode || !templateId) return null;
+    const base = getCampaignSnapshotUrl(campaignCode);
+    if (!base) return null;
+    return `${base}?v=${Date.now()}`;
+  }, [campaignCode, templateId]);
 
   // Determine if we should use the cached snapshot
   const shouldUseCachedSnapshot = campaignSnapshotUrl && 
