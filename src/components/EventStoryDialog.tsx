@@ -808,11 +808,6 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
                       {engagedSpawns.slice(0, 5).map(child => (
                         <div key={child.token} className="text-xs text-muted-foreground">
                           • {formatShortLocation(child.city, child.region)} (L{child.level.toString().padStart(2, "0")}) via {getMediumLabel(child.utm_medium)}
-                          {child.firstEventId && (
-                            <span className="ml-1 font-mono text-[10px] opacity-60">
-                              [{child.firstEventId.slice(0, 8)}]
-                            </span>
-                          )}
                         </div>
                       ))}
                       {engagedSpawns.length > 5 && (
