@@ -1,56 +1,53 @@
 
 
-# Treat Every Scan as a Unique Person for "Event" Type EoAs
+# Fix: iOS Snapshot Blocked by HEAD Pre-Check
 
-## Problem
-Currently, when multiple people scan the same QR poster (an "Event" type EoA), the system merges scanners from the same ZIP code into a single L00 instance. This underreports unique viewers at public events like rallies or canvassing sites.
+## Root Cause
 
-## Solution
-Use the existing `type` field on `events_actions` ("Event" vs "Action") to control instantiation behavior:
-- **Event**: Every scan creates a new L00 instance (unique person assumed)
-- **Action**: Current ZIP-based deduplication remains (same link shared person-to-person)
+`StatsPageSlide.tsx` validates snapshot URLs with a cross-origin `fetch(url, { mode: 'cors', method: 'HEAD' })` before rendering the `<img>` tag. iOS Safari ITP blocks this fetch, which sets `snapshotLoadFailed = true`, causing the component to fall back to dynamic metric rendering -- which also partially fails because ITP blocks some Supabase API calls too.
 
-## Changes Required
+## The Fix
 
-### 1. Database: Update `instantiate_l00_token` function
-- Look up the EoA `type` for the base token being instantiated
-- Always create a new instance suffix (current behavior, no change needed here -- it already creates a new instance every time)
+On mobile devices, skip the `fetch`-based HEAD pre-check entirely. Instead, render the snapshot `<img>` tag directly and rely on the `onError` handler (which already exists at line 301-305) to detect broken images. The `<img>` tag loads cross-origin images without ITP interference because image loading is not subject to the same restrictions as `fetch`.
 
-### 2. Database: Update `maybe_reinstantiate_l00` function
-- Before checking ZIP codes, look up the EoA `type` via the token's `eoa_id`
-- If `type = 'Event'`: always create a new instance token (skip ZIP comparison entirely)
-- If `type = 'Action'`: keep existing ZIP-based deduplication logic
+## Changes
 
-### 3. Frontend: No changes needed
-- The `DeckViewer.tsx` already calls `maybeReinstantiateL00` for every scan
-- The changed behavior is entirely server-side in the RPC function
+### 1. `src/components/StatsPageSlide.tsx`
 
-## Technical Details
+**Modify the snapshot validation effect (lines 242-269)**:
+- Add a condition: if `isMobile`, skip the HEAD fetch and set `validatedSnapshotUrl` directly from `campaignSnapshotUrl`.
+- On desktop, keep the existing HEAD pre-check behavior unchanged.
 
-### Modified SQL Function: `maybe_reinstantiate_l00`
+The change is approximately:
 
-The function will be updated to add an EoA type lookup early in the logic:
+```
+useEffect(() => {
+  if (!shouldUseCachedSnapshot || !campaignSnapshotUrl) {
+    setValidatedSnapshotUrl(null);
+    return;
+  }
 
-```text
-maybe_reinstantiate_l00(_instance_token, _current_zip_code)
-  |
-  v
-Is L00 instance token? --No--> return unchanged
-  |Yes
-  v
-Look up EoA type via token's eoa_id
-  |
-  v
-Is type = 'Event'? --Yes--> Always create new instance (skip ZIP check)
-  |No (Action)
-  v
-[Existing ZIP dedup logic unchanged]
+  // On mobile, skip HEAD pre-check (ITP blocks cross-origin fetch)
+  // Rely on <img> onError handler instead
+  if (isMobile) {
+    setValidatedSnapshotUrl(campaignSnapshotUrl);
+    return;
+  }
+
+  // Desktop: existing HEAD validation logic unchanged
+  ...
+});
 ```
 
-The new branch fetches the `type` from `events_actions` by joining through the token's `eoa_id`, then unconditionally creates a new instance suffix when the type is "Event".
+### 2. No other files changed
 
-### Migration SQL Summary
-- Single `CREATE OR REPLACE FUNCTION` statement for `maybe_reinstantiate_l00`
-- Adds ~10 lines: a variable declaration, a query to fetch EoA type, and a conditional branch before the ZIP check
-- No schema changes, no new columns, no new tables
+- No database changes
+- No edge function changes  
+- The existing `onError` handler on the snapshot `<img>` (line 301-305) already handles the fallback if the image itself fails to load
+
+## Why This Works
+
+- `<img src="...">` tags load cross-origin resources without being blocked by ITP (images are exempt from tracking prevention)
+- The HEAD fetch was a pre-optimization to avoid rendering a broken `<img>`, but on mobile it causes the exact problem it tries to prevent
+- Desktop keeps the HEAD check since it doesn't have ITP issues
 
