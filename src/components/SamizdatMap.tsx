@@ -595,17 +595,18 @@ const SamizdatMap = ({
       }
 
       // Step 3b: Fetch spawn counts for L00 instance tokens
-      // Get unique l00_instance values and count children (L01+) for each
-      const l00Instances = [...new Set(tokens.filter(t => t.l00_instance).map(t => t.l00_instance!))] as string[];
+      // Count only direct children (L01 tokens whose parent_token is the L00 instance token)
+      const l00InstanceTokens = tokens.filter(t => t.level === 0 && t.l00_instance).map(t => t.token);
       const spawnCounts: Record<string, number> = {};
       
-      if (l00Instances.length > 0) {
-        // Count tokens where l00_instance matches and level > 0 (spawns)
+      if (l00InstanceTokens.length > 0) {
+        // Count L01 tokens that are direct children of L00 instance tokens
         const { data: spawnData } = await supabase
           .from("tokens")
-          .select("l00_instance")
-          .in("l00_instance", l00Instances)
-          .gt("level", 0)
+          .select("parent_token, l00_instance")
+          .in("parent_token", l00InstanceTokens)
+          .eq("level", 1)
+          .is("deleted_at", null)
           .eq("is_simulated", false);
         
         if (spawnData) {
