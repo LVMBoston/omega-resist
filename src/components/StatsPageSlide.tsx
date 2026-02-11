@@ -298,8 +298,9 @@ export const StatsPageSlide = ({
     ? (() => {
         const base = getCampaignSnapshotUrl(campaignCode);
         if (!base) return null;
-        const cacheBust = snapshotRenderedAt ? new Date(snapshotRenderedAt).getTime() : Date.now();
-        return `${base}?v=${cacheBust}`;
+        // Always use Date.now() to guarantee fresh fetch — snapshotRenderedAt is per-template
+        // not per-campaign, so it can't reliably bust cache across multi-campaign templates
+        return `${base}?v=${Date.now()}`;
       })()
     : null;
 
