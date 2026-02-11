@@ -1,40 +1,49 @@
 
+# Add Diagnostic Info to Server-Side Rendering Section
 
-# Fix Campaign Resolution and Snapshot Reliability
+## What This Does
+Below each Data Template card in the Server-Side Rendering section of `/campaign-dashboard`, display the resolved context for the currently selected campaign:
 
-## Problems Being Fixed
+- **Current Campaign**: The campaign code (e.g., `bugtest-v2`)
+- **Deck name (incl. instance)**: The deck slug and mobilize code from `events_actions` (e.g., `data-template-test / Z02556`)
+- **viralToken**: A sample L00 token for that campaign+mobilize code (e.g., `l00-Z02556-qr`)
+- **URL to view current PNG**: A clickable link to the snapshot image in storage (e.g., `https://wznilzguqjwvkysuleta.supabase.co/storage/v1/object/public/slide-snapshots/{templateId}/snapshot-{campaignCode}.png`)
 
-1. **Duplicate campaign resolution logic** -- Two independent `useEffect` hooks race against each other, potentially resolving to different campaigns
-2. **Non-deterministic fallback query** -- `limit(1)` without `ORDER BY` when resolving campaign from deck slug
-3. **Inconsistent snapshot loading across iOS devices** -- `<img onLoad/onError>` behaves differently on iPad vs iPhone, causing one to show stale snapshots and the other to fall back to dynamic rendering
-4. **Dead debug overlay** -- CSS `position: fixed` is trapped by carousel transforms and never displays
+## File Changed
 
-## Changes (all in `src/components/StatsPageSlide.tsx`)
+**`src/components/CampaignSnapshotSettings.tsx`**
 
-### 1. Merge duplicate campaign resolution into one effect
+### 1. Expand the templates query
+The existing query fetches all `stats_page` templates globally. We'll add a second query (or join) that, for the currently selected `campaignCode`, resolves:
+- The deck slug and mobilize code via: `slide_items` (template_id -> deck_slug) then `events_actions` (assigned_deck_slug + campaign match)
+- A sample L00 token via: `tokens` table filtered by `utm_campaign = campaignCode` and `level = 0`
 
-Remove the second `useEffect` (lines ~243-285) that independently resolves campaign code. Consolidate into the existing effect (lines ~96-144) so that campaign resolution, `setCampaignCode`, `resolveMetrics`, and `setCampaignResolved` all happen in a single sequential flow with no race condition.
+### 2. Add a new query for per-template campaign context
+For each template, query:
+```
+slide_items (template_id) -> events_actions (assigned_deck_slug, campaign) -> tokens (utm_campaign, level=0)
+```
+This will be a single query that joins `slide_items` to `events_actions` filtered by the current campaign, then grabs a sample token.
 
-### 2. Add deterministic ordering to fallback query
+### 3. Render diagnostic block below each template card
+Below the existing template name + status badge + Render button, add a small `text-xs text-muted-foreground` block showing:
+```
+Current Campaign: bugtest-v2
+Deck name (incl. instance): data-template-test / Z02556  
+viralToken: l00-Z02556-qr
+URL to view current PNG: [clickable link]
+```
 
-Change the `events_actions` fallback from `.limit(1)` to `.order("created_at", { ascending: false }).limit(1)`. This ensures every device resolves to the same campaign for a given deck, even when multiple EOAs share the deck.
+The PNG URL follows the established pattern:
+`{VITE_SUPABASE_URL}/storage/v1/object/public/slide-snapshots/{templateId}/snapshot-{campaignCode}.png`
 
-### 3. Replace img onLoad/onError with fetch-based pre-check
+### 4. Make the PNG URL a clickable link
+The URL will be an `<a>` tag with `target="_blank"` so admins can open the snapshot directly in a new tab to visually verify it.
 
-Add a new `validatedSnapshotUrl` state. When a `campaignSnapshotUrl` is computed on mobile, run `fetch(url, { mode: 'cors' })` first:
-- HTTP 200: set `validatedSnapshotUrl` and render the snapshot image
-- Any failure: set `snapshotLoadFailed = true` and fall back to dynamic rendering immediately
+## Technical Details
 
-This eliminates device-specific differences in how iOS Safari handles cross-origin image loading.
-
-### 4. Remove dead debug overlay
-
-Delete the `snapshotStatus` state variable and all debug overlay markup from both snapshot and dynamic render paths.
-
-## What stays the same
-
-- Snapshot file naming (`snapshot-{campaignCode}.png`)
-- The `viralToken` resolution path (already deterministic via `utm_campaign` column)
-- The server-side `render-stats-snapshot` edge function
-- The snapshot storage and caching infrastructure
-
+- The `campaignCode` prop is already passed to `CampaignSnapshotSettings` -- we just need to use it more
+- Add a `useQuery` that fetches `slide_items` joined with `events_actions` for the selected campaign, grouped by template_id
+- For the token, query `tokens` table with `utm_campaign = campaignCode` and `level = 0`, limit 1 per mobilize_code
+- The PNG URL is deterministic from `templateId` + `campaignCode`, no query needed
+- All new UI is read-only diagnostic info -- no new mutations or state changes
