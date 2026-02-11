@@ -286,6 +286,9 @@ export const StatsPageSlide = ({
 
   // Snapshot loading state for error handling and fallback
   const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
+  
+  // Debug overlay state
+  const [snapshotStatus, setSnapshotStatus] = useState<'loading' | 'ok' | 'failed-fallback'>('loading');
 
   // Reset snapshot failure state when campaign changes
   useEffect(() => {
