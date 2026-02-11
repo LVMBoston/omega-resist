@@ -286,6 +286,9 @@ export const StatsPageSlide = ({
 
   // Snapshot loading state for error handling and fallback
   const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
+  
+  // Debug overlay state
+  const [snapshotStatus, setSnapshotStatus] = useState<'loading' | 'ok' | 'failed-fallback'>('loading');
 
   // Reset snapshot failure state when campaign changes
   useEffect(() => {
@@ -338,11 +341,27 @@ export const StatsPageSlide = ({
           src={campaignSnapshotUrl}
           alt="Stats page (cached)"
           className="max-w-full max-h-full object-contain"
+          onLoad={() => setSnapshotStatus('ok')}
           onError={() => {
             console.warn(`📊 StatsPageSlide: Snapshot failed to load, falling back to dynamic rendering:`, campaignSnapshotUrl);
+            setSnapshotStatus('failed-fallback');
             setSnapshotLoadFailed(true);
           }}
         />
+        {/* DEBUG OVERLAY - temporary diagnostic banner */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          background: 'rgba(0,0,0,0.75)', color: '#0f0',
+          fontFamily: 'monospace', fontSize: '11px', padding: '6px 10px',
+          zIndex: 9999, lineHeight: 1.5,
+        }}>
+          <div><b>DEBUG</b> | Status: <span style={{ color: snapshotStatus === 'ok' ? '#0f0' : snapshotStatus === 'failed-fallback' ? '#f44' : '#ff0' }}>
+            {snapshotStatus === 'ok' ? 'Snapshot loaded OK' : snapshotStatus === 'failed-fallback' ? 'SNAPSHOT 404 — FELL BACK TO DYNAMIC' : 'Loading snapshot...'}
+          </span></div>
+          <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
+          <div>URL: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 80) + '…' : '(none)'}</div>
+          <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | Mode: SNAPSHOT</div>
+        </div>
       </div>
     );
   }
@@ -368,6 +387,18 @@ export const StatsPageSlide = ({
       ref={containerRef}
       className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
     >
+      {/* DEBUG OVERLAY - dynamic rendering path */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        background: 'rgba(0,0,0,0.75)', color: '#0ff',
+        fontFamily: 'monospace', fontSize: '11px', padding: '6px 10px',
+        zIndex: 9999, lineHeight: 1.5,
+      }}>
+        <div><b>DEBUG</b> | Status: <span style={{ color: '#0ff' }}>DYNAMIC RENDERING (no snapshot)</span></div>
+        <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
+        <div>Snapshot URL tried: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 80) + '…' : '(none)'}</div>
+        <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | snapshotLoadFailed: {String(snapshotLoadFailed)}</div>
+      </div>
       {/* Background: solid color or image */}
       {isSolidColor ? (
         // Only render solid color div once dimensions are calculated
