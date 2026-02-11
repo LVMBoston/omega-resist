@@ -574,7 +574,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
       ? ` Total journey time from origin: ${originDeltaStr}.`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}`;
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}${buildSpawnNote()}`;
   };
 
   // Get medium counts for L00 spread (only for shares, not instances)
