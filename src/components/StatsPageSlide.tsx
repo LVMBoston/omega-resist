@@ -387,6 +387,18 @@ export const StatsPageSlide = ({
       ref={containerRef}
       className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
     >
+      {/* DEBUG OVERLAY - dynamic rendering path */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        background: 'rgba(0,0,0,0.75)', color: '#0ff',
+        fontFamily: 'monospace', fontSize: '11px', padding: '6px 10px',
+        zIndex: 9999, lineHeight: 1.5,
+      }}>
+        <div><b>DEBUG</b> | Status: <span style={{ color: '#0ff' }}>DYNAMIC RENDERING (no snapshot)</span></div>
+        <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
+        <div>Snapshot URL tried: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 80) + '…' : '(none)'}</div>
+        <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | snapshotLoadFailed: {String(snapshotLoadFailed)}</div>
+      </div>
       {/* Background: solid color or image */}
       {isSolidColor ? (
         // Only render solid color div once dimensions are calculated
