@@ -544,6 +544,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
   const instanceTokens = childTokens.filter(c => c.isInstance);
   const shareTokens = childTokens.filter(c => !c.isInstance);
   const isBaseL00 = tokenDetails?.level === 0 && tokenDetails && !isInstanceToken(tokenDetails.token);
+  const isInstanceL00 = tokenDetails?.level === 0 && tokenDetails && isInstanceToken(tokenDetails.token);
+  const engagedSpawns = childTokens.filter(c => c.level > 0 && c.firstEventAt);
 
   const narrative = generateNarrative();
 
