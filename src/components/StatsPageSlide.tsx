@@ -187,39 +187,54 @@ export const StatsPageSlide = ({
     );
   }
 
-  // If using cached snapshot, render simple static image with error handling
-  if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
-    console.log(`📊 StatsPageSlide: Rendering snapshot (mobile=${isMobile}):`, campaignSnapshotUrl);
-    
+  // Fetch-based snapshot pre-check: validates URL before rendering img
+  // Eliminates device-specific differences in iOS Safari image loading
+  useEffect(() => {
+    if (!shouldUseCachedSnapshot || !campaignSnapshotUrl) {
+      setValidatedSnapshotUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    const validateSnapshot = async () => {
+      try {
+        const res = await fetch(campaignSnapshotUrl, { mode: 'cors', method: 'HEAD' });
+        if (cancelled) return;
+        if (res.ok) {
+          console.log("📊 StatsPageSlide: Snapshot validated OK:", campaignSnapshotUrl);
+          setValidatedSnapshotUrl(campaignSnapshotUrl);
+        } else {
+          console.warn("📊 StatsPageSlide: Snapshot returned", res.status, "- falling back to dynamic");
+          setSnapshotLoadFailed(true);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("📊 StatsPageSlide: Snapshot fetch failed, falling back to dynamic:", err);
+        setSnapshotLoadFailed(true);
+      }
+    };
+
+    validateSnapshot();
+    return () => { cancelled = true; };
+  }, [shouldUseCachedSnapshot, campaignSnapshotUrl]);
+
+  // If using validated snapshot, render simple static image
+  if (validatedSnapshotUrl) {
     return (
       <div 
         ref={containerRef}
         className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
       >
         <img
-          src={campaignSnapshotUrl}
+          src={validatedSnapshotUrl}
           alt="Stats page (cached)"
           className="max-w-full max-h-full object-contain"
-          onLoad={() => setSnapshotStatus('ok')}
           onError={() => {
-            console.warn(`📊 StatsPageSlide: Snapshot failed to load, falling back to dynamic rendering:`, campaignSnapshotUrl);
-            setSnapshotStatus('failed-fallback');
+            console.warn("📊 StatsPageSlide: Validated snapshot failed on render, falling back");
+            setValidatedSnapshotUrl(null);
             setSnapshotLoadFailed(true);
           }}
         />
-        {/* DEBUG OVERLAY - temporary diagnostic banner */}
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'rgba(255,0,0,0.85)', color: '#fff',
-          fontFamily: 'monospace', fontSize: '13px', padding: '8px 12px',
-          zIndex: 999999, lineHeight: 1.6,
-          pointerEvents: 'none',
-        }}>
-          <div><b>🔴 DEBUG</b> | Status: {snapshotStatus === 'ok' ? '✅ Snapshot loaded OK' : snapshotStatus === 'failed-fallback' ? '❌ SNAPSHOT 404 — FELL BACK TO DYNAMIC' : '⏳ Loading snapshot...'}</div>
-          <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
-          <div>URL: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 60) + '…' : '(none)'}</div>
-          <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | Mode: SNAPSHOT</div>
-        </div>
       </div>
     );
   }
