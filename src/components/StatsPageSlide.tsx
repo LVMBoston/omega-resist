@@ -81,6 +81,12 @@ export const StatsPageSlide = ({
   const isSolidColor = imageUrl?.startsWith("solid:");
   const solidColor = isSolidColor ? imageUrl.replace("solid:", "") : null;
 
+  // Campaign resolution state
+  const [campaignCode, setCampaignCode] = useState<string>("");
+  const [campaignResolved, setCampaignResolved] = useState(false);
+  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
+  const [validatedSnapshotUrl, setValidatedSnapshotUrl] = useState<string | null>(null);
+
 
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
