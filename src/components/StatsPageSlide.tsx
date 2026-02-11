@@ -36,16 +36,6 @@ function isSnapshotFresh(
   return ageMinutes < intervalMinutes * 2.5;
 }
 
-// Get the full URL for a snapshot - handles both full URLs and relative paths
-function getSnapshotUrl(path: string): string {
-  // If already a full URL, return as-is
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-  // Otherwise, build URL from relative path
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/slide-snapshots${path}`;
-}
 
 // Detect if user is on a mobile device
 function isMobileDevice(): boolean {
