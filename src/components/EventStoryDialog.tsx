@@ -510,7 +510,7 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
 
     // Build spawn note for L01+ events
     const buildSpawnNote = (): string => {
-      const spawns = childTokens.filter(c => c.level > tokenDetails.level);
+      const spawns = childTokens.filter(c => c.level > tokenDetails.level && c.firstEventAt);
       if (spawns.length === 0) return "";
       if (spawns.length === 1) {
         const spawn = spawns[0];
