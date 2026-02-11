@@ -175,9 +175,10 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
           setIsFirstEventForToken(firstEventForToken?.id === eventId);
         }
 
-        // If L01+, walk the parent chain back to L00 (viral journey)
+        // If L01+, walk the parent chain back to L00 (viral journey) and fetch children
         if (token.level > 0) {
           await fetchViralChain(token.parent_token, token.level, event.occurred_at, eoa);
+          await fetchChildTokens(token.token, event.occurred_at);
         }
       } catch (error) {
         console.error("Error fetching event story:", error);
