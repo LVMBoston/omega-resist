@@ -708,6 +708,45 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
                 </>
               )}
 
+              {/* Viral Spread (Instance L00) */}
+              {isInstanceL00 && engagedSpawns.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Share2 className="w-4 h-4" />
+                      <span>Viral Spread</span>
+                    </div>
+
+                    <div className="space-y-1 text-sm pl-2">
+                      <div>📤 {engagedSpawns.length} share{engagedSpawns.length !== 1 ? 's' : ''} spawned:</div>
+                      <div className="pl-4 space-y-1">
+                        {engagedSpawns.slice(0, 5).map(child => (
+                          <div key={child.token} className="text-xs text-muted-foreground">
+                            • {formatShortLocation(child.city, child.region)} (L{child.level.toString().padStart(2, "0")}) via {getMediumLabel(child.utm_medium)}
+                            {child.firstEventId && (
+                              <span className="ml-1 font-mono text-[10px] opacity-60">
+                                [{child.firstEventId.slice(0, 8)}]
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                        {engagedSpawns.length > 5 && (
+                          <div className="text-xs text-muted-foreground">
+                            ... and {engagedSpawns.length - 5} more
+                          </div>
+                        )}
+                        {childTokens.filter(c => c.level > 0 && !c.firstEventAt).length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            📭 {childTokens.filter(c => c.level > 0 && !c.firstEventAt).length} pending (not yet opened)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Viral Journey (L01+ with full chain) - Visual numbered flow */}
               {tokenDetails.level > 0 && viralChain.length > 0 && (
                 <>
