@@ -154,41 +154,101 @@ export const StatsPageSlide = ({
     resolveCampaign();
   }, [viralToken, deckSlug, resolveMetrics]);
 
+  // Calculate image dimensions when loaded (or for solid color)
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (!containerRef.current) return;
+      
+      const container = containerRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      
+      // iOS Safari often reports 0 dimensions initially - poll until valid
+      if (containerWidth === 0 || containerHeight === 0) {
+        console.log("📊 StatsPageSlide: Container dimensions not ready, retrying...");
+        return false;
+      }
+      
+      // For solid color, use container dimensions with 9:16 aspect ratio
+      if (isSolidColor) {
+        let renderedWidth = containerWidth;
+        let renderedHeight = containerWidth * (16 / 9);
+        
+        if (renderedHeight > containerHeight) {
+          renderedHeight = containerHeight;
+          renderedWidth = containerHeight * (9 / 16);
+        }
+        
+        const offsetX = (containerWidth - renderedWidth) / 2;
+        const offsetY = (containerHeight - renderedHeight) / 2;
+        
+        setImageDimensions({
+          width: renderedWidth,
+          height: renderedHeight,
+          offsetX: Math.max(0, offsetX),
+          offsetY: Math.max(0, offsetY)
+        });
+        setImageLoaded(true);
+        return true;
+      }
+      
+      // For image, use image ref dimensions
+      if (!imageRef.current) return false;
+      
+      const img = imageRef.current;
+      const renderedWidth = img.clientWidth;
+      const renderedHeight = img.clientHeight;
+      
+      if (renderedWidth === 0 || renderedHeight === 0) {
+        return false;
+      }
+      
+      const offsetX = (containerWidth - renderedWidth) / 2;
+      const offsetY = (containerHeight - renderedHeight) / 2;
+      
+      setImageDimensions({
+        width: renderedWidth,
+        height: renderedHeight,
+        offsetX: Math.max(0, offsetX),
+        offsetY: Math.max(0, offsetY)
+      });
+      return true;
+    };
+
+    // Polling for iOS Safari which often reports zero dimensions initially
+    const pollDimensions = (attempts = 0, maxAttempts = 20) => {
+      const success = updateDimensions();
+      if (!success && attempts < maxAttempts) {
+        setTimeout(() => pollDimensions(attempts + 1, maxAttempts), 100);
+      }
+    };
+
+    if (isSolidColor) {
+      pollDimensions();
+      window.addEventListener('resize', updateDimensions);
+      return () => window.removeEventListener('resize', updateDimensions);
+    } else if (imageLoaded) {
+      pollDimensions();
+      window.addEventListener('resize', updateDimensions);
+      return () => window.removeEventListener('resize', updateDimensions);
+    }
+  }, [imageLoaded, isSolidColor]);
+
   // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
-  // Add cache-busting param based on snapshotRenderedAt to force CDN/browser refresh
   const campaignSnapshotUrl = campaignCode && templateId 
     ? (() => {
         const base = getCampaignSnapshotUrl(campaignCode);
         if (!base) return null;
-        // Always use Date.now() to guarantee fresh fetch — snapshotRenderedAt is per-template
-        // not per-campaign, so it can't reliably bust cache across multi-campaign templates
         return `${base}?v=${Date.now()}`;
       })()
     : null;
 
   // Determine if we should use the cached snapshot
-  // On mobile: always use snapshot if available (regardless of freshness) to avoid layout issues
-  // On desktop: use snapshot only if enabled and fresh
-  // CRITICAL: Skip snapshot if previous load attempt failed (triggers fallback to dynamic)
   const shouldUseCachedSnapshot = campaignSnapshotUrl && 
-    !snapshotLoadFailed && // Skip if snapshot failed to load
+    !snapshotLoadFailed &&
     (isMobile || (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes)));
 
-  // Mobile loading gate: wait for campaign resolution before rendering
-  // This prevents broken dynamic rendering before snapshot URL is available
-  if (isMobile && !campaignResolved) {
-    return (
-      <div 
-        ref={containerRef}
-        className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
-      >
-        <Loader2 className="w-8 h-8 animate-spin text-white" />
-      </div>
-    );
-  }
-
   // Fetch-based snapshot pre-check: validates URL before rendering img
-  // Eliminates device-specific differences in iOS Safari image loading
   useEffect(() => {
     if (!shouldUseCachedSnapshot || !campaignSnapshotUrl) {
       setValidatedSnapshotUrl(null);
@@ -217,6 +277,25 @@ export const StatsPageSlide = ({
     validateSnapshot();
     return () => { cancelled = true; };
   }, [shouldUseCachedSnapshot, campaignSnapshotUrl]);
+
+  // Hotspot filters (must be before any early returns that use them)
+  const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
+  const chartHotspots = hotspots.filter(h => h.type === 'chart');
+  const mapHotspots = hotspots.filter(h => h.type === 'map');
+
+  // === EARLY RETURNS (all hooks above this line) ===
+
+  // Mobile loading gate: wait for campaign resolution before rendering
+  if (isMobile && !campaignResolved) {
+    return (
+      <div 
+        ref={containerRef}
+        className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
+      >
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
+      </div>
+    );
+  }
 
   // If using validated snapshot, render simple static image
   if (validatedSnapshotUrl) {
@@ -260,10 +339,8 @@ export const StatsPageSlide = ({
       ref={containerRef}
       className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
     >
-      {/* Debug overlay removed — CSS position:fixed trapped by carousel transforms */}
       {/* Background: solid color or image */}
       {isSolidColor ? (
-        // Only render solid color div once dimensions are calculated
         imageDimensions.width > 0 && imageDimensions.height > 0 ? (
           <div
             className="absolute rounded-lg"
@@ -276,7 +353,6 @@ export const StatsPageSlide = ({
             }}
           />
         ) : (
-          // Show loading while dimensions are being calculated
           <div className="flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-white" />
           </div>
