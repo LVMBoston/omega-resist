@@ -538,7 +538,7 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       ? ` Total journey time from origin: ${originDeltaStr}.`
       : "";
 
-    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}`;
+    return `This is a Level ${tokenDetails.level} viral event. The content originated via ${originMedium} in ${originLocation}${originInstanceNote} ${originDateTime}.${chainNarrative} Finally, it was accessed in ${location} ${eventDateTime}${finalTimePhrase}${locationNote}.${totalTimePhrase}${buildSpawnNote()}`;
   };
 
   const instanceTokens = childTokens.filter(c => c.isInstance);
