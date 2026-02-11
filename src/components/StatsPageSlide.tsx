@@ -399,7 +399,6 @@ export const StatsPageSlide = ({
         <div>Snapshot URL tried: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 60) + '…' : '(none)'}</div>
         <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | snapshotLoadFailed: {String(snapshotLoadFailed)}</div>
       </div>
-      </div>
       {/* Background: solid color or image */}
       {isSolidColor ? (
         // Only render solid color div once dimensions are calculated
