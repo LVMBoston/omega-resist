@@ -260,19 +260,7 @@ export const StatsPageSlide = ({
       ref={containerRef}
       className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
     >
-      {/* DEBUG OVERLAY - dynamic rendering path */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(0,0,200,0.85)', color: '#fff',
-        fontFamily: 'monospace', fontSize: '13px', padding: '8px 12px',
-        zIndex: 999999, lineHeight: 1.6,
-        pointerEvents: 'none',
-      }}>
-        <div><b>🔵 DEBUG</b> | Status: DYNAMIC RENDERING (no snapshot)</div>
-        <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
-        <div>Snapshot URL tried: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 60) + '…' : '(none)'}</div>
-        <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | snapshotLoadFailed: {String(snapshotLoadFailed)}</div>
-      </div>
+      {/* Debug overlay removed — CSS position:fixed trapped by carousel transforms */}
       {/* Background: solid color or image */}
       {isSolidColor ? (
         // Only render solid color div once dimensions are calculated
