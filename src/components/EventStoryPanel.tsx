@@ -423,8 +423,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
     if (isInstanceL00) {
       const instanceCode = getInstanceCode(tokenDetails.token);
       // Count spawns (L01+ shares from this instance)
-      const spawns = childTokens.filter(c => c.level > 0);
-      const spawnCount = spawns.length;
+          const spawns = childTokens.filter(c => c.level > 0 && c.firstEventAt);
+          const spawnCount = spawns.length;
       
       let spawnNote = "";
       if (spawnCount === 0) {
