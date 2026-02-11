@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { render } from "https://deno.land/x/resvg_wasm@0.2.0/mod.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -259,20 +259,17 @@ Deno.serve(async (req) => {
   ${hotspotSvgElements}
 </svg>`;
 
-    console.log(`[render-stats-snapshot] SVG constructed: ${svgContent.length} chars, ${textHotspots.length} hotspots`);
+    const svgBytes = new TextEncoder().encode(svgContent);
+    console.log(`[render-stats-snapshot] SVG constructed: ${svgContent.length} chars, ${textHotspots.length} hotspots, ${svgBytes.length} bytes`);
 
-    // Render SVG to PNG using resvg-wasm
-    const pngBuffer = await render(svgContent);
-    console.log(`[render-stats-snapshot] PNG rendered: ${pngBuffer.length} bytes`);
-
-    // Upload to storage
-    const storagePath = `${template_id}/snapshot-${campaign_code}.png`;
+    // Upload SVG directly (avoids CPU-heavy resvg-wasm PNG rasterization)
+    const storagePath = `${template_id}/snapshot-${campaign_code}.svg`;
     const { error: uploadError } = await supabase.storage
       .from("slide-snapshots")
-      .upload(storagePath, pngBuffer, {
+      .upload(storagePath, svgBytes, {
         cacheControl: "300",
         upsert: true,
-        contentType: "image/png",
+        contentType: "image/svg+xml",
       });
 
     if (uploadError) {
@@ -280,14 +277,12 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from("slide-snapshots")
       .getPublicUrl(storagePath);
 
     console.log("[render-stats-snapshot] Uploaded to:", publicUrl);
 
-    // Update template with snapshot path and timestamp
     const now = new Date().toISOString();
     await supabase
       .from("viral_slide_configs")
@@ -305,7 +300,7 @@ Deno.serve(async (req) => {
         rendered_at: now,
         snapshot_url: publicUrl,
         metrics_count: Object.keys(metrics).length,
-        size_bytes: pngBuffer.length,
+        size_bytes: svgBytes.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
