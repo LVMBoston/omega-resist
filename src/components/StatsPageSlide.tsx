@@ -5,7 +5,7 @@ import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { Loader2 } from "lucide-react";
-import { formatInTimeZone } from "date-fns-tz";
+
 
 interface StatsPageSlideProps {
   imageUrl: string;
@@ -36,16 +36,6 @@ function isSnapshotFresh(
   return ageMinutes < intervalMinutes * 2.5;
 }
 
-// Get the full URL for a snapshot - handles both full URLs and relative paths
-function getSnapshotUrl(path: string): string {
-  // If already a full URL, return as-is
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-  // Otherwise, build URL from relative path
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/slide-snapshots${path}`;
-}
 
 // Detect if user is on a mobile device
 function isMobileDevice(): boolean {
@@ -81,6 +71,12 @@ export const StatsPageSlide = ({
   const isSolidColor = imageUrl?.startsWith("solid:");
   const solidColor = isSolidColor ? imageUrl.replace("solid:", "") : null;
 
+  // Campaign resolution state
+  const [campaignCode, setCampaignCode] = useState<string>("");
+  const [campaignResolved, setCampaignResolved] = useState(false);
+  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
+  const [validatedSnapshotUrl, setValidatedSnapshotUrl] = useState<string | null>(null);
+
 
   // Get live metrics via the hook (only if not using cached snapshot)
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
@@ -93,7 +89,8 @@ export const StatsPageSlide = ({
     return `${supabaseUrl}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${code}.png`;
   };
 
-  // Resolve campaign from viralToken or deckSlug and optionally resolve metrics
+  // Unified campaign resolution: resolves campaign code, sets state, fetches metrics
+  // Single effect eliminates race condition between duplicate hooks
   useEffect(() => {
     const resolveCampaign = async () => {
       try {
@@ -112,14 +109,14 @@ export const StatsPageSlide = ({
           }
         }
 
-        // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
-        // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
-        // Using limit(1) to get any valid campaign association
+        // Fallback: get campaign from deck's assigned EOA
+        // Deterministic ordering ensures all devices resolve to the same campaign
         if (!resolvedCode && deckSlug) {
           const { data: eoaRows } = await supabase
             .from("events_actions")
             .select("campaign_id, campaigns(code)")
             .eq("assigned_deck_slug", deckSlug)
+            .order("created_at", { ascending: false })
             .limit(1);
           
           const eoaData = eoaRows?.[0];
@@ -130,13 +127,17 @@ export const StatsPageSlide = ({
         }
 
         if (resolvedCode) {
-          console.log("📊 StatsPageSlide: Resolving metrics for campaign:", resolvedCode);
+          console.log("📊 StatsPageSlide: Resolved campaign:", resolvedCode);
+          setCampaignCode(resolvedCode);
+          setSnapshotLoadFailed(false);
           await resolveMetrics(resolvedCode);
         } else {
           console.warn("📊 StatsPageSlide: Could not resolve campaign from token or deck");
         }
       } catch (error) {
         console.error("📊 StatsPageSlide: Error resolving campaign:", error);
+      } finally {
+        setCampaignResolved(true);
       }
     };
 
@@ -155,12 +156,11 @@ export const StatsPageSlide = ({
       // iOS Safari often reports 0 dimensions initially - poll until valid
       if (containerWidth === 0 || containerHeight === 0) {
         console.log("📊 StatsPageSlide: Container dimensions not ready, retrying...");
-        return false; // Signal to retry
+        return false;
       }
       
       // For solid color, use container dimensions with 9:16 aspect ratio
       if (isSolidColor) {
-        // Calculate dimensions maintaining 9:16 aspect ratio
         let renderedWidth = containerWidth;
         let renderedHeight = containerWidth * (16 / 9);
         
@@ -171,10 +171,6 @@ export const StatsPageSlide = ({
         
         const offsetX = (containerWidth - renderedWidth) / 2;
         const offsetY = (containerHeight - renderedHeight) / 2;
-        
-        console.log("📊 StatsPageSlide: Solid color dimensions calculated:", {
-          containerWidth, containerHeight, renderedWidth, renderedHeight
-        });
         
         setImageDimensions({
           width: renderedWidth,
@@ -190,11 +186,9 @@ export const StatsPageSlide = ({
       if (!imageRef.current) return false;
       
       const img = imageRef.current;
-      
       const renderedWidth = img.clientWidth;
       const renderedHeight = img.clientHeight;
       
-      // iOS Safari may report 0 initially
       if (renderedWidth === 0 || renderedHeight === 0) {
         return false;
       }
@@ -220,103 +214,68 @@ export const StatsPageSlide = ({
     };
 
     if (isSolidColor) {
-      // For solid color, start polling immediately
       pollDimensions();
       window.addEventListener('resize', updateDimensions);
       return () => window.removeEventListener('resize', updateDimensions);
     } else if (imageLoaded) {
-      // For images, start polling after image loaded
       pollDimensions();
       window.addEventListener('resize', updateDimensions);
       return () => window.removeEventListener('resize', updateDimensions);
     }
   }, [imageLoaded, isSolidColor]);
 
-  const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
-  const chartHotspots = hotspots.filter(h => h.type === 'chart');
-  const mapHotspots = hotspots.filter(h => h.type === 'map');
-
-  // Extract campaign code for chart hotspots
-  const [campaignCode, setCampaignCode] = useState<string>("");
-  const [campaignResolved, setCampaignResolved] = useState(false);
-
-  useEffect(() => {
-    const extractCampaignCode = async () => {
-      try {
-        // First try to get campaign from token
-        if (viralToken) {
-          const { data: tokenData } = await supabase
-            .from("tokens")
-            .select("utm_campaign")
-            .eq("token", viralToken)
-            .maybeSingle();
-          
-          if (tokenData?.utm_campaign) {
-            setCampaignCode(tokenData.utm_campaign);
-            setCampaignResolved(true);
-            return;
-          }
-        }
-
-        // Fallback: try to get campaign from deck's assigned EOA (events_actions.assigned_deck_slug)
-        // Note: Multiple EOAs may be assigned to the same deck (from different campaigns)
-        if (deckSlug) {
-          const { data: eoaRows } = await supabase
-            .from("events_actions")
-            .select("campaign_id, campaigns(code)")
-            .eq("assigned_deck_slug", deckSlug)
-            .limit(1);
-          
-          const eoaData = eoaRows?.[0];
-          
-          if (eoaData?.campaigns?.code) {
-            setCampaignCode(eoaData.campaigns.code);
-          }
-        }
-      } catch (error) {
-        console.error("📊 StatsPageSlide: Error extracting campaign code:", error);
-      } finally {
-        // Always mark as resolved, even if no campaign found
-        setCampaignResolved(true);
-      }
-    };
-
-    extractCampaignCode();
-  }, [viralToken, deckSlug]);
-
-  // Snapshot loading state for error handling and fallback
-  const [snapshotLoadFailed, setSnapshotLoadFailed] = useState(false);
-  
-  // Debug overlay state
-  const [snapshotStatus, setSnapshotStatus] = useState<'loading' | 'ok' | 'failed-fallback'>('loading');
-
-  // Reset snapshot failure state when campaign changes
-  useEffect(() => {
-    setSnapshotLoadFailed(false);
-  }, [campaignCode]);
-
   // Build campaign-specific snapshot URL (dynamic based on resolved campaignCode)
-  // Add cache-busting param based on snapshotRenderedAt to force CDN/browser refresh
   const campaignSnapshotUrl = campaignCode && templateId 
     ? (() => {
         const base = getCampaignSnapshotUrl(campaignCode);
         if (!base) return null;
-        // Always use Date.now() to guarantee fresh fetch — snapshotRenderedAt is per-template
-        // not per-campaign, so it can't reliably bust cache across multi-campaign templates
         return `${base}?v=${Date.now()}`;
       })()
     : null;
 
   // Determine if we should use the cached snapshot
-  // On mobile: always use snapshot if available (regardless of freshness) to avoid layout issues
-  // On desktop: use snapshot only if enabled and fresh
-  // CRITICAL: Skip snapshot if previous load attempt failed (triggers fallback to dynamic)
   const shouldUseCachedSnapshot = campaignSnapshotUrl && 
-    !snapshotLoadFailed && // Skip if snapshot failed to load
+    !snapshotLoadFailed &&
     (isMobile || (snapshotEnabled && isSnapshotFresh(snapshotRenderedAt, snapshotIntervalMinutes)));
 
+  // Fetch-based snapshot pre-check: validates URL before rendering img
+  useEffect(() => {
+    if (!shouldUseCachedSnapshot || !campaignSnapshotUrl) {
+      setValidatedSnapshotUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    const validateSnapshot = async () => {
+      try {
+        const res = await fetch(campaignSnapshotUrl, { mode: 'cors', method: 'HEAD' });
+        if (cancelled) return;
+        if (res.ok) {
+          console.log("📊 StatsPageSlide: Snapshot validated OK:", campaignSnapshotUrl);
+          setValidatedSnapshotUrl(campaignSnapshotUrl);
+        } else {
+          console.warn("📊 StatsPageSlide: Snapshot returned", res.status, "- falling back to dynamic");
+          setSnapshotLoadFailed(true);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("📊 StatsPageSlide: Snapshot fetch failed, falling back to dynamic:", err);
+        setSnapshotLoadFailed(true);
+      }
+    };
+
+    validateSnapshot();
+    return () => { cancelled = true; };
+  }, [shouldUseCachedSnapshot, campaignSnapshotUrl]);
+
+  // Hotspot filters (must be before any early returns that use them)
+  const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
+  const chartHotspots = hotspots.filter(h => h.type === 'chart');
+  const mapHotspots = hotspots.filter(h => h.type === 'map');
+
+  // === EARLY RETURNS (all hooks above this line) ===
+
   // Mobile loading gate: wait for campaign resolution before rendering
-  // This prevents broken dynamic rendering before snapshot URL is available
   if (isMobile && !campaignResolved) {
     return (
       <div 
@@ -328,39 +287,23 @@ export const StatsPageSlide = ({
     );
   }
 
-  // If using cached snapshot, render simple static image with error handling
-  if (shouldUseCachedSnapshot && campaignSnapshotUrl) {
-    console.log(`📊 StatsPageSlide: Rendering snapshot (mobile=${isMobile}):`, campaignSnapshotUrl);
-    
+  // If using validated snapshot, render simple static image
+  if (validatedSnapshotUrl) {
     return (
       <div 
         ref={containerRef}
         className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
       >
         <img
-          src={campaignSnapshotUrl}
+          src={validatedSnapshotUrl}
           alt="Stats page (cached)"
           className="max-w-full max-h-full object-contain"
-          onLoad={() => setSnapshotStatus('ok')}
           onError={() => {
-            console.warn(`📊 StatsPageSlide: Snapshot failed to load, falling back to dynamic rendering:`, campaignSnapshotUrl);
-            setSnapshotStatus('failed-fallback');
+            console.warn("📊 StatsPageSlide: Validated snapshot failed on render, falling back");
+            setValidatedSnapshotUrl(null);
             setSnapshotLoadFailed(true);
           }}
         />
-        {/* DEBUG OVERLAY - temporary diagnostic banner */}
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'rgba(255,0,0,0.85)', color: '#fff',
-          fontFamily: 'monospace', fontSize: '13px', padding: '8px 12px',
-          zIndex: 999999, lineHeight: 1.6,
-          pointerEvents: 'none',
-        }}>
-          <div><b>🔴 DEBUG</b> | Status: {snapshotStatus === 'ok' ? '✅ Snapshot loaded OK' : snapshotStatus === 'failed-fallback' ? '❌ SNAPSHOT 404 — FELL BACK TO DYNAMIC' : '⏳ Loading snapshot...'}</div>
-          <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
-          <div>URL: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 60) + '…' : '(none)'}</div>
-          <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | Mode: SNAPSHOT</div>
-        </div>
       </div>
     );
   }
@@ -386,22 +329,8 @@ export const StatsPageSlide = ({
       ref={containerRef}
       className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
     >
-      {/* DEBUG OVERLAY - dynamic rendering path */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(0,0,200,0.85)', color: '#fff',
-        fontFamily: 'monospace', fontSize: '13px', padding: '8px 12px',
-        zIndex: 999999, lineHeight: 1.6,
-        pointerEvents: 'none',
-      }}>
-        <div><b>🔵 DEBUG</b> | Status: DYNAMIC RENDERING (no snapshot)</div>
-        <div>Campaign: <b>{campaignCode || '(none)'}</b> | Token: {viralToken || '(none)'}</div>
-        <div>Snapshot URL tried: {campaignSnapshotUrl ? campaignSnapshotUrl.slice(0, 60) + '…' : '(none)'}</div>
-        <div>Device: {isMobile ? 'MOBILE' : 'DESKTOP'} | snapshotLoadFailed: {String(snapshotLoadFailed)}</div>
-      </div>
       {/* Background: solid color or image */}
       {isSolidColor ? (
-        // Only render solid color div once dimensions are calculated
         imageDimensions.width > 0 && imageDimensions.height > 0 ? (
           <div
             className="absolute rounded-lg"
@@ -414,7 +343,6 @@ export const StatsPageSlide = ({
             }}
           />
         ) : (
-          // Show loading while dimensions are being calculated
           <div className="flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-white" />
           </div>
