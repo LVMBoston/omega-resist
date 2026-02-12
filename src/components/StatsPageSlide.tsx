@@ -37,11 +37,16 @@ function isSnapshotFresh(
 }
 
 
-// Detect if user is on a mobile device
+// Detect if user is on a mobile/tablet device
+// iPadOS 13+ reports a Mac desktop user agent, so we also check touch points
 function isMobileDevice(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent.toLowerCase();
-  return /iphone|ipad|ipod|android|mobile|phone/i.test(ua);
+  // Standard mobile UA detection
+  if (/iphone|ipad|ipod|android|mobile|phone/i.test(ua)) return true;
+  // iPadOS 13+ disguises as Mac — detect via touch capability
+  if (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true;
+  return false;
 }
 
 export const StatsPageSlide = ({ 
