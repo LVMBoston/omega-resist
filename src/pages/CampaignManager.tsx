@@ -97,9 +97,9 @@ export default function CampaignManager() {
       setShowStatsMap(prev => {
         const next = new Map(prev);
         for (const campaign of campaigns) {
-          // Only set to true if not already in the map (preserve user preferences)
+          // Only set default if not already in the map (preserve user preferences)
           if (!next.has(campaign.id)) {
-            next.set(campaign.id, true);
+            next.set(campaign.id, false);
           }
         }
         return next;
