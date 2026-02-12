@@ -1275,7 +1275,7 @@ export default function CampaignDashboard({
                   </Select>
                 </div>
 
-                {chapterOptions.length > 1 && (
+                {chapterOptions.length > 0 && (
                 <div>
                   <label className="text-sm font-medium mb-2 block">Campaign Chapter</label>
                   <Select 
