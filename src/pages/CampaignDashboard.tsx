@@ -172,6 +172,7 @@ export default function CampaignDashboard({
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
   const hideLegacy = searchParams.get("hideLegacy") === "true";
   const hideNoSpawns = searchParams.get("hideNoSpawns") === "true";
+  const chapterFilter = searchParams.get("chapter") || "all";
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
   const [startDate, setStartDate] = useState<Date | undefined>(
@@ -658,7 +659,32 @@ export default function CampaignDashboard({
   const viewsCount = eventCounts?.views || 0;
   const sharesCount = eventCounts?.shares || 0;
 
-  // Fetch L00 instances for chain filter dropdown (sorted by most recent activity)
+  // Fetch unique mobilize_codes for Campaign Chapter filter
+  const { data: chapterOptions = [] } = useQuery({
+    queryKey: ["campaign-chapters", selectedCampaignId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events_actions")
+        .select("mobilize_code, title, city, state")
+        .eq("campaign_id", selectedCampaignId)
+        .not("mobilize_code", "is", null);
+      if (error) throw error;
+      // Deduplicate by mobilize_code
+      const seen = new Map<string, { mobilize_code: string; label: string }>();
+      for (const eoa of data || []) {
+        if (eoa.mobilize_code && !seen.has(eoa.mobilize_code)) {
+          const location = [eoa.city, eoa.state].filter(Boolean).join(", ");
+          seen.set(eoa.mobilize_code, {
+            mobilize_code: eoa.mobilize_code,
+            label: location ? `${eoa.mobilize_code} — ${location}` : eoa.mobilize_code,
+          });
+        }
+      }
+      return Array.from(seen.values()).sort((a, b) => a.mobilize_code.localeCompare(b.mobilize_code));
+    },
+    enabled: !!selectedCampaignId,
+  });
+
   const {
     data: l00Instances
   } = useQuery({
@@ -895,11 +921,18 @@ export default function CampaignDashboard({
 
   // Filter and sort EventsV2 - apply chain filter using l00_instance
   // Moved here so metrics can use filtered data
-  const filteredEventsV2 = eventsV2Data ? (
+  let filteredEventsV2 = eventsV2Data ? (
     chainViewMode === "chain" && selectedL00Instance
       ? eventsV2Data.filter((e: any) => e.tokens?.l00_instance === selectedL00Instance)
       : eventsV2Data
   ) : [];
+
+  // Apply chapter (mobilize_code) filter
+  if (chapterFilter !== "all") {
+    filteredEventsV2 = filteredEventsV2.filter(
+      (e: any) => e.tokens?.events_actions?.mobilize_code === chapterFilter
+    );
+  }
 
   // Calculate metrics for EventsV2 - use filtered data to match what's displayed
   const eventsV2Metrics = filteredEventsV2.length > 0 ? {
@@ -1241,6 +1274,36 @@ export default function CampaignDashboard({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {chapterOptions.length > 1 && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Campaign Chapter</label>
+                  <Select 
+                    value={chapterFilter} 
+                    onValueChange={(value) => {
+                      const params = new URLSearchParams(searchParams);
+                      if (value === "all") {
+                        params.delete("chapter");
+                      } else {
+                        params.set("chapter", value);
+                      }
+                      setSearchParams(params);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Chapters</SelectItem>
+                      {chapterOptions.map((ch) => (
+                        <SelectItem key={ch.mobilize_code} value={ch.mobilize_code}>
+                          {ch.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                )}
 
                 <div className="flex items-center space-x-2">
                   <Checkbox 
