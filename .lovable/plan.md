@@ -1,63 +1,46 @@
 
 
-# Fix: iPad Slide Clipping in Both Orientations
-
-## Problem
-
-The `.deck-slide-container` CSS causes the slide to overflow its parent in both orientations on iPad:
-
-- **Portrait**: `width: 100%` + `aspect-ratio: 9/16` makes the container taller than the viewport (e.g., 820px wide produces a 1457px tall container, but the screen is only ~1180px). The bottom is clipped by `overflow-hidden` on the parent.
-- **Landscape**: `height: 100%` uses `100vh`, which on Safari includes the area behind the toolbar/address bar, causing slight bottom clipping.
-
-## Solution
-
-Constrain the container in both dimensions so it never exceeds the viewport, using `max-height` and `max-width` alongside `dvh` (dynamic viewport height) for Safari compatibility.
+# Add `utm_medium` Column to EventsV2 Table
 
 ## Changes
 
-### 1. `src/index.css` — Update `.deck-slide-container`
+All changes are in `src/pages/CampaignDashboard.tsx`.
 
-Replace the current rules with dimension-constrained versions:
+### 1. Table Header — Insert after "Event Level" column (line ~1658)
 
-```css
-.deck-slide-container {
-  /* Fill available space but never overflow */
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100dvh; /* dvh respects Safari toolbar */
-  aspect-ratio: 9 / 16;
-  /* When aspect-ratio conflicts with max constraints, 
-     object-fit on child img handles the rest */
-}
-
-@media (orientation: landscape) {
-  .deck-slide-container {
-    height: 100dvh;
-    width: auto;
-    max-width: 100%;
-    max-height: 100dvh;
-    aspect-ratio: 9 / 16;
-  }
-}
-```
-
-The key changes:
-- Add `max-height: 100dvh` in portrait mode so the 9:16 container stops growing before it overflows the viewport
-- Use `dvh` units instead of `vh` to account for Safari's dynamic toolbar
-- Both orientations are now bounded in both dimensions
-
-### 2. `src/pages/DeckViewer.tsx` — Update `main` to use `dvh`
-
-Change `h-screen` (which uses `100vh`) to use dynamic viewport height:
+Add a new sortable `TableHead` for `utm_medium` between the "Event Level" and "utm_content" columns:
 
 ```tsx
-<main className="flex items-center justify-center bg-black overflow-hidden"
-      style={{ height: '100dvh' }}>
+<TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_medium')}>
+  <div className="flex items-center gap-1">
+    utm_medium
+    {sortConfig.column === 'utm_medium' && <ArrowUpDown className="w-3 h-3" />}
+  </div>
+</TableHead>
 ```
 
-This ensures the outermost container also respects Safari's dynamic toolbar height.
+### 2. Table Body — Insert cell after the Event Level badge (line ~1692)
 
-### No other changes needed
-- The snapshot `<img>` inside `StatsPageSlide` already uses `max-w-full max-h-full object-contain`, so once the container is properly sized, the image will scale to fit without clipping.
+Add a new `TableCell` displaying the token's `utm_medium` value:
+
+```tsx
+<TableCell className="font-mono text-xs">
+  {event.tokens?.utm_medium || 'N/A'}
+</TableCell>
+```
+
+### 3. CSV Export — Add to headers and data rows (lines ~540, ~560)
+
+- Add `"utm_medium"` to the `headers` array after `"Event Level"`
+- Add `event.tokens?.utm_medium || ""` to the CSV row data array after the level value
+
+### 4. Sort Logic
+
+The existing `handleSort` function already accesses nested token fields via dot notation. The sort key `'utm_medium'` will need to resolve to `event.tokens.utm_medium`. I will verify the sort handler supports this path and add it if needed.
+
+## What stays the same
+
+- No database or schema changes
+- No new dependencies
+- The query already fetches token data including `utm_medium` via the join
 
