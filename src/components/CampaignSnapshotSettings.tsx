@@ -187,16 +187,43 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
         }
       }
 
-      // Get sample L00 token for this campaign
-      const { data: sampleToken, error: tokErr } = await supabase
-        .from("tokens")
-        .select("token")
-        .eq("utm_campaign", campaignCode)
-        .eq("level", 0)
-        .is("deleted_at", null)
-        .limit(1)
-        .maybeSingle();
-      if (tokErr) throw tokErr;
+      // Collect all resolved mobilize_codes for token lookup
+      const allMobilizeCodes = [...new Set(Object.values(deckMobilizeMap))];
+
+      // Get sample L00 tokens keyed by mobilize_code (token pattern: l00-{mobilize_code}-...)
+      const mobilizeTokenMap: Record<string, string> = {};
+      if (allMobilizeCodes.length > 0) {
+        const { data: tokens, error: tokErr } = await supabase
+          .from("tokens")
+          .select("token")
+          .eq("utm_campaign", campaignCode)
+          .eq("level", 0)
+          .is("deleted_at", null)
+          .limit(50);
+        if (tokErr) throw tokErr;
+
+        for (const t of tokens || []) {
+          const match = t.token.match(/^l00-([^-]+)-/);
+          if (match) {
+            const mc = match[1];
+            if (!mobilizeTokenMap[mc]) mobilizeTokenMap[mc] = t.token;
+          }
+        }
+      }
+
+      // Fallback: any campaign token if mobilize-specific lookup fails
+      let fallbackToken: string | null = null;
+      if (Object.keys(mobilizeTokenMap).length === 0) {
+        const { data: fb } = await supabase
+          .from("tokens")
+          .select("token")
+          .eq("utm_campaign", campaignCode)
+          .eq("level", 0)
+          .is("deleted_at", null)
+          .limit(1)
+          .maybeSingle();
+        fallbackToken = fb?.token ?? null;
+      }
 
       // Assemble per-template context
       const result: Record<string, TemplateContext> = {};
@@ -211,7 +238,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
               templateId,
               deckSlug,
               mobilizeCode,
-              sampleToken: sampleToken?.token ?? null,
+              sampleToken: mobilizeTokenMap[mobilizeCode] ?? fallbackToken,
             };
             break;
           }
