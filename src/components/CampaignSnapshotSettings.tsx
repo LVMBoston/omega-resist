@@ -158,13 +158,18 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
       if (siErr) throw siErr;
       if (!slideItems || slideItems.length === 0) return {};
 
-      // Build template -> deck_slug map
-      const templateDeckMap: Record<string, string> = {};
+      // Build template -> deck_slugs map (a template can be in multiple decks)
+      const templateDeckMap: Record<string, string[]> = {};
       for (const si of slideItems) {
-        if (si.template_id) templateDeckMap[si.template_id] = si.deck_slug;
+        if (si.template_id) {
+          if (!templateDeckMap[si.template_id]) templateDeckMap[si.template_id] = [];
+          if (!templateDeckMap[si.template_id].includes(si.deck_slug)) {
+            templateDeckMap[si.template_id].push(si.deck_slug);
+          }
+        }
       }
 
-      const deckSlugs = [...new Set(Object.values(templateDeckMap))];
+      const deckSlugs = [...new Set(Object.values(templateDeckMap).flat())];
 
       // Get events_actions for these deck_slugs filtered by this campaign
       const { data: eoas, error: eoaErr } = await supabase
@@ -193,7 +198,6 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
       if (tokErr) throw tokErr;
 
       // Build mobilize_code -> sample token map
-      // L00 tokens follow pattern: l00-{mobilize_code}-{utm_id}
       const mobilizeTokenMap: Record<string, string> = {};
       for (const t of tokens || []) {
         const match = t.token.match(/^l00-([^-]+)-/);
@@ -206,16 +210,21 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
       // Assemble per-template context
       const result: Record<string, TemplateContext> = {};
       for (const templateId of templateIds) {
-        const deckSlug = templateDeckMap[templateId];
-        if (!deckSlug) continue;
-        const mobilizeCode = deckMobilizeMap[deckSlug];
-        if (!mobilizeCode) continue;
-        result[templateId] = {
-          templateId,
-          deckSlug,
-          mobilizeCode,
-          sampleToken: mobilizeTokenMap[mobilizeCode] ?? null,
-        };
+        const deckSlugsForTemplate = templateDeckMap[templateId];
+        if (!deckSlugsForTemplate) continue;
+        // Find the first deck_slug that has a matching EoA for this campaign
+        for (const deckSlug of deckSlugsForTemplate) {
+          const mobilizeCode = deckMobilizeMap[deckSlug];
+          if (mobilizeCode) {
+            result[templateId] = {
+              templateId,
+              deckSlug,
+              mobilizeCode,
+              sampleToken: mobilizeTokenMap[mobilizeCode] ?? null,
+            };
+            break;
+          }
+        }
       }
       return result;
     },
