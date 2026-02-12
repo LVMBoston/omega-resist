@@ -538,6 +538,7 @@ export default function CampaignDashboard({
       "Message Opened (Zipcode)",
       "Location Method",
       "Event Level",
+      "utm_medium",
       "Instance",
       "utm_content",
       "Event ID",
@@ -558,6 +559,7 @@ export default function CampaignDashboard({
         event.zip_code || "",
         event.location_source === 'gps' ? 'GPS' : 'Cell Tower',
         formatLevel(event.tokens?.level || 0),
+        event.tokens?.utm_medium || "",
         event.tokens?.l00_instance || "",
         utmContent,
         event.id || "",
@@ -980,6 +982,10 @@ export default function CampaignDashboard({
       case 'level':
         aVal = a.tokens?.level || 0;
         bVal = b.tokens?.level || 0;
+        break;
+      case 'utm_medium':
+        aVal = a.tokens?.utm_medium || '';
+        bVal = b.tokens?.utm_medium || '';
         break;
       case 'utm_content':
         aVal = a.tokens?.events_actions?.mobilize_code && a.tokens?.events_actions?.utm_id ? `${a.tokens.events_actions.mobilize_code}-${a.tokens.events_actions.utm_id}` : '';
@@ -1656,6 +1662,12 @@ export default function CampaignDashboard({
                                   {sortConfig.column === 'level' && <ArrowUpDown className="w-3 h-3" />}
                                 </div>
                               </TableHead>
+                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_medium')}>
+                                <div className="flex items-center gap-1">
+                                  utm_medium
+                                  {sortConfig.column === 'utm_medium' && <ArrowUpDown className="w-3 h-3" />}
+                                </div>
+                              </TableHead>
                               <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_content')}>
                                 <div className="flex items-center gap-1">
                                   utm_content
@@ -1689,6 +1701,9 @@ export default function CampaignDashboard({
                 <TableCell>{event.location_source === 'gps' ? 'GPS' : 'Cell Tower'}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
+                </TableCell>
+                <TableCell className="font-mono text-xs">
+                  {event.tokens?.utm_medium || 'N/A'}
                 </TableCell>
                 <TableCell className="font-mono text-xs">
                   {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
