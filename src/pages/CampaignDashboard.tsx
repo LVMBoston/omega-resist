@@ -171,7 +171,7 @@ export default function CampaignDashboard({
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
   const hideLegacy = searchParams.get("hideLegacy") === "true";
-  const hideNoSpawns = searchParams.get("hideNoSpawns") === "true";
+  const showNoSpawns = searchParams.get("showNoSpawns") === "true";
   const chapterFilter = searchParams.get("chapter") || "all";
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
@@ -760,7 +760,7 @@ export default function CampaignDashboard({
     data: eventsV2Data,
     isLoading: eventsV2Loading
   } = useQuery({
-    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, hideLegacy, hideNoSpawns],
+    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, hideLegacy, showNoSpawns],
     queryFn: async () => {
       let query = supabase.from("url_events").select(`
           id,
@@ -831,9 +831,9 @@ export default function CampaignDashboard({
           shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
         });
 
-        // If hideNoSpawns is enabled, get L00 tokens that have spawns
+        // Unless showNoSpawns is enabled, get L00 tokens that have spawns to filter
         let l00WithSpawnsSet: Set<string> = new Set();
-        if (hideNoSpawns) {
+        if (!showNoSpawns) {
           // Get all L00 tokens from the current data
           const l00Tokens = data
             .filter((e: any) => e.tokens?.level === 0)
@@ -884,8 +884,8 @@ export default function CampaignDashboard({
           short_url: event.tokens?.full_url ? shortUrlMap.get(event.tokens.full_url) : null
         })));
 
-        // Filter out L00 events with no spawns if enabled
-        if (hideNoSpawns) {
+        // Filter out L00 events with no spawns unless showNoSpawns is checked
+        if (!showNoSpawns) {
           transformedData = transformedData.filter((event: any) => {
             // Keep non-L00 events
             if (event.tokens?.level !== 0) return true;
@@ -1327,20 +1327,20 @@ export default function CampaignDashboard({
 
                 <div className="flex items-center space-x-2">
                   <Checkbox 
-                    id="hide-no-spawns" 
-                    checked={hideNoSpawns} 
+                    id="show-no-spawns" 
+                    checked={showNoSpawns} 
                     onCheckedChange={(checked) => {
                       const params = new URLSearchParams(searchParams);
                       if (checked) {
-                        params.set("hideNoSpawns", "true");
+                        params.set("showNoSpawns", "true");
                       } else {
-                        params.delete("hideNoSpawns");
+                        params.delete("showNoSpawns");
                       }
                       setSearchParams(params);
                     }} 
                   />
-                  <Label htmlFor="hide-no-spawns" className="text-sm font-medium leading-none cursor-pointer">
-                    Hide L00 with No Spawns
+                  <Label htmlFor="show-no-spawns" className="text-sm font-medium leading-none cursor-pointer">
+                    Show L00 with No Spawns
                   </Label>
                   <span className="text-xs text-muted-foreground">(L00 events that didn't generate shares)</span>
                 </div>
