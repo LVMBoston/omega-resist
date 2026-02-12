@@ -187,25 +187,16 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
         }
       }
 
-      // Get sample L00 tokens for this campaign
-      const { data: tokens, error: tokErr } = await supabase
+      // Get sample L00 token for this campaign
+      const { data: sampleToken, error: tokErr } = await supabase
         .from("tokens")
-        .select("token, utm_campaign")
+        .select("token")
         .eq("utm_campaign", campaignCode)
         .eq("level", 0)
         .is("deleted_at", null)
-        .limit(10);
+        .limit(1)
+        .maybeSingle();
       if (tokErr) throw tokErr;
-
-      // Build mobilize_code -> sample token map
-      const mobilizeTokenMap: Record<string, string> = {};
-      for (const t of tokens || []) {
-        const match = t.token.match(/^l00-([^-]+)-/);
-        if (match) {
-          const mc = match[1];
-          if (!mobilizeTokenMap[mc]) mobilizeTokenMap[mc] = t.token;
-        }
-      }
 
       // Assemble per-template context
       const result: Record<string, TemplateContext> = {};
@@ -220,7 +211,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
               templateId,
               deckSlug,
               mobilizeCode,
-              sampleToken: mobilizeTokenMap[mobilizeCode] ?? null,
+              sampleToken: sampleToken?.token ?? null,
             };
             break;
           }
