@@ -452,7 +452,7 @@ export default function DeckViewer() {
   
   return (
     <div className="min-h-screen bg-background">
-      <main className="h-screen flex items-center justify-center bg-black overflow-hidden">
+      <main className="flex items-center justify-center bg-black overflow-hidden" style={{ height: '100dvh' }}>
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
