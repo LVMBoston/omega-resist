@@ -1,53 +1,63 @@
 
 
-# Fix: iOS Snapshot Blocked by HEAD Pre-Check
+# Fix: iPad Slide Clipping in Both Orientations
 
-## Root Cause
+## Problem
 
-`StatsPageSlide.tsx` validates snapshot URLs with a cross-origin `fetch(url, { mode: 'cors', method: 'HEAD' })` before rendering the `<img>` tag. iOS Safari ITP blocks this fetch, which sets `snapshotLoadFailed = true`, causing the component to fall back to dynamic metric rendering -- which also partially fails because ITP blocks some Supabase API calls too.
+The `.deck-slide-container` CSS causes the slide to overflow its parent in both orientations on iPad:
 
-## The Fix
+- **Portrait**: `width: 100%` + `aspect-ratio: 9/16` makes the container taller than the viewport (e.g., 820px wide produces a 1457px tall container, but the screen is only ~1180px). The bottom is clipped by `overflow-hidden` on the parent.
+- **Landscape**: `height: 100%` uses `100vh`, which on Safari includes the area behind the toolbar/address bar, causing slight bottom clipping.
 
-On mobile devices, skip the `fetch`-based HEAD pre-check entirely. Instead, render the snapshot `<img>` tag directly and rely on the `onError` handler (which already exists at line 301-305) to detect broken images. The `<img>` tag loads cross-origin images without ITP interference because image loading is not subject to the same restrictions as `fetch`.
+## Solution
+
+Constrain the container in both dimensions so it never exceeds the viewport, using `max-height` and `max-width` alongside `dvh` (dynamic viewport height) for Safari compatibility.
 
 ## Changes
 
-### 1. `src/components/StatsPageSlide.tsx`
+### 1. `src/index.css` — Update `.deck-slide-container`
 
-**Modify the snapshot validation effect (lines 242-269)**:
-- Add a condition: if `isMobile`, skip the HEAD fetch and set `validatedSnapshotUrl` directly from `campaignSnapshotUrl`.
-- On desktop, keep the existing HEAD pre-check behavior unchanged.
+Replace the current rules with dimension-constrained versions:
 
-The change is approximately:
+```css
+.deck-slide-container {
+  /* Fill available space but never overflow */
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100dvh; /* dvh respects Safari toolbar */
+  aspect-ratio: 9 / 16;
+  /* When aspect-ratio conflicts with max constraints, 
+     object-fit on child img handles the rest */
+}
 
-```
-useEffect(() => {
-  if (!shouldUseCachedSnapshot || !campaignSnapshotUrl) {
-    setValidatedSnapshotUrl(null);
-    return;
+@media (orientation: landscape) {
+  .deck-slide-container {
+    height: 100dvh;
+    width: auto;
+    max-width: 100%;
+    max-height: 100dvh;
+    aspect-ratio: 9 / 16;
   }
-
-  // On mobile, skip HEAD pre-check (ITP blocks cross-origin fetch)
-  // Rely on <img> onError handler instead
-  if (isMobile) {
-    setValidatedSnapshotUrl(campaignSnapshotUrl);
-    return;
-  }
-
-  // Desktop: existing HEAD validation logic unchanged
-  ...
-});
+}
 ```
 
-### 2. No other files changed
+The key changes:
+- Add `max-height: 100dvh` in portrait mode so the 9:16 container stops growing before it overflows the viewport
+- Use `dvh` units instead of `vh` to account for Safari's dynamic toolbar
+- Both orientations are now bounded in both dimensions
 
-- No database changes
-- No edge function changes  
-- The existing `onError` handler on the snapshot `<img>` (line 301-305) already handles the fallback if the image itself fails to load
+### 2. `src/pages/DeckViewer.tsx` — Update `main` to use `dvh`
 
-## Why This Works
+Change `h-screen` (which uses `100vh`) to use dynamic viewport height:
 
-- `<img src="...">` tags load cross-origin resources without being blocked by ITP (images are exempt from tracking prevention)
-- The HEAD fetch was a pre-optimization to avoid rendering a broken `<img>`, but on mobile it causes the exact problem it tries to prevent
-- Desktop keeps the HEAD check since it doesn't have ITP issues
+```tsx
+<main className="flex items-center justify-center bg-black overflow-hidden"
+      style={{ height: '100dvh' }}>
+```
+
+This ensures the outermost container also respects Safari's dynamic toolbar height.
+
+### No other changes needed
+- The snapshot `<img>` inside `StatsPageSlide` already uses `max-w-full max-h-full object-contain`, so once the container is properly sized, the image will scale to fit without clipping.
 
