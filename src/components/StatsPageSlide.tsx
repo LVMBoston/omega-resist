@@ -341,7 +341,7 @@ export const StatsPageSlide = ({
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden"
+      className="relative w-full h-full bg-black flex items-center justify-center overflow-visible"
     >
       {/* Background: solid color or image */}
       {isSolidColor ? (
