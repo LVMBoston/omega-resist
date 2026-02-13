@@ -330,7 +330,16 @@ export function MapHotspotRenderer({
     setMapReady(true);
 
     return () => {
-      map.remove();
+      try {
+        if (mapRef.current) {
+          mapRef.current.off();
+          if (mapContainerRef.current && mapContainerRef.current.parentNode) {
+            mapRef.current.remove();
+          }
+        }
+      } catch (e) {
+        console.warn("MapHotspotRenderer: cleanup suppressed:", e);
+      }
       mapRef.current = null;
       clusterGroupRef.current = null;
       markersLayerRef.current = null;
