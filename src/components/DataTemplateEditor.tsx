@@ -614,6 +614,7 @@ export function DataTemplateEditor({
           <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-green-600" />
             Campaign
+            <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
           </Label>
           <div className="flex gap-2">
             <Select value={campaignId} onValueChange={setCampaignId}>
