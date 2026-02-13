@@ -21,10 +21,13 @@ export const InteractiveShareSlide = ({
     deckSlug,
     viralToken
   });
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const isSolidColor = imageUrl?.startsWith("solid:#");
+  const solidColor = isSolidColor ? imageUrl.replace("solid:", "") : null;
+  const [imageLoaded, setImageLoaded] = useState(isSolidColor);
   const [imageError, setImageError] = useState(false);
   const [overlayReady, setOverlayReady] = useState(false);
   const imageRef = useRef<HTMLImageElement>(null);
+  const solidRef = useRef<HTMLDivElement>(null);
 
   // Delay overlay mount to allow layout to complete on iPhone
   useEffect(() => {
@@ -38,7 +41,13 @@ export const InteractiveShareSlide = ({
 
   return (
     <div className="relative w-full h-full bg-black flex items-center justify-center">
-      {imageError ? (
+      {isSolidColor ? (
+        <div
+          ref={solidRef}
+          className="w-full h-full"
+          style={{ backgroundColor: solidColor || "#000" }}
+        />
+      ) : imageError ? (
         <div className="text-white text-center p-4">
           <p className="text-lg font-semibold mb-2">Image failed to load</p>
           <p className="text-sm text-gray-400 break-all">{imageUrl}</p>
@@ -72,7 +81,7 @@ export const InteractiveShareSlide = ({
         <InteractiveSlideOverlay
           hotspots={hotspots}
           deckSlug={deckSlug}
-          imageRef={imageRef}
+          imageRef={isSolidColor ? solidRef as any : imageRef}
           viralToken={viralToken}
         />
       )}
