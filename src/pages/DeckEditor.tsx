@@ -1215,7 +1215,14 @@ export default function DeckEditor() {
                 >
                   <CardContent className="p-4 space-y-2">
                     <div className="relative">
-                      <img src={template.thumbnail_url || template.image_url} alt={template.name} className="w-full rounded" />
+                      {(template.thumbnail_url || template.image_url || '').startsWith('solid:') ? (
+                        <div 
+                          className="w-full rounded aspect-[9/16]" 
+                          style={{ backgroundColor: (template.thumbnail_url || template.image_url || '').replace('solid:', '') }}
+                        />
+                      ) : (
+                        <img src={template.thumbnail_url || template.image_url} alt={template.name || ''} className="w-full rounded" />
+                      )}
                       <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1 shadow-lg">
                         <Check className="h-3 w-3" />
                       </div>
