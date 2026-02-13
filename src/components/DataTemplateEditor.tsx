@@ -437,6 +437,9 @@ export function DataTemplateEditor({
       setIsCapturing(true);
       
       // Add capture mode class to adjust vertical alignment for html2canvas
+      if (!captureContainerRef.current) {
+        throw new Error("Capture container not available — please try again");
+      }
       captureContainerRef.current.classList.add("capture-mode");
       
       toast.info("Capturing snapshot...", { duration: 2000 });
