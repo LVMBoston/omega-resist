@@ -322,6 +322,10 @@ export function MapHotspotRenderer({
       });
     }
 
+    // Force tile refresh after a short delay to ensure container is sized
+    setTimeout(() => map.invalidateSize(), 50);
+    setTimeout(() => map.invalidateSize(), 300);
+
     // Mark map as ready
     setMapReady(true);
 
@@ -401,6 +405,12 @@ export function MapHotspotRenderer({
       map.doubleClickZoom.disable();
     }
   }, [isEditorMode, mapReady]);
+
+  // Invalidate map size when container dimensions change
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    mapRef.current.invalidateSize();
+  }, [width, height, mapReady]);
 
   // Toggle clustering layer without reinitializing the map
   useEffect(() => {
