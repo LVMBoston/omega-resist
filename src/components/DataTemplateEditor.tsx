@@ -563,7 +563,7 @@ export function DataTemplateEditor({
   };
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col h-full">
       {/* Form Fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-muted/30">
         <div className="space-y-1">
@@ -669,9 +669,9 @@ export function DataTemplateEditor({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-auto">
         {/* Background Mode Toggle + Preview */}
-        <div className="flex-1 flex flex-col items-center p-4 bg-black/95 min-h-[400px] overflow-auto">
+        <div className="flex-1 flex flex-col items-center p-4 bg-black/95 min-h-[300px]">
           {/* Background Mode Toggle */}
           <div className="flex items-center gap-2 mb-4 capture-hide">
             <Button
@@ -726,7 +726,7 @@ export function DataTemplateEditor({
               style={{ 
                 backgroundColor,
                 aspectRatio: "9/16",
-                maxHeight: "80vh"
+                maxHeight: "60vh"
               }}
             >
               <div 
@@ -827,7 +827,7 @@ export function DataTemplateEditor({
       </div>
 
       {/* Controls Panel */}
-      <div className="bg-background border-t border-border p-4 space-y-4">
+      <div className="bg-background border-t border-border p-4 space-y-4 shrink-0">
         {/* Hotspot Selector */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-muted-foreground">
