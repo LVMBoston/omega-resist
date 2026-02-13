@@ -304,7 +304,10 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
 
   // Render all templates
   const handleRenderAll = async () => {
-    for (const template of templates) {
+    const toRender = templateContexts
+      ? templates.filter(t => templateContexts[t.id])
+      : [];
+    for (const template of toRender) {
       await renderSnapshotMutation.mutateAsync(template.id);
     }
   };
@@ -321,6 +324,11 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
 
   const snapshotEnabled = campaign?.snapshot_enabled ?? false;
   const intervalMinutes = campaign?.snapshot_interval_minutes ?? 2;
+
+  // Only show templates that are actually linked to this campaign's decks
+  const campaignTemplates = templateContexts
+    ? templates.filter(t => templateContexts[t.id])
+    : [];
 
   return (
     <Card>
@@ -380,20 +388,20 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
               variant="outline"
               size="sm"
               onClick={handleRenderAll}
-              disabled={templates.length === 0 || renderingTemplates.size > 0}
+              disabled={campaignTemplates.length === 0 || renderingTemplates.size > 0}
             >
               <RefreshCw className="w-4 h-4 mr-1" />
               Render All
             </Button>
           </div>
 
-          {templates.length === 0 ? (
+          {campaignTemplates.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              No data templates found. Create one in the Interactive Templates section.
+              No data templates linked to this campaign's decks.
             </p>
           ) : (
             <div className="space-y-2">
-              {templates.map((template) => (
+              {campaignTemplates.map((template) => (
                 <div
                   key={template.id}
                   className="p-3 bg-muted/50 rounded-lg"
