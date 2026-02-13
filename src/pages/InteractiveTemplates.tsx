@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink } from "lucide-react";
@@ -83,6 +84,12 @@ export default function InteractiveTemplates() {
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
   const [dataDialogMode, setDataDialogMode] = useState<"create" | "edit">("create");
   const [editingDataTemplate, setEditingDataTemplate] = useState<Template | null>(null);
+
+  // Delete confirmation dialog state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetTemplate, setDeleteTargetTemplate] = useState<Template | null>(null);
+  const [deleteLinkedDecks, setDeleteLinkedDecks] = useState<string[]>([]);
+  const [deleteCheckLoading, setDeleteCheckLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -95,6 +102,31 @@ export default function InteractiveTemplates() {
     template_type: "interactive_share" as TemplateType,
     config: {},
   });
+
+  // Pre-delete linkage check
+  const handleDeleteClick = useCallback(async (template: Template) => {
+    setDeleteTargetTemplate(template);
+    setDeleteCheckLoading(true);
+    setDeleteConfirmOpen(true);
+    setDeleteLinkedDecks([]);
+
+    try {
+      const { data: linkedSlides, error } = await supabase
+        .from("slide_items")
+        .select("deck_slug")
+        .eq("template_id", template.id);
+
+      if (error) throw error;
+
+      const uniqueDecks = [...new Set((linkedSlides || []).map(s => s.deck_slug))];
+      setDeleteLinkedDecks(uniqueDecks);
+    } catch (e) {
+      console.error("Failed to check template linkage:", e);
+      setDeleteLinkedDecks([]);
+    } finally {
+      setDeleteCheckLoading(false);
+    }
+  }, []);
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ["interactive-templates"],
@@ -792,11 +824,7 @@ export default function InteractiveTemplates() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => {
-                if (confirm("Delete this template? This will not affect decks already using it.")) {
-                  deleteTemplate.mutate(template.id);
-                }
-              }}
+              onClick={() => handleDeleteClick(template)}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -1226,6 +1254,51 @@ export default function InteractiveTemplates() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template: {deleteTargetTemplate?.name}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {deleteCheckLoading ? (
+                  <p>Checking for linked slides…</p>
+                ) : deleteLinkedDecks.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="font-semibold text-destructive">
+                      ⚠️ This template is used by {deleteLinkedDecks.length} deck{deleteLinkedDecks.length > 1 ? 's' : ''}. Deleting it will break those slides.
+                    </p>
+                    <ul className="list-disc pl-5 text-sm">
+                      {deleteLinkedDecks.map(slug => (
+                        <li key={slug}>{slug}</li>
+                      ))}
+                    </ul>
+                    <p className="text-sm">The affected slides will show a "data is null" error until re-linked to a new template.</p>
+                  </div>
+                ) : (
+                  <p>No decks are currently using this template. Safe to delete.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteCheckLoading}
+              onClick={() => {
+                if (deleteTargetTemplate) {
+                  deleteTemplate.mutate(deleteTargetTemplate.id);
+                }
+                setDeleteConfirmOpen(false);
+                setDeleteTargetTemplate(null);
+              }}
+            >
+              {deleteLinkedDecks.length > 0 ? "Delete Anyway" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -272,10 +272,10 @@ const Index = () => {
       return;
     }
     try {
-      // Delete viral slide configs first (they reference slide_items)
+      // Delete viral slide configs that belong to this deck (per-deck configs only, not shared repository templates)
       const {
         error: viralConfigsError
-      } = await supabase.from("viral_slide_configs").delete().eq("deck_slug", slug);
+      } = await supabase.from("viral_slide_configs").delete().eq("deck_slug", slug).not("slide_id", "is", null);
       if (viralConfigsError) throw viralConfigsError;
 
       // Delete slide items
