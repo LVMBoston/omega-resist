@@ -254,7 +254,7 @@ export default function InteractiveTemplates() {
   });
 
   const updateTemplate = useMutation({
-    mutationFn: async ({ id, data, cleanupDuplicates }: { id: string; data: Partial<typeof formData>; cleanupDuplicates?: boolean }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
       // If setting as default, clear all other defaults first
       if (data.is_default) {
         const { error: clearError } = await supabase
@@ -272,20 +272,6 @@ export default function InteractiveTemplates() {
         .eq("id", id);
       
       if (error) throw error;
-      
-      // Clean up duplicate templates with the same name (created during interim saves)
-      if (cleanupDuplicates && data.name) {
-        const { error: cleanupError } = await supabase
-          .from("viral_slide_configs")
-          .delete()
-          .eq("name", data.name)
-          .neq("id", id);
-        
-        if (cleanupError) {
-          console.warn("Failed to cleanup duplicate templates:", cleanupError);
-          // Non-fatal - don't throw
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
@@ -601,7 +587,6 @@ export default function InteractiveTemplates() {
     
     if (existingId) {
       // Update existing template - exclude slug to avoid unique constraint violation
-      // Pass cleanupDuplicates: true to remove older versions with the same name
       const updateData = {
         name: data.name,
         description: data.description || "",
@@ -612,7 +597,7 @@ export default function InteractiveTemplates() {
         template_type: "stats_page" as TemplateType,
         config: { type: "stats_page" },
       };
-      await updateTemplate.mutateAsync({ id: existingId, data: updateData, cleanupDuplicates: true });
+      await updateTemplate.mutateAsync({ id: existingId, data: updateData });
       return existingId;
     } else {
       // Create new template - use direct insert to get the ID back
