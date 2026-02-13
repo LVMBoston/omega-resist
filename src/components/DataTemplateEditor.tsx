@@ -830,7 +830,7 @@ export function DataTemplateEditor({
               style={{ 
                 backgroundColor,
                 aspectRatio: "9/16",
-                maxHeight: "60vh"
+                maxHeight: "calc(100vh - 200px)"
               }}
             >
               <div 
@@ -858,7 +858,7 @@ export function DataTemplateEditor({
                 src={imageUrl}
                 alt="Template slide"
                 className="w-full h-auto rounded-lg shadow-2xl"
-                style={{ maxHeight: "60vh", objectFit: "contain" }}
+                style={{ maxHeight: "calc(100vh - 200px)", objectFit: "contain" }}
                 onLoad={() => setImageLoaded(true)}
               />
 
