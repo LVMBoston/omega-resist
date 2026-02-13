@@ -958,17 +958,7 @@ export function DataTemplateEditor({
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || isAutoSaving || isCapturing || !(imageUrl || backgroundMode === "solid") || !name || !slug}
-              variant="outline"
-            >
-              {isSaving && !isCapturing
-                ? "Saving..."
-                : savedTemplateId || mode === "edit"
-                ? "Update Template"
-                : "Create Template"}
-            </Button>
+            
             <Button
               onClick={handleSaveAndCapture}
               disabled={isSaving || isAutoSaving || isCapturing || isRefreshingServer || !(imageUrl || backgroundMode === "solid") || !name || !slug}
