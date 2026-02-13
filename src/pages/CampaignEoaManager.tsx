@@ -229,19 +229,29 @@ export default function CampaignEoaManager() {
       return;
     }
 
-    // Fetch shortened URLs for all full URLs
-    const { data: shortUrls, error: shortError } = await supabase
-      .from("shortened_urls")
-      .select("full_url, short_code")
-      .in("full_url", data.map(t => t.full_url));
+    // Fetch shortened URLs in batches to avoid exceeding URL length limits
+    // Each full_url is ~184 chars; with 94+ tokens the GET query string exceeds browser/server limits
+    const BATCH_SIZE = 20;
+    const allShortUrls: { full_url: string; short_code: string }[] = [];
+    const fullUrls = data.map(t => t.full_url);
+    
+    for (let i = 0; i < fullUrls.length; i += BATCH_SIZE) {
+      const batch = fullUrls.slice(i, i + BATCH_SIZE);
+      const { data: shortUrls, error: shortError } = await supabase
+        .from("shortened_urls")
+        .select("full_url, short_code")
+        .in("full_url", batch);
 
-    if (shortError) {
-      console.error("Failed to fetch shortened URLs:", shortError);
+      if (shortError) {
+        console.error("Failed to fetch shortened URLs batch:", shortError);
+      } else if (shortUrls) {
+        allShortUrls.push(...shortUrls);
+      }
     }
 
     // Create map of full_url -> short_code
     const shortUrlMap = new Map<string, string>();
-    shortUrls?.forEach(su => {
+    allShortUrls.forEach(su => {
       shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
     });
 
