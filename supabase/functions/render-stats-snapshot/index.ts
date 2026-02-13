@@ -71,6 +71,94 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+// Render a static map image for a map hotspot using Mapbox Static Images API
+async function renderStaticMap(
+  supabase: any,
+  campaignCode: string,
+  mapConfig: any,
+  pixelWidth: number,
+  pixelHeight: number,
+): Promise<string | null> {
+  const mapboxToken = Deno.env.get("MAPBOX_PUBLIC_TOKEN");
+  if (!mapboxToken) {
+    console.warn("[render-stats-snapshot] MAPBOX_PUBLIC_TOKEN not set, skipping map hotspot");
+    return null;
+  }
+
+  try {
+    // Fetch event points for this campaign (mirrors MapHotspotRenderer logic)
+    const { data: campaign } = await supabase
+      .from("campaigns").select("id").eq("code", campaignCode).maybeSingle();
+    if (!campaign) return null;
+
+    const { data: eoas } = await supabase
+      .from("events_actions").select("id").eq("campaign_id", campaign.id);
+    if (!eoas || eoas.length === 0) return null;
+
+    const eoaIds = eoas.map((e: any) => e.id);
+    const { data: tokens } = await supabase
+      .from("tokens").select("token, level, utm_medium, root_token")
+      .in("eoa_id", eoaIds).eq("is_simulated", false);
+    if (!tokens || tokens.length === 0) return null;
+
+    const tokenIds = tokens.map((t: any) => t.token);
+    const { data: events } = await supabase
+      .from("url_events").select("id, token, latitude, longitude, event_type")
+      .in("token", tokenIds).eq("event_type", "view").eq("is_simulated", false)
+      .not("latitude", "is", null).not("longitude", "is", null);
+    if (!events || events.length === 0) return null;
+
+    // Build pin overlay for Mapbox Static API
+    // Limit markers to keep URL under ~8KB
+    const points = events.slice(0, 50);
+    
+    // Determine viewport from savedBounds or auto-fit
+    let lon: number, lat: number, zoom: number;
+    if (mapConfig.savedBounds) {
+      const { north, south, east, west } = mapConfig.savedBounds;
+      lon = (east + west) / 2;
+      lat = (north + south) / 2;
+      const latSpan = north - south;
+      zoom = Math.round(Math.log2(180 / latSpan));
+      zoom = Math.max(2, Math.min(zoom, 15));
+    } else {
+      lon = -98.5795;
+      lat = 39.8283;
+      zoom = 4;
+    }
+
+    // Clamp image dimensions (Mapbox max 1280x1280)
+    const imgW = Math.min(Math.round(pixelWidth), 1280);
+    const imgH = Math.min(Math.round(pixelHeight), 1280);
+
+    // Use pin-s (small pins) overlay - compact URL format
+    const pinOverlay = points
+      .map((p: any) => `pin-s+3b82f6(${p.longitude.toFixed(4)},${p.latitude.toFixed(4)})`)
+      .join(",");
+
+    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${lon},${lat},${zoom}/${imgW}x${imgH}@2x?access_token=${mapboxToken}`;
+
+    console.log(`[render-stats-snapshot] Fetching static map: ${imgW}x${imgH}, ${points.length} markers`);
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      console.error(`[render-stats-snapshot] Static map fetch failed: ${resp.status} ${await resp.text()}`);
+      return null;
+    }
+
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < buf.length; i += chunkSize) {
+      const chunk = buf.subarray(i, Math.min(i + chunkSize, buf.length));
+      binary += String.fromCharCode(...chunk);
+    }
+    return `data:image/png;base64,${btoa(binary)}`;
+  } catch (e) {
+    console.error("[render-stats-snapshot] Static map error:", e);
+    return null;
+  }
+}
+
 // Calculate campaign metrics
 async function calculateMetrics(supabase: any, campaignCode: string): Promise<Record<string, string | number>> {
   const metrics: Record<string, string | number> = {};
@@ -188,11 +276,6 @@ Deno.serve(async (req) => {
     const metrics = await calculateMetrics(supabase, campaign_code);
     console.log("[render-stats-snapshot] Metrics calculated:", JSON.stringify(metrics));
 
-    // Parse hotspots from template
-    const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
-    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots`);
-
     // Fetch background image as base64 data URL
     const imageUrl = template.image_url as string;
     const bgDataUrl = await fetchImageAsDataUrl(imageUrl);
@@ -204,9 +287,39 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Parse hotspots from template
+    const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
+    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map");
+    const mapHotspots = hotspots.filter((h: any) => h.type === "map");
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots`);
+
     // Target dimensions (portrait for mobile)
     const width = 1080;
     const height = 1920;
+
+    // Render static map images for map hotspots
+    const mapSvgElements: string[] = [];
+    for (const mapHotspot of mapHotspots) {
+      const mapX = (mapHotspot.x / 100) * width;
+      const mapY = (mapHotspot.y / 100) * height;
+      const mapW = ((mapHotspot.width || 30) / 100) * width;
+      const mapH = ((mapHotspot.height || 20) / 100) * height;
+
+      const mapConfig = mapHotspot.mapConfig || {};
+      const mapDataUrl = await renderStaticMap(supabase, campaign_code, mapConfig, mapW, mapH);
+
+      if (mapDataUrl) {
+        mapSvgElements.push(
+          `<image href="${mapDataUrl}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="xMidYMid slice"/>`
+        );
+      } else {
+        // Fallback: grey placeholder with label
+        mapSvgElements.push(
+          `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
+          `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`
+        );
+      }
+    }
 
     // Build SVG with embedded background image and text hotspots
     const hotspotSvgElements = textHotspots.map((hotspot: any) => {
@@ -267,6 +380,7 @@ Deno.serve(async (req) => {
     const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>
+  ${mapSvgElements.join("\n  ")}
   ${hotspotSvgElements}
 </svg>`;
 
