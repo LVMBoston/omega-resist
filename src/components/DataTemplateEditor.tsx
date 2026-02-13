@@ -775,7 +775,7 @@ export function DataTemplateEditor({
         </div>
 
         {/* Right Column: Preview — sticky */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 bg-black/95 min-h-[300px] order-1 lg:order-2 overflow-auto">
+        <div className="flex-1 flex flex-col items-center p-4 bg-black/95 min-h-[300px] order-1 lg:order-2 overflow-y-auto">
           {/* Background Mode Toggle */}
           <div className="flex items-center gap-2 mb-4 capture-hide shrink-0">
             <Button
@@ -826,11 +826,10 @@ export function DataTemplateEditor({
           {backgroundMode === "solid" ? (
             <div 
               ref={captureContainerRef} 
-              className="relative max-w-4xl w-full rounded-lg shadow-2xl"
+              className="relative max-w-4xl w-full rounded-lg shadow-2xl shrink-0"
               style={{ 
                 backgroundColor,
                 aspectRatio: "9/16",
-                maxHeight: "calc(100vh - 200px)"
               }}
             >
               <div 
@@ -857,8 +856,8 @@ export function DataTemplateEditor({
                 ref={imageRef}
                 src={imageUrl}
                 alt="Template slide"
-                className="w-full h-auto rounded-lg shadow-2xl"
-                style={{ maxHeight: "calc(100vh - 200px)", objectFit: "contain" }}
+                className="w-full h-auto rounded-lg shadow-2xl shrink-0"
+                style={{ objectFit: "contain" }}
                 onLoad={() => setImageLoaded(true)}
               />
 
