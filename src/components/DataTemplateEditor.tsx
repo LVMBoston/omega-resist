@@ -564,121 +564,127 @@ export function DataTemplateEditor({
 
   return (
     <div className="flex flex-col min-h-full h-full">
-      {/* Form Fields */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-muted/30 shrink-0">
-        <div className="space-y-1">
-          <Label htmlFor="template-name" className="text-sm">
-            Template Name *
-          </Label>
-          <Input
-            id="template-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Stats Page v1"
-            className="h-9"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="template-slug" className="text-sm flex items-center gap-1.5">
-            Template ID *
-            <span className="text-xs text-muted-foreground font-normal">(base name only)</span>
-          </Label>
-          <Input
-            id="template-slug"
-            value={slug}
-            onChange={(e) =>
-              setSlug(normalizeSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")))
-            }
-            placeholder="e.g., samizdat-template"
-            className="h-9"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="template-description" className="text-sm">
-            Description
-          </Label>
-          <Textarea
-            id="template-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional description..."
-            className="h-9 min-h-[36px] resize-none"
-            rows={1}
-          />
-        </div>
-      </div>
-
-      {/* Live Data Preview Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20 shrink-0">
-        <div className="space-y-1">
-          <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-green-600" />
-            Campaign
-            <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
-          </Label>
-          <div className="flex gap-2">
-            <Select value={campaignId} onValueChange={(val) => setCampaignId(val === "__clear__" ? "" : val)}>
-              <SelectTrigger className="h-9 bg-background flex-1">
-                <SelectValue placeholder="Select a campaign..." />
-              </SelectTrigger>
-              <SelectContent className="bg-popover z-50">
-                {campaignId && (
-                  <SelectItem value="__clear__" className="text-muted-foreground italic">
-                    ✕ Clear selection
-                  </SelectItem>
-                )}
-                {campaigns.map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.code}>
-                    {campaign.title} ({campaign.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3"
-              onClick={() => {
-                if (campaignId.trim()) {
-                  resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
-                  toast.success("Metrics refreshed", { duration: 1500 });
-                } else {
-                  toast.error("Select a campaign first");
-                }
-              }}
-              disabled={metricsLoading || !campaignId}
-              title="Refresh metrics (including current time)"
-            >
-              <RefreshCw className={`w-4 h-4 ${metricsLoading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="mobilize-id" className="text-sm flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-green-600" />
-            Mobilize ID (for Start Date/Time)
-            {metricsLoading && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
-          </Label>
-          <Input
-            id="mobilize-id"
-            value={mobilizeId}
-            onChange={(e) => setMobilizeId(e.target.value)}
-            placeholder="e.g., 12345"
-            className="h-9"
-          />
-        </div>
-        <div className="flex items-end">
-          <p className="text-xs text-muted-foreground">
-            Click <RefreshCw className="w-3 h-3 inline" /> to update time-based metrics
-          </p>
-        </div>
-      </div>
-
       {/* Split-View: Controls (left) + Preview (right) on lg+, stacked on smaller */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         
         {/* Left Column: Controls — scrollable */}
-        <div className="lg:w-[380px] xl:w-[420px] shrink-0 overflow-y-auto border-r border-border bg-background p-4 space-y-4 order-2 lg:order-1">
+        <div className="lg:w-[480px] xl:w-[520px] shrink-0 overflow-y-auto border-r border-border bg-background order-2 lg:order-1">
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 gap-4 p-4 border-b border-border bg-muted/30">
+            <div className="space-y-1">
+              <Label htmlFor="template-name" className="text-sm">
+                Template Name *
+              </Label>
+              <Input
+                id="template-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Stats Page v1"
+                className="h-9"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="template-slug" className="text-sm flex items-center gap-1.5">
+                  Template ID *
+                  <span className="text-xs text-muted-foreground font-normal">(base name only)</span>
+                </Label>
+                <Input
+                  id="template-slug"
+                  value={slug}
+                  onChange={(e) =>
+                    setSlug(normalizeSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")))
+                  }
+                  placeholder="e.g., samizdat-template"
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="template-description" className="text-sm">
+                  Description
+                </Label>
+                <Textarea
+                  id="template-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Optional description..."
+                  className="h-9 min-h-[36px] resize-none"
+                  rows={1}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Live Data Preview Inputs */}
+          <div className="grid grid-cols-1 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20">
+            <div className="space-y-1">
+              <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-green-600" />
+                Campaign
+                <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
+              </Label>
+              <div className="flex gap-2">
+                <Select value={campaignId} onValueChange={(val) => setCampaignId(val === "__clear__" ? "" : val)}>
+                  <SelectTrigger className="h-9 bg-background flex-1">
+                    <SelectValue placeholder="Select a campaign..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover z-50">
+                    {campaignId && (
+                      <SelectItem value="__clear__" className="text-muted-foreground italic">
+                        ✕ Clear selection
+                      </SelectItem>
+                    )}
+                    {campaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.code}>
+                        {campaign.title} ({campaign.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3"
+                  onClick={() => {
+                    if (campaignId.trim()) {
+                      resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
+                      toast.success("Metrics refreshed", { duration: 1500 });
+                    } else {
+                      toast.error("Select a campaign first");
+                    }
+                  }}
+                  disabled={metricsLoading || !campaignId}
+                  title="Refresh metrics (including current time)"
+                >
+                  <RefreshCw className={`w-4 h-4 ${metricsLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="mobilize-id" className="text-sm flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-green-600" />
+                  Mobilize ID (for Start Date/Time)
+                  {metricsLoading && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+                </Label>
+                <Input
+                  id="mobilize-id"
+                  value={mobilizeId}
+                  onChange={(e) => setMobilizeId(e.target.value)}
+                  placeholder="e.g., 12345"
+                  className="h-9"
+                />
+              </div>
+              <div className="flex items-end">
+                <p className="text-xs text-muted-foreground">
+                  Click <RefreshCw className="w-3 h-3 inline" /> to update time-based metrics
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Hotspot Controls */}
+          <div className="p-4 space-y-4">
           {/* Hotspot Selector */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-muted-foreground">
@@ -764,7 +770,8 @@ export function DataTemplateEditor({
               onZoomIn={mapControls?.zoomIn}
               onZoomOut={mapControls?.zoomOut}
             />
-          )}
+           )}
+          </div>
         </div>
 
         {/* Right Column: Preview — sticky */}
