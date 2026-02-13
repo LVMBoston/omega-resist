@@ -565,7 +565,7 @@ export function DataTemplateEditor({
   return (
     <div className="flex flex-col min-h-full h-full">
       {/* Form Fields */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-muted/30">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-muted/30 shrink-0">
         <div className="space-y-1">
           <Label htmlFor="template-name" className="text-sm">
             Template Name *
@@ -609,7 +609,7 @@ export function DataTemplateEditor({
       </div>
 
       {/* Live Data Preview Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b border-border bg-green-50/50 dark:bg-green-950/20 shrink-0">
         <div className="space-y-1">
           <Label htmlFor="campaign-id" className="text-sm flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-green-600" />
@@ -674,18 +674,109 @@ export function DataTemplateEditor({
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-auto">
-        {/* Background Mode Toggle + Preview */}
-        <div className="flex-1 flex flex-col items-center p-4 bg-black/95 min-h-[300px]">
+      {/* Split-View: Controls (left) + Preview (right) on lg+, stacked on smaller */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+        
+        {/* Left Column: Controls — scrollable */}
+        <div className="lg:w-[380px] xl:w-[420px] shrink-0 overflow-y-auto border-r border-border bg-background p-4 space-y-4 order-2 lg:order-1">
+          {/* Hotspot Selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-muted-foreground">
+              Hotspots:
+            </span>
+            {hotspots.map((h, i) => (
+              <Button
+                key={h.id}
+                variant={i === activeIndex ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveIndex(i)}
+                className="min-w-[40px]"
+              >
+                {i + 1}
+                {h.metricKey && (
+                  <span className="ml-1 text-xs opacity-70">
+                    ({h.metricKey})
+                  </span>
+                )}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addHotspot}
+              className="gap-1 border-green-500 text-green-600 hover:bg-green-50"
+            >
+              <Plus className="w-4 h-4" />
+              Number
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addChartHotspot}
+              className="gap-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Chart
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addMapHotspot}
+              className="gap-1 border-purple-500 text-purple-600 hover:bg-purple-50"
+            >
+              <MapIcon className="w-4 h-4" />
+              Map
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeHotspot}
+              disabled={hotspots.length <= 1}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remove
+            </Button>
+          </div>
+
+          {/* Active Hotspot Controls - different controls for different types */}
+          {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "live_number" && (
+            <HotspotCalibrationControls
+              hotspot={activeHotspot}
+              displayValue={displayValues[activeHotspot.id] || "0"}
+              onUpdate={(updates) => updateHotspot(activeIndex, updates)}
+              onDisplayValueChange={updateDisplayValue}
+            />
+          )}
+          
+          {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "chart" && (
+            <ChartCalibrationControls
+              hotspot={activeHotspot}
+              onUpdate={(updates) => updateHotspot(activeIndex, updates)}
+            />
+          )}
+
+          {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "map" && (
+            <MapCalibrationControls
+              hotspot={activeHotspot}
+              onUpdate={(updates) => updateHotspot(activeIndex, updates)}
+              currentBounds={currentMapBounds}
+              onZoomIn={mapControls?.zoomIn}
+              onZoomOut={mapControls?.zoomOut}
+            />
+          )}
+        </div>
+
+        {/* Right Column: Preview — sticky */}
+        <div className="flex-1 flex flex-col items-center justify-center p-4 bg-black/95 min-h-[300px] order-1 lg:order-2 overflow-auto">
           {/* Background Mode Toggle */}
-          <div className="flex items-center gap-2 mb-4 capture-hide">
+          <div className="flex items-center gap-2 mb-4 capture-hide shrink-0">
             <Button
               variant={backgroundMode === "solid" ? "default" : "outline"}
               size="sm"
               onClick={() => {
                 setBackgroundMode("solid");
-                setImageLoaded(true); // Solid color is always "loaded"
+                setImageLoaded(true);
               }}
               className="gap-1"
             >
@@ -760,6 +851,7 @@ export function DataTemplateEditor({
                 src={imageUrl}
                 alt="Template slide"
                 className="w-full h-auto rounded-lg shadow-2xl"
+                style={{ maxHeight: "60vh", objectFit: "contain" }}
                 onLoad={() => setImageLoaded(true)}
               />
 
@@ -832,97 +924,9 @@ export function DataTemplateEditor({
         </div>
       </div>
 
-      {/* Controls Panel */}
-      <div className="bg-background border-t border-border p-4 space-y-4 shrink-0">
-        {/* Hotspot Selector */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-muted-foreground">
-            Hotspots:
-          </span>
-          {hotspots.map((h, i) => (
-            <Button
-              key={h.id}
-              variant={i === activeIndex ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveIndex(i)}
-              className="min-w-[40px]"
-            >
-              {i + 1}
-              {h.metricKey && (
-                <span className="ml-1 text-xs opacity-70">
-                  ({h.metricKey})
-                </span>
-              )}
-            </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addHotspot}
-              className="gap-1 border-green-500 text-green-600 hover:bg-green-50"
-            >
-              <Plus className="w-4 h-4" />
-              Number
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addChartHotspot}
-              className="gap-1 border-blue-500 text-blue-600 hover:bg-blue-50"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Chart
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addMapHotspot}
-              className="gap-1 border-purple-500 text-purple-600 hover:bg-purple-50"
-            >
-              <MapIcon className="w-4 h-4" />
-              Map
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={removeHotspot}
-              disabled={hotspots.length <= 1}
-              className="gap-1 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4" />
-              Remove
-            </Button>
-          </div>
-
-        {/* Active Hotspot Controls - different controls for different types */}
-        {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "live_number" && (
-          <HotspotCalibrationControls
-            hotspot={activeHotspot}
-            displayValue={displayValues[activeHotspot.id] || "0"}
-            onUpdate={(updates) => updateHotspot(activeIndex, updates)}
-            onDisplayValueChange={updateDisplayValue}
-          />
-        )}
-        
-        {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "chart" && (
-          <ChartCalibrationControls
-            hotspot={activeHotspot}
-            onUpdate={(updates) => updateHotspot(activeIndex, updates)}
-          />
-        )}
-
-        {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "map" && (
-          <MapCalibrationControls
-            hotspot={activeHotspot}
-            onUpdate={(updates) => updateHotspot(activeIndex, updates)}
-            currentBounds={currentMapBounds}
-            onZoomIn={mapControls?.zoomIn}
-            onZoomOut={mapControls?.zoomOut}
-          />
-        )}
-
-        {/* Footer Buttons */}
-        <div className="flex justify-between items-center gap-2 pt-2 border-t border-border">
+      {/* Sticky Footer Action Bar */}
+      <div className="bg-background border-t border-border px-4 py-3 shrink-0 z-10">
+        <div className="flex justify-between items-center gap-2">
           {/* Save status indicator */}
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             {isAutoSaving ? (
@@ -944,7 +948,7 @@ export function DataTemplateEditor({
             ) : null}
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
