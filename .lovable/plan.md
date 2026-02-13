@@ -1,45 +1,46 @@
 
 
-# Feedback Strategy to Minimize Regression Risk
+# Leaflet classList Cleanup Fix + Change Log Documentation
 
-## The Core Problem
+## Step 1: Fix the Leaflet cleanup crash
 
-When multiple issues are reported together, fixes for one can inadvertently break the other. Additionally, mixing pre-existing bugs with refactor-introduced bugs makes it hard to attribute causes correctly.
+**File:** `src/components/MapHotspotRenderer.tsx` (lines 332-338)
 
-## Recommended Feedback Approach
+Replace the current cleanup function with a guarded version:
 
-### 1. Categorize Before Reporting
+```text
+return () => {
+  try {
+    if (mapRef.current) {
+      mapRef.current.off();
+      if (mapContainerRef.current && mapContainerRef.current.parentNode) {
+        mapRef.current.remove();
+      }
+    }
+  } catch (e) {
+    console.warn("MapHotspotRenderer: cleanup suppressed:", e);
+  }
+  mapRef.current = null;
+  clusterGroupRef.current = null;
+  markersLayerRef.current = null;
+  setMapReady(false);
+};
+```
 
-Sort issues into two buckets:
+**What this does:**
+- Detaches Leaflet event listeners before removal
+- Only calls `map.remove()` if the container DOM node still exists
+- Wraps everything in try/catch as a final safety net
+- Eliminates the "Cannot read properties of null (reading 'classList')" toast error
 
-- **Refactor regressions**: Things that worked before the layout change and now don't (e.g., controls distorted in the sidebar). These are high priority.
-- **Pre-existing issues**: Things that were broken before the refactor started (e.g., the Leaflet `classList` error on zoom). These should be tracked separately.
+## Step 2: After verification, document changes
 
-### 2. One Issue Per Message
+Once you confirm the fix works, I will append a change history section to `docs/investigations/hotspot/2026-01-31_valign-insufficient-movement_bug-report_lovable.md` (or a new companion MD file -- your preference) recording:
 
-Report one issue at a time, with:
-- **What you did** (e.g., "Opened Samizdat Template-1 in the full-page editor, selected hotspot #5 (map), changed zoom")
-- **What you expected** (e.g., "Zoom changes without errors")
-- **What happened** (e.g., "Toast error: Cannot read properties of null reading classList")
-- **Screenshot** (as you've been doing -- this is excellent)
+- The "Update Template" button removal
+- The `overflow-visible` change in StatsPageSlide
+- This Leaflet cleanup guard fix
+- (Later) The center+zoom deterministic rendering fix
 
-This lets each fix be scoped, tested, and verified independently.
-
-### 3. Verify Before Moving On
-
-After each fix is applied, confirm it works before reporting the next issue. This creates a clear "known good" checkpoint.
-
-## Current Issue Triage
-
-### Issue A: Leaflet `classList` Error on Zoom (Pre-existing)
-- **Root cause**: Leaflet's internal DOM manipulation tries to access a container element that has been removed or re-rendered by React. This is NOT caused by the layout refactor.
-- **Fix scope**: `MapHotspotRenderer.tsx` -- needs a guard in the map cleanup/re-render lifecycle. Should be addressed as a separate task after the refactor is complete.
-
-### Issue B: Hotspot Width Visual Discrepancy (Needs Investigation)
-- **Likely cause**: Map hotspots use a different max-width cap (95%) vs. standard number hotspots. The `width: 100%` in the config means "100% of max-width," which differs by hotspot type.
-- **Next step**: Investigate `DraggableHotspotOverlay.tsx` to confirm whether the rendering path applies different constraints for `type: 'map'` vs. `type: 'number'` hotspots. If intentional, document it; if not, normalize.
-
-## Summary
-
-For the current refactor, continue reporting layout/control issues one at a time. Hold Leaflet-internal bugs (like the classList error) as separate follow-up tasks -- they are unrelated to the split-view layout work.
+Each entry will include date, what changed, why, and which files were modified.
 
