@@ -1,46 +1,34 @@
 
 
-# Add `utm_medium` Column to EventsV2 Table
+# Plan: Create Documentation for Data Template Editor Refactor
 
-## Changes
+## Overview
 
-All changes are in `src/pages/CampaignDashboard.tsx`.
+Create a single markdown file at `docs/PLAN_DataTemplateEditor_Refactor.md` that captures the current usability problems and the phased refactor recommendation before any code changes begin.
 
-### 1. Table Header — Insert after "Event Level" column (line ~1658)
+## Document Contents
 
-Add a new sortable `TableHead` for `utm_medium` between the "Event Level" and "utm_content" columns:
+The document will include:
 
-```tsx
-<TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_medium')}>
-  <div className="flex items-center gap-1">
-    utm_medium
-    {sortConfig.column === 'utm_medium' && <ArrowUpDown className="w-3 h-3" />}
-  </div>
-</TableHead>
-```
+1. **Problem Statement** -- describing the current vertical-stack layout issues (controls cut off on shorter screens, preview lost while scrolling, action buttons below the fold)
 
-### 2. Table Body — Insert cell after the Event Level badge (line ~1692)
+2. **Current Architecture** -- documenting the single-file structure (DataTemplateEditor.tsx, ~1005 lines), the two parent contexts (TemplateEditorPage full-page and DataTemplateDialog Sheet), and the key DOM dependencies (captureContainerRef for html2canvas, DraggableHotspotOverlay offset calculations)
 
-Add a new `TableCell` displaying the token's `utm_medium` value:
+3. **Proposed Changes (5 items)** -- the original user prompt items with per-item risk and value assessment
 
-```tsx
-<TableCell className="font-mono text-xs">
-  {event.tokens?.utm_medium || 'N/A'}
-</TableCell>
-```
+4. **Risk Register** -- dual-parent breakage, snapshot capture regression, drag-and-drop calibration offset changes, scope creep
 
-### 3. CSV Export — Add to headers and data rows (lines ~540, ~560)
+5. **Phased Recommendation**
+   - Phase 1 (approved): Split-view layout, sticky action bar, image-mode 60vh cap, responsive fallback to stacked on narrow screens
+   - Deferred: Collapsible sections (low value), Smart Hotspot Management (high risk, separate follow-up)
 
-- Add `"utm_medium"` to the `headers` array after `"Event Level"`
-- Add `event.tokens?.utm_medium || ""` to the CSV row data array after the level value
+6. **Verification Checklist** -- snapshot capture still works, hotspot drag positioning still accurate, both parent contexts render correctly, mobile/tablet fallback behaves
 
-### 4. Sort Logic
+## File
 
-The existing `handleSort` function already accesses nested token fields via dot notation. The sort key `'utm_medium'` will need to resolve to `event.tokens.utm_medium`. I will verify the sort handler supports this path and add it if needed.
+- `docs/PLAN_DataTemplateEditor_Refactor.md` (new file)
 
-## What stays the same
+## Technical Details
 
-- No database or schema changes
-- No new dependencies
-- The query already fetches token data including `utm_medium` via the join
+No code changes. Single new markdown file. Content is derived entirely from the assessment already discussed in chat.
 
