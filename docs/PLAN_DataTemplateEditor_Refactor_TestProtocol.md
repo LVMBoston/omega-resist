@@ -27,6 +27,8 @@ Two templates cover the critical surface area:
 | **Samizdat Template-1** | `42485454-62e3-402a-8266-21de7bedc852` | Image (JPEG) | 15 | Dense number hotspots across full slide; exercises font scaling, position accuracy, and overflow handling. |
 | **World-Map** | `006fb714-78f9-49dd-aa16-bffe87327bef` | Solid color (`solid:#040458`) | varies | Validates solid-color rendering path and the alternate `<div>` background renderer. |
 
+> **Note — Map hotspots:** The Phase 1 layout refactor does not touch `MapHotspotRenderer` internals (tile loading, marker clustering, viewport persistence). Map hotspot coordinate calculations depend only on the hotspot container's percentage positioning, which is already covered by the two baselines above. No dedicated map-template baseline is required; if a working map template is created later, it can be added as an optional regression check.
+
 ---
 
 ## 3. Verification Steps (per template)
