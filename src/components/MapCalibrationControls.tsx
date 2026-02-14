@@ -108,6 +108,56 @@ export function MapCalibrationControls({
         </div>
       </div>
 
+      {/* Save View Button — placed early so it's always visible */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Saved View</Label>
+        {mapConfig.savedBounds ? (
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+              N: {mapConfig.savedBounds.north.toFixed(2)}° 
+              S: {mapConfig.savedBounds.south.toFixed(2)}°
+              <br />
+              E: {mapConfig.savedBounds.east.toFixed(2)}° 
+              W: {mapConfig.savedBounds.west.toFixed(2)}°
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveView}
+                disabled={!currentBounds}
+                className="flex-1 gap-1"
+              >
+                <Save className="w-3 h-3" />
+                Update View
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearSavedView}
+                className="gap-1 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleSaveView}
+            disabled={!currentBounds}
+            className="w-full gap-1 bg-purple-600 hover:bg-purple-700"
+          >
+            <Save className="w-3 h-3" />
+            Save Current View
+          </Button>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Saved view will be applied when the slide loads at runtime.
+        </p>
+      </div>
+
       {/* Position Controls */}
       <div className="grid grid-cols-2 gap-4">
         <SliderWithButtons
@@ -156,7 +206,7 @@ export function MapCalibrationControls({
       <div className="space-y-3 pt-2 border-t border-border">
         <h4 className="text-sm font-medium">Map Settings</h4>
 
-      {/* Lock Map Toggle */}
+        {/* Lock Map Toggle */}
         <div className="flex items-center justify-between">
           <Label htmlFor="lock-map" className="text-sm flex items-center gap-2">
             {mapConfig.isLocked ? <Lock className="w-4 h-4 text-amber-600" /> : <Unlock className="w-4 h-4" />}
@@ -198,56 +248,6 @@ export function MapCalibrationControls({
         <p className="text-xs text-muted-foreground -mt-1">
           Highlight seeds that generated engaged shares with a green border.
         </p>
-
-        {/* Save View Button */}
-        <div className="space-y-2">
-          <Label className="text-sm">Saved View</Label>
-          {mapConfig.savedBounds ? (
-            <div className="space-y-2">
-              <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                N: {mapConfig.savedBounds.north.toFixed(2)}° 
-                S: {mapConfig.savedBounds.south.toFixed(2)}°
-                <br />
-                E: {mapConfig.savedBounds.east.toFixed(2)}° 
-                W: {mapConfig.savedBounds.west.toFixed(2)}°
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveView}
-                  disabled={!currentBounds}
-                  className="flex-1 gap-1"
-                >
-                  <Save className="w-3 h-3" />
-                  Update View
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearSavedView}
-                  className="gap-1 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleSaveView}
-              disabled={!currentBounds}
-              className="w-full gap-1 bg-purple-600 hover:bg-purple-700"
-            >
-              <Save className="w-3 h-3" />
-              Save Current View
-            </Button>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Saved view will be applied when the slide loads at runtime.
-          </p>
-        </div>
       </div>
     </div>
   );
