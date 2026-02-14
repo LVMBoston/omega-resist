@@ -184,6 +184,21 @@ export function MapCalibrationControls({
           />
         </div>
 
+        {/* Spawn Highlight Toggle */}
+        <div className="flex items-center justify-between">
+          <Label htmlFor="spawn-highlight" className="text-sm">
+            Show events with spawns
+          </Label>
+          <Switch
+            id="spawn-highlight"
+            checked={mapConfig.showSpawnHighlight ?? true}
+            onCheckedChange={(checked) => updateMapConfig({ showSpawnHighlight: checked })}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground -mt-1">
+          Highlight seeds that generated engaged shares with a green border.
+        </p>
+
         {/* Save View Button */}
         <div className="space-y-2">
           <Label className="text-sm">Saved View</Label>
