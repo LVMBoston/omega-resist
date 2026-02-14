@@ -15,6 +15,7 @@ interface DraggableHotspotOverlayProps {
   campaignCode?: string;
   onMapBoundsChange?: (hotspotId: string, bounds: { north: number; south: number; east: number; west: number }) => void;
   onMapControlsReady?: (hotspotId: string, controls: MapControls) => void;
+  onMapZoomChange?: (hotspotId: string, zoom: number) => void;
 }
 
 export function DraggableHotspotOverlay({
@@ -27,6 +28,7 @@ export function DraggableHotspotOverlay({
   campaignCode,
   onMapBoundsChange,
   onMapControlsReady,
+  onMapZoomChange,
 }: DraggableHotspotOverlayProps) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editModeIndex, setEditModeIndex] = useState<number | null>(null);
@@ -154,6 +156,7 @@ export function DraggableHotspotOverlay({
                   isEditorMode={!isMapLocked}
                   onBoundsChange={!isMapLocked ? (bounds) => onMapBoundsChange?.(hotspot.id, bounds) : undefined}
                   onMapReady={!isMapLocked ? (controls) => onMapControlsReady?.(hotspot.id, controls) : undefined}
+                  onMapZoomChange={(zoom) => onMapZoomChange?.(hotspot.id, zoom)}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted/50 text-purple-600">
