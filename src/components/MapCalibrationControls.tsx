@@ -12,6 +12,7 @@ interface MapCalibrationControlsProps {
   currentBounds?: { north: number; south: number; east: number; west: number } | null;
   onZoomIn?: (delta?: number) => void;
   onZoomOut?: (delta?: number) => void;
+  currentZoom?: number;
 }
 
 export function MapCalibrationControls({
@@ -20,6 +21,7 @@ export function MapCalibrationControls({
   currentBounds,
   onZoomIn,
   onZoomOut,
+  currentZoom,
 }: MapCalibrationControlsProps) {
   const mapConfig = hotspot.mapConfig || {
     mapStyle: "channel_colors" as const,
@@ -74,8 +76,8 @@ export function MapCalibrationControls({
           >
             −
           </Button>
-          <div className="flex-1 text-center text-sm text-muted-foreground">
-            Use buttons or scroll on map
+          <div className="flex-1 text-center text-sm font-mono text-muted-foreground">
+            Zoom: {currentZoom?.toFixed(1) ?? "—"}
           </div>
           <Button
             variant="outline"
@@ -89,7 +91,7 @@ export function MapCalibrationControls({
             <button
               type="button"
               className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
-              onClick={() => onZoomIn?.(0.25)}
+              onClick={() => onZoomIn?.(0.1)}
               tabIndex={-1}
               title="Zoom in (fine)"
             >
@@ -98,7 +100,7 @@ export function MapCalibrationControls({
             <button
               type="button"
               className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
-              onClick={() => onZoomOut?.(0.25)}
+              onClick={() => onZoomOut?.(0.1)}
               tabIndex={-1}
               title="Zoom out (fine)"
             >

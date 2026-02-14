@@ -27,12 +27,14 @@ interface MapHotspotRendererProps {
   isEditorMode?: boolean;
   onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void;
   onMapReady?: (controls: MapControls) => void;
+  onMapZoomChange?: (zoom: number) => void;
 }
 
 export interface MapControls {
   zoomIn: (delta?: number) => void;
   zoomOut: (delta?: number) => void;
   resetView: () => void;
+  getZoom: () => number;
 }
 
 
@@ -76,6 +78,7 @@ export function MapHotspotRenderer({
   isEditorMode = false,
   onBoundsChange,
   onMapReady,
+  onMapZoomChange,
 }: MapHotspotRendererProps) {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -394,8 +397,23 @@ export function MapHotspotRenderer({
         map.setZoom(currentZoom - delta);
       },
       resetView: () => map.setView([39.8283, -98.5795], 4),
+      getZoom: () => map.getZoom(),
     });
   }, [mapReady, onMapReady]);
+
+  // Report zoom changes
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !onMapZoomChange) return;
+    
+    const map = mapRef.current;
+    const handleZoom = () => onMapZoomChange(map.getZoom());
+    
+    // Report initial zoom
+    handleZoom();
+    
+    map.on("zoomend", handleZoom);
+    return () => { map.off("zoomend", handleZoom); };
+  }, [mapReady, onMapZoomChange]);
 
   // Update map interactivity when isEditorMode changes (without reinit)
   useEffect(() => {

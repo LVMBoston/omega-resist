@@ -165,6 +165,7 @@ export function DataTemplateEditor({
   const [activeIndex, setActiveIndex] = useState(0);
   const [mapBoundsMap, setMapBoundsMap] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
   const [mapControlsMap, setMapControlsMap] = useState<Record<string, MapControls>>({});
+  const [mapZoomMap, setMapZoomMap] = useState<Record<string, number>>({});
   const [displayValues, setDisplayValues] = useState<Record<string, string>>(() => {
     const values: Record<string, string> = {};
     const defaultValues = ["142", "87", "1,234", "456", "321", "198", "73", "OMEGA PA", "Jan 15", "Jan 25", "9:00 AM", "2:45 PM"];
@@ -800,6 +801,7 @@ export function DataTemplateEditor({
               currentBounds={activeHotspot ? mapBoundsMap[activeHotspot.id] ?? null : null}
               onZoomIn={activeHotspot ? mapControlsMap[activeHotspot.id]?.zoomIn : undefined}
               onZoomOut={activeHotspot ? mapControlsMap[activeHotspot.id]?.zoomOut : undefined}
+              currentZoom={activeHotspot ? mapZoomMap[activeHotspot.id] : undefined}
             />
            )}
           </div>
@@ -879,6 +881,7 @@ export function DataTemplateEditor({
                 campaignCode={campaignId}
                 onMapBoundsChange={(id, bounds) => setMapBoundsMap(prev => ({ ...prev, [id]: bounds }))}
                 onMapControlsReady={(id, controls) => setMapControlsMap(prev => ({ ...prev, [id]: controls }))}
+                onMapZoomChange={(id, zoom) => setMapZoomMap(prev => ({ ...prev, [id]: zoom }))}
               />
             </div>
           ) : imageUrl ? (
@@ -903,6 +906,7 @@ export function DataTemplateEditor({
                   campaignCode={campaignId}
                   onMapBoundsChange={(id, bounds) => setMapBoundsMap(prev => ({ ...prev, [id]: bounds }))}
                   onMapControlsReady={(id, controls) => setMapControlsMap(prev => ({ ...prev, [id]: controls }))}
+                  onMapZoomChange={(id, zoom) => setMapZoomMap(prev => ({ ...prev, [id]: zoom }))}
                 />
               )}
 
