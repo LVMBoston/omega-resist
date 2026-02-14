@@ -225,8 +225,8 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   if (viewTimestamps.length > 0) {
     const earliest = new Date(Math.min(...viewTimestamps));
     const latest = new Date(Math.max(...viewTimestamps));
-    metrics.earliest_active = earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-    metrics.latest_active = latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    metrics.earliest_active = earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+    metrics.latest_active = latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
   } else {
     metrics.earliest_active = "--";
     metrics.latest_active = "--";
@@ -234,7 +234,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
   const now = new Date();
   metrics.current_date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
   return metrics;
