@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -89,23 +90,7 @@ export default function CampaignManager() {
   const [codeError, setCodeError] = useState<string>("");
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
-  const [showStatsMap, setShowStatsMap] = useState<Map<string, boolean>>(new Map());
-  
-  // Initialize showStatsMap to true for all campaigns when campaigns load
-  useEffect(() => {
-    if (campaigns.length > 0) {
-      setShowStatsMap(prev => {
-        const next = new Map(prev);
-        for (const campaign of campaigns) {
-          // Only set default if not already in the map (preserve user preferences)
-          if (!next.has(campaign.id)) {
-            next.set(campaign.id, false);
-          }
-        }
-        return next;
-      });
-    }
-  }, [campaigns]);
+  const [showStats, setShowStats] = useState(true);
   
   useEffect(() => {
     fetchData();
@@ -551,12 +536,11 @@ export default function CampaignManager() {
     campaign: Campaign;
     stats: CampaignStats | undefined;
     showStats: boolean;
-    onToggleStats: (checked: boolean) => void;
     deploymentState: DeploymentState;
     onRefreshDeployment: () => void;
   }
   
-  const SortableCard = ({ campaign, stats, showStats, onToggleStats, deploymentState, onRefreshDeployment }: SortableCardProps) => {
+  const SortableCard = ({ campaign, stats, showStats, deploymentState, onRefreshDeployment }: SortableCardProps) => {
     const [deckDialogOpen, setDeckDialogOpen] = useState(false);
     const [deckSlides, setDeckSlides] = useState<any[]>([]);
     const [loadingDeck, setLoadingDeck] = useState(false);
@@ -724,24 +708,6 @@ export default function CampaignManager() {
                 <CardDescription>utm_campaign: {campaign.code}</CardDescription>
               </div>
               <div className="flex gap-1 items-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div 
-                        className="flex items-center justify-center h-8 w-8"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Checkbox 
-                          checked={showStats} 
-                          onCheckedChange={onToggleStats}
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Display stats</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
                 <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleEditCampaign(campaign);
@@ -762,42 +728,40 @@ export default function CampaignManager() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
-              <div className="flex flex-wrap justify-between gap-x-4 gap-y-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Data Rows: Real / Sim</p>
-                  <p className="font-semibold text-lg">
-                    {showStats 
-                      ? `${(stats?.realDataRows || 0).toLocaleString()} / ${(stats?.simDataRows || 0).toLocaleString()}`
-                      : "-nm-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3+</p>
-                  <p className="font-semibold text-lg">
-                    {showStats 
-                      ? `${(stats?.l0Count || 0).toLocaleString()} / ${(stats?.l1Count || 0).toLocaleString()} / ${(stats?.l2Count || 0).toLocaleString()} / ${(stats?.l3PlusCount || 0).toLocaleString()}`
-                      : "-nm-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground"># Chapters</p>
-                  <p className="font-semibold text-lg">
-                    {showStats 
-                      ? (stats?.chaptersCount || 0).toLocaleString()
-                      : "-nm-"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-between gap-4">
-                <div>
-                  <p className="text-muted-foreground">Earliest Active</p>
-                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.earliestActive || null) : "-nm-"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Latest Active</p>
-                  <p className="font-medium">{showStats ? formatDateWithTime(stats?.latestActive || null) : "-nm-"}</p>
-                </div>
-              </div>
+              {showStats && (
+                <>
+                  <div className="flex flex-wrap justify-between gap-x-4 gap-y-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Data Rows: Real / Sim</p>
+                      <p className="font-semibold text-lg">
+                        {`${(stats?.realDataRows || 0).toLocaleString()} / ${(stats?.simDataRows || 0).toLocaleString()}`}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3+</p>
+                      <p className="font-semibold text-lg">
+                        {`${(stats?.l0Count || 0).toLocaleString()} / ${(stats?.l1Count || 0).toLocaleString()} / ${(stats?.l2Count || 0).toLocaleString()} / ${(stats?.l3PlusCount || 0).toLocaleString()}`}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground"># Chapters</p>
+                      <p className="font-semibold text-lg">
+                        {(stats?.chaptersCount || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <div>
+                      <p className="text-muted-foreground">Earliest Active</p>
+                      <p className="font-medium">{formatDateWithTime(stats?.earliestActive || null)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Latest Active</p>
+                      <p className="font-medium">{formatDateWithTime(stats?.latestActive || null)}</p>
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 {deckSlugs.length === 0 ? (
                   <Button 
@@ -847,15 +811,17 @@ export default function CampaignManager() {
                 
                 {deploymentState.ready ? (
                   deploymentState.lastDeployed ? (
-                    <div className="text-sm text-muted-foreground text-center py-2">
-                      Status: Deployed {new Date(deploymentState.lastDeployed).toLocaleString('en-US', {
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric', 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        hour12: true 
-                      })}
+                    <div className="flex justify-center py-2">
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0">
+                        Deployed {new Date(deploymentState.lastDeployed).toLocaleString('en-US', {
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric', 
+                          hour: 'numeric', 
+                          minute: '2-digit',
+                          hour12: true 
+                        })}
+                      </Badge>
                     </div>
                   ) : (
                     <Button
@@ -871,7 +837,7 @@ export default function CampaignManager() {
                           Deploying...
                         </>
                       ) : (
-                        "Status: Ready to Deploy"
+                        "Ready to Deploy"
                       )}
                     </Button>
                   )
@@ -879,15 +845,10 @@ export default function CampaignManager() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            disabled
-                          >
-                            Status: Not Ready to Deploy
-                          </Button>
+                        <div className="flex justify-center py-2">
+                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
+                            Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
+                          </Badge>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -977,7 +938,19 @@ export default function CampaignManager() {
       <main className="container mx-auto px-6 py-4">
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Campaigns</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-2xl font-bold">Campaigns</h2>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="show-stats"
+                  checked={showStats} 
+                  onCheckedChange={setShowStats}
+                />
+                <Label htmlFor="show-stats" className="text-sm text-muted-foreground cursor-pointer">
+                  Show Stats
+                </Label>
+              </div>
+            </div>
             <Dialog open={campaignDialogOpen} onOpenChange={handleDialogClose}>
                 <DialogTrigger asChild>
                   <Button>
@@ -1048,14 +1021,7 @@ export default function CampaignManager() {
                         key={campaign.id} 
                         campaign={campaign} 
                         stats={stats}
-                        showStats={showStatsMap.get(campaign.id) ?? false}
-                        onToggleStats={(checked) => {
-                          setShowStatsMap(prev => {
-                            const next = new Map(prev);
-                            next.set(campaign.id, checked);
-                            return next;
-                          });
-                        }}
+                        showStats={showStats}
                         deploymentState={depState}
                         onRefreshDeployment={calculateDeploymentStates}
                       />
