@@ -1,60 +1,65 @@
 
 
-# Add Documentation for `refresh-all-snapshots` Cron System
+# Fix "Data as of:" Timezone Display
 
-## Overview
-Create a new doc at `docs/SNAPSHOT_CRON_SYSTEM.md` describing the automatic snapshot refresh architecture, covering both the new `refresh-all-snapshots` orchestrator and the existing `render-stats-snapshot` function it depends on.
+## Problem
+The "Data as of:" time shows "8:08 PM" (UTC) instead of "3:08 PM ET" (your local time). This happens because the server-side snapshot renders timestamps using UTC, and the client-side `last_updated` metric is never populated.
 
-## Document Contents
+## Root Causes
+1. **Server-side snapshot** (`render-stats-snapshot` edge function): Uses `new Date()` on the Deno server, which runs in UTC. The resulting SVG bakes in UTC times with no timezone label.
+2. **Client-side live rendering** (`useLiveMetrics` hook): The `last_updated` metric key is defined but never actually populated with a value -- it falls back to "--".
 
-### 1. Purpose
-Explain the problem (static SVG snapshots go stale) and the solution (a pg_cron heartbeat that triggers periodic re-renders for enabled campaigns).
+## Fix (Two Parts)
 
-### 2. Architecture Diagram (text)
-```text
-pg_cron (every 1 min)
-  --> pg_net HTTP POST
-    --> refresh-all-snapshots (orchestrator)
-      --> for each enabled campaign with stale snapshots:
-        --> render-stats-snapshot (per template+campaign)
-          --> builds SVG with live metrics
-          --> uploads to slide-snapshots bucket
-          --> updates snapshot_rendered_at
+### Part 1: Add `last_updated` to client-side metrics
+**File:** `src/hooks/useLiveMetrics.ts`
+
+After the `current_time` metric (around line 313), add a `last_updated` metric that combines date and time in the viewer's local timezone:
+
+```
+// last_updated (combined date + time for "Data as of:" hotspots)
+metricResults.push({
+  key: "last_updated",
+  label: METRIC_LABELS.last_updated,
+  value: formatInTimeZone(now, viewerTz, "h:mm a zzz"),
+  source: "current",
+});
 ```
 
-### 3. Campaign Settings
-Document the two database columns that control behavior:
-- `campaigns.snapshot_enabled` (boolean) -- master toggle
-- `campaigns.snapshot_interval_minutes` (integer) -- minimum minutes between re-renders
+This ensures that when the live rendering path is used (desktop, non-snapshot mode), the "Data as of:" hotspot shows the correct local time with a timezone indicator.
 
-### 4. Edge Functions
-- **`refresh-all-snapshots`** -- orchestrator: queries enabled campaigns, resolves linked templates via `events_actions` + `slide_items`, checks staleness, calls `render-stats-snapshot` for each stale pair
-- **`render-stats-snapshot`** -- renderer: accepts `{ template_id, campaign_code }`, calculates live metrics, generates SVG with embedded background image and map tiles, uploads to storage, updates `viral_slide_configs`
+### Part 2: Add "UTC" label to server-side snapshot times
+**File:** `supabase/functions/render-stats-snapshot/index.ts`
 
-### 5. Metrics Available
-List all metric keys populated by `render-stats-snapshot`: `seeds`, `shares`, `opens`, `l01_count`, `l02_count`, `l03_count`, `neighborhoods`, `viral_coefficient`, `campaign_name`, `last_updated`, etc.
+Update the time formatting (lines 236-238) to append "UTC" so viewers of the static SVG know it's not local time:
 
-### 6. Storage
-- Bucket: `slide-snapshots` (public)
-- Path pattern: `{template_id}/snapshot-{campaign_code}.svg`
-- Cache-control: 300s
+```
+metrics.current_date = now.toLocaleDateString('en-US', {
+  month: 'short', day: 'numeric', year: 'numeric'
+});
+metrics.current_time = now.toLocaleTimeString('en-US', {
+  hour: 'numeric', minute: '2-digit', hour12: true
+}) + ' UTC';
+metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
+```
 
-### 7. Cron Job Details
-- Extension dependencies: `pg_cron`, `pg_net`
-- Schedule: `* * * * *` (every minute)
-- The orchestrator skips campaigns whose snapshots are still fresh
-- JWT verification disabled (called from pg_net, not browser)
+This makes the SSR snapshot honestly show "8:08 PM UTC" instead of bare "8:08 PM".
 
-### 8. Troubleshooting
-- How to check if cron is running (`SELECT * FROM cron.job`)
-- How to view job history (`SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 20`)
-- Edge function logs for debugging render failures
+### Part 3: Add "UTC" to SSR activity timestamps
+**File:** `supabase/functions/render-stats-snapshot/index.ts`
 
----
+Update `earliest_active` and `latest_active` formatting (lines 228-229) to also append "UTC":
 
-## Technical Details
+```
+metrics.earliest_active = earliest.toLocaleDateString(...) + ' UTC';
+metrics.latest_active = latest.toLocaleDateString(...) + ' UTC';
+```
 
-**New file:** `docs/SNAPSHOT_CRON_SYSTEM.md`
+## Result
+- **Live rendering (desktop)**: Shows accurate local time with timezone label (e.g., "3:08 PM EST")
+- **SSR snapshot (mobile/cached)**: Shows "8:08 PM UTC" so it's clear the time isn't localized
 
-No code changes -- documentation only.
+## Files Changed
+- `src/hooks/useLiveMetrics.ts` -- add `last_updated` metric population
+- `supabase/functions/render-stats-snapshot/index.ts` -- append "UTC" to all time strings
 
