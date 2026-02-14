@@ -121,8 +121,22 @@ async function renderStaticMap(
       .map((p: any) => `pin-s+3b82f6(${p.longitude.toFixed(4)},${p.latitude.toFixed(4)})`)
       .join(",");
 
-    // Use 'auto' viewport to fit all markers, with padding
-    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/auto/${imgW}x${imgH}@2x?padding=40&access_token=${mapboxToken}`;
+    // Use savedBounds for viewport if available, otherwise 'auto'
+    let viewport = "auto";
+    const savedBounds = mapConfig?.savedBounds;
+    if (savedBounds && savedBounds.north && savedBounds.south && savedBounds.east && savedBounds.west) {
+      const centerLon = ((savedBounds.east + savedBounds.west) / 2).toFixed(4);
+      const centerLat = ((savedBounds.north + savedBounds.south) / 2).toFixed(4);
+      // Estimate zoom from bounds span
+      const latSpan = Math.abs(savedBounds.north - savedBounds.south);
+      const lonSpan = Math.abs(savedBounds.east - savedBounds.west);
+      const maxSpan = Math.max(latSpan, lonSpan);
+      // Approximate zoom: 360/2^z ≈ span → z ≈ log2(360/span)
+      const zoom = Math.max(1, Math.min(18, Math.round(Math.log2(360 / maxSpan) * 10) / 10));
+      viewport = `${centerLon},${centerLat},${zoom}`;
+      console.log(`[render-stats-snapshot] Using savedBounds viewport: ${viewport}`);
+    }
+    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${viewport}/${imgW}x${imgH}@2x?padding=40&access_token=${mapboxToken}`;
 
     console.log(`[render-stats-snapshot] Fetching static map: ${imgW}x${imgH}, ${points.length} markers`);
     const resp = await fetch(url);
