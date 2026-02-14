@@ -411,9 +411,30 @@ export function DataTemplateEditor({
 
     setIsSaving(true);
     try {
+      // Auto-save each map hotspot's current viewport bounds before persisting
+      const hotspotsWithBounds = hotspots.map(h => {
+        if (h.type === 'map' && mapBoundsMap[h.id]) {
+          const bounds = mapBoundsMap[h.id];
+          return {
+            ...h,
+            mapConfig: {
+              ...h.mapConfig,
+              savedBounds: {
+                north: bounds.north,
+                south: bounds.south,
+                east: bounds.east,
+                west: bounds.west,
+              },
+            },
+          };
+        }
+        return h;
+      });
+      setHotspots(hotspotsWithBounds);
+
       // First save the template to get/confirm the ID
       const result = await onSave({
-        hotspots,
+        hotspots: hotspotsWithBounds,
         imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
