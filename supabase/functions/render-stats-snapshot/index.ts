@@ -112,9 +112,14 @@ async function renderStaticMap(
     // Increase cap to 200 (each pin ~30 chars, well within URL limits)
     const points = events.slice(0, 200);
 
-    // Clamp image dimensions (Mapbox max 1280x1280)
-    const imgW = Math.min(Math.round(pixelWidth), 1280);
-    const imgH = Math.min(Math.round(pixelHeight), 1280);
+    // Clamp image dimensions (Mapbox max 1280x1280) while preserving aspect ratio
+    let imgW = Math.round(pixelWidth);
+    let imgH = Math.round(pixelHeight);
+    if (imgW > 1280 || imgH > 1280) {
+      const scale = Math.min(1280 / imgW, 1280 / imgH);
+      imgW = Math.round(imgW * scale);
+      imgH = Math.round(imgH * scale);
+    }
 
     // Use pin-s (small pins) overlay - compact URL format
     const pinOverlay = points
