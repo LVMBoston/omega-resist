@@ -1,59 +1,55 @@
 
 
-# Audit and Fix: Template Deletion Orphaning slide_items
+# Campaign Card UI Polish: Global Stats Toggle + Status Badges
 
-## Problem
+## Overview
+Two visual improvements to the Campaign Orchestration page cards.
 
-The `slide_items.template_id` foreign key uses `ON DELETE SET NULL`. When a template is deleted from the Interactive Templates repository, all slides referencing it silently lose their linkage (`template_id` becomes `NULL`), causing the "data is null" error on the Stats Page slide.
+---
 
-Three delete paths exist today:
+## Change 1: Global Stats Toggle
 
-1. **InteractiveTemplates.tsx** -- "Delete" button on a template card (line 796). The confirmation message incorrectly says "This will not affect decks already using it."
-2. **DeckManagement.tsx** -- "Remove interactive pages" deletes `viral_slide_configs` by `slide_id` (line 252). This targets per-slide configs, not shared templates, so it is less risky but still dangerous if a shared template happens to have a matching `slide_id`.
-3. **DeckManagement.tsx** -- "Delete deck" deletes `viral_slide_configs` by `deck_slug` (line 278). Same concern: could hit shared templates that have a `deck_slug` set.
+**Problem**: The per-card `showStats` checkbox creates unequal card heights in the grid when some cards show stats and others don't.
 
-## Plan
+**Solution**: Replace the per-card checkbox with a single global toggle at the top of the page (near the existing toolbar/header area). All cards expand or collapse stats together, keeping the grid uniform.
 
-### Step 1: Add a pre-delete linkage check in InteractiveTemplates.tsx
+### What changes
+- **`src/pages/CampaignManager.tsx`**:
+  - Replace `showStatsMap` (Map of per-card booleans) with a single `showStats` boolean state, defaulting to `true`
+  - Remove the per-card `Checkbox` + tooltip from each `SortableCard` header (lines ~728-744)
+  - Add a global `Switch` or `Checkbox` labeled "Show Stats" in the page toolbar area (near the search bar or sort controls)
+  - When `showStats` is `false`, **hide the entire stats block** (lines 764-800) rather than showing `-nm-` placeholders -- since all cards collapse together, heights stay uniform
+  - Simplify `SortableCardProps` by removing `showStats` and `onToggleStats` props; the component reads the single parent state instead
 
-Before deleting a template, query `slide_items` to count how many slides reference it:
+---
 
-```
-SELECT count(*) FROM slide_items WHERE template_id = '<id>'
-```
+## Change 2: Color-Coded Status Badges
 
-- If count > 0: show a warning dialog listing the affected deck slugs, and require explicit confirmation ("This template is used by N slides in decks X, Y. Deleting it will break those slides.")
-- If count = 0: allow deletion with a simple confirmation.
+**Problem**: Deployment status is shown as plain text or disabled buttons, making it hard to scan visually.
 
-### Step 2: Fix the misleading confirmation text
+**Solution**: Replace with styled `Badge` components using semantic colors.
 
-Change the current message from:
-> "Delete this template? This will not affect decks already using it."
-
-To a dynamic message based on the linkage check result.
-
-### Step 3: Scope DeckManagement deletes to non-shared configs
-
-In `DeckManagement.tsx`, add a `deck_slug IS NOT NULL` guard or a `template_type` filter to the delete queries so they only remove per-deck configs (those created inline with a deck), not shared repository templates.
-
-### Step 4: Document in the change log
-
-Append an entry to the investigation MD file recording this fix.
+### What changes
+- **`src/pages/CampaignManager.tsx`** (lines ~848-899):
+  - Import `Badge` from `@/components/ui/badge`
+  - **Deployed**: Green badge with date  
+    `className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0"`
+  - **Ready to Deploy**: Keep as a clickable `Button` (it triggers deployment), but style it with an amber/green accent so it stands out as an actionable item
+  - **Not Ready to Deploy**: Amber badge  
+    `className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0"`  
+    wrapped in the existing `Tooltip` so the readiness details are still accessible on hover
 
 ---
 
 ## Technical Details
 
-### File: `src/pages/InteractiveTemplates.tsx`
+### Files modified
+- `src/pages/CampaignManager.tsx` only
 
-- Around line 794-798: Replace the inline `confirm()` with an async check that queries `slide_items` for linked slides before proceeding.
-- The `deleteTemplate` mutation itself (line 277-285) stays the same; the guard is added at the call site.
+### New imports
+- `Badge` from `@/components/ui/badge` (already exists in project)
+- `Switch` from `@/components/ui/switch` (already exists) -- for the global toggle
 
-### File: `src/pages/DeckManagement.tsx`
+### Risk
+Low. All changes are purely presentational. No data fetching, state logic, or deployment behavior is modified.
 
-- Line 252: Add `.not('deck_slug', 'is', null)` or similar filter to the delete query so shared templates (which typically have `deck_slug = null` or a different slug pattern) are not accidentally removed.
-- Line 278: Same treatment -- scope to configs that belong to that specific deck and are not shared repository templates.
-
-### No schema changes required
-
-The `ON DELETE SET NULL` constraint is correct behavior -- it protects referential integrity. The fix is to prevent accidental deletions at the application layer.
