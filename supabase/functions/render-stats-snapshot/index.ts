@@ -136,7 +136,9 @@ async function renderStaticMap(
       viewport = `${centerLon},${centerLat},${zoom}`;
       console.log(`[render-stats-snapshot] Using savedBounds viewport: ${viewport}`);
     }
-    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${viewport}/${imgW}x${imgH}@2x?padding=40&access_token=${mapboxToken}`;
+    // Mapbox only allows padding with 'auto' viewport, not explicit coordinates
+    const paddingParam = viewport === "auto" ? "&padding=40" : "";
+    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${viewport}/${imgW}x${imgH}@2x?access_token=${mapboxToken}${paddingParam}`;
 
     console.log(`[render-stats-snapshot] Fetching static map: ${imgW}x${imgH}, ${points.length} markers`);
     const resp = await fetch(url);
