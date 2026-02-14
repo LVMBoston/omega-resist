@@ -415,16 +415,19 @@ export function MapHotspotRenderer({
     }
   }, [isEditorMode, mapReady]);
 
-  // Invalidate map size AND re-apply saved bounds when container dimensions change
-  // This fixes the issue where on mobile the map initially renders small because
-  // the container isn't fully sized when Leaflet first initializes
+  // Track whether bounds have been properly applied after a valid container size
+  const boundsAppliedRef = useRef(false);
+
+  // Invalidate map size when container dimensions change
+  // On the FIRST valid resize, re-apply saved bounds to fix mobile initial render
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
     const map = mapRef.current;
     map.invalidateSize();
     
-    // Re-apply saved bounds after invalidation so the viewport fits the new container size
-    if (savedBoundsRef.current) {
+    // Only re-apply saved bounds once (first time container has real dimensions)
+    if (!boundsAppliedRef.current && width > 0 && height > 0 && savedBoundsRef.current) {
+      boundsAppliedRef.current = true;
       const { north, south, east, west } = savedBoundsRef.current;
       setTimeout(() => {
         if (mapRef.current) {
