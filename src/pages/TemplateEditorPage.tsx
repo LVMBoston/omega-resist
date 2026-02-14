@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,8 @@ export default function TemplateEditorPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isNewTemplate = id === "new";
+  // Track the actual saved ID — starts as the URL param for existing templates
+  const [savedId, setSavedId] = useState<string | undefined>(isNewTemplate ? undefined : id);
 
   // Fetch existing template if editing
   const { data: template, isLoading } = useQuery({
@@ -40,7 +43,22 @@ export default function TemplateEditorPage() {
       slug: string;
       description?: string;
     }) => {
-      if (isNewTemplate) {
+      if (savedId) {
+        // Update existing template
+        const { error } = await supabase
+          .from("viral_slide_configs")
+          .update({
+            name: data.name,
+            slug: data.slug,
+            description: data.description,
+            image_url: data.imageUrl,
+            hotspots: data.hotspots as unknown as Json,
+          })
+          .eq("id", savedId);
+
+        if (error) throw error;
+        return savedId;
+      } else {
         // Create new template
         const { data: inserted, error } = await supabase
           .from("viral_slide_configs")
@@ -57,21 +75,6 @@ export default function TemplateEditorPage() {
 
         if (error) throw error;
         return inserted.id;
-      } else {
-        // Update existing template
-        const { error } = await supabase
-          .from("viral_slide_configs")
-          .update({
-            name: data.name,
-            slug: data.slug,
-            description: data.description,
-            image_url: data.imageUrl,
-            hotspots: data.hotspots as unknown as Json,
-          })
-          .eq("id", id);
-
-        if (error) throw error;
-        return id;
       }
     },
     onSuccess: (returnedId) => {
@@ -82,8 +85,9 @@ export default function TemplateEditorPage() {
         description: "Template saved successfully",
       });
       
-      // If this was a new template, update URL to the new ID
-      if (isNewTemplate && returnedId) {
+      // Store the ID so subsequent saves are updates, not inserts
+      if (returnedId && !savedId) {
+        setSavedId(returnedId);
         window.history.replaceState(null, "", `/template-editor/${returnedId}`);
       }
     },
@@ -146,7 +150,7 @@ export default function TemplateEditorPage() {
           templateName={template?.name || ""}
           templateSlug={template?.slug || ""}
           templateDescription={template?.description || ""}
-          templateId={isNewTemplate ? undefined : id}
+          templateId={savedId}
           onSave={handleSave}
           onCancel={handleCancel}
           mode={isNewTemplate ? "create" : "edit"}
