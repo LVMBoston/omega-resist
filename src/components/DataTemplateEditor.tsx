@@ -404,10 +404,8 @@ export function DataTemplateEditor({
       toast.error("Please set a background (image or solid color)");
       return;
     }
-    if (!captureContainerRef.current) {
-      toast.error("Cannot capture: container not ready");
-      return;
-    }
+    // Note: don't early-return on captureContainerRef here — the save call
+    // may trigger a re-render that temporarily nullifies it. We check later.
 
     const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
 
@@ -436,17 +434,26 @@ export function DataTemplateEditor({
       // Now capture the snapshot
       setIsCapturing(true);
       
-      // Add capture mode class to adjust vertical alignment for html2canvas
-      if (!captureContainerRef.current) {
+      // Wait for ref to re-attach after save-triggered re-render
+      let container = captureContainerRef.current;
+      if (!container) {
+        // Retry a few times with short delays
+        for (let i = 0; i < 10; i++) {
+          await new Promise(r => setTimeout(r, 200));
+          container = captureContainerRef.current;
+          if (container) break;
+        }
+      }
+      if (!container) {
         throw new Error("Capture container not available — please try again");
       }
-      captureContainerRef.current.classList.add("capture-mode");
+      container.classList.add("capture-mode");
       
       toast.info("Capturing snapshot...", { duration: 2000 });
       
       const captureResult = await captureTemplateSnapshot(
         templateIdToUse,
-        captureContainerRef.current,
+        container,
         campaignId || undefined,
         backgroundMode === "solid" ? backgroundColor : undefined
       );
