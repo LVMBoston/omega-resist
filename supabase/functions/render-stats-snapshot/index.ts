@@ -125,16 +125,9 @@ async function renderStaticMap(
     let viewport = "auto";
     const savedBounds = mapConfig?.savedBounds;
     if (savedBounds && savedBounds.north && savedBounds.south && savedBounds.east && savedBounds.west) {
-      const centerLon = ((savedBounds.east + savedBounds.west) / 2).toFixed(4);
-      const centerLat = ((savedBounds.north + savedBounds.south) / 2).toFixed(4);
-      // Estimate zoom from bounds span
-      const latSpan = Math.abs(savedBounds.north - savedBounds.south);
-      const lonSpan = Math.abs(savedBounds.east - savedBounds.west);
-      const maxSpan = Math.max(latSpan, lonSpan);
-      // Approximate zoom: 360/2^z ≈ span → z ≈ log2(360/span)
-      const zoom = Math.max(1, Math.min(18, Math.round(Math.log2(360 / maxSpan) * 10) / 10));
-      viewport = `${centerLon},${centerLat},${zoom}`;
-      console.log(`[render-stats-snapshot] Using savedBounds viewport: ${viewport}`);
+      // Use Mapbox bounding box viewport for exact match with Leaflet's savedBounds
+      viewport = `[${savedBounds.west},${savedBounds.south},${savedBounds.east},${savedBounds.north}]`;
+      console.log(`[render-stats-snapshot] Using savedBounds bbox viewport: ${viewport}`);
     }
     // Mapbox only allows padding with 'auto' viewport, not explicit coordinates
     const paddingParam = viewport === "auto" ? "&padding=40" : "";
