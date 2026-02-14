@@ -109,23 +109,8 @@ async function renderStaticMap(
     if (!events || events.length === 0) return null;
 
     // Build pin overlay for Mapbox Static API
-    // Limit markers to keep URL under ~8KB
-    const points = events.slice(0, 50);
-    
-    // Determine viewport from savedBounds or auto-fit
-    let lon: number, lat: number, zoom: number;
-    if (mapConfig.savedBounds) {
-      const { north, south, east, west } = mapConfig.savedBounds;
-      lon = (east + west) / 2;
-      lat = (north + south) / 2;
-      const latSpan = north - south;
-      zoom = Math.round(Math.log2(180 / latSpan));
-      zoom = Math.max(2, Math.min(zoom, 15));
-    } else {
-      lon = -98.5795;
-      lat = 39.8283;
-      zoom = 4;
-    }
+    // Increase cap to 200 (each pin ~30 chars, well within URL limits)
+    const points = events.slice(0, 200);
 
     // Clamp image dimensions (Mapbox max 1280x1280)
     const imgW = Math.min(Math.round(pixelWidth), 1280);
@@ -136,7 +121,8 @@ async function renderStaticMap(
       .map((p: any) => `pin-s+3b82f6(${p.longitude.toFixed(4)},${p.latitude.toFixed(4)})`)
       .join(",");
 
-    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${lon},${lat},${zoom}/${imgW}x${imgH}@2x?access_token=${mapboxToken}`;
+    // Use 'auto' viewport to fit all markers, with padding
+    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/auto/${imgW}x${imgH}@2x?padding=40&access_token=${mapboxToken}`;
 
     console.log(`[render-stats-snapshot] Fetching static map: ${imgW}x${imgH}, ${points.length} markers`);
     const resp = await fetch(url);
