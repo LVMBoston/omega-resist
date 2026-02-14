@@ -100,8 +100,8 @@ export function HotspotCalibrationControls({
       {/* Manual Label - only shown when Manual Entry is selected */}
       {isManualEntry && (
         <div className="space-y-2">
-          <Label className="text-xs">Label</Label>
-          <Input
+          <Label className="text-xs">Label (use Enter for line breaks)</Label>
+          <textarea
             key={`manual-label-${hotspot.id}`}
             value={hotspot.manualLabel || ""}
             onChange={(e) => {
@@ -112,8 +112,9 @@ export function HotspotCalibrationControls({
             onMouseDown={(e) => e.stopPropagation()}
             onDragStart={(e) => e.preventDefault()}
             placeholder="Enter text..."
-            className="h-8 text-xs cursor-text"
+            className="h-16 text-xs cursor-text w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
             draggable={false}
+            rows={2}
           />
         </div>
       )}

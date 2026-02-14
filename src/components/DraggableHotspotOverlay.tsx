@@ -331,15 +331,14 @@ export function DraggableHotspotOverlay({
           >
             {/* Editable input when in edit mode and manual entry */}
             {isEditMode && isManualEntry ? (
-              <input
-                type="text"
+              <textarea
                 value={hotspot.manualLabel || ""}
                 onChange={(e) => onUpdateHotspot(index, { manualLabel: e.target.value })}
                 onMouseDown={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
                 autoFocus
-                className="w-full h-full bg-transparent border-none outline-none text-center"
+                className="w-full h-full bg-transparent border-none outline-none text-center resize-none"
                 style={{
                   fontSize: "inherit",
                   fontWeight: "inherit",
@@ -349,7 +348,7 @@ export function DraggableHotspotOverlay({
                 placeholder="Enter text..."
               />
             ) : (
-              <span className="pointer-events-none">
+              <span className="pointer-events-none whitespace-pre-line">
                 {isManualEntry ? (hotspot.manualLabel || "—") : (displayValues[hotspot.id] || "0")}
               </span>
             )}

@@ -418,10 +418,9 @@ export const StatsPageSlide = ({
               padding: style.padding || '0',
               borderRadius: style.borderRadius || '0',
               pointerEvents: 'none',
-              // Clip long text to prevent overflow bleeding
-              whiteSpace: 'nowrap',
+              // Allow line breaks in manual labels
+              whiteSpace: 'pre-line',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
             }}
           >
             {value}

@@ -371,8 +371,20 @@ Deno.serve(async (req) => {
       if (bgColor && bgColor !== "transparent") {
         svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
       }
-      // Text
-      svgParts += `<text x="${textX}" y="${textY}" font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">${escapeXml(metricValue)}</text>`;
+      // Text - support line breaks (\n) with multiple tspan elements
+      const lines = metricValue.split("\n");
+      if (lines.length <= 1) {
+        svgParts += `<text x="${textX}" y="${textY}" font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">${escapeXml(metricValue)}</text>`;
+      } else {
+        const lineHeight = scaledFontSize * 1.2;
+        const totalTextHeight = lineHeight * lines.length;
+        const startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
+        svgParts += `<text font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
+        lines.forEach((line, i) => {
+          svgParts += `<tspan x="${textX}" y="${startY + i * lineHeight}">${escapeXml(line)}</tspan>`;
+        });
+        svgParts += `</text>`;
+      }
 
       return svgParts;
     }).join("\n    ");
