@@ -1,55 +1,38 @@
 
+# Fix Map Pan/Zoom Mismatch Between Editor and Snapshot
 
-# Campaign Card UI Polish: Global Stats Toggle + Status Badges
+## Problem
+The server-side snapshot maps show a different viewport than what was calibrated in the Template Editor. This happens because the edge function converts Leaflet's bounding box (`north/south/east/west`) into a `center,zoom` pair using an approximate formula (`log2(360/span)`) that ignores container aspect ratio and Mercator distortion.
 
-## Overview
-Two visual improvements to the Campaign Orchestration page cards.
+## Solution
+Use Mapbox Static API's native **bounding box viewport** format instead of computing `center,zoom`. The API accepts `[west,south,east,north]` directly, which maps 1:1 to the Leaflet savedBounds.
 
----
+## Changes
 
-## Change 1: Global Stats Toggle
+**File: `supabase/functions/render-stats-snapshot/index.ts`** (single change, ~5 lines)
 
-**Problem**: The per-card `showStats` checkbox creates unequal card heights in the grid when some cards show stats and others don't.
+Replace the current savedBounds-to-viewport conversion:
+```
+// Current (lossy):
+viewport = `${centerLon},${centerLat},${zoom}`;
+```
 
-**Solution**: Replace the per-card checkbox with a single global toggle at the top of the page (near the existing toolbar/header area). All cards expand or collapse stats together, keeping the grid uniform.
+With the bounding box format:
+```
+// New (exact):
+viewport = `[${savedBounds.west},${savedBounds.south},${savedBounds.east},${savedBounds.north}]`;
+```
 
-### What changes
-- **`src/pages/CampaignManager.tsx`**:
-  - Replace `showStatsMap` (Map of per-card booleans) with a single `showStats` boolean state, defaulting to `true`
-  - Remove the per-card `Checkbox` + tooltip from each `SortableCard` header (lines ~728-744)
-  - Add a global `Switch` or `Checkbox` labeled "Show Stats" in the page toolbar area (near the search bar or sort controls)
-  - When `showStats` is `false`, **hide the entire stats block** (lines 764-800) rather than showing `-nm-` placeholders -- since all cards collapse together, heights stay uniform
-  - Simplify `SortableCardProps` by removing `showStats` and `onToggleStats` props; the component reads the single parent state instead
+This eliminates the center/zoom calculation entirely. The `padding` parameter is also valid with bounding box viewports, so it can be re-enabled for this mode too.
 
----
+## Risk Assessment
+- **Low risk**: Single-line change in the viewport string format
+- **No frontend changes** required
+- **Automatic deployment**: Edge function deploys without publishing
+- **Verification**: Re-render the snapshot and compare side-by-side with the editor
 
-## Change 2: Color-Coded Status Badges
-
-**Problem**: Deployment status is shown as plain text or disabled buttons, making it hard to scan visually.
-
-**Solution**: Replace with styled `Badge` components using semantic colors.
-
-### What changes
-- **`src/pages/CampaignManager.tsx`** (lines ~848-899):
-  - Import `Badge` from `@/components/ui/badge`
-  - **Deployed**: Green badge with date  
-    `className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0"`
-  - **Ready to Deploy**: Keep as a clickable `Button` (it triggers deployment), but style it with an amber/green accent so it stands out as an actionable item
-  - **Not Ready to Deploy**: Amber badge  
-    `className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0"`  
-    wrapped in the existing `Tooltip` so the readiness details are still accessible on hover
-
----
-
-## Technical Details
-
-### Files modified
-- `src/pages/CampaignManager.tsx` only
-
-### New imports
-- `Badge` from `@/components/ui/badge` (already exists in project)
-- `Switch` from `@/components/ui/switch` (already exists) -- for the global toggle
-
-### Risk
-Low. All changes are purely presentational. No data fetching, state logic, or deployment behavior is modified.
-
+## Technical Detail
+Mapbox Static API viewport formats:
+- `auto` -- fit all overlays
+- `lon,lat,zoom` -- explicit center (what we use now, lossy)
+- `[west,south,east,north]` -- bounding box (what Leaflet stores, exact match)
