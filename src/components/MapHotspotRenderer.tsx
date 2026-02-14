@@ -415,10 +415,27 @@ export function MapHotspotRenderer({
     }
   }, [isEditorMode, mapReady]);
 
-  // Invalidate map size when container dimensions change
+  // Invalidate map size AND re-apply saved bounds when container dimensions change
+  // This fixes the issue where on mobile the map initially renders small because
+  // the container isn't fully sized when Leaflet first initializes
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
-    mapRef.current.invalidateSize();
+    const map = mapRef.current;
+    map.invalidateSize();
+    
+    // Re-apply saved bounds after invalidation so the viewport fits the new container size
+    if (savedBoundsRef.current) {
+      const { north, south, east, west } = savedBoundsRef.current;
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+          mapRef.current.fitBounds([
+            [south, west],
+            [north, east],
+          ]);
+        }
+      }, 50);
+    }
   }, [width, height, mapReady]);
 
   // Toggle clustering layer without reinitializing the map
