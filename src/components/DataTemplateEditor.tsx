@@ -163,8 +163,8 @@ export function DataTemplateEditor({
     initialHotspots.length > 0 ? initialHotspots : [createDefaultHotspot(0)]
   );
   const [activeIndex, setActiveIndex] = useState(0);
-  const [currentMapBounds, setCurrentMapBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
-  const [mapControls, setMapControls] = useState<MapControls | null>(null);
+  const [mapBoundsMap, setMapBoundsMap] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
+  const [mapControlsMap, setMapControlsMap] = useState<Record<string, MapControls>>({});
   const [displayValues, setDisplayValues] = useState<Record<string, string>>(() => {
     const values: Record<string, string> = {};
     const defaultValues = ["142", "87", "1,234", "456", "321", "198", "73", "OMEGA PA", "Jan 15", "Jan 25", "9:00 AM", "2:45 PM"];
@@ -766,12 +766,12 @@ export function DataTemplateEditor({
           )}
 
           {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "map" && (
-            <MapCalibrationControls
+             <MapCalibrationControls
               hotspot={activeHotspot}
               onUpdate={(updates) => updateHotspot(activeIndex, updates)}
-              currentBounds={currentMapBounds}
-              onZoomIn={mapControls?.zoomIn}
-              onZoomOut={mapControls?.zoomOut}
+              currentBounds={activeHotspot ? mapBoundsMap[activeHotspot.id] ?? null : null}
+              onZoomIn={activeHotspot ? mapControlsMap[activeHotspot.id]?.zoomIn : undefined}
+              onZoomOut={activeHotspot ? mapControlsMap[activeHotspot.id]?.zoomOut : undefined}
             />
            )}
           </div>
@@ -849,8 +849,8 @@ export function DataTemplateEditor({
                 onUpdateHotspot={updateHotspot}
                 onSelectHotspot={setActiveIndex}
                 campaignCode={campaignId}
-                onMapBoundsChange={setCurrentMapBounds}
-                onMapControlsReady={setMapControls}
+                onMapBoundsChange={(id, bounds) => setMapBoundsMap(prev => ({ ...prev, [id]: bounds }))}
+                onMapControlsReady={(id, controls) => setMapControlsMap(prev => ({ ...prev, [id]: controls }))}
               />
             </div>
           ) : imageUrl ? (
@@ -873,8 +873,8 @@ export function DataTemplateEditor({
                   onUpdateHotspot={updateHotspot}
                   onSelectHotspot={setActiveIndex}
                   campaignCode={campaignId}
-                  onMapBoundsChange={setCurrentMapBounds}
-                  onMapControlsReady={setMapControls}
+                  onMapBoundsChange={(id, bounds) => setMapBoundsMap(prev => ({ ...prev, [id]: bounds }))}
+                  onMapControlsReady={(id, controls) => setMapControlsMap(prev => ({ ...prev, [id]: controls }))}
                 />
               )}
 
