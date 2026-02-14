@@ -600,9 +600,32 @@ export default function InteractiveTemplates() {
       await updateTemplate.mutateAsync({ id: existingId, data: updateData });
       return existingId;
     } else {
-      // Create new template - use direct insert to get the ID back
+      // Create new template - but first check if one with the same name already exists
+      // to prevent duplicate creation from race conditions or stale state
+      const { data: existingByName } = await supabase
+        .from("viral_slide_configs")
+        .select("id")
+        .eq("name", data.name)
+        .eq("template_type", "stats_page")
+        .maybeSingle();
+      
+      if (existingByName) {
+        // Template already exists — update it instead of creating a duplicate
+        const updateData = {
+          name: data.name,
+          description: data.description || "",
+          image_url: data.imageUrl,
+          hotspots: data.hotspots,
+          is_default: false,
+          template_type: "stats_page" as TemplateType,
+          config: { type: "stats_page" },
+        };
+        await updateTemplate.mutateAsync({ id: existingByName.id, data: updateData });
+        createdDataTemplateIdRef.current = existingByName.id;
+        return existingByName.id;
+      }
+
       // Strip any existing timestamp suffixes before appending a fresh one
-      // This handles slugs like "template-123456" or "template-123-456" (double timestamps)
       const baseSlug = data.slug.replace(/-\d{10,}(-\d{10,})?$/g, '');
       const uniqueSlug = `${baseSlug}-${Date.now()}`;
       
