@@ -1878,6 +1878,7 @@ export default function CampaignDashboard({
                 onChainTokenChange={setSelectedChainToken}
                 viewMode={chainViewMode}
                 onViewModeChange={setChainViewMode}
+                showNoSpawns={showNoSpawns}
               />
             </div>
           </TabsContent>
