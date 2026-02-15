@@ -76,3 +76,39 @@ export const formatTimeDelta = (ms: number): string => {
   // 3 parts: "X days, Y hours and Z minutes"
   return `${parts[0]}, ${parts[1]} and ${parts[2]}`;
 };
+
+/**
+ * Parse a naive datetime string (with nominal +00/Z suffix) into a Date
+ * using raw numeric components, avoiding timezone conversion.
+ */
+export const parseNaiveDate = (dateString: string): Date => {
+  const m = dateString.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
+  if (!m) return new Date(0);
+  return new Date(
+    parseInt(m[1]),
+    parseInt(m[2]) - 1,
+    parseInt(m[3]),
+    parseInt(m[4] || "0"),
+    parseInt(m[5] || "0"),
+    parseInt(m[6] || "0")
+  );
+};
+
+/**
+ * Format elapsed milliseconds as compact label.
+ * Examples: "0m", "45m", "2h 15m", "1d 3h", "7d"
+ */
+export const formatElapsedTime = (ms: number): string => {
+  if (ms < 0) return "0m";
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  const remMinutes = minutes % 60;
+
+  if (days > 0 && remHours > 0) return `${days}d ${remHours}h`;
+  if (days > 0) return `${days}d`;
+  if (hours > 0 && remMinutes > 0) return `${hours}h ${remMinutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}m`;
+};
