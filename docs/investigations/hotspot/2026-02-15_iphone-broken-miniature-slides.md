@@ -8,6 +8,7 @@ On iPhone:
 1. **Portrait**: The "Spread-the-Word" (interactive_share) slide shows a broken/blank image on first load
 2. **Landscape (after rotation)**: The slide renders as a tiny miniature
 3. **Subsequent Data Template slides**: Also render as miniatures after rotation
+4. **Data Templates invisible**: After initial fix attempt using `w-full h-full`, Data Templates became completely invisible in portrait
 
 ## Root Cause
 
@@ -21,41 +22,62 @@ The `deck-slide-container` CSS class used `aspect-ratio: 9/16` with only `max-wi
 
 ## Fix (3 Parts)
 
-### Part 1: Fix InteractiveShareSlide image sizing
+### Part 1: Explicit computed container dimensions (CSS)
+**File:** `src/index.css`
+
+Replace `aspect-ratio: 9/16` + `max-*` constraints with explicit `min()` calculations that compute the largest 9:16 rectangle fitting the viewport. This eliminates iOS Safari's flexbox sizing ambiguity entirely.
+
+```css
+/* Before (broken on iOS) */
+.deck-slide-container {
+  max-width: 100%;
+  max-height: 100dvh;
+  aspect-ratio: 9 / 16;
+}
+
+/* After (explicit dimensions, works everywhere) */
+.deck-slide-container {
+  width: min(100vw, calc(100dvh * 9 / 16));
+  height: min(100dvh, calc(100vw * 16 / 9));
+  max-width: 100%;
+  max-height: 100dvh;
+}
+```
+
+**Why this works:** `min()` picks the smaller of (a) viewport width and (b) height-derived width, ensuring the 9:16 rectangle never exceeds either viewport dimension. No `aspect-ratio` property needed — the ratio is baked into the calculations. Both portrait and landscape orientations are handled by the same rule (no media query needed).
+
+### Part 2: Fix InteractiveShareSlide image sizing
 **File:** `src/components/InteractiveShareSlide.tsx`
 
-Change the image from `max-w-full max-h-full` to `w-full h-full` to match how regular slides render. This ensures the image fills the container using object-contain, rather than depending on intrinsic image dimensions.
+Change the image from `max-w-full max-h-full` to `w-full h-full` to match how regular slides render.
 
 ```diff
 - className="max-w-full max-h-full object-contain"
 + className="w-full h-full object-contain"
 ```
 
-### Part 2: Add orientation-change relayout handler
+### Part 3: Add orientation-change handlers
 **File:** `src/components/InteractiveSlideOverlay.tsx`
 
 Add an `orientationchange` event listener alongside the existing `resize` listener. iOS Safari fires `orientationchange` but sometimes delays `resize`, so listening to both ensures hotspot positions recalculate after rotation.
 
-### Part 3: Force relayout on orientation change in DeckViewer
 **File:** `src/pages/DeckViewer.tsx`
 
-Add an `orientationchange` listener that forces a reflow of the slide container. This prevents iOS Safari from keeping stale layout dimensions after rotation, which causes the "stuck miniature" state for subsequent slides.
-
-## Technical Details
-
-### Why `w-full h-full` works
-Regular image slides (positions 1–7) already use `w-full h-full object-contain` and render correctly on iPhone. The `object-contain` property handles aspect ratio preservation, while `w-full h-full` ensures the image fills the container box. The current `max-w-full max-h-full` on InteractiveShareSlide prevents the image from filling the container when iOS hasn't fully resolved parent dimensions.
-
-### Why orientation change matters
-iOS Safari handles `aspect-ratio` relayout lazily after rotation. The carousel items and their children can retain stale dimensions from the pre-rotation layout. An explicit dimension recalculation triggered by `orientationchange` ensures all slide containers update their geometry.
+Add a gentle `orientationchange` listener that reads `offsetHeight` on slide containers to trigger layout recalculation. Uses a simple property read (not `display: none` toggle, which caused additional rendering issues).
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
+| `src/index.css` | Replace `aspect-ratio` + `max-*` with explicit `min()` width/height calculations |
 | `src/components/InteractiveShareSlide.tsx` | Change img className from `max-w-full max-h-full` to `w-full h-full` |
 | `src/components/InteractiveSlideOverlay.tsx` | Add `orientationchange` event listener for hotspot repositioning |
-| `src/pages/DeckViewer.tsx` | Add `orientationchange` handler to force container relayout |
+| `src/pages/DeckViewer.tsx` | Add gentle `orientationchange` handler (offsetHeight read) |
+
+## Iteration History
+
+1. **Attempt 1**: Changed img to `w-full h-full` + aggressive `display: none` reflow on orientation change → Data Templates became completely invisible in portrait (container had no explicit dimensions for `h-full` to resolve against)
+2. **Attempt 2 (final)**: Replaced CSS `aspect-ratio` approach with explicit `min()` width/height calculations → container always has computable dimensions, eliminating the iOS flexbox sizing bug at its source
 
 ## Testing
 
@@ -67,4 +89,4 @@ iOS Safari handles `aspect-ratio` relayout lazily after rotation. The carousel i
 
 ## Status
 
-- [x] Implementation complete
+- [x] Implementation complete (v2 — explicit min() dimensions)
