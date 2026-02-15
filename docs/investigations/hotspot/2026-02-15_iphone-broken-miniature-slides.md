@@ -11,11 +11,11 @@ On iPhone:
 
 ## Root Cause
 
-The `deck-slide-container` CSS class forces `aspect-ratio: 9/16` on **all** slides. This interacts badly with iOS Safari's layout engine in two ways:
+The `deck-slide-container` CSS class used `aspect-ratio: 9/16` with only `max-width`/`max-height` constraints and no explicit `width`/`height` in portrait mode. In iOS Safari's flexbox layout engine, this resolves to zero dimensions, causing all children with percentage-based sizing (`w-full h-full`) to collapse to 0×0.
 
-1. **InteractiveShareSlide** uses `max-w-full max-h-full` on the `<img>`, which only sizes up to the image's natural dimensions and depends on the parent having stable, non-zero dimensions. On iOS Safari, the container dimensions aren't ready at initial render, causing the image to render at 0x0 (appearing blank/broken).
+1. **Portrait**: Container has no explicit dimensions → iOS flex child resolves to 0×0 → slides invisible.
 
-2. **Landscape rotation**: The 9:16 constraint creates an extremely narrow container (e.g., on iPhone landscape 844x390: height=390, width=390×9/16 ≈ 219px), making everything miniature.
+2. **Landscape**: The landscape media query set `height: 100dvh` explicitly, giving the container a starting dimension → slides become visible. But the 9:16 ratio makes the container very narrow (e.g., 219px on iPhone landscape).
 
 3. **Sticky miniature state**: After rotation back to portrait, iOS Safari doesn't always trigger proper relayout of the `aspect-ratio` container, keeping subsequent slides small.
 
