@@ -47,6 +47,8 @@ interface SamizdatMapProps {
   onChainTokenChange?: (token: string | null) => void;
   viewMode?: "all" | "chain";
   onViewModeChange?: (mode: "all" | "chain") => void;
+  /** When false (default), hide L00 markers that have no engaged spawns */
+  showNoSpawns?: boolean;
 }
 
 interface EventPoint {
@@ -207,7 +209,8 @@ const SamizdatMap = ({
   selectedChainToken: externalChainToken,
   onChainTokenChange,
   viewMode: externalViewMode,
-  onViewModeChange
+  onViewModeChange,
+  showNoSpawns = false,
 }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -410,12 +413,18 @@ const SamizdatMap = ({
   }, [isPlaying, playbackSpeed]);
 
   // Calculate viewport stats based on all time-filtered events (before channel filter)
+  const spawnFilteredEvents = useMemo(() => {
+    if (showNoSpawns) return eventPoints;
+    // Hide L00 events that have no engaged spawns
+    return eventPoints.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
+  }, [eventPoints, showNoSpawns]);
+
   const timeFilteredEvents = useMemo(() => {
-    if (timelinePosition >= 1.0) return eventPoints;
-    if (totalDurationMs <= 0 || goLiveTime === 0) return eventPoints;
+    if (timelinePosition >= 1.0) return spawnFilteredEvents;
+    if (totalDurationMs <= 0 || goLiveTime === 0) return spawnFilteredEvents;
     const cutoff = goLiveTime + totalDurationMs * timelinePosition;
-    return eventPoints.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
-  }, [eventPoints, timelinePosition, goLiveTime, totalDurationMs]);
+    return spawnFilteredEvents.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+  }, [spawnFilteredEvents, timelinePosition, goLiveTime, totalDurationMs]);
 
   // Calculate viewport stats using time-filtered events (by share medium)
   const updateViewportStats = useCallback(() => {
@@ -573,23 +582,33 @@ const SamizdatMap = ({
       }
 
       // Step 3b: Fetch spawn counts for L00 instance tokens
-      // Count only direct children (L01 tokens whose parent_token is the L00 instance token)
+      // Count only L01 children that have at least one view event (engaged spawns)
       const l00InstanceTokens = tokens.filter(t => t.level === 0 && t.l00_instance).map(t => t.token);
       const spawnCounts: Record<string, number> = {};
       
       if (l00InstanceTokens.length > 0) {
-        // Count L01 tokens that are direct children of L00 instance tokens
+        // Get L01 tokens that are direct children of L00 instance tokens
         const { data: spawnData } = await supabase
           .from("tokens")
-          .select("parent_token, l00_instance")
+          .select("token, l00_instance")
           .in("parent_token", l00InstanceTokens)
           .eq("level", 1)
           .is("deleted_at", null)
           .eq("is_simulated", false);
         
-        if (spawnData) {
+        if (spawnData && spawnData.length > 0) {
+          // Check which of these L01 tokens have view events (engagement gate)
+          const spawnTokens = spawnData.map(t => t.token);
+          const { data: viewEvents } = await supabase
+            .from("url_events")
+            .select("token")
+            .in("token", spawnTokens)
+            .eq("event_type", "view");
+          
+          const engagedTokens = new Set(viewEvents?.map(e => e.token) || []);
+          
           spawnData.forEach((t) => {
-            if (t.l00_instance) {
+            if (t.l00_instance && engagedTokens.has(t.token)) {
               spawnCounts[t.l00_instance] = (spawnCounts[t.l00_instance] || 0) + 1;
             }
           });
