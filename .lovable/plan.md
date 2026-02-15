@@ -1,65 +1,144 @@
 
+# Timeline Playback for Samizdat Map
 
-# Fix "Data as of:" Timezone Display
+## Overview
 
-## Problem
-The "Data as of:" time shows "8:08 PM" (UTC) instead of "3:08 PM ET" (your local time). This happens because the server-side snapshot renders timestamps using UTC, and the client-side `last_updated` metric is never populated.
+Replace the discrete "Time since go-live" bucket buttons with a continuous timeline slider and animation playback system. This enables recording time-lapse videos of a campaign's geographic reach, showing events appearing progressively on the map from go-live to present.
 
-## Root Causes
-1. **Server-side snapshot** (`render-stats-snapshot` edge function): Uses `new Date()` on the Deno server, which runs in UTC. The resulting SVG bakes in UTC times with no timezone label.
-2. **Client-side live rendering** (`useLiveMetrics` hook): The `last_updated` metric key is defined but never actually populated with a value -- it falls back to "--".
+## User Experience
 
-## Fix (Two Parts)
+The current five discrete buttons ("0-1 day", "1-3 days", etc.) will be replaced with a continuous slider and playback controls inside the same "Time since go-live" accordion section:
 
-### Part 1: Add `last_updated` to client-side metrics
-**File:** `src/hooks/useLiveMetrics.ts`
-
-After the `current_time` metric (around line 313), add a `last_updated` metric that combines date and time in the viewer's local timezone:
-
-```
-// last_updated (combined date + time for "Data as of:" hotspots)
-metricResults.push({
-  key: "last_updated",
-  label: METRIC_LABELS.last_updated,
-  value: formatInTimeZone(now, viewerTz, "h:mm a zzz"),
-  source: "current",
-});
+```text
++-----------------------------------------------+
+| Time since go-live                         [-] |
+|                                                |
+|  [|<<]  [> Play]  Speed: [1x] [2x] [5x] [10x]|
+|                                                |
+|  Go-live |======O-----------| Now              |
+|           2d 6h          Events: 47 / 312      |
++-----------------------------------------------+
 ```
 
-This ensures that when the live rendering path is used (desktop, non-snapshot mode), the "Data as of:" hotspot shows the correct local time with a timezone indicator.
+- **Slider**: Dragging moves through campaign time from go-live to "Now". The map shows all events that occurred up to the slider's point (cumulative).
+- **Play/Pause**: Auto-advances the slider from current position to the end.
+- **Speed selector**: Controls animation speed (1x, 2x, 5x, 10x).
+- **Reset**: Jumps slider back to start (time = 0).
+- **Running counter**: Shows "Events: visible / total" so viewers see the scale.
+- The "Activity by Share Medium" table and all other map features continue to work -- they read from the same filtered event list.
 
-### Part 2: Add "UTC" label to server-side snapshot times
-**File:** `supabase/functions/render-stats-snapshot/index.ts`
+## Technical Plan
 
-Update the time formatting (lines 236-238) to append "UTC" so viewers of the static SVG know it's not local time:
+### File 1: `src/lib/dateUtils.ts`
 
+Add a new `formatElapsedTime` helper:
+
+```typescript
+/**
+ * Format elapsed milliseconds as compact label.
+ * Examples: "0m", "45m", "2h 15m", "1d 3h", "7d"
+ */
+export const formatElapsedTime = (ms: number): string => {
+  if (ms < 0) return "0m";
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  const remMinutes = minutes % 60;
+
+  if (days > 0 && remHours > 0) return `${days}d ${remHours}h`;
+  if (days > 0) return `${days}d`;
+  if (hours > 0 && remMinutes > 0) return `${hours}h ${remMinutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}m`;
+};
 ```
-metrics.current_date = now.toLocaleDateString('en-US', {
-  month: 'short', day: 'numeric', year: 'numeric'
-});
-metrics.current_time = now.toLocaleTimeString('en-US', {
-  hour: 'numeric', minute: '2-digit', hour12: true
-}) + ' UTC';
-metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
+
+### File 2: `src/components/SamizdatMap.tsx`
+
+#### State changes
+
+Remove:
+- `TimeWindow` type and `TIME_WINDOW_OPTIONS` constant
+- `timeWindow` state variable
+
+Add:
+- `timelinePosition: number` (0 to 1, default 1.0 meaning "show all")
+- `isPlaying: boolean` (default false)
+- `playbackSpeed: number` (default 1)
+
+#### Computed values (memoized)
+
+- `goLiveTime`: earliest value from `eoaStartDates` (already computed)
+- `latestEventTime`: latest `occurredAt` across all `eventPoints`
+- `totalDurationMs`: `latestEventTime - goLiveTime`
+- `currentCutoffMs`: `goLiveTime + (totalDurationMs * timelinePosition)`
+
+#### Filter logic replacement
+
+Replace all time-window bucket filtering in `filteredEventPoints` and `timeFilteredEvents` with:
+
+```typescript
+// Cumulative: show all events from go-live up to the slider position
+const cutoffTime = goLiveTime + (totalDurationMs * timelinePosition);
+filtered = filtered.filter(event =>
+  parseNaiveDate(event.occurredAt).getTime() <= cutoffTime
+);
 ```
 
-This makes the SSR snapshot honestly show "8:08 PM UTC" instead of bare "8:08 PM".
+Extract the existing naive date parsing (lines 312-333) into a small reusable helper to avoid duplication.
 
-### Part 3: Add "UTC" to SSR activity timestamps
-**File:** `supabase/functions/render-stats-snapshot/index.ts`
+#### Animation loop
 
-Update `earliest_active` and `latest_active` formatting (lines 228-229) to also append "UTC":
+```typescript
+useEffect(() => {
+  if (!isPlaying) return;
+  let rafId: number;
+  let lastTime: number | null = null;
 
+  const step = (timestamp: number) => {
+    if (lastTime !== null) {
+      const deltaMs = timestamp - lastTime;
+      // Map real-time to campaign-time fraction
+      const fraction = (deltaMs * playbackSpeed) / (totalDurationMs || 1);
+      // Clamp: advance but don't exceed 30s real-time for full playthrough at 1x
+      const scaledFraction = (deltaMs / 30000) * playbackSpeed;
+      setTimelinePosition(prev => {
+        const next = prev + scaledFraction;
+        if (next >= 1) {
+          setIsPlaying(false);
+          return 1;
+        }
+        return next;
+      });
+    }
+    lastTime = timestamp;
+    rafId = requestAnimationFrame(step);
+  };
+
+  rafId = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(rafId);
+}, [isPlaying, playbackSpeed, totalDurationMs]);
 ```
-metrics.earliest_active = earliest.toLocaleDateString(...) + ' UTC';
-metrics.latest_active = latest.toLocaleDateString(...) + ' UTC';
-```
 
-## Result
-- **Live rendering (desktop)**: Shows accurate local time with timezone label (e.g., "3:08 PM EST")
-- **SSR snapshot (mobile/cached)**: Shows "8:08 PM UTC" so it's clear the time isn't localized
+The animation is designed so a full playthrough at 1x takes ~30 seconds of real time regardless of campaign duration, making it suitable for video recording.
+
+#### UI replacement
+
+Replace the button group in the "Time since go-live" accordion (lines 1208-1221) with:
+
+1. **Control row**: Reset button, Play/Pause button, Speed selector (four small buttons: 1x/2x/5x/10x)
+2. **Slider row**: Radix Slider from 0 to 1 with step 0.001
+3. **Info row**: Elapsed time label (using `formatElapsedTime`) and event counter ("Events: N / M")
+
+### File 3: `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md`
+
+Create documentation recording the feature design and implementation rationale.
 
 ## Files Changed
-- `src/hooks/useLiveMetrics.ts` -- add `last_updated` metric population
-- `supabase/functions/render-stats-snapshot/index.ts` -- append "UTC" to all time strings
 
+| File | Change |
+|------|--------|
+| `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md` | New: feature documentation |
+| `src/lib/dateUtils.ts` | Add `formatElapsedTime` helper |
+| `src/components/SamizdatMap.tsx` | Replace bucket filter with timeline slider + playback controls |
