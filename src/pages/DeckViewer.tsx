@@ -294,6 +294,25 @@ export default function DeckViewer() {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
+  // Force relayout on orientation change (iOS Safari keeps stale aspect-ratio dimensions)
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      // Query all slide containers and force a reflow
+      setTimeout(() => {
+        document.querySelectorAll('.deck-slide-container').forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          // Force reflow by reading then writing a layout property
+          htmlEl.style.display = 'none';
+          void htmlEl.offsetHeight; // trigger reflow
+          htmlEl.style.display = '';
+        });
+      }, 200);
+    };
+
+    window.addEventListener('orientationchange', handleOrientationChange);
+    return () => window.removeEventListener('orientationchange', handleOrientationChange);
+  }, []);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -62,7 +62,7 @@ export const InteractiveShareSlide = ({
           ref={imageRef}
           src={imageUrl}
           alt="Interactive viral slide"
-          className="max-w-full max-h-full object-contain"
+          className="w-full h-full object-contain"
           onLoad={() => {
             console.log("✅ InteractiveShareSlide image loaded successfully:", imageUrl);
             setImageLoaded(true);

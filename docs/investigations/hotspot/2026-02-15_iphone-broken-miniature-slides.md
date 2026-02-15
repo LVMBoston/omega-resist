@@ -67,4 +67,4 @@ iOS Safari handles `aspect-ratio` relayout lazily after rotation. The carousel i
 
 ## Status
 
-- [ ] Implementation pending approval
+- [x] Implementation complete
