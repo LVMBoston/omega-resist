@@ -736,10 +736,9 @@ export default function CampaignDashboard({
             latestActivity: mintedAt,
             city: t.events_actions?.city || null,
             state: t.events_actions?.state || null,
-            spawnCount: 1
+            spawnCount: 0
           });
         } else {
-          existing.spawnCount++;
           if (new Date(mintedAt) > new Date(existing.latestActivity)) {
             existing.latestActivity = mintedAt;
             existing.city = t.events_actions?.city || existing.city;
@@ -747,6 +746,27 @@ export default function CampaignDashboard({
           }
         }
       });
+      
+      // Count spawns: L01+ tokens with at least one view event (engaged shares)
+      const l01PlusTokens = tokens?.filter((t: any) => t.level >= 1) || [];
+      if (l01PlusTokens.length > 0) {
+        const l01TokenIds = l01PlusTokens.map((t: any) => t.token);
+        const { data: viewEvents } = await supabase
+          .from("url_events")
+          .select("token")
+          .in("token", l01TokenIds)
+          .eq("event_type", "view");
+        
+        const engagedTokens = new Set(viewEvents?.map((e: any) => e.token) || []);
+        
+        // Map engaged tokens back to their l00_instance
+        l01PlusTokens.forEach((t: any) => {
+          if (engagedTokens.has(t.token)) {
+            const instance = instanceMap.get(t.l00_instance);
+            if (instance) instance.spawnCount++;
+          }
+        });
+      }
       
       // Convert to array and sort by latest activity (most recent first)
       return Array.from(instanceMap.values())
