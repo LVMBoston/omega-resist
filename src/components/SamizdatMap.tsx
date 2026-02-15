@@ -5,7 +5,9 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Maximize2, X } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { parseNaiveDate, formatElapsedTime } from "@/lib/dateUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -92,22 +94,11 @@ interface ViewportStats {
   shape?: EoaShape; // The actual shape for rendering
 }
 
-// Time window options for "time since go-live" filter
-type TimeWindow = "0-1d" | "1-3d" | "3-5d" | "5-7d" | "all";
-
-// View mode for the map
-type ViewMode = "all" | "chain";
-
 // EoA shape types based on utm_id prefix
 type EoaShape = "circle" | "square" | "triangle";
 
-const TIME_WINDOW_OPTIONS: { value: TimeWindow; label: string; minMs: number; maxMs: number }[] = [
-  { value: "0-1d", label: "0–1 day", minMs: 0, maxMs: 24 * 60 * 60 * 1000 },
-  { value: "1-3d", label: "1–3 days", minMs: 24 * 60 * 60 * 1000, maxMs: 3 * 24 * 60 * 60 * 1000 },
-  { value: "3-5d", label: "3–5 days", minMs: 3 * 24 * 60 * 60 * 1000, maxMs: 5 * 24 * 60 * 60 * 1000 },
-  { value: "5-7d", label: "5–7 days", minMs: 5 * 24 * 60 * 60 * 1000, maxMs: 7 * 24 * 60 * 60 * 1000 },
-  { value: "all", label: "All (since go-live)", minMs: 0, maxMs: Infinity },
-];
+// View mode for the map
+type ViewMode = "all" | "chain";
 
 // Colors by share medium (utm_medium)
 const MEDIUM_COLORS: Record<string, string> = {
@@ -230,7 +221,10 @@ const SamizdatMap = ({
   const [showZipCounts, setShowZipCounts] = useState(false);
   const [enableClustering, setEnableClustering] = useState(true);
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>("all");
+  // Timeline playback state
+  const [timelinePosition, setTimelinePosition] = useState(1.0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
@@ -302,44 +296,22 @@ const SamizdatMap = ({
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
-    // Filter by time window
-    if (timeWindow !== "all") {
-      const windowConfig = TIME_WINDOW_OPTIONS.find((w) => w.value === timeWindow);
-      if (windowConfig) {
-        filtered = filtered.filter((event) => {
-          const startDateStr = eoaStartDates[event.eoaId];
-          if (!startDateStr) return false;
-
-          const startMatch = startDateStr.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
-          const eventMatch = event.occurredAt.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
-          
-          if (!startMatch || !eventMatch) return false;
-
-          const startDate = new Date(
-            parseInt(startMatch[1]),
-            parseInt(startMatch[2]) - 1,
-            parseInt(startMatch[3]),
-            parseInt(startMatch[4] || "0"),
-            parseInt(startMatch[5] || "0"),
-            parseInt(startMatch[6] || "0")
-          );
-          const eventDate = new Date(
-            parseInt(eventMatch[1]),
-            parseInt(eventMatch[2]) - 1,
-            parseInt(eventMatch[3]),
-            parseInt(eventMatch[4] || "0"),
-            parseInt(eventMatch[5] || "0"),
-            parseInt(eventMatch[6] || "0")
-          );
-
-          const diffMs = eventDate.getTime() - startDate.getTime();
-          return diffMs >= windowConfig.minMs && diffMs < windowConfig.maxMs;
-        });
+    // Filter by timeline position (cumulative from go-live)
+    if (timelinePosition < 1.0) {
+      // Compute go-live time (earliest EoA start date)
+      const startDates = Object.values(eoaStartDates).map(d => parseNaiveDate(d).getTime()).filter(t => t > 0);
+      const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
+      // Compute latest event time
+      const latestEvent = filtered.reduce((max, e) => Math.max(max, parseNaiveDate(e.occurredAt).getTime()), 0);
+      const totalDuration = latestEvent - goLive;
+      if (totalDuration > 0 && goLive > 0) {
+        const cutoff = goLive + totalDuration * timelinePosition;
+        filtered = filtered.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
       }
     }
 
     return filtered;
-  }, [eventPoints, timeWindow, eoaStartDates, enabledChannels, viewMode]);
+  }, [eventPoints, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
@@ -401,43 +373,48 @@ const SamizdatMap = ({
     return filtered;
   }, [filteredEventPoints, viewMode, selectedL00Instance]);
 
+  // Timeline-derived computed values
+  const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
+    const startDates = Object.values(eoaStartDates).map(d => parseNaiveDate(d).getTime()).filter(t => t > 0);
+    const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
+    const latest = eventPoints.reduce((max, e) => Math.max(max, parseNaiveDate(e.occurredAt).getTime()), 0);
+    return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
+  }, [eoaStartDates, eventPoints]);
+
+  // Playback animation loop
+  useEffect(() => {
+    if (!isPlaying) return;
+    let rafId: number;
+    let lastTime: number | null = null;
+
+    const step = (timestamp: number) => {
+      if (lastTime !== null) {
+        const deltaMs = timestamp - lastTime;
+        const scaledFraction = (deltaMs / 30000) * playbackSpeed;
+        setTimelinePosition(prev => {
+          const next = prev + scaledFraction;
+          if (next >= 1) {
+            setIsPlaying(false);
+            return 1;
+          }
+          return next;
+        });
+      }
+      lastTime = timestamp;
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [isPlaying, playbackSpeed]);
+
   // Calculate viewport stats based on all time-filtered events (before channel filter)
   const timeFilteredEvents = useMemo(() => {
-    if (timeWindow === "all") return eventPoints;
-
-    const windowConfig = TIME_WINDOW_OPTIONS.find((w) => w.value === timeWindow);
-    if (!windowConfig) return eventPoints;
-
-    return eventPoints.filter((event) => {
-      const startDateStr = eoaStartDates[event.eoaId];
-      if (!startDateStr) return false;
-
-      const startMatch = startDateStr.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
-      const eventMatch = event.occurredAt.match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?:?(\d{2})?/);
-      
-      if (!startMatch || !eventMatch) return false;
-
-      const startDate = new Date(
-        parseInt(startMatch[1]),
-        parseInt(startMatch[2]) - 1,
-        parseInt(startMatch[3]),
-        parseInt(startMatch[4] || "0"),
-        parseInt(startMatch[5] || "0"),
-        parseInt(startMatch[6] || "0")
-      );
-      const eventDate = new Date(
-        parseInt(eventMatch[1]),
-        parseInt(eventMatch[2]) - 1,
-        parseInt(eventMatch[3]),
-        parseInt(eventMatch[4] || "0"),
-        parseInt(eventMatch[5] || "0"),
-        parseInt(eventMatch[6] || "0")
-      );
-
-      const diffMs = eventDate.getTime() - startDate.getTime();
-      return diffMs >= windowConfig.minMs && diffMs < windowConfig.maxMs;
-    });
-  }, [eventPoints, timeWindow, eoaStartDates]);
+    if (timelinePosition >= 1.0) return eventPoints;
+    if (totalDurationMs <= 0 || goLiveTime === 0) return eventPoints;
+    const cutoff = goLiveTime + totalDurationMs * timelinePosition;
+    return eventPoints.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+  }, [eventPoints, timelinePosition, goLiveTime, totalDurationMs]);
 
   // Calculate viewport stats using time-filtered events (by share medium)
   const updateViewportStats = useCallback(() => {
@@ -1205,18 +1182,60 @@ const SamizdatMap = ({
             Time since go-live
           </AccordionTrigger>
           <AccordionContent>
-            <div className="flex flex-wrap gap-2 pb-3">
-              {TIME_WINDOW_OPTIONS.map((option) => (
+            <div className="space-y-3 pb-3">
+              {/* Control row */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
-                  key={option.value}
-                  variant={timeWindow === option.value ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setTimeWindow(option.value)}
-                  className="text-xs"
+                  className="h-8 w-8 p-0"
+                  onClick={() => { setIsPlaying(false); setTimelinePosition(0); }}
+                  title="Reset"
                 >
-                  {option.label}
+                  <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
-              ))}
+                <Button
+                  variant={isPlaying ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() => {
+                    if (timelinePosition >= 1) setTimelinePosition(0);
+                    setIsPlaying(prev => !prev);
+                  }}
+                >
+                  {isPlaying ? <Pause className="h-3.5 w-3.5 mr-1" /> : <Play className="h-3.5 w-3.5 mr-1" />}
+                  {isPlaying ? "Pause" : "Play"}
+                </Button>
+                <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-xs text-muted-foreground mr-1">Speed:</span>
+                  {[1, 2, 5, 10].map(s => (
+                    <Button
+                      key={s}
+                      variant={playbackSpeed === s ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setPlaybackSpeed(s)}
+                    >
+                      {s}x
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {/* Slider */}
+              <div className="space-y-1">
+                <Slider
+                  value={[timelinePosition]}
+                  onValueChange={([v]) => { setIsPlaying(false); setTimelinePosition(v); }}
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{totalDurationMs > 0 ? formatElapsedTime(totalDurationMs * timelinePosition) : "—"}</span>
+                  <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
+                </div>
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
