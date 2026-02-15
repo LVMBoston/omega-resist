@@ -146,6 +146,10 @@ const InteractiveSlideOverlay = ({
     const timer = window.setTimeout(updateImageDimensions, 100);
     
     window.addEventListener('resize', updateImageDimensions);
+    window.addEventListener('orientationchange', () => {
+      // iOS Safari delays layout recalculation after rotation
+      setTimeout(updateImageDimensions, 200);
+    });
     document.addEventListener('fullscreenchange', updateImageDimensions);
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
@@ -159,6 +163,7 @@ const InteractiveSlideOverlay = ({
       if (retryTimer) window.clearTimeout(retryTimer);
       if (resizeObserver) resizeObserver.disconnect();
       window.removeEventListener('resize', updateImageDimensions);
+      window.removeEventListener('orientationchange', updateImageDimensions);
       document.removeEventListener('fullscreenchange', updateImageDimensions);
     };
   }, [imageRef]);
