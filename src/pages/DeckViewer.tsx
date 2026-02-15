@@ -294,19 +294,15 @@ export default function DeckViewer() {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  // Force relayout on orientation change (iOS Safari keeps stale aspect-ratio dimensions)
+  // Force relayout on orientation change (iOS Safari keeps stale dimensions after rotation)
   useEffect(() => {
     const handleOrientationChange = () => {
-      // Query all slide containers and force a reflow
+      // Gentle reflow: read offsetHeight to force layout recalculation
       setTimeout(() => {
         document.querySelectorAll('.deck-slide-container').forEach((el) => {
-          const htmlEl = el as HTMLElement;
-          // Force reflow by reading then writing a layout property
-          htmlEl.style.display = 'none';
-          void htmlEl.offsetHeight; // trigger reflow
-          htmlEl.style.display = '';
+          void (el as HTMLElement).offsetHeight;
         });
-      }, 200);
+      }, 100);
     };
 
     window.addEventListener('orientationchange', handleOrientationChange);
