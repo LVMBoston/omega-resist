@@ -1,144 +1,39 @@
 
-# Timeline Playback for Samizdat Map
+
+# Add Ease-In Animation Curve to Timeline Playback
 
 ## Overview
 
-Replace the discrete "Time since go-live" bucket buttons with a continuous timeline slider and animation playback system. This enables recording time-lapse videos of a campaign's geographic reach, showing events appearing progressively on the map from go-live to present.
+Replace the linear animation advancement with an ease-in curve so playback starts slow (early seeds trickle in one by one) and gradually accelerates (campaign "explodes" as viral reach compounds). Total playthrough time stays ~30 seconds at 1x.
 
-## User Experience
+## Changes
 
-The current five discrete buttons ("0-1 day", "1-3 days", etc.) will be replaced with a continuous slider and playback controls inside the same "Time since go-live" accordion section:
+### File 1: `src/components/SamizdatMap.tsx`
 
-```text
-+-----------------------------------------------+
-| Time since go-live                         [-] |
-|                                                |
-|  [|<<]  [> Play]  Speed: [1x] [2x] [5x] [10x]|
-|                                                |
-|  Go-live |======O-----------| Now              |
-|           2d 6h          Events: 47 / 312      |
-+-----------------------------------------------+
-```
-
-- **Slider**: Dragging moves through campaign time from go-live to "Now". The map shows all events that occurred up to the slider's point (cumulative).
-- **Play/Pause**: Auto-advances the slider from current position to the end.
-- **Speed selector**: Controls animation speed (1x, 2x, 5x, 10x).
-- **Reset**: Jumps slider back to start (time = 0).
-- **Running counter**: Shows "Events: visible / total" so viewers see the scale.
-- The "Activity by Share Medium" table and all other map features continue to work -- they read from the same filtered event list.
-
-## Technical Plan
-
-### File 1: `src/lib/dateUtils.ts`
-
-Add a new `formatElapsedTime` helper:
+One-line change at line 393 inside the animation step function:
 
 ```typescript
-/**
- * Format elapsed milliseconds as compact label.
- * Examples: "0m", "45m", "2h 15m", "1d 3h", "7d"
- */
-export const formatElapsedTime = (ms: number): string => {
-  if (ms < 0) return "0m";
-  const minutes = Math.floor(ms / 60000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  const remHours = hours % 24;
-  const remMinutes = minutes % 60;
+// Before (linear):
+const scaledFraction = (deltaMs / 30000) * playbackSpeed;
 
-  if (days > 0 && remHours > 0) return `${days}d ${remHours}h`;
-  if (days > 0) return `${days}d`;
-  if (hours > 0 && remMinutes > 0) return `${hours}h ${remMinutes}m`;
-  if (hours > 0) return `${hours}h`;
-  return `${minutes}m`;
-};
+// After (ease-in):
+const easeMultiplier = 0.25 + 1.5 * prev;
+const scaledFraction = (deltaMs / 30000) * playbackSpeed * easeMultiplier;
 ```
 
-### File 2: `src/components/SamizdatMap.tsx`
+The `prev` value is already available inside the `setTimelinePosition` updater callback (line 394). The easing formula `0.25 + 1.5 * t` integrates to 1.0 over `[0, 1]`, keeping total duration unchanged. At the start (t=0), rate is 0.25x (4x slower than linear). At the end (t=1), rate is 1.75x (nearly 2x faster than linear).
 
-#### State changes
+### File 2: `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md`
 
-Remove:
-- `TimeWindow` type and `TIME_WINDOW_OPTIONS` constant
-- `timeWindow` state variable
+Add a new section after "Key Design Decisions" item 4 documenting the easing curve:
 
-Add:
-- `timelinePosition: number` (0 to 1, default 1.0 meaning "show all")
-- `isPlaying: boolean` (default false)
-- `playbackSpeed: number` (default 1)
-
-#### Computed values (memoized)
-
-- `goLiveTime`: earliest value from `eoaStartDates` (already computed)
-- `latestEventTime`: latest `occurredAt` across all `eventPoints`
-- `totalDurationMs`: `latestEventTime - goLiveTime`
-- `currentCutoffMs`: `goLiveTime + (totalDurationMs * timelinePosition)`
-
-#### Filter logic replacement
-
-Replace all time-window bucket filtering in `filteredEventPoints` and `timeFilteredEvents` with:
-
-```typescript
-// Cumulative: show all events from go-live up to the slider position
-const cutoffTime = goLiveTime + (totalDurationMs * timelinePosition);
-filtered = filtered.filter(event =>
-  parseNaiveDate(event.occurredAt).getTime() <= cutoffTime
-);
+```markdown
+5. **Ease-in animation curve**: The playback rate follows `rate(t) = 0.25 + 1.5t`, where `t` is the current timeline position. This makes early events appear slowly (0.25x at start) and accelerates through the campaign's later stages (1.75x at end). The integral over [0,1] equals 1.0, preserving the ~30-second total playthrough. This creates a cinematic effect where individual seed events are visible early on, then the viral spread visually "explodes."
 ```
-
-Extract the existing naive date parsing (lines 312-333) into a small reusable helper to avoid duplication.
-
-#### Animation loop
-
-```typescript
-useEffect(() => {
-  if (!isPlaying) return;
-  let rafId: number;
-  let lastTime: number | null = null;
-
-  const step = (timestamp: number) => {
-    if (lastTime !== null) {
-      const deltaMs = timestamp - lastTime;
-      // Map real-time to campaign-time fraction
-      const fraction = (deltaMs * playbackSpeed) / (totalDurationMs || 1);
-      // Clamp: advance but don't exceed 30s real-time for full playthrough at 1x
-      const scaledFraction = (deltaMs / 30000) * playbackSpeed;
-      setTimelinePosition(prev => {
-        const next = prev + scaledFraction;
-        if (next >= 1) {
-          setIsPlaying(false);
-          return 1;
-        }
-        return next;
-      });
-    }
-    lastTime = timestamp;
-    rafId = requestAnimationFrame(step);
-  };
-
-  rafId = requestAnimationFrame(step);
-  return () => cancelAnimationFrame(rafId);
-}, [isPlaying, playbackSpeed, totalDurationMs]);
-```
-
-The animation is designed so a full playthrough at 1x takes ~30 seconds of real time regardless of campaign duration, making it suitable for video recording.
-
-#### UI replacement
-
-Replace the button group in the "Time since go-live" accordion (lines 1208-1221) with:
-
-1. **Control row**: Reset button, Play/Pause button, Speed selector (four small buttons: 1x/2x/5x/10x)
-2. **Slider row**: Radix Slider from 0 to 1 with step 0.001
-3. **Info row**: Elapsed time label (using `formatElapsedTime`) and event counter ("Events: N / M")
-
-### File 3: `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md`
-
-Create documentation recording the feature design and implementation rationale.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md` | New: feature documentation |
-| `src/lib/dateUtils.ts` | Add `formatElapsedTime` helper |
-| `src/components/SamizdatMap.tsx` | Replace bucket filter with timeline slider + playback controls |
+| `src/components/SamizdatMap.tsx` | Add ease-in multiplier to animation step |
+| `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md` | Document easing curve design decision |
