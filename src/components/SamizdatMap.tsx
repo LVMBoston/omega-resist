@@ -390,8 +390,9 @@ const SamizdatMap = ({
     const step = (timestamp: number) => {
       if (lastTime !== null) {
         const deltaMs = timestamp - lastTime;
-        const scaledFraction = (deltaMs / 30000) * playbackSpeed;
         setTimelinePosition(prev => {
+          const easeMultiplier = 0.25 + 1.5 * prev;
+          const scaledFraction = (deltaMs / 30000) * playbackSpeed * easeMultiplier;
           const next = prev + scaledFraction;
           if (next >= 1) {
             setIsPlaying(false);

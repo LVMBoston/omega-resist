@@ -41,6 +41,8 @@ Replaced the bucket buttons with a continuous timeline slider and animation play
 
 4. **Downstream compatibility**: The slider position simply replaces the time-window filter. All downstream features (markers, clustering, chain filtering, channel filtering, viewport stats, Event Story Panel) continue to work unchanged.
 
+5. **Ease-in animation curve**: The playback rate follows `rate(t) = 0.25 + 1.5t`, where `t` is the current timeline position. This makes early events appear slowly (0.25x at start) and accelerates through the campaign's later stages (1.75x at end). The integral over [0,1] equals 1.0, preserving the ~30-second total playthrough. This creates a cinematic effect where individual seed events are visible early on, then the viral spread visually "explodes."
+
 ## Files Changed
 
 | File | Change |
