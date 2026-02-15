@@ -222,7 +222,7 @@ const SamizdatMap = ({
   const [eoaNames, setEoaNames] = useState<Record<string, string>>({});
   const [eoaStartDates, setEoaStartDates] = useState<Record<string, string>>({});
   const [showZipCounts, setShowZipCounts] = useState(false);
-  const [enableClustering, setEnableClustering] = useState(true);
+  const [enableClustering, setEnableClustering] = useState(false);
   const [viewportStats, setViewportStats] = useState<ViewportStats[]>([]);
   // Timeline playback state
   const [timelinePosition, setTimelinePosition] = useState(1.0);
