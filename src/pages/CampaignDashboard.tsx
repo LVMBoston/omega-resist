@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { EventStoryDialog } from "@/components/EventStoryDialog";
 import { CampaignSnapshotSettings } from "@/components/CampaignSnapshotSettings";
+import { CampaignNarrativeButton } from "@/components/CampaignNarrativeDialog";
 interface UrlEvent {
   id: string;
   token: string;
@@ -1612,6 +1613,13 @@ export default function CampaignDashboard({
                           <FileText className={`h-4 w-4 mr-2 ${isExportingPdf ? 'animate-pulse' : ''}`} />
                           {isExportingPdf ? 'Generating...' : 'PDF Recap'}
                         </Button>
+                        {selectedCampaign && selectedCampaignId && (
+                          <CampaignNarrativeButton
+                            campaignCode={selectedCampaign}
+                            campaignId={selectedCampaignId}
+                            campaignTitle={campaignTitle}
+                          />
+                        )}
                       </div>
                     </div>
 

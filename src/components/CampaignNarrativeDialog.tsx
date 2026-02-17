@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Copy, Download, Loader2, BookOpen } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { fetchNarrativeData, generateCampaignNarrative } from "@/lib/campaignNarrative";
+
+interface CampaignNarrativeDialogProps {
+  campaignCode: string;
+  campaignId: string;
+  campaignTitle: string;
+}
+
+export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitle }: CampaignNarrativeDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [narrative, setNarrative] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleOpen = async () => {
+    setOpen(true);
+    if (narrative) return; // already loaded
+    setLoading(true);
+    try {
+      const data = await fetchNarrativeData(campaignCode, campaignId);
+      setNarrative(generateCampaignNarrative(data));
+    } catch (err) {
+      console.error("Narrative generation failed:", err);
+      setNarrative("Unable to generate narrative. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(narrative);
+    toast({ title: "Copied!", description: "Narrative copied to clipboard." });
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([narrative], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${campaignCode}-story.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={handleOpen}>
+        <BookOpen className="h-4 w-4 mr-2" />
+        Story
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Campaign Story</DialogTitle>
+          </DialogHeader>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed max-h-[60vh] overflow-y-auto">
+                {narrative}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={handleCopy} className="flex-1">
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownload} className="flex-1">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
