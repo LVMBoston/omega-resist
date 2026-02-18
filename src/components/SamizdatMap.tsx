@@ -294,6 +294,11 @@ const SamizdatMap = ({
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
+    // Apply spawn filter: hide L00 events with no engaged spawns
+    if (!showNoSpawns) {
+      filtered = filtered.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
+    }
+
     // Filter by enabled share mediums (skip in chain mode - show all)
     if (viewMode !== "chain") {
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
@@ -314,7 +319,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
+  }, [eventPoints, showNoSpawns, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
@@ -412,19 +417,13 @@ const SamizdatMap = ({
     return () => cancelAnimationFrame(rafId);
   }, [isPlaying, playbackSpeed]);
 
-  // Calculate viewport stats based on all time-filtered events (before channel filter)
-  const spawnFilteredEvents = useMemo(() => {
-    if (showNoSpawns) return eventPoints;
-    // Hide L00 events that have no engaged spawns
-    return eventPoints.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
-  }, [eventPoints, showNoSpawns]);
-
+  // Viewport stats use the same filtered set as the rendered markers (unified pipeline)
   const timeFilteredEvents = useMemo(() => {
-    if (timelinePosition >= 1.0) return spawnFilteredEvents;
-    if (totalDurationMs <= 0 || goLiveTime === 0) return spawnFilteredEvents;
+    if (timelinePosition >= 1.0) return filteredEventPoints;
+    if (totalDurationMs <= 0 || goLiveTime === 0) return filteredEventPoints;
     const cutoff = goLiveTime + totalDurationMs * timelinePosition;
-    return spawnFilteredEvents.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
-  }, [spawnFilteredEvents, timelinePosition, goLiveTime, totalDurationMs]);
+    return filteredEventPoints.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+  }, [filteredEventPoints, timelinePosition, goLiveTime, totalDurationMs]);
 
   // Calculate viewport stats using time-filtered events (by share medium)
   const updateViewportStats = useCallback(() => {
