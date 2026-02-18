@@ -887,28 +887,6 @@ export default function CampaignDashboard({
           </label>
         </div>
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="mt-6 animate-fade-in">
-          <div className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <MetricCard title="Viral Coefficient (K)" value={viralCoefficient ? viralCoefficient.toFixed(2) : "—"} description="Avg shares per seed" />
-              <MetricCard title="Avg Cycle Time" value={avgCycleTime ? `${avgCycleTime.toFixed(1)}h` : "—"} description="Hours from view to share" />
-              <MetricCard title="Geographic Spread" value={geoData ? `${geoData.uniqueStates} states` : "—"} description="Unique US states reached" />
-            </div>
-            <ViralCoefficientChart campaignCode={selectedCampaign} dataSource={dataSourceFilter} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ConversionFunnelChart data={funnelData || []} />
-              <AmplificationChart data={amplificationData || []} />
-            </div>
-            <EngagementByLevelChart data={engagementData || []} />
-            <ContentPerformanceTable data={contentData || []} />
-          </div>
-        </TabsContent>
-
-        {/* Map Tab */}
-        <TabsContent value="map" className="mt-6 animate-fade-in">
-          <ActivityMap campaignCode={selectedCampaign} dataSource={dataSourceFilter} />
-        </TabsContent>
 
 
           {/* EventsV2 Tab */}
@@ -1070,7 +1048,7 @@ export default function CampaignDashboard({
                 <TableCell>
                   {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
                 </TableCell>
-                <TableCell>{formatZipCode(event.zip_code)}</TableCell>
+                <TableCell>{event.zip_code || 'N/A'}</TableCell>
                 <TableCell>{event.location_source === 'gps' ? 'GPS' : 'Cell Tower'}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
@@ -1239,7 +1217,6 @@ export default function CampaignDashboard({
             </div>
           </TabsContent>
         </Tabs>
-      </div>
 
       {/* Event Story Dialog */}
       <EventStoryDialog
@@ -1247,5 +1224,7 @@ export default function CampaignDashboard({
         open={!!selectedEventId}
         onOpenChange={(open) => !open && setSelectedEventId(null)}
       />
-    </div>;
+    </div>
+  );
 }
+
