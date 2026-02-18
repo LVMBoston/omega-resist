@@ -185,7 +185,7 @@ export default function CampaignDashboard({
   const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
   const hideLegacy = searchParams.get("hideLegacy") === "true";
-  const showNoSpawns = searchParams.get("showNoSpawns") === "true";
+  const showNoSpawns = searchParams.get("showNoSpawns") !== "false";
   const chapterFilter = searchParams.get("chapter") || "all";
   const startDateParam = searchParams.get("startDate");
   const endDateParam = searchParams.get("endDate");
@@ -848,7 +848,7 @@ export default function CampaignDashboard({
           <label className="flex items-center gap-1 cursor-pointer text-sm">
             <Checkbox checked={showNoSpawns} onCheckedChange={(checked) => {
               const params = new URLSearchParams(searchParams);
-              if (checked) params.set("showNoSpawns", "true"); else params.delete("showNoSpawns");
+              if (!checked) params.set("showNoSpawns", "false"); else params.delete("showNoSpawns");
               setSearchParams(params);
             }} />
             Show No Spawns
