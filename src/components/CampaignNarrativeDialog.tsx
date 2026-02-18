@@ -64,8 +64,14 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
             </div>
           ) : (
             <>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed max-h-[60vh] overflow-y-auto">
-                {narrative}
+              <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto space-y-1">
+                {narrative.split("\n").map((line, i) => {
+                  if (line.startsWith("__TITLE__") && line.endsWith("__TITLE__")) {
+                    const title = line.replace(/__TITLE__/g, "");
+                    return <p key={i} className="text-xl font-bold">{title}</p>;
+                  }
+                  return <p key={i} className="whitespace-pre-wrap">{line || "\u00A0"}</p>;
+                })}
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={handleCopy} className="flex-1">
