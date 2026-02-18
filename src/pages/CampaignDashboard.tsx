@@ -743,7 +743,7 @@ export default function CampaignDashboard({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Campaign Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Campaign Visibility</h1>
           <p className="text-muted-foreground">Real-time viral tracking and analytics</p>
         </div>
         <div className="flex items-center gap-2">
