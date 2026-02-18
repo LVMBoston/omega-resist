@@ -832,51 +832,6 @@ export default function CampaignDashboard({
             ))}
           </div>
 
-          {/* Date range */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {startDate ? format(startDate, "MMM d") : "Start"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[9999]">
-              <Calendar mode="single" selected={startDate} onSelect={(date) => {
-                setStartDate(date);
-                const params = new URLSearchParams(searchParams);
-                if (date) params.set("startDate", date.toISOString()); else params.delete("startDate");
-                setSearchParams(params);
-              }} />
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {endDate ? format(endDate, "MMM d") : "End"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[9999]">
-              <Calendar mode="single" selected={endDate} onSelect={(date) => {
-                setEndDate(date);
-                const params = new URLSearchParams(searchParams);
-                if (date) params.set("endDate", date.toISOString()); else params.delete("endDate");
-                setSearchParams(params);
-              }} />
-            </PopoverContent>
-          </Popover>
-
-          {(startDate || endDate) && (
-            <Button variant="ghost" size="sm" onClick={() => {
-              setStartDate(undefined);
-              setEndDate(undefined);
-              const params = new URLSearchParams(searchParams);
-              params.delete("startDate");
-              params.delete("endDate");
-              setSearchParams(params);
-            }}>Clear Dates</Button>
-          )}
 
           <label className="flex items-center gap-1 cursor-pointer text-sm">
             <Checkbox checked={showNoSpawns} onCheckedChange={(checked) => {
