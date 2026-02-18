@@ -19,7 +19,7 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
 
   const handleOpen = async () => {
     setOpen(true);
-    if (narrative) return; // already loaded
+    setNarrative(""); // always reload fresh
     setLoading(true);
     try {
       const data = await fetchNarrativeData(campaignCode, campaignId);
@@ -38,11 +38,21 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
   };
 
   const handleDownload = () => {
-    const blob = new Blob([narrative], { type: "text/plain" });
+    // Convert sentinel markers to Markdown headings
+    const markdown = narrative
+      .split("\n")
+      .map((line) => {
+        if (line.startsWith("__TITLE__") && line.endsWith("__TITLE__")) {
+          return `# ${line.replace(/__TITLE__/g, "")}`;
+        }
+        return line;
+      })
+      .join("\n");
+    const blob = new Blob([markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${campaignCode}-story.txt`;
+    a.download = `${campaignCode}-story.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
