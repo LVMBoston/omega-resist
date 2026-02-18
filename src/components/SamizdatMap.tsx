@@ -801,9 +801,6 @@ const SamizdatMap = ({
     return createSequenceNumbers(displayEvents);
   }, [displayEvents]);
 
-  // Track clustering state before entering chain mode
-  const clusteringBeforeChainRef = useRef<boolean>(true);
-
   // Handle show all events (reset from chain mode)
   const handleShowAllEvents = useCallback(() => {
     setViewMode("all");
@@ -811,8 +808,6 @@ const SamizdatMap = ({
     setSelectedChainToken(null);
     setSelectedEventId(null);
     setSelectedL00Instance(null);
-    // Restore clustering state from before chain mode
-    setEnableClustering(clusteringBeforeChainRef.current);
   }, []);
 
   // Handle marker click - traces lineage and filters to chain
@@ -824,16 +819,12 @@ const SamizdatMap = ({
       level: event.level
     });
     
-    // Save current clustering state and disable for chain mode
-    clusteringBeforeChainRef.current = enableClustering;
-    setEnableClustering(false);
-    
     // Set chain filter with the specific clicked token (not just root)
     setSelectedRootToken(event.rootToken);
     setSelectedChainToken(event.token);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
-  }, [enableClustering]);
+  }, []);
 
   // Update markers based on view mode
   useEffect(() => {
