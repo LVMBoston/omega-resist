@@ -38,6 +38,7 @@ const navigation = [
     items: [
       { title: "Campaign Orchestration", url: "/campaign-config", icon: Megaphone },
       { title: "Event Manager", url: "/campaign-config", icon: Calendar, infoOnly: true },
+      { title: "Campaign Dashboard", url: "/campaign-dashboard", icon: LayoutDashboard },
     ],
   },
   {
@@ -51,7 +52,6 @@ const navigation = [
     title: "Analytics",
     items: [
       { title: "Campaign Analytics", url: "/campaign-analytics", icon: BarChart3 },
-      { title: "Campaign Dashboard", url: "/campaign-dashboard", icon: LayoutDashboard },
       { title: "Virality Dashboard", url: "/virality-dashboard", icon: TrendingUp },
       { title: "Activity Monitor", url: "/activity-monitor", icon: Activity },
     ],
