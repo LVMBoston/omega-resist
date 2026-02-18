@@ -681,20 +681,21 @@ const SamizdatMap = ({
       // Step 5: Get unique ZIP codes for coordinate lookup
       const uniqueZips = [...new Set(events.map((e) => e.zip_code).filter(Boolean))] as string[];
 
-      const { data: zipData, error: zipError } = await supabase
-        .from("zip_codes")
-        .select("zip_code, latitude, longitude")
-        .in("zip_code", uniqueZips);
-
-      if (zipError || !zipData?.length) {
-        console.error("Error fetching zip coordinates:", zipError);
-        setEventPoints([]);
-        setLoading(false);
-        return;
+      let zipData: { zip_code: string; latitude: number; longitude: number }[] | null = null;
+      if (uniqueZips.length > 0) {
+        const { data, error: zipError } = await supabase
+          .from("zip_codes")
+          .select("zip_code, latitude, longitude")
+          .in("zip_code", uniqueZips);
+        if (zipError) {
+          console.error("Error fetching zip coordinates:", zipError);
+        } else {
+          zipData = data;
+        }
       }
 
       const zipCoords: Record<string, { lat: number; lng: number }> = {};
-      zipData.forEach((z) => {
+      (zipData || []).forEach((z) => {
         zipCoords[z.zip_code] = { lat: z.latitude, lng: z.longitude };
       });
 
