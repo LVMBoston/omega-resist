@@ -469,6 +469,9 @@ const SamizdatMap = ({
   }, [timeFilteredEvents]);
 
   // Fetch event-level data with token chain info
+  // Use stable string key to avoid re-fetching on every reference change
+  const eoaIdsKey = eoaIds.slice().sort().join(",");
+  
   useEffect(() => {
     const fetchEventData = async () => {
       if (!eoaIds.length) {
@@ -476,6 +479,8 @@ const SamizdatMap = ({
         setLoading(false);
         return;
       }
+      
+      console.log("[SamizdatMap] Fetching event data for EoA IDs:", eoaIds);
 
       setLoading(true);
 
@@ -754,7 +759,8 @@ const SamizdatMap = ({
     };
 
     fetchEventData();
-  }, [eoaIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eoaIdsKey]); // Use stable string key instead of array reference
 
   // Store updateViewportStats in a ref to avoid map recreation
   const updateViewportStatsRef = useRef(updateViewportStats);
