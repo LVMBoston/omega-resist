@@ -169,7 +169,7 @@ export function generateCampaignNarrative(data: NarrativeData): string {
   const lines: string[] = [];
 
   // Opening
-  lines.push(`📊 ${campaignTitle}`);
+  lines.push(`__TITLE__${campaignTitle}__TITLE__`);
   lines.push(`Campaign Story · ${daysActive} days active`);
   lines.push("");
 
