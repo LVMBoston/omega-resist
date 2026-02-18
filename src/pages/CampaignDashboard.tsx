@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download } from "lucide-react";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download, Columns } from "lucide-react";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -87,6 +88,19 @@ export default function CampaignDashboard({
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventsColumnVisibility, setEventsColumnVisibility] = useState({
+    timestamp: true,
+    mobilize_code: true,
+    city_region: true,
+    zip_code: true,
+    location_method: true,
+    event_level: true,
+    utm_medium: true,
+    utm_content: true,
+    instance: true,
+    event_id: false,
+    full_url: false,
+  });
   
   // Chain filter state (shared between Samizdat and EventsV2 tabs via URL params)
   const chainRootTokenParam = searchParams.get("chainRoot");
@@ -893,6 +907,29 @@ export default function CampaignDashboard({
                           <Download className="h-4 w-4 mr-2" />
                           Export CSV
                         </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Columns className="h-4 w-4 mr-2" />
+                              Columns
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {(Object.keys(eventsColumnVisibility) as Array<keyof typeof eventsColumnVisibility>).map((col) => (
+                              <DropdownMenuCheckboxItem
+                                key={col}
+                                checked={eventsColumnVisibility[col]}
+                                onCheckedChange={(checked) =>
+                                  setEventsColumnVisibility(prev => ({ ...prev, [col]: checked }))
+                                }
+                              >
+                                {col.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         {selectedCampaign && selectedCampaignId && (
                           <CampaignNarrativeButton
                             campaignCode={selectedCampaign}
@@ -931,59 +968,17 @@ export default function CampaignDashboard({
                           <TableHeader className="sticky top-0 z-10 bg-background">
                             <TableRow>
                               <TableHead className="w-[80px]">Row #</TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('timestamp')}>
-                                <div className="flex items-center gap-1">
-                                  TimeStamp
-                                  {sortConfig.column === 'timestamp' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('mobilize_code')}>
-                                <div className="flex items-center gap-1">
-                                  Mobilize Code
-                                  {sortConfig.column === 'mobilize_code' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location')}>
-                                <div className="flex items-center gap-1">
-                                  City/Region
-                                  {sortConfig.column === 'location' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('zip')}>
-                                <div className="flex items-center gap-1">
-                                  Message Opened (Zipcode)
-                                  {sortConfig.column === 'zip' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location_source')}>
-                                <div className="flex items-center gap-1">
-                                  Location Method
-                                  {sortConfig.column === 'location_source' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('level')}>
-                                <div className="flex items-center gap-1">
-                                  Event Level
-                                  {sortConfig.column === 'level' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_medium')}>
-                                <div className="flex items-center gap-1">
-                                  utm_medium
-                                  {sortConfig.column === 'utm_medium' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_content')}>
-                                <div className="flex items-center gap-1">
-                                  utm_content
-                                  {sortConfig.column === 'utm_content' && <ArrowUpDown className="w-3 h-3" />}
-                                </div>
-                              </TableHead>
-                              <TableHead>Instance</TableHead>
-                              <TableHead>
-                                Event ID
-                              </TableHead>
-                              <TableHead>Full URL</TableHead>
+                              {eventsColumnVisibility.timestamp && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('timestamp')}><div className="flex items-center gap-1">TimeStamp{sortConfig.column === 'timestamp' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.mobilize_code && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('mobilize_code')}><div className="flex items-center gap-1">Mobilize Code{sortConfig.column === 'mobilize_code' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.city_region && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location')}><div className="flex items-center gap-1">City/Region{sortConfig.column === 'location' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.zip_code && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('zip')}><div className="flex items-center gap-1">Message Opened (Zipcode){sortConfig.column === 'zip' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.location_method && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('location_source')}><div className="flex items-center gap-1">Location Method{sortConfig.column === 'location_source' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.event_level && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('level')}><div className="flex items-center gap-1">Event Level{sortConfig.column === 'level' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.utm_medium && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_medium')}><div className="flex items-center gap-1">utm_medium{sortConfig.column === 'utm_medium' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.utm_content && <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('utm_content')}><div className="flex items-center gap-1">utm_content{sortConfig.column === 'utm_content' && <ArrowUpDown className="w-3 h-3" />}</div></TableHead>}
+                              {eventsColumnVisibility.instance && <TableHead>Instance</TableHead>}
+                              {eventsColumnVisibility.event_id && <TableHead>Event ID</TableHead>}
+                              {eventsColumnVisibility.full_url && <TableHead>Full URL</TableHead>}
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -996,43 +991,18 @@ export default function CampaignDashboard({
                               )}
                               onClick={() => setSelectedEventId(event.id)}
                             >
-                <TableCell>{index + 1}</TableCell>
-                <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>
-                <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>
-                <TableCell>
-                  {event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}
-                </TableCell>
-                <TableCell>{event.zip_code || 'N/A'}</TableCell>
-                <TableCell>{event.location_source === 'gps' ? 'GPS' : 'Cell Tower'}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge>
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {event.tokens?.utm_medium || 'N/A'}
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {event.tokens?.l00_instance ? event.tokens.l00_instance.split(':')[1] || event.tokens.l00_instance : 'N/A'}
-                </TableCell>
-                              <TableCell>
-                                <span className="font-mono text-xs">{event.id}</span>
-                              </TableCell>
-                              <TableCell>
-                                {event.tokens?.full_url ? <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs truncate max-w-[300px]" title={event.tokens.full_url}>{event.tokens.full_url}</span>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => {
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(event.tokens.full_url);
-                              toast({
-                                title: "Full URL copied!"
-                              });
-                            }}>
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                  </div> : <span className="text-muted-foreground text-xs">No URL</span>}
-                              </TableCell>
+                              <TableCell>{index + 1}</TableCell>
+                              {eventsColumnVisibility.timestamp && <TableCell className="font-mono text-xs">{formatTimestamp(event.occurred_at)}</TableCell>}
+                              {eventsColumnVisibility.mobilize_code && <TableCell>{event.tokens?.events_actions?.mobilize_code || 'N/A'}</TableCell>}
+                              {eventsColumnVisibility.city_region && <TableCell>{event.city && event.region ? `${event.city}, ${event.region}` : 'N/A'}</TableCell>}
+                              {eventsColumnVisibility.zip_code && <TableCell>{event.zip_code || 'N/A'}</TableCell>}
+                              {eventsColumnVisibility.location_method && <TableCell>{event.location_source === 'gps' ? 'GPS' : 'Cell Tower'}</TableCell>}
+                              {eventsColumnVisibility.event_level && <TableCell><Badge variant="outline">{formatLevel(event.tokens?.level || 0)}</Badge></TableCell>}
+                              {eventsColumnVisibility.utm_medium && <TableCell className="font-mono text-xs">{event.tokens?.utm_medium || 'N/A'}</TableCell>}
+                              {eventsColumnVisibility.utm_content && <TableCell className="font-mono text-xs">{event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}` : 'N/A'}</TableCell>}
+                              {eventsColumnVisibility.instance && <TableCell className="font-mono text-xs">{event.tokens?.l00_instance ? event.tokens.l00_instance.split(':')[1] || event.tokens.l00_instance : 'N/A'}</TableCell>}
+                              {eventsColumnVisibility.event_id && <TableCell><span className="font-mono text-xs">{event.id}</span></TableCell>}
+                              {eventsColumnVisibility.full_url && <TableCell>{event.tokens?.full_url ? <div className="flex items-center gap-2"><span className="font-mono text-xs truncate max-w-[300px]" title={event.tokens.full_url}>{event.tokens.full_url}</span><Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(event.tokens.full_url); toast({ title: "Full URL copied!" }); }}><Copy className="h-3 w-3" /></Button></div> : <span className="text-muted-foreground text-xs">No URL</span>}</TableCell>}
                             </TableRow>)}
                           </TableBody>
                         </Table>
