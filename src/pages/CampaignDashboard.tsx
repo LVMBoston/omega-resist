@@ -840,7 +840,7 @@ export default function CampaignDashboard({
                 {startDate ? format(startDate, "MMM d") : "Start"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0 z-[9999]">
               <Calendar mode="single" selected={startDate} onSelect={(date) => {
                 setStartDate(date);
                 const params = new URLSearchParams(searchParams);
@@ -857,7 +857,7 @@ export default function CampaignDashboard({
                 {endDate ? format(endDate, "MMM d") : "End"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0 z-[9999]">
               <Calendar mode="single" selected={endDate} onSelect={(date) => {
                 setEndDate(date);
                 const params = new URLSearchParams(searchParams);
