@@ -1,50 +1,47 @@
 
-## Restore the Update Scheduler (Settings Tab) — Filters Stay Persistent
+## Fix: Spawn Filter Applied Unconditionally in All View Modes
 
-### Confirmed: Filters Are Already Persistent
-The filters bar in `CampaignDashboard.tsx` (lines 781–900) sits inside `<Tabs>` but **outside** any `<TabsContent>` block. This is intentional — it renders on every tab regardless of which is active. This behavior will not be changed.
+### What Is Wrong
 
----
+In `src/components/SamizdatMap.tsx`, there are two separate filter pipelines:
 
-### What This Plan Does
-Adds a 5th **"Settings"** tab to the Campaign Dashboard that hosts `CampaignSnapshotSettings` — the update scheduler / server-side rendering panel that was orphaned when the Filter tab was removed.
+1. **Stats pipeline** (lines 416-427): `showNoSpawns` is applied correctly — L00 events with no spawns are hidden from viewport statistics.
+2. **Marker rendering pipeline** (lines 294-317): `showNoSpawns` is NOT applied at all — L00 events with no spawns are always rendered as markers regardless of the checkbox state.
 
----
+The previous plan proposed adding the spawn filter to the marker pipeline but carving out a `viewMode !== "chain"` exception. That exception was wrong. If an L00 event has no spawns and the filter is active, it should be invisible — and therefore unclickable — making chain mode on a no-spawn L00 impossible by definition, not by exception.
 
-### Single File Change: `src/pages/CampaignDashboard.tsx`
+### The Fix: One Change in One File
 
-**Change 1 — Expand TabsList from 4 to 5 columns** (line 774):
-```
-grid-cols-4  →  grid-cols-5
-```
-Add a new trigger:
+**File**: `src/components/SamizdatMap.tsx`
+
+**Change**: Add the spawn filter unconditionally at the top of `filteredEventPoints` (line 294), and add `showNoSpawns` to its dependency array. No chain mode exception.
+
 ```tsx
-<TabsTrigger value="settings">Settings</TabsTrigger>
+const filteredEventPoints = useMemo(() => {
+  let filtered = eventPoints;
+
+  // Apply spawn filter: hide L00 events with no engaged spawns
+  if (!showNoSpawns) {
+    filtered = filtered.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
+  }
+
+  // Filter by enabled share mediums (skip in chain mode - show all)
+  if (viewMode !== "chain") {
+    filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
+  }
+
+  // Timeline filter...
+  ...
+
+  return filtered;
+}, [eventPoints, showNoSpawns, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
 ```
 
-**Change 2 — Add TabsContent for Settings** (before the closing `</Tabs>` tag, ~line 1219):
-```tsx
-<TabsContent value="settings" className="mt-6 animate-fade-in">
-  {selectedCampaignId && selectedCampaign ? (
-    <CampaignSnapshotSettings
-      campaignId={selectedCampaignId}
-      campaignCode={selectedCampaign}
-    />
-  ) : (
-    <Card>
-      <CardContent className="py-8 text-center text-muted-foreground">
-        Select a campaign to manage snapshot settings.
-      </CardContent>
-    </Card>
-  )}
-</TabsContent>
-```
-
----
+This also unifies the two pipelines: the stats counter and the rendered markers will now both reflect the same filtered set of events.
 
 ### Technical Notes
-- `CampaignSnapshotSettings` is already imported at line 38 — no new import needed.
-- `selectedCampaignId` and `selectedCampaign` (the campaign code) are already in scope at the render location.
-- The filters bar remains untouched and will continue to appear on all 5 tabs.
-- No database or schema changes needed.
-- Only one file is edited.
+
+- No database or schema changes required
+- No new props required — `showNoSpawns` is already in scope in `SamizdatMap.tsx`
+- The now-redundant `spawnFilteredEvents` intermediate variable (lines 416-420) can be simplified to use `filteredEventPoints` directly, eliminating the pipeline split
+- The "Events: X / Y" timeline counter will correctly reflect spawn-filtered totals after this fix
