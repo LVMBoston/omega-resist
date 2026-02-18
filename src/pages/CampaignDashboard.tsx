@@ -770,11 +770,11 @@ export default function CampaignDashboard({
         </div>
       </div>
 
-      <Tabs defaultValue="eventsv2">
+      <Tabs defaultValue="settings">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="eventsv2">Events</TabsTrigger>
-          <TabsTrigger value="samizdat">Samizdat</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="samizdat">Samizdat</TabsTrigger>
+          <TabsTrigger value="eventsv2">Events</TabsTrigger>
         </TabsList>
 
         {/* Filters bar */}
