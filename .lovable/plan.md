@@ -1,39 +1,58 @@
 
+## Two Fixes: Title Sentinel Stripping + Days Active Reformatting
 
-# Add Ease-In Animation Curve to Timeline Playback
+### Problem 1 — `__TITLE__` markers appear raw in Copy output
+The `handleCopy` function in `CampaignNarrativeDialog.tsx` writes `narrative` verbatim to the clipboard. Since the narrative string contains `__TITLE__ICE OUT FOR GOOD__TITLE__`, that raw text gets pasted. The fix mirrors what the download handler already does: strip the sentinels before writing to clipboard.
 
-## Overview
+### Problem 2 — "days active" line wording
+Line 173 in `campaignNarrative.ts` reads:
+```
+Campaign Story · 32 days active
+```
+The user wants it reformatted to:
+```
+Campaign active for 32 days
+```
 
-Replace the linear animation advancement with an ease-in curve so playback starts slow (early seeds trickle in one by one) and gradually accelerates (campaign "explodes" as viral reach compounds). Total playthrough time stays ~30 seconds at 1x.
+---
 
-## Changes
+### Changes Required
 
-### File 1: `src/components/SamizdatMap.tsx`
+**File 1: `src/components/CampaignNarrativeDialog.tsx`**
 
-One-line change at line 393 inside the animation step function:
+Update `handleCopy` to strip `__TITLE__` sentinels (replacing them with just the plain title text) before writing to clipboard:
 
 ```typescript
-// Before (linear):
-const scaledFraction = (deltaMs / 30000) * playbackSpeed;
-
-// After (ease-in):
-const easeMultiplier = 0.25 + 1.5 * prev;
-const scaledFraction = (deltaMs / 30000) * playbackSpeed * easeMultiplier;
+const handleCopy = async () => {
+  const plain = narrative
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("__TITLE__") && line.endsWith("__TITLE__")) {
+        return line.replace(/__TITLE__/g, "");
+      }
+      return line;
+    })
+    .join("\n");
+  await navigator.clipboard.writeText(plain);
+  toast({ title: "Copied!", description: "Narrative copied to clipboard." });
+};
 ```
 
-The `prev` value is already available inside the `setTimelinePosition` updater callback (line 394). The easing formula `0.25 + 1.5 * t` integrates to 1.0 over `[0, 1]`, keeping total duration unchanged. At the start (t=0), rate is 0.25x (4x slower than linear). At the end (t=1), rate is 1.75x (nearly 2x faster than linear).
+**File 2: `src/lib/campaignNarrative.ts`**
 
-### File 2: `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md`
-
-Add a new section after "Key Design Decisions" item 4 documenting the easing curve:
-
-```markdown
-5. **Ease-in animation curve**: The playback rate follows `rate(t) = 0.25 + 1.5t`, where `t` is the current timeline position. This makes early events appear slowly (0.25x at start) and accelerates through the campaign's later stages (1.75x at end). The integral over [0,1] equals 1.0, preserving the ~30-second total playthrough. This creates a cinematic effect where individual seed events are visible early on, then the viral spread visually "explodes."
+Change line 173 from:
+```typescript
+lines.push(`Campaign Story · ${daysActive} days active`);
+```
+to:
+```typescript
+lines.push(`Campaign active for ${daysActive} days`);
 ```
 
-## Files Changed
+---
 
-| File | Change |
-|------|--------|
-| `src/components/SamizdatMap.tsx` | Add ease-in multiplier to animation step |
-| `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md` | Document easing curve design decision |
+### Technical Notes
+- No database or schema changes needed.
+- The `__TITLE__` sentinel system (used for bold rendering in the dialog) is preserved — only the clipboard and display text is cleaned up.
+- The download `.md` file already correctly converts `__TITLE__` to `# Heading` — no change needed there.
+- Both files are small, targeted one-line or small-block edits.
