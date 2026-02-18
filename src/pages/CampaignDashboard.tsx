@@ -5,8 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download, FileText } from "lucide-react";
-import { downloadCampaignRecapPdf } from "@/lib/campaignPdfExport";
+import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -586,977 +585,330 @@ export default function CampaignDashboard({
     });
   };
 
-  // Export PDF Recap
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const handleExportPdf = async () => {
-    if (!selectedCampaign) {
-      toast({
-        variant: "destructive",
-        title: "No Campaign",
-        description: "Please select a campaign first."
-      });
-      return;
-    }
-
-    setIsExportingPdf(true);
-    try {
-      await downloadCampaignRecapPdf(selectedCampaign);
-      toast({
-        title: "PDF Exported",
-        description: `Campaign recap downloaded as ${selectedCampaign}-recap.pdf`
-      });
-    } catch (error) {
-      console.error("PDF export failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Export Failed",
-        description: error instanceof Error ? error.message : "Failed to generate PDF."
-      });
-    } finally {
-      setIsExportingPdf(false);
-    }
-  };
-
-  // Fetch total event counts (not limited to last 50)
-  const {
-    data: eventCounts
-  } = useQuery({
-    queryKey: ["eventCounts", selectedCampaign, dataSourceFilter, startDate, endDate],
-    queryFn: async () => {
-      let baseQuery = supabase.from("url_events").select("event_type, occurred_at, tokens!inner(utm_campaign)", {
-        count: "exact",
-        head: false
-      }).eq("tokens.utm_campaign", selectedCampaign);
-      if (dataSourceFilter === "real") {
-        baseQuery = baseQuery.eq("is_simulated", false);
-      } else if (dataSourceFilter === "simulated") {
-        baseQuery = baseQuery.eq("is_simulated", true);
-      }
-      if (startDate) {
-        baseQuery = baseQuery.gte("occurred_at", startDate.toISOString());
-      }
-      if (endDate) {
-        const endOfDay = new Date(endDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        baseQuery = baseQuery.lte("occurred_at", endOfDay.toISOString());
-      }
-      const {
-        data,
-        error
-      } = await baseQuery;
-      if (error) throw error;
-      const scans = data?.filter(e => e.event_type === "scan").length || 0;
-      const views = data?.filter(e => e.event_type === "view").length || 0;
-      const shares = data?.filter(e => e.event_type === "share").length || 0;
-      return {
-        scans,
-        views,
-        shares
-      };
-    },
-    enabled: !!selectedCampaign
-  });
-  const scansCount = eventCounts?.scans || 0;
-  const viewsCount = eventCounts?.views || 0;
-  const sharesCount = eventCounts?.shares || 0;
-
-  // Fetch unique mobilize_codes for Campaign Chapter filter
-  const { data: chapterOptions = [] } = useQuery({
-    queryKey: ["campaign-chapters", selectedCampaignId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events_actions")
-        .select("mobilize_code, title, city, state")
-        .eq("campaign_id", selectedCampaignId)
-        .not("mobilize_code", "is", null);
-      if (error) throw error;
-      // Deduplicate by mobilize_code
-      const seen = new Map<string, { mobilize_code: string; label: string }>();
-      for (const eoa of data || []) {
-        if (eoa.mobilize_code && !seen.has(eoa.mobilize_code)) {
-          const location = [eoa.city, eoa.state].filter(Boolean).join(", ");
-          seen.set(eoa.mobilize_code, {
-            mobilize_code: eoa.mobilize_code,
-            label: location ? `${eoa.mobilize_code} — ${location}` : eoa.mobilize_code,
-          });
-        }
-      }
-      return Array.from(seen.values()).sort((a, b) => a.mobilize_code.localeCompare(b.mobilize_code));
-    },
-    enabled: !!selectedCampaignId,
-  });
-
-  const {
-    data: l00Instances
-  } = useQuery({
-    queryKey: ["l00Instances", selectedCampaignId, dataSourceFilter],
-    queryFn: async () => {
-      // Get all unique l00_instance values with their latest activity
-      let query = supabase
-        .from("tokens")
-        .select(`
-          l00_instance,
-          minted_at,
-          eoa_id,
-          events_actions!inner(campaign_id, city, state)
-        `)
-        .eq("events_actions.campaign_id", selectedCampaignId)
-        .not("l00_instance", "is", null);
-      
-      // Apply data source filter
-      if (dataSourceFilter === "real") {
-        query = query.eq("is_simulated", false);
-      } else if (dataSourceFilter === "simulated") {
-        query = query.eq("is_simulated", true);
-      }
-      // "both" - no filter applied
-      
-      const { data: tokens, error } = await query;
-      
-      if (error) throw error;
-      
-      // Group by l00_instance and find latest activity + count spawns
-      const instanceMap = new Map<string, { 
-        l00_instance: string; 
-        latestActivity: string; 
-        city: string | null;
-        state: string | null;
-        spawnCount: number;
-      }>();
-      
-      tokens?.forEach((t: any) => {
-        const instance = t.l00_instance;
-        if (!instance) return;
-        
-        const existing = instanceMap.get(instance);
-        const mintedAt = t.minted_at;
-        
-        if (!existing) {
-          instanceMap.set(instance, {
-            l00_instance: instance,
-            latestActivity: mintedAt,
-            city: t.events_actions?.city || null,
-            state: t.events_actions?.state || null,
-            spawnCount: 0
-          });
-        } else {
-          if (new Date(mintedAt) > new Date(existing.latestActivity)) {
-            existing.latestActivity = mintedAt;
-            existing.city = t.events_actions?.city || existing.city;
-            existing.state = t.events_actions?.state || existing.state;
-          }
-        }
-      });
-      
-      // Count spawns: L01+ tokens with at least one view event (engaged shares)
-      const l01PlusTokens = tokens?.filter((t: any) => t.level >= 1) || [];
-      if (l01PlusTokens.length > 0) {
-        const l01TokenIds = l01PlusTokens.map((t: any) => t.token);
-        const { data: viewEvents } = await supabase
-          .from("url_events")
-          .select("token")
-          .in("token", l01TokenIds)
-          .eq("event_type", "view");
-        
-        const engagedTokens = new Set(viewEvents?.map((e: any) => e.token) || []);
-        
-        // Map engaged tokens back to their l00_instance
-        l01PlusTokens.forEach((t: any) => {
-          if (engagedTokens.has(t.token)) {
-            const instance = instanceMap.get(t.l00_instance);
-            if (instance) instance.spawnCount++;
-          }
-        });
-      }
-      
-      // Convert to array and sort by latest activity (most recent first)
-      return Array.from(instanceMap.values())
-        .sort((a, b) => new Date(b.latestActivity).getTime() - new Date(a.latestActivity).getTime());
-    },
-    enabled: !!selectedCampaignId
-  });
-
-  // Fetch EventsV2 data
+  // Fetch eventsV2 (the main events table with rich filtering)
+  const selectedLevels = levelFilter.split(",").map(Number);
   const {
     data: eventsV2Data,
     isLoading: eventsV2Loading
   } = useQuery({
-    queryKey: ["eventsV2", "v2", selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, hideLegacy, showNoSpawns],
+    queryKey: ["eventsV2", selectedCampaign, eventTypeFilter, dataSourceFilter, levelFilter, startDate, endDate, hideLegacy, chapterFilter, chainRootTokenParam, chainTokenParam],
     queryFn: async () => {
       let query = supabase.from("url_events").select(`
-          id,
-          occurred_at,
-          event_type,
-          city,
-          region,
-          zip_code,
-          location_source,
-          token,
-          tokens!inner(
-            level,
-            utm_content,
-            utm_campaign,
-            utm_medium,
-            eoa_id,
-            full_url,
-            root_token,
-            l00_instance,
-            events_actions(
-              mobilize_code,
-              utm_id,
-              city,
-              state,
-              zip_code,
-              id
-            )
+        *,
+        tokens!inner(
+          level,
+          deck_slug,
+          utm_campaign,
+          utm_medium,
+          utm_content,
+          eoa_id,
+          l00_instance,
+          full_url,
+          root_token,
+          events_actions(
+            title,
+            city,
+            state,
+            mobilize_code,
+            utm_id
           )
-        `).eq("tokens.utm_campaign", selectedCampaign).order("occurred_at", {
-        ascending: false
-      });
-      if (eventTypeFilter !== "all") {
-        query = query.eq("event_type", eventTypeFilter);
-      }
-      if (dataSourceFilter === "real") {
-        query = query.eq("is_simulated", false);
-      } else if (dataSourceFilter === "simulated") {
-        query = query.eq("is_simulated", true);
-      }
-      // Filter out legacy events (tokens ending with :legacy)
-      if (hideLegacy) {
-        query = query.not("token", "like", "%:legacy");
-      }
-      if (startDate) {
-        query = query.gte("occurred_at", startDate.toISOString());
-      }
+        )
+      `).eq("tokens.utm_campaign", selectedCampaign).order("occurred_at", { ascending: false });
+
+      if (eventTypeFilter !== "all") query = query.eq("event_type", eventTypeFilter);
+      if (dataSourceFilter === "real") query = query.eq("is_simulated", false);
+      else if (dataSourceFilter === "simulated") query = query.eq("is_simulated", true);
+      if (startDate) query = query.gte("occurred_at", startDate.toISOString());
       if (endDate) {
         const endOfDay = new Date(endDate);
         endOfDay.setHours(23, 59, 59, 999);
         query = query.lte("occurred_at", endOfDay.toISOString());
       }
-      const {
-        data,
-        error
-      } = await query;
+
+      const { data, error } = await query.limit(1000);
       if (error) throw error;
-
-      // Transform data to clean, serializable objects and fetch shortened URLs
-      if (data && data.length > 0) {
-        const uniqueFullUrls = [...new Set(data.map((e: any) => e.tokens?.full_url).filter(Boolean))];
-        const {
-          data: shortUrls
-        } = await supabase.from("shortened_urls").select("full_url, short_code").in("full_url", uniqueFullUrls);
-
-        // Map full URLs to short URLs
-        const shortUrlMap = new Map<string, string>();
-        shortUrls?.forEach((su: any) => {
-          shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
-        });
-
-        // Unless showNoSpawns is enabled, get L00 tokens that have spawns to filter
-        let l00WithSpawnsSet: Set<string> = new Set();
-        if (!showNoSpawns) {
-          // Get all L00 tokens from the current data
-          const l00Tokens = data
-            .filter((e: any) => e.tokens?.level === 0)
-            .map((e: any) => e.token);
-          
-          if (l00Tokens.length > 0) {
-            // Query for tokens that have these L00 tokens as parent_token
-            const { data: childTokens } = await supabase
-              .from("tokens")
-              .select("parent_token")
-              .in("parent_token", l00Tokens);
-            
-            // Create set of L00 tokens that have at least one child
-            childTokens?.forEach((t: any) => {
-              if (t.parent_token) l00WithSpawnsSet.add(t.parent_token);
-            });
-          }
-        }
-
-        // Transform to clean objects with null-safety
-        let transformedData = data.map((event: any) => JSON.parse(JSON.stringify({
-          id: event.id,
-          occurred_at: event.occurred_at,
-          event_type: event.event_type,
-          city: event.city,
-          region: event.region,
-          zip_code: event.zip_code,
-          location_source: event.location_source,
-          token: event.token,
-          tokens: {
-            level: event.tokens?.level,
-            utm_content: event.tokens?.utm_content,
-            utm_campaign: event.tokens?.utm_campaign,
-            utm_medium: event.tokens?.utm_medium,
-            eoa_id: event.tokens?.eoa_id,
-            full_url: event.tokens?.full_url,
-            root_token: event.tokens?.root_token,
-            l00_instance: event.tokens?.l00_instance,
-            events_actions: event.tokens?.events_actions ? {
-              mobilize_code: event.tokens.events_actions.mobilize_code,
-              utm_id: event.tokens.events_actions.utm_id,
-              city: event.tokens.events_actions.city,
-              state: event.tokens.events_actions.state,
-              zip_code: event.tokens.events_actions.zip_code,
-              id: event.tokens.events_actions.id
-            } : null
-          },
-          short_url: event.tokens?.full_url ? shortUrlMap.get(event.tokens.full_url) : null
-        })));
-
-        // Filter out L00 events with no spawns unless showNoSpawns is checked
-        if (!showNoSpawns) {
-          transformedData = transformedData.filter((event: any) => {
-            // Keep non-L00 events
-            if (event.tokens?.level !== 0) return true;
-            // Keep L00 events that have spawns
-            return l00WithSpawnsSet.has(event.token);
-          });
-        }
-
-        return transformedData;
-      }
-      return [];
+      return data || [];
     },
     enabled: !!selectedCampaign
   });
 
-  // Helper functions for EventsV2
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}/${month}/${day} ${hours}:${minutes}`;
-  };
-  const formatLevel = (level: number) => {
-    return `L${level.toString().padStart(2, '0')}`;
-  };
-  const formatZipCode = (zip: string | null) => {
-    if (!zip) return "";
-    return zip.padStart(5, '0');
-  };
-
-  // Filter and sort EventsV2 - apply chain filter using l00_instance
-  // Moved here so metrics can use filtered data
-  let filteredEventsV2 = eventsV2Data ? (
-    chainViewMode === "chain" && selectedL00Instance
-      ? eventsV2Data.filter((e: any) => e.tokens?.l00_instance === selectedL00Instance)
-      : eventsV2Data
-  ) : [];
-
-  // Apply chapter (mobilize_code) filter
-  if (chapterFilter !== "all") {
-    filteredEventsV2 = filteredEventsV2.filter(
-      (e: any) => e.tokens?.events_actions?.mobilize_code === chapterFilter
-    );
-  }
-
-  // Calculate metrics for EventsV2 - use filtered data to match what's displayed
-  const eventsV2Metrics = filteredEventsV2.length > 0 ? {
-    uniqueMobilizeCodes: new Set(filteredEventsV2.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean)).size,
-    scansCount: filteredEventsV2.filter((e: any) => e.event_type === 'scan').length,
-    viewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view').length,
-    qrViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'qr').length,
-    smsViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'sms').length,
-    emailViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && e.tokens?.utm_medium === 'em').length,
-    unknownViewsCount: filteredEventsV2.filter((e: any) => e.event_type === 'view' && !['qr', 'sms', 'em'].includes(e.tokens?.utm_medium)).length,
-    gpsLocationCount: filteredEventsV2.filter((e: any) => e.location_source === 'gps').length,
-    cellTowerLocationCount: filteredEventsV2.filter((e: any) => e.location_source !== 'gps').length,
-    sharesCount: filteredEventsV2.filter((e: any) => e.event_type === 'share').length,
-    totalRows: filteredEventsV2.length,
-    totalUnfilteredRows: eventsV2Data?.length || 0,
-    earliestTimestamp: filteredEventsV2.length > 0 ? formatTimestamp(filteredEventsV2[filteredEventsV2.length - 1].occurred_at) : 'N/A',
-    latestTimestamp: filteredEventsV2.length > 0 ? formatTimestamp(filteredEventsV2[0].occurred_at) : 'N/A'
-  } : null;
-
-  // Update selected L00 instance when chainToken is selected (simple lookup)
-  useEffect(() => {
-    const updateL00Instance = async () => {
-      if (!selectedChainToken || chainViewMode !== "chain") {
-        setSelectedL00Instance(null);
-        return;
-      }
-      
-      // Fetch l00_instance for the selected token
-      const { data } = await supabase
+  // Fetch event counts (token counts by level for selected campaign)
+  const {
+    data: eventCounts
+  } = useQuery({
+    queryKey: ["eventCounts", selectedCampaign, dataSourceFilter],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("tokens")
-        .select("l00_instance")
-        .eq("token", selectedChainToken)
-        .single();
-      
-      if (data?.l00_instance) {
-        console.log("[CampaignDashboard] Setting L00 instance filter to:", data.l00_instance);
-        setSelectedL00Instance(data.l00_instance);
-      }
-    };
-    
-    updateL00Instance();
-  }, [selectedChainToken, chainViewMode]);
+        .select("level, id")
+        .eq("utm_campaign", selectedCampaign)
+        .is("deleted_at", null);
+      if (error) throw error;
+      const counts: Record<number, number> = {};
+      (data || []).forEach((t: any) => {
+        counts[t.level] = (counts[t.level] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: !!selectedCampaign
+  });
 
-  // Sorting logic for EventsV2
+  // Compute eventsV2 filtered by chain view mode
+  const filteredEventsV2 = eventsV2Data ? eventsV2Data.filter((event: any) => {
+    if (chainViewMode === "chain" && selectedChainToken) {
+      return event.tokens?.l00_instance === selectedChainToken || event.tokens?.root_token === selectedChainRootToken;
+    }
+    if (!selectedLevels.includes(event.tokens?.level ?? -1)) return false;
+    return true;
+  }) : [];
+
+  // Sort eventsV2
+  const sortedEventsV2 = [...filteredEventsV2].sort((a: any, b: any) => {
+    const dir = sortConfig.direction === 'asc' ? 1 : -1;
+    if (sortConfig.column === 'timestamp') return dir * (new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+    if (sortConfig.column === 'mobilize_code') return dir * ((a.tokens?.events_actions?.mobilize_code || "").localeCompare(b.tokens?.events_actions?.mobilize_code || ""));
+    if (sortConfig.column === 'location') return dir * ((a.city || "").localeCompare(b.city || ""));
+    if (sortConfig.column === 'zip') return dir * ((a.zip_code || "").localeCompare(b.zip_code || ""));
+    if (sortConfig.column === 'level') return dir * ((a.tokens?.level ?? 0) - (b.tokens?.level ?? 0));
+    return 0;
+  });
+
+  // Compute eventsV2 metrics summary
+  const eventsV2Metrics = eventsV2Data ? (() => {
+    const allDates = eventsV2Data.map((e: any) => new Date(e.occurred_at));
+    const earliest = allDates.length > 0 ? new Date(Math.min(...allDates.map((d: Date) => d.getTime()))) : null;
+    const latest = allDates.length > 0 ? new Date(Math.max(...allDates.map((d: Date) => d.getTime()))) : null;
+    const mobilizeCodes = new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean));
+    const qrViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'qr').length;
+    const smsViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'sms').length;
+    const emailViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'email').length;
+    const unknownViewsCount = eventsV2Data.filter((e: any) => !['qr','sms','email'].includes(e.tokens?.utm_medium || '')).length;
+    const gpsLocationCount = eventsV2Data.filter((e: any) => e.location_source === 'gps').length;
+    const cellTowerLocationCount = eventsV2Data.filter((e: any) => e.location_source !== 'gps').length;
+    return {
+      earliestTimestamp: earliest ? format(earliest, "MMM d, h:mm a") : "—",
+      latestTimestamp: latest ? format(latest, "MMM d, h:mm a") : "—",
+      uniqueMobilizeCodes: mobilizeCodes.size,
+      totalRows: filteredEventsV2.length,
+      totalUnfilteredRows: eventsV2Data.length,
+      qrViewsCount, smsViewsCount, emailViewsCount, unknownViewsCount,
+      gpsLocationCount, cellTowerLocationCount,
+    };
+  })() : null;
+
   const handleSort = (column: string) => {
     setSortConfig(prev => ({
       column,
       direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
-  // filteredEventsV2 is defined above near metrics calculation
-  
-  const sortedEventsV2 = [...filteredEventsV2].sort((a: any, b: any) => {
-    const {
-      column,
-      direction
-    } = sortConfig;
-    let aVal: any, bVal: any;
-    switch (column) {
-      case 'timestamp':
-        aVal = new Date(a.occurred_at).getTime();
-        bVal = new Date(b.occurred_at).getTime();
-        break;
-      case 'mobilize_code':
-        aVal = a.tokens?.events_actions?.mobilize_code || '';
-        bVal = b.tokens?.events_actions?.mobilize_code || '';
-        break;
-      case 'location':
-        aVal = `${a.tokens?.events_actions?.city || ''}, ${a.tokens?.events_actions?.state || ''}`;
-        bVal = `${b.tokens?.events_actions?.city || ''}, ${b.tokens?.events_actions?.state || ''}`;
-        break;
-      case 'zip':
-        aVal = a.zip_code || '';
-        bVal = b.zip_code || '';
-        break;
-      case 'event_zip':
-        aVal = a.tokens?.events_actions?.zip_code || '';
-        bVal = b.tokens?.events_actions?.zip_code || '';
-        break;
-      case 'level':
-        aVal = a.tokens?.level || 0;
-        bVal = b.tokens?.level || 0;
-        break;
-      case 'utm_medium':
-        aVal = a.tokens?.utm_medium || '';
-        bVal = b.tokens?.utm_medium || '';
-        break;
-      case 'utm_content':
-        aVal = a.tokens?.events_actions?.mobilize_code && a.tokens?.events_actions?.utm_id ? `${a.tokens.events_actions.mobilize_code}-${a.tokens.events_actions.utm_id}` : '';
-        bVal = b.tokens?.events_actions?.mobilize_code && b.tokens?.events_actions?.utm_id ? `${b.tokens.events_actions.mobilize_code}-${b.tokens.events_actions.utm_id}` : '';
-        break;
-      case 'event_type':
-        aVal = a.event_type;
-        bVal = b.event_type;
-        break;
-      default:
-        return 0;
-    }
-    if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-    if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-    return 0;
+
+  const formatTimestamp = (ts: string) => {
+    try { return format(new Date(ts), "MM/dd/yy HH:mm:ss"); } catch { return ts; }
+  };
+
+  const formatLevel = (level: number) => `L${String(level).padStart(2, '0')}`;
+
+  const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || selectedCampaign;
+
+  // Tokens with spawn info for chapter/no-spawn filtering
+  const {
+    data: tokenSpawnData
+  } = useQuery({
+    queryKey: ["tokenSpawns", selectedCampaign, dataSourceFilter],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tokens")
+        .select("token, parent_token, level, eoa_id, is_simulated, deleted_at, utm_campaign")
+        .eq("utm_campaign", selectedCampaign)
+        .is("deleted_at", null);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedCampaign
   });
 
-  // Get campaign title for EventsV2
-  const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || "N/A";
-  const clearRealData = async () => {
-    try {
-      console.log("Starting REAL data cleanup...");
+  // Compute chapters (unique L0 tokens with spawns)
+  const chapters = tokenSpawnData ? (() => {
+    const l0Tokens = tokenSpawnData.filter((t: any) => t.level === 0);
+    const parentSet = new Set(tokenSpawnData.filter((t: any) => t.level > 0).map((t: any) => t.parent_token));
+    return l0Tokens.filter((t: any) => parentSet.has(t.token)).map((t: any) => ({
+      token: t.token,
+      eoaId: t.eoa_id,
+    }));
+  })() : [];
 
-      // Count before deletion
-      const {
-        count: eventsBefore,
-        error: eventsCountError
-      } = await supabase.from("url_events").select("*", {
-        count: "exact",
-        head: true
-      }).eq("is_simulated", false);
-      if (eventsCountError) {
-        console.error("Error counting events:", eventsCountError);
-        throw eventsCountError;
-      }
-      const {
-        count: tokensBefore,
-        error: tokensCountError
-      } = await supabase.from("tokens").select("*", {
-        count: "exact",
-        head: true
-      }).eq("is_simulated", false);
-      if (tokensCountError) {
-        console.error("Error counting tokens:", tokensCountError);
-        throw tokensCountError;
-      }
-      console.log(`Found ${eventsBefore} real events and ${tokensBefore} real tokens to delete`);
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Campaign Dashboard</h1>
+          <p className="text-muted-foreground">Real-time viral tracking and analytics</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {campaignsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+            <Select value={selectedCampaign} onValueChange={(val) => {
+              const campaign = campaigns?.find(c => c.code === val);
+              if (campaign) {
+                const params = new URLSearchParams(searchParams);
+                params.set("campaign", campaign.code);
+                params.set("campaignId", campaign.id);
+                setSearchParams(params);
+              }
+            }}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Select campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                {campaigns?.map(c => (
+                  <SelectItem key={c.id} value={c.code}>{c.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
 
-      // Delete real URL events FIRST (before tokens, to avoid FK constraint issues)
-      console.log("Attempting to delete real events...");
-      const {
-        error: eventsError,
-        count: eventsDeleted
-      } = await supabase.from("url_events").delete({
-        count: "exact"
-      }).eq("is_simulated", false);
-      if (eventsError) {
-        console.error("Failed to delete events:", eventsError);
-        toast({
-          title: "Error deleting events",
-          description: `${eventsError.message}`,
-          variant: "destructive"
-        });
-        throw eventsError;
-      }
-      console.log(`Successfully deleted ${eventsDeleted} real events`);
+      <Tabs defaultValue="eventsv2">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="eventsv2">Events</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="map">Map</TabsTrigger>
+          <TabsTrigger value="samizdat">Samizdat</TabsTrigger>
+        </TabsList>
 
-      // Delete real tokens SECOND (after events are gone)
-      console.log("Attempting to delete real tokens...");
-      const {
-        error: tokensError,
-        count: tokensDeleted
-      } = await supabase.from("tokens").delete({
-        count: "exact"
-      }).eq("is_simulated", false);
-      if (tokensError) {
-        console.error("Failed to delete tokens:", tokensError);
-        toast({
-          title: "Error deleting tokens",
-          description: `${tokensError.message}`,
-          variant: "destructive"
-        });
-        throw tokensError;
-      }
-      console.log(`Successfully deleted ${tokensDeleted} real tokens`);
+        {/* Filters bar */}
+        <div className="flex flex-wrap items-center gap-3 py-4 border-b">
+          <Select value={dataSourceFilter} onValueChange={(val) => {
+            const params = new URLSearchParams(searchParams);
+            params.set("dataSource", val);
+            setSearchParams(params);
+          }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="real">Real Only</SelectItem>
+              <SelectItem value="simulated">Simulated Only</SelectItem>
+              <SelectItem value="both">Both</SelectItem>
+            </SelectContent>
+          </Select>
 
-      // Verify deletion
-      const {
-        count: eventsAfter
-      } = await supabase.from("url_events").select("*", {
-        count: "exact",
-        head: true
-      }).eq("is_simulated", false);
-      const {
-        count: tokensAfter
-      } = await supabase.from("tokens").select("*", {
-        count: "exact",
-        head: true
-      }).eq("is_simulated", false);
-      console.log(`After deletion: ${eventsAfter} events and ${tokensAfter} tokens remaining`);
+          <Select value={eventTypeFilter} onValueChange={(val) => {
+            const params = new URLSearchParams(searchParams);
+            params.set("eventType", val);
+            setSearchParams(params);
+          }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Events</SelectItem>
+              <SelectItem value="view">Views</SelectItem>
+              <SelectItem value="scan">Scans</SelectItem>
+              <SelectItem value="share">Shares</SelectItem>
+            </SelectContent>
+          </Select>
 
-      // Force refresh all relevant queries
-      await queryClient.invalidateQueries({
-        queryKey: ["url_events"]
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["tokens"]
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["eventCounts"]
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["viralityMetrics"]
-      });
-      await queryClient.refetchQueries();
-      toast({
-        title: "Real data cleared successfully",
-        description: `Deleted ${eventsDeleted} events and ${tokensDeleted} tokens from production data.`,
-        variant: "destructive"
-      });
-
-      // Close dialogs
-      setShowFirstWarning(false);
-      setShowSecondWarning(false);
-
-      // Refresh events
-      fetchEvents();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to clear real data.",
-        variant: "destructive",
-        duration: Infinity
-      });
-    }
-  };
-  if (campaignsLoading) {
-    return <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>;
-  }
-  return <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <TrendingUp className="w-8 h-8" />
-              Campaign Configuration
-            </h1>
+          {/* Level toggles */}
+          <div className="flex items-center gap-2">
+            {[0,1,2,3].map(level => (
+              <label key={level} className="flex items-center gap-1 cursor-pointer">
+                <Checkbox
+                  checked={selectedLevels.includes(level)}
+                  onCheckedChange={(checked) => {
+                    const params = new URLSearchParams(searchParams);
+                    const newLevels = checked
+                      ? [...selectedLevels, level]
+                      : selectedLevels.filter(l => l !== level);
+                    params.set("levels", newLevels.sort().join(","));
+                    setSearchParams(params);
+                  }}
+                />
+                <span className="text-sm">L{level}</span>
+              </label>
+            ))}
           </div>
-          
+
+          {/* Date range */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {startDate ? format(startDate, "MMM d") : "Start"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar mode="single" selected={startDate} onSelect={(date) => {
+                setStartDate(date);
+                const params = new URLSearchParams(searchParams);
+                if (date) params.set("startDate", date.toISOString()); else params.delete("startDate");
+                setSearchParams(params);
+              }} />
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {endDate ? format(endDate, "MMM d") : "End"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar mode="single" selected={endDate} onSelect={(date) => {
+                setEndDate(date);
+                const params = new URLSearchParams(searchParams);
+                if (date) params.set("endDate", date.toISOString()); else params.delete("endDate");
+                setSearchParams(params);
+              }} />
+            </PopoverContent>
+          </Popover>
+
+          {(startDate || endDate) && (
+            <Button variant="ghost" size="sm" onClick={() => {
+              setStartDate(undefined);
+              setEndDate(undefined);
+              const params = new URLSearchParams(searchParams);
+              params.delete("startDate");
+              params.delete("endDate");
+              setSearchParams(params);
+            }}>Clear Dates</Button>
+          )}
+
+          <label className="flex items-center gap-1 cursor-pointer text-sm">
+            <Checkbox checked={showNoSpawns} onCheckedChange={(checked) => {
+              const params = new URLSearchParams(searchParams);
+              if (checked) params.set("showNoSpawns", "true"); else params.delete("showNoSpawns");
+              setSearchParams(params);
+            }} />
+            Show No Spawns
+          </label>
         </div>
 
-        {/* Tabbed Content */}
-        <Tabs defaultValue="filters" className="w-full">
-          <TabsList className="grid w-full max-w-4xl grid-cols-6">
-            <TabsTrigger value="filters">Filters</TabsTrigger>
-            <TabsTrigger value="eventsv2">EventsV2</TabsTrigger>
-            <TabsTrigger value="map">Map</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="simulator">Simulator</TabsTrigger>
-            <TabsTrigger value="samizdat">Samizdat</TabsTrigger>
-          </TabsList>
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="mt-6 animate-fade-in">
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MetricCard title="Viral Coefficient (K)" value={viralCoefficient ? viralCoefficient.toFixed(2) : "—"} description="Avg shares per seed" />
+              <MetricCard title="Avg Cycle Time" value={avgCycleTime ? `${avgCycleTime.toFixed(1)}h` : "—"} description="Hours from view to share" />
+              <MetricCard title="Geographic Spread" value={geoData ? `${geoData.uniqueStates} states` : "—"} description="Unique US states reached" />
+            </div>
+            <ViralCoefficientChart campaignCode={selectedCampaign} dataSource={dataSourceFilter} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ConversionFunnelChart data={funnelData || []} />
+              <AmplificationChart data={amplificationData || []} />
+            </div>
+            <EngagementByLevelChart data={engagementData || []} />
+            <ContentPerformanceTable data={contentData || []} />
+          </div>
+        </TabsContent>
 
-          {/* Filters Tab - Single Source of Truth */}
-          <TabsContent value="filters" className="space-y-6 mt-6">
-            {/* Campaign Selection Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Campaign Selection</CardTitle>
-                <CardDescription>
-                  Select the active campaign to view data across all tabs
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Select Campaign</label>
-                  <Select 
-                    value={selectedCampaignId || ""} 
-                    onValueChange={(campaignId) => {
-                      const campaign = campaigns?.find(c => c.id === campaignId);
-                      if (campaign) {
-                        const params = new URLSearchParams(searchParams);
-                        params.set("campaign", campaign.code);
-                        params.set("campaignId", campaign.id);
-                        setSearchParams(params);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a campaign..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campaigns?.map(campaign => (
-                        <SelectItem key={campaign.id} value={campaign.id}>
-                          {campaign.code} - {campaign.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {selectedCampaign && (
-                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                    <span className="text-sm font-medium">Active Campaign:</span>
-                    <span className="text-sm">{selectedCampaign} - {campaignTitle}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Configure Filters Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Configure Filters</CardTitle>
-                <CardDescription>
-                  These filters will apply across all tabs (Events, Map, Analytics)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Event Type</label>
-                  <Select value={eventTypeFilter} onValueChange={value => {
-                  const params = new URLSearchParams(searchParams);
-                  params.set("eventType", value);
-                  setSearchParams(params);
-                }}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Events</SelectItem>
-                      <SelectItem value="scan">Scans Only</SelectItem>
-                      <SelectItem value="view">Views Only</SelectItem>
-                      <SelectItem value="share">Shares Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Data Source</label>
-                  <Select value={dataSourceFilter} onValueChange={value => {
-                  const params = new URLSearchParams(searchParams);
-                  params.set("dataSource", value);
-                  setSearchParams(params);
-                }}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="real">Real Data Only</SelectItem>
-                      <SelectItem value="simulated">Simulated Data Only</SelectItem>
-                      <SelectItem value="both">Both Combined</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {chapterOptions.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Campaign Chapter</label>
-                  <Select 
-                    value={chapterFilter} 
-                    onValueChange={(value) => {
-                      const params = new URLSearchParams(searchParams);
-                      if (value === "all") {
-                        params.delete("chapter");
-                      } else {
-                        params.set("chapter", value);
-                      }
-                      setSearchParams(params);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Chapters</SelectItem>
-                      {chapterOptions.map((ch) => (
-                        <SelectItem key={ch.mobilize_code} value={ch.mobilize_code}>
-                          {ch.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="hide-legacy" 
-                    checked={hideLegacy} 
-                    onCheckedChange={(checked) => {
-                      const params = new URLSearchParams(searchParams);
-                      if (checked) {
-                        params.set("hideLegacy", "true");
-                      } else {
-                        params.delete("hideLegacy");
-                      }
-                      setSearchParams(params);
-                    }} 
-                  />
-                  <Label htmlFor="hide-legacy" className="text-sm font-medium leading-none cursor-pointer">
-                    Hide Legacy Events
-                  </Label>
-                  <span className="text-xs text-muted-foreground">(pre-instance era data)</span>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="show-no-spawns" 
-                    checked={showNoSpawns} 
-                    onCheckedChange={(checked) => {
-                      const params = new URLSearchParams(searchParams);
-                      if (checked) {
-                        params.set("showNoSpawns", "true");
-                      } else {
-                        params.delete("showNoSpawns");
-                      }
-                      setSearchParams(params);
-                    }} 
-                  />
-                  <Label htmlFor="show-no-spawns" className="text-sm font-medium leading-none cursor-pointer">
-                    Show L00 with No Spawns
-                  </Label>
-                  <span className="text-xs text-muted-foreground">(L00 events that didn't generate shares)</span>
-                </div>
-
-                {/* L00 Instance Filter Dropdown */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Filter by Viral Chain</label>
-                  <Select 
-                    value={selectedL00Instance || "all"} 
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        // Clear the chain filter
-                        setChainFilter(null, null);
-                        setSelectedL00Instance(null);
-                      } else {
-                        // Set the chain filter - extract a token from this instance for the URL
-                        const instance = l00Instances?.find(i => i.l00_instance === value);
-                        if (instance) {
-                          // Use the l00_instance as the chainToken (it will resolve correctly)
-                          setChainFilter(value, value);
-                          setSelectedL00Instance(value);
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="All chains" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px] bg-popover z-50">
-                      <SelectItem value="all">All chains</SelectItem>
-                      {l00Instances?.map((instance) => {
-                        const instanceCode = instance.l00_instance.split(':')[1] || instance.l00_instance.slice(-6);
-                        const location = [instance.city, instance.state].filter(Boolean).join(', ');
-                        const date = new Date(instance.latestActivity);
-                        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-                        return (
-                          <SelectItem key={instance.l00_instance} value={instance.l00_instance}>
-                            <span className="font-mono text-xs">{instanceCode}</span>
-                            <span className="text-primary font-medium ml-2">({instance.spawnCount})</span>
-                            {location && <span className="text-muted-foreground ml-2">• {location}</span>}
-                            <span className="text-muted-foreground ml-2">• {dateStr}</span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  {selectedL00Instance && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-1 text-xs"
-                      onClick={() => {
-                        setChainFilter(null, null);
-                        setSelectedL00Instance(null);
-                      }}
-                    >
-                      Clear chain filter
-                    </Button>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Viral Levels (for Map)</label>
-                  <div className="flex gap-4 flex-wrap">
-                    {[0, 1, 2, 3].map(level => {
-                    const currentLevels = levelFilter.split(',').map(Number);
-                    const isChecked = currentLevels.includes(level);
-                    return <div key={level} className="flex items-center space-x-2">
-                          <Checkbox id={`level-${level}`} checked={isChecked} onCheckedChange={checked => {
-                        const params = new URLSearchParams(searchParams);
-                        let newLevels = currentLevels.filter(l => l !== level);
-                        if (checked) {
-                          newLevels.push(level);
-                          newLevels.sort();
-                        }
-                        params.set("levels", newLevels.join(','));
-                        setSearchParams(params);
-                      }} />
-                          <Label htmlFor={`level-${level}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                            L{level.toString().padStart(2, '0')}
-                          </Label>
-                        </div>;
-                  })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Start Date</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !startDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {startDate ? format(startDate, "PPP") : <span>Pick start date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={(date) => {
-                            setStartDate(date);
-                            const params = new URLSearchParams(searchParams);
-                            if (date) {
-                              params.set("startDate", date.toISOString());
-                            } else {
-                              params.delete("startDate");
-                            }
-                            setSearchParams(params);
-                          }}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">End Date</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !endDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? format(endDate, "PPP") : <span>Pick end date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={(date) => {
-                            setEndDate(date);
-                            const params = new URLSearchParams(searchParams);
-                            if (date) {
-                              params.set("endDate", date.toISOString());
-                            } else {
-                              params.delete("endDate");
-                            }
-                            setSearchParams(params);
-                          }}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {(startDate || endDate) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(undefined);
-                      setEndDate(undefined);
-                      const params = new URLSearchParams(searchParams);
-                      params.delete("startDate");
-                      params.delete("endDate");
-                      setSearchParams(params);
-                    }}
-                  >
-                    Clear Date Filters
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Server-Side Rendering Settings */}
-            {selectedCampaignId && selectedCampaign && (
-              <CampaignSnapshotSettings 
-                campaignId={selectedCampaignId}
-                campaignCode={selectedCampaign}
-              />
-            )}
-
-            {/* Filter Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Selection</CardTitle>
-              </CardHeader>
-              
-            </Card>
-          </TabsContent>
+        {/* Map Tab */}
+        <TabsContent value="map" className="mt-6 animate-fade-in">
+          <ActivityMap campaignCode={selectedCampaign} dataSource={dataSourceFilter} />
+        </TabsContent>
 
 
           {/* EventsV2 Tab */}
@@ -1608,10 +960,6 @@ export default function CampaignDashboard({
                         <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!sortedEventsV2 || sortedEventsV2.length === 0}>
                           <Download className="h-4 w-4 mr-2" />
                           Export CSV
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={isExportingPdf || !selectedCampaign}>
-                          <FileText className={`h-4 w-4 mr-2 ${isExportingPdf ? 'animate-pulse' : ''}`} />
-                          {isExportingPdf ? 'Generating...' : 'PDF Recap'}
                         </Button>
                         {selectedCampaign && selectedCampaignId && (
                           <CampaignNarrativeButton
