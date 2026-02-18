@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
+import { LayoutDashboard } from "lucide-react"
 import {
-  LayoutDashboard,
   Presentation,
   FolderOpen,
   Megaphone,
@@ -13,7 +13,6 @@ import {
   MapPin,
   QrCode,
   FlaskConical,
-  Cog,
   Globe,
   Map,
   TestTube,
@@ -37,7 +36,8 @@ const navigation = [
   {
     title: "Overview",
     items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "Campaign Orchestration", url: "/campaign-config", icon: Megaphone },
+      { title: "Event Manager", url: "/campaign-config", icon: Calendar, infoOnly: true },
     ],
   },
   {
@@ -45,13 +45,6 @@ const navigation = [
     items: [
       { title: "Deck Management", url: "/deck-management", icon: FolderOpen },
       { title: "Interactive Slide Editor", url: "/interactive-templates", icon: Presentation },
-    ],
-  },
-  {
-    title: "Campaigns",
-    items: [
-      { title: "Campaign Orchestration", url: "/campaign-config", icon: Megaphone },
-      { title: "Event Manager", url: "/campaign-config", icon: Calendar, infoOnly: true },
     ],
   },
   {
