@@ -786,7 +786,7 @@ export default function CampaignDashboard({
 
       <Tabs defaultValue="settings">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="settings">Scheduler</TabsTrigger>
           <TabsTrigger value="samizdat">Real-time Map</TabsTrigger>
           <TabsTrigger value="eventsv2">Events</TabsTrigger>
         </TabsList>
