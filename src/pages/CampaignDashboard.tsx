@@ -1115,6 +1115,14 @@ export default function CampaignDashboard({
                 <p className="text-muted-foreground">{campaignTitle ? `Campaign: ${campaignTitle}` : "Select a campaign"}</p>
               </div>
 
+              {/* EoA selector - auto-selects all EoAs and passes them to the map */}
+              {selectedCampaignId && (
+                <SamizdatEoaSelector
+                  campaignId={selectedCampaignId}
+                  onEoaChange={setSelectedEoaIds}
+                />
+              )}
+
               {/* Map - filters by selected EoAs */}
               <SamizdatMap 
                 eoaIds={selectedEoaIds}
