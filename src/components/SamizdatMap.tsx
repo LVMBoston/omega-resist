@@ -1407,28 +1407,6 @@ const SamizdatMap = ({
               )}
             </Button>
             
-            {viewMode === "all" && (
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="clustering"
-                  checked={enableClustering}
-                  onCheckedChange={setEnableClustering}
-                />
-                <Label htmlFor="clustering" className="text-sm cursor-pointer">
-                  Clustering
-                </Label>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Switch
-                id="zip-counts"
-                checked={showZipCounts}
-                onCheckedChange={setShowZipCounts}
-              />
-              <Label htmlFor="zip-counts" className="text-sm cursor-pointer">
-                Show ZIP counts
-              </Label>
-            </div>
           </div>
 
           {loading && (
