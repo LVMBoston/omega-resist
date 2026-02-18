@@ -170,7 +170,7 @@ export function generateCampaignNarrative(data: NarrativeData): string {
 
   // Opening
   lines.push(`__TITLE__${campaignTitle}__TITLE__`);
-  lines.push(`Campaign Story · ${daysActive} days active`);
+  lines.push(`Campaign active for ${daysActive} days`);
   lines.push("");
 
   // Seeds & sprouts

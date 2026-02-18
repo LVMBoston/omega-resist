@@ -33,7 +33,16 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(narrative);
+    const plain = narrative
+      .split("\n")
+      .map((line) => {
+        if (line.startsWith("__TITLE__") && line.endsWith("__TITLE__")) {
+          return line.replace(/__TITLE__/g, "");
+        }
+        return line;
+      })
+      .join("\n");
+    await navigator.clipboard.writeText(plain);
     toast({ title: "Copied!", description: "Narrative copied to clipboard." });
   };
 
