@@ -1192,18 +1192,6 @@ export default function CampaignDashboard({
                 <p className="text-muted-foreground">{campaignTitle ? `Campaign: ${campaignTitle}` : "Select a campaign"}</p>
               </div>
 
-              {/* EoA Selector in Accordion */}
-              <Accordion type="single" collapsible defaultValue="eoa-selector">
-                <AccordionItem value="eoa-selector" className="rounded-lg border border-border bg-card px-4">
-                  <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
-                    Event or Action (EoA)
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <SamizdatEoaSelector campaignId={selectedCampaignId} onEoaChange={setSelectedEoaIds} />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
               {/* Map - filters by selected EoAs */}
               <SamizdatMap 
                 eoaIds={selectedEoaIds}
