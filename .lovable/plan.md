@@ -1,58 +1,50 @@
 
-## Two Fixes: Title Sentinel Stripping + Days Active Reformatting
+## Restore the Update Scheduler (Settings Tab) — Filters Stay Persistent
 
-### Problem 1 — `__TITLE__` markers appear raw in Copy output
-The `handleCopy` function in `CampaignNarrativeDialog.tsx` writes `narrative` verbatim to the clipboard. Since the narrative string contains `__TITLE__ICE OUT FOR GOOD__TITLE__`, that raw text gets pasted. The fix mirrors what the download handler already does: strip the sentinels before writing to clipboard.
-
-### Problem 2 — "days active" line wording
-Line 173 in `campaignNarrative.ts` reads:
-```
-Campaign Story · 32 days active
-```
-The user wants it reformatted to:
-```
-Campaign active for 32 days
-```
+### Confirmed: Filters Are Already Persistent
+The filters bar in `CampaignDashboard.tsx` (lines 781–900) sits inside `<Tabs>` but **outside** any `<TabsContent>` block. This is intentional — it renders on every tab regardless of which is active. This behavior will not be changed.
 
 ---
 
-### Changes Required
+### What This Plan Does
+Adds a 5th **"Settings"** tab to the Campaign Dashboard that hosts `CampaignSnapshotSettings` — the update scheduler / server-side rendering panel that was orphaned when the Filter tab was removed.
 
-**File 1: `src/components/CampaignNarrativeDialog.tsx`**
+---
 
-Update `handleCopy` to strip `__TITLE__` sentinels (replacing them with just the plain title text) before writing to clipboard:
+### Single File Change: `src/pages/CampaignDashboard.tsx`
 
-```typescript
-const handleCopy = async () => {
-  const plain = narrative
-    .split("\n")
-    .map((line) => {
-      if (line.startsWith("__TITLE__") && line.endsWith("__TITLE__")) {
-        return line.replace(/__TITLE__/g, "");
-      }
-      return line;
-    })
-    .join("\n");
-  await navigator.clipboard.writeText(plain);
-  toast({ title: "Copied!", description: "Narrative copied to clipboard." });
-};
+**Change 1 — Expand TabsList from 4 to 5 columns** (line 774):
+```
+grid-cols-4  →  grid-cols-5
+```
+Add a new trigger:
+```tsx
+<TabsTrigger value="settings">Settings</TabsTrigger>
 ```
 
-**File 2: `src/lib/campaignNarrative.ts`**
-
-Change line 173 from:
-```typescript
-lines.push(`Campaign Story · ${daysActive} days active`);
-```
-to:
-```typescript
-lines.push(`Campaign active for ${daysActive} days`);
+**Change 2 — Add TabsContent for Settings** (before the closing `</Tabs>` tag, ~line 1219):
+```tsx
+<TabsContent value="settings" className="mt-6 animate-fade-in">
+  {selectedCampaignId && selectedCampaign ? (
+    <CampaignSnapshotSettings
+      campaignId={selectedCampaignId}
+      campaignCode={selectedCampaign}
+    />
+  ) : (
+    <Card>
+      <CardContent className="py-8 text-center text-muted-foreground">
+        Select a campaign to manage snapshot settings.
+      </CardContent>
+    </Card>
+  )}
+</TabsContent>
 ```
 
 ---
 
 ### Technical Notes
+- `CampaignSnapshotSettings` is already imported at line 38 — no new import needed.
+- `selectedCampaignId` and `selectedCampaign` (the campaign code) are already in scope at the render location.
+- The filters bar remains untouched and will continue to appear on all 5 tabs.
 - No database or schema changes needed.
-- The `__TITLE__` sentinel system (used for bold rendering in the dialog) is preserved — only the clipboard and display text is cleaned up.
-- The download `.md` file already correctly converts `__TITLE__` to `# Heading` — no change needed there.
-- Both files are small, targeted one-line or small-block edits.
+- Only one file is edited.
