@@ -771,11 +771,12 @@ export default function CampaignDashboard({
       </div>
 
       <Tabs defaultValue="eventsv2">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="eventsv2">Events</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="map">Map</TabsTrigger>
           <TabsTrigger value="samizdat">Samizdat</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         {/* Filters bar */}
@@ -1215,6 +1216,21 @@ export default function CampaignDashboard({
                 showNoSpawns={showNoSpawns}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-6 animate-fade-in">
+            {selectedCampaignId && selectedCampaign ? (
+              <CampaignSnapshotSettings
+                campaignId={selectedCampaignId}
+                campaignCode={selectedCampaign}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Select a campaign to manage snapshot settings.
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
 
