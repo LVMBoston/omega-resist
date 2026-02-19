@@ -1174,7 +1174,7 @@ export default function InteractiveTemplates() {
       </Dialog>
 
       {/* Filter Tabs and Template Grid */}
-      <Tabs value={activeFilter} onValueChange={(val) => setActiveFilter(val as "all" | "action" | "data")} className="mt-6">
+      <Tabs value={activeFilter} onValueChange={(val) => setActiveFilter(val as "all" | "action" | "data" | "hybrid")} className="mt-6">
         <TabsList className="mb-6">
           <TabsTrigger value="all">All Templates</TabsTrigger>
           <TabsTrigger value="action" className="data-[state=active]:text-blue-600 data-[state=active]:border-b-blue-600">
@@ -1184,6 +1184,10 @@ export default function InteractiveTemplates() {
           <TabsTrigger value="data" className="data-[state=active]:text-green-600 data-[state=active]:border-b-green-600">
             <BarChart3 className="h-4 w-4 mr-1" />
             Data ({dataTemplates.length})
+          </TabsTrigger>
+          <TabsTrigger value="hybrid" className="data-[state=active]:text-purple-600 data-[state=active]:border-b-purple-600">
+            <Layers className="h-4 w-4 mr-1" />
+            Hybrid ({hybridTemplates.length})
           </TabsTrigger>
         </TabsList>
 
@@ -1237,6 +1241,24 @@ export default function InteractiveTemplates() {
                   </div>
                 </div>
               )}
+
+              {/* Hybrid Templates Section */}
+              {hybridTemplates.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-6 w-1 bg-purple-500 rounded-full" />
+                    <h2 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+                      HYBRID TEMPLATES
+                    </h2>
+                    <Badge variant="outline" className="ml-2 text-purple-600 border-purple-300">
+                      {hybridTemplates.length}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {hybridTemplates.map(renderTemplateCard)}
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="action">
@@ -1271,6 +1293,24 @@ export default function InteractiveTemplates() {
               ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {dataTemplates.map(renderTemplateCard)}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="hybrid">
+              {hybridTemplates.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Layers className="h-12 w-12 mx-auto mb-4 text-purple-400" />
+                    <h3 className="text-lg font-semibold mb-2">No Hybrid Templates</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Promote an action template to hybrid by clicking "Add Data Layer"
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {hybridTemplates.map(renderTemplateCard)}
                 </div>
               )}
             </TabsContent>
