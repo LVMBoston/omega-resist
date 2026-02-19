@@ -19,14 +19,16 @@ export type TemplateType =
   | 'interactive_share'   // Default: L01-L03 viral share hotspots
   | 'display_only'        // No interactivity, just display
   | 'custom_action'       // Future: custom actions (e.g., form, quiz)
-  | 'stats_page';         // Data template: live metrics overlay
+  | 'stats_page'          // Data template: live metrics overlay
+  | 'hybrid';             // Hybrid: data hotspots + action hotspots on one slide
 
 // Base config (extensible)
 export type TemplateConfig = 
   | InteractiveShareConfig
   | DisplayOnlyConfig
   | CustomActionConfig
-  | StatsPageConfig;
+  | StatsPageConfig
+  | HybridConfig;
 
 // Interactive share config (current functionality)
 export interface InteractiveShareConfig {
@@ -61,6 +63,17 @@ export interface CustomActionConfig {
 // Stats page config (data template with live metrics)
 export interface StatsPageConfig {
   type: 'stats_page';
+  dataSettings?: {
+    refreshIntervalSeconds?: number;
+    animateChanges?: boolean;
+    formatLocale?: string;
+  };
+}
+
+// Hybrid config (combined data + action on one slide)
+export interface HybridConfig {
+  type: 'hybrid';
+  sourceActionTemplateId?: string;  // ID of the Action template this was promoted from
   dataSettings?: {
     refreshIntervalSeconds?: number;
     animateChanges?: boolean;

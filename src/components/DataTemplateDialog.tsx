@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { DataTemplateEditor } from "@/components/DataTemplateEditor";
 import { Hotspot } from "@/types/viralTemplates";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Layers } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 interface DataTemplateDialogProps {
@@ -15,6 +15,8 @@ interface DataTemplateDialogProps {
     description?: string;
   }) => Promise<string | void>;
   mode: "create" | "edit";
+  isHybrid?: boolean;
+  lockedHotspots?: Hotspot[];
   initialData?: {
     id?: string;
     hotspots?: Hotspot[];
@@ -30,20 +32,19 @@ export function DataTemplateDialog({
   onOpenChange,
   onSave,
   mode,
+  isHybrid = false,
+  lockedHotspots,
   initialData,
 }: DataTemplateDialogProps) {
-  // Use a stable session key that only changes when the dialog OPENS (not when ID is assigned)
-  // This prevents remounting when the ID is assigned on first save
   const sessionKeyRef = useRef<string>("");
   const wasOpenRef = useRef(false);
   
   useEffect(() => {
-    // Only generate a new key when transitioning from closed to open
     if (open && !wasOpenRef.current) {
       sessionKeyRef.current = initialData?.id || `new-${Date.now()}`;
     }
     wasOpenRef.current = open;
-  }, [open]); // Remove initialData?.id from deps - we only care about open transitions
+  }, [open]);
 
   const handleSave = async (data: {
     hotspots: Hotspot[];
@@ -53,25 +54,32 @@ export function DataTemplateDialog({
     description?: string;
   }): Promise<string | void> => {
     const result = await onSave(data);
-    // Don't close the dialog - let the user continue editing
     return result;
   };
+
+  const Icon = isHybrid ? Layers : BarChart3;
+  const accentBg = isHybrid ? "bg-purple-50 dark:bg-purple-950/30" : "bg-green-50 dark:bg-green-950/30";
+  const iconBg = isHybrid ? "bg-purple-600" : "bg-green-600";
+  const titleColor = isHybrid ? "text-purple-900 dark:text-purple-100" : "text-green-900 dark:text-green-100";
+  const descColor = isHybrid ? "text-purple-700 dark:text-purple-300" : "text-green-700 dark:text-green-300";
+  const titleText = isHybrid
+    ? (mode === "edit" ? "Edit Hybrid Template" : "Create Hybrid Template")
+    : (mode === "edit" ? "Edit Data Template" : "Create Data Template");
+  const descText = isHybrid
+    ? "Add live metrics alongside existing share buttons"
+    : "Configure live metrics hotspots for real-time campaign data display";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[90vw] sm:max-w-[90vw] p-0 flex flex-col">
-        <SheetHeader className="px-6 py-4 border-b border-border bg-green-50 dark:bg-green-950/30">
+        <SheetHeader className={`px-6 py-4 border-b border-border ${accentBg}`}>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-green-600 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-white" />
+            <div className={`h-10 w-10 rounded-lg ${iconBg} flex items-center justify-center`}>
+              <Icon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <SheetTitle className="text-green-900 dark:text-green-100">
-                {mode === "edit" ? "Edit Data Template" : "Create Data Template"}
-              </SheetTitle>
-              <SheetDescription className="text-green-700 dark:text-green-300">
-                Configure live metrics hotspots for real-time campaign data display
-              </SheetDescription>
+              <SheetTitle className={titleColor}>{titleText}</SheetTitle>
+              <SheetDescription className={descColor}>{descText}</SheetDescription>
             </div>
           </div>
         </SheetHeader>
@@ -86,6 +94,7 @@ export function DataTemplateDialog({
               templateSlug={initialData?.slug}
               templateDescription={initialData?.description}
               templateId={initialData?.id}
+              lockedHotspots={lockedHotspots}
               onSave={handleSave}
               onCancel={() => onOpenChange(false)}
               mode={mode}

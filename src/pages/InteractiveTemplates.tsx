@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor, generateAndUploadThumbnail } from "@/components/FullResolutionHotspotEditor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -37,16 +37,10 @@ interface Template {
 
 const isValidInteractiveTemplate = (template: Template): boolean => {
   if (!template.image_url) return false;
-  
-  // Display-only templates don't need hotspots
   if (template.template_type === 'display_only') return true;
-  
-  // Stats page templates just need an image
   if (template.template_type === 'stats_page') return true;
-  
-  // Interactive templates need hotspots
+  if (template.template_type === 'hybrid') return true;
   if (!template.hotspots || template.hotspots.length === 0) return false;
-  
   const hasValidHotspots = template.hotspots.every((hotspot: any) => {
     return (
       typeof hotspot.x === 'number' &&
@@ -54,17 +48,19 @@ const isValidInteractiveTemplate = (template: Template): boolean => {
       hotspot.type
     );
   });
-  
   return hasValidHotspots;
 };
 
-// Determine if a template is Action or Data type
 const isActionTemplate = (template: Template): boolean => {
   return template.template_type === 'interactive_share' || template.template_type === 'display_only' || !template.template_type;
 };
 
 const isDataTemplate = (template: Template): boolean => {
   return template.template_type === 'stats_page';
+};
+
+const isHybridTemplate = (template: Template): boolean => {
+  return template.template_type === 'hybrid';
 };
 
 export default function InteractiveTemplates() {
@@ -78,12 +74,14 @@ export default function InteractiveTemplates() {
   const [isPowerPointImporting, setIsPowerPointImporting] = useState(false);
   const [powerPointSlides, setPowerPointSlides] = useState<Array<{index: number, imageData: string, fileName: string}>>([]);
   const [showPowerPointPicker, setShowPowerPointPicker] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"all" | "action" | "data">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "action" | "data" | "hybrid">("all");
   
   // Data template dialog state
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
   const [dataDialogMode, setDataDialogMode] = useState<"create" | "edit">("create");
   const [editingDataTemplate, setEditingDataTemplate] = useState<Template | null>(null);
+  // Hybrid upgrade state
+  const [hybridSourceTemplate, setHybridSourceTemplate] = useState<Template | null>(null);
 
   // Delete confirmation dialog state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -139,13 +137,17 @@ export default function InteractiveTemplates() {
       
       if (error) throw error;
       
-      // Sort Data templates (stats_page) to the top
+      // Sort: Hybrid first, then Data, then Action
       const sorted = (data as Template[]).sort((a, b) => {
+        const aIsHybrid = a.template_type === 'hybrid';
+        const bIsHybrid = b.template_type === 'hybrid';
         const aIsData = a.template_type === 'stats_page';
         const bIsData = b.template_type === 'stats_page';
+        if (aIsHybrid && !bIsHybrid) return -1;
+        if (!aIsHybrid && bIsHybrid) return 1;
         if (aIsData && !bIsData) return -1;
         if (!aIsData && bIsData) return 1;
-        return 0; // Preserve existing order within groups
+        return 0;
       });
       
       return sorted;
@@ -206,6 +208,7 @@ export default function InteractiveTemplates() {
   // Filter templates based on active tab
   const actionTemplates = templates?.filter(isActionTemplate) || [];
   const dataTemplates = templates?.filter(isDataTemplate) || [];
+  const hybridTemplates = templates?.filter(isHybridTemplate) || [];
 
   const createTemplate = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -448,10 +451,11 @@ export default function InteractiveTemplates() {
   };
 
   const handleEdit = (template: Template) => {
-    // Check if it's a data template - use data dialog
-    if (isDataTemplate(template)) {
+    // Check if it's a data or hybrid template - use data dialog
+    if (isDataTemplate(template) || isHybridTemplate(template)) {
       setEditingDataTemplate(template);
       setDataDialogMode("edit");
+      setHybridSourceTemplate(null);
       setIsDataDialogOpen(true);
       return;
     }
@@ -582,6 +586,15 @@ export default function InteractiveTemplates() {
     slug: string;
     description?: string;
   }): Promise<string | void> => {
+    // Determine the template type to save: hybrid if upgrading, else stats_page
+    const saveType: TemplateType = hybridSourceTemplate ? "hybrid" : 
+      (editingDataTemplate?.template_type === "hybrid" ? "hybrid" : "stats_page");
+    const saveConfig = hybridSourceTemplate 
+      ? { type: "hybrid", sourceActionTemplateId: hybridSourceTemplate.id }
+      : (editingDataTemplate?.template_type === "hybrid" 
+        ? (editingDataTemplate.config || { type: "hybrid" })
+        : { type: "stats_page" });
+
     // Check if we're editing an existing template OR if we've already created one in this session
     const existingId = editingDataTemplate?.id || createdDataTemplateIdRef.current;
     
@@ -594,31 +607,29 @@ export default function InteractiveTemplates() {
         thumbnail_url: undefined,
         hotspots: data.hotspots,
         is_default: false,
-        template_type: "stats_page" as TemplateType,
-        config: { type: "stats_page" },
+        template_type: saveType,
+        config: saveConfig,
       };
       await updateTemplate.mutateAsync({ id: existingId, data: updateData });
       return existingId;
     } else {
       // Create new template - but first check if one with the same name already exists
-      // to prevent duplicate creation from race conditions or stale state
       const { data: existingByName } = await supabase
         .from("viral_slide_configs")
         .select("id")
         .eq("name", data.name)
-        .eq("template_type", "stats_page")
+        .eq("template_type", saveType)
         .maybeSingle();
       
       if (existingByName) {
-        // Template already exists — update it instead of creating a duplicate
         const updateData = {
           name: data.name,
           description: data.description || "",
           image_url: data.imageUrl,
           hotspots: data.hotspots,
           is_default: false,
-          template_type: "stats_page" as TemplateType,
-          config: { type: "stats_page" },
+          template_type: saveType,
+          config: saveConfig,
         };
         await updateTemplate.mutateAsync({ id: existingByName.id, data: updateData });
         createdDataTemplateIdRef.current = existingByName.id;
@@ -638,23 +649,20 @@ export default function InteractiveTemplates() {
           image_url: data.imageUrl,
           hotspots: data.hotspots as unknown as Json,
           is_default: false,
-          template_type: "stats_page",
-          config: { type: "stats_page" } as Json,
+          template_type: saveType,
+          config: saveConfig as Json,
         }])
         .select("id")
         .single();
       
       if (error) throw error;
       
-      // Store the ID in ref immediately (synchronous) to prevent race conditions
       if (inserted) {
         createdDataTemplateIdRef.current = inserted.id;
       }
       
-      // Invalidate queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
       
-      // Update the editingDataTemplate state (async, but ref already captures it)
       if (inserted) {
         const templateData = {
           name: data.name,
@@ -663,8 +671,8 @@ export default function InteractiveTemplates() {
           image_url: data.imageUrl,
           hotspots: data.hotspots,
           is_default: false,
-          template_type: "stats_page" as TemplateType,
-          config: { type: "stats_page" },
+          template_type: saveType,
+          config: saveConfig,
         };
         setEditingDataTemplate({ 
           ...templateData, 
@@ -680,19 +688,27 @@ export default function InteractiveTemplates() {
   const renderTemplateCard = (template: Template) => {
     const isAction = isActionTemplate(template);
     const isData = isDataTemplate(template);
+    const isHybrid = isHybridTemplate(template);
     const templateType = template.template_type || 'interactive_share';
     
     // Color scheme based on template type
-    const badgeClasses = isAction 
-      ? "bg-blue-100 text-blue-800 border-blue-300" 
-      : "bg-green-100 text-green-800 border-green-300";
-    const borderClasses = isAction 
-      ? "border-l-4 border-l-blue-500" 
-      : "border-l-4 border-l-green-500";
-    const typeLabel = isAction 
-      ? (templateType === 'interactive_share' ? 'Interactive' : 'Display Only')
-      : 'Data';
-    const TypeIcon = isAction ? MousePointerClick : BarChart3;
+    const badgeClasses = isHybrid
+      ? "bg-purple-100 text-purple-800 border-purple-300"
+      : isAction 
+        ? "bg-blue-100 text-blue-800 border-blue-300" 
+        : "bg-green-100 text-green-800 border-green-300";
+    const borderClasses = isHybrid
+      ? "border-l-4 border-l-purple-500"
+      : isAction 
+        ? "border-l-4 border-l-blue-500" 
+        : "border-l-4 border-l-green-500";
+    const typeLabel = isHybrid
+      ? 'Hybrid'
+      : isAction 
+        ? (templateType === 'interactive_share' ? 'Interactive' : 'Display Only')
+        : 'Data';
+    const TypeIcon = isHybrid ? Layers : isAction ? MousePointerClick : BarChart3;
+    const accentColor = isHybrid ? "purple" : isAction ? "blue" : "green";
     
     return (
       <Card 
@@ -736,7 +752,7 @@ export default function InteractiveTemplates() {
                     setShowingHotspots(showingHotspots === template.id ? null : template.id);
                   }}
                   className={`absolute top-3 right-3 z-10 text-white rounded-full p-1.5 shadow-lg transition-colors ${
-                    isAction ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                    isHybrid ? 'bg-purple-600 hover:bg-purple-700' : isAction ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
                   }`}
                 >
                   <Eye className="h-4 w-4" />
@@ -779,23 +795,32 @@ export default function InteractiveTemplates() {
                 With Icons
               </Badge>
             )}
-            {showingHotspots === template.id && template.hotspots.map((hotspot: any, idx: number) => (
-              <div
-                key={idx}
-                className={`absolute border-2 pointer-events-none ${
-                  isAction ? 'border-blue-400 bg-blue-400/20' : 'border-green-400 bg-green-400/20'
-                }`}
-                style={{
-                  left: `${hotspot.x}%`,
-                  top: `${hotspot.y}%`,
-                  width: `${hotspot.width}%`,
-                  height: `${hotspot.height}%`,
-                }}
-              />
-            ))}
+            {showingHotspots === template.id && template.hotspots.map((hotspot: any, idx: number) => {
+              const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
+              const isActionHotspot = ACTION_TYPES.has(hotspot.type);
+              const hotspotColor = isActionHotspot ? 'blue' : 'green';
+              return (
+                <div
+                  key={idx}
+                  className={`absolute border-2 pointer-events-none border-${hotspotColor}-400 bg-${hotspotColor}-400/20`}
+                  style={{
+                    left: `${hotspot.x}%`,
+                    top: `${hotspot.y}%`,
+                    width: `${hotspot.width}%`,
+                    height: `${hotspot.height}%`,
+                  }}
+                />
+              );
+            })}
           </div>
           <div className="text-sm text-muted-foreground mb-3 text-center font-medium">
-            {template.hotspots.length} hotspot{template.hotspots.length !== 1 ? 's' : ''}
+            {isHybrid ? (
+              <>
+                {template.hotspots.filter((h: any) => ["sms","email","social","external_link"].includes(h.type)).length} action + {template.hotspots.filter((h: any) => !["sms","email","social","external_link"].includes(h.type)).length} data hotspots
+              </>
+            ) : (
+              <>{template.hotspots.length} hotspot{template.hotspots.length !== 1 ? 's' : ''}</>
+            )}
           </div>
           {template.description && (
             <p className="text-sm text-muted-foreground mb-4">
@@ -819,7 +844,7 @@ export default function InteractiveTemplates() {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            {isData && (
+            {(isData || isHybrid) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -827,6 +852,22 @@ export default function InteractiveTemplates() {
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 New Tab
+              </Button>
+            )}
+            {isAction && template.template_type === 'interactive_share' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setHybridSourceTemplate(template);
+                  setEditingDataTemplate(null);
+                  setDataDialogMode("create");
+                  setIsDataDialogOpen(true);
+                }}
+                className="border-purple-400 text-purple-600 hover:bg-purple-50"
+              >
+                <Layers className="h-4 w-4 mr-2" />
+                Add Data Layer
               </Button>
             )}
             <Button
@@ -1053,6 +1094,7 @@ export default function InteractiveTemplates() {
           <Button 
             onClick={() => {
               setEditingDataTemplate(null);
+              setHybridSourceTemplate(null);
               setDataDialogMode("create");
               setIsDataDialogOpen(true);
             }}
@@ -1071,10 +1113,13 @@ export default function InteractiveTemplates() {
           setIsDataDialogOpen(open);
           if (!open) {
             setEditingDataTemplate(null);
+            setHybridSourceTemplate(null);
           }
         }}
         onSave={handleDataTemplateSave}
         mode={dataDialogMode}
+        isHybrid={!!hybridSourceTemplate || editingDataTemplate?.template_type === 'hybrid'}
+        lockedHotspots={hybridSourceTemplate?.hotspots}
         initialData={editingDataTemplate ? {
           id: editingDataTemplate.id,
           hotspots: editingDataTemplate.hotspots,
@@ -1082,6 +1127,12 @@ export default function InteractiveTemplates() {
           name: editingDataTemplate.name,
           slug: editingDataTemplate.slug,
           description: editingDataTemplate.description || undefined,
+        } : hybridSourceTemplate ? {
+          hotspots: [],
+          imageUrl: hybridSourceTemplate.image_url,
+          name: `${hybridSourceTemplate.name} + Data`,
+          slug: `${hybridSourceTemplate.slug}-hybrid`,
+          description: hybridSourceTemplate.description || undefined,
         } : undefined}
       />
 
