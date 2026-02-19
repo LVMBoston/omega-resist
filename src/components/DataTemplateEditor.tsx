@@ -498,7 +498,8 @@ export function DataTemplateEditor({
       toast.success("Template saved and snapshot captured!", { duration: 3000 });
       
     } catch (error: any) {
-      toast.error(`Failed: ${error.message}`);
+      const msg = error?.message || (typeof error === 'string' ? error : 'Unknown error');
+      toast.error(`Failed: ${msg}`);
     } finally {
       // Remove capture mode class
       if (captureContainerRef.current) {
