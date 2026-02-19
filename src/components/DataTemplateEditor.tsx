@@ -159,10 +159,18 @@ export function DataTemplateEditor({
       return data || [];
     },
   });
+  // Split initial hotspots: for hybrid templates, separate action types into locked layer
+  const ACTION_TYPES = ["sms", "email", "social", "external_link"];
+  const derivedLockedHotspots = lockedHotspots.length > 0
+    ? lockedHotspots
+    : initialHotspots.filter(h => ACTION_TYPES.includes(h.type));
+  const editableInitialHotspots = lockedHotspots.length > 0
+    ? initialHotspots
+    : initialHotspots.filter(h => !ACTION_TYPES.includes(h.type));
 
   // Initialize with at least one hotspot if empty
   const [hotspots, setHotspots] = useState<Hotspot[]>(
-    initialHotspots.length > 0 ? initialHotspots : [createDefaultHotspot(0)]
+    editableInitialHotspots.length > 0 ? editableInitialHotspots : [createDefaultHotspot(0)]
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [mapBoundsMap, setMapBoundsMap] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
@@ -224,7 +232,7 @@ export function DataTemplateEditor({
     
     setIsAutoSaving(true);
     try {
-      const allHotspots = [...lockedHotspots, ...hotspotsToSave];
+      const allHotspots = [...derivedLockedHotspots, ...hotspotsToSave];
       const result = await onSave({
         hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
@@ -380,7 +388,7 @@ export function DataTemplateEditor({
     setIsSaving(true);
     try {
       // Merge data hotspots with locked action hotspots for hybrid templates
-      const allHotspots = [...lockedHotspots, ...hotspots];
+      const allHotspots = [...derivedLockedHotspots, ...hotspots];
       await onSave({
         hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
@@ -439,7 +447,7 @@ export function DataTemplateEditor({
       setHotspots(hotspotsWithBounds);
 
       // First save the template to get/confirm the ID
-      const allHotspots = [...lockedHotspots, ...hotspotsWithBounds];
+      const allHotspots = [...derivedLockedHotspots, ...hotspotsWithBounds];
       const result = await onSave({
         hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
@@ -885,6 +893,7 @@ export function DataTemplateEditor({
                 onUpdateHotspot={updateHotspot}
                 onSelectHotspot={setActiveIndex}
                 campaignCode={campaignId}
+                lockedHotspots={derivedLockedHotspots}
                 onMapBoundsChange={(id, bounds) => setMapBoundsMap(prev => ({ ...prev, [id]: bounds }))}
                 onMapControlsReady={(id, controls) => setMapControlsMap(prev => ({ ...prev, [id]: controls }))}
                 onMapZoomChange={(id, zoom) => setMapZoomMap(prev => ({ ...prev, [id]: zoom }))}
@@ -910,6 +919,7 @@ export function DataTemplateEditor({
                   onUpdateHotspot={updateHotspot}
                   onSelectHotspot={setActiveIndex}
                   campaignCode={campaignId}
+                  lockedHotspots={derivedLockedHotspots}
                   onMapBoundsChange={(id, bounds) => setMapBoundsMap(prev => ({ ...prev, [id]: bounds }))}
                   onMapControlsReady={(id, controls) => setMapControlsMap(prev => ({ ...prev, [id]: controls }))}
                   onMapZoomChange={(id, zoom) => setMapZoomMap(prev => ({ ...prev, [id]: zoom }))}

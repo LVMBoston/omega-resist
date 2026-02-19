@@ -1,9 +1,16 @@
 import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
-import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock } from "lucide-react";
+import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Share2, ExternalLink } from "lucide-react";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
+
+const LOCKED_HOTSPOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  sms: MessageSquare,
+  email: Mail,
+  social: Share2,
+  external_link: ExternalLink,
+};
 
 interface DraggableHotspotOverlayProps {
   hotspots: Hotspot[];
@@ -13,6 +20,7 @@ interface DraggableHotspotOverlayProps {
   onUpdateHotspot: (index: number, updates: Partial<Hotspot>) => void;
   onSelectHotspot: (index: number) => void;
   campaignCode?: string;
+  lockedHotspots?: Hotspot[];
   onMapBoundsChange?: (hotspotId: string, bounds: { north: number; south: number; east: number; west: number }) => void;
   onMapControlsReady?: (hotspotId: string, controls: MapControls) => void;
   onMapZoomChange?: (hotspotId: string, zoom: number) => void;
@@ -26,6 +34,7 @@ export function DraggableHotspotOverlay({
   onUpdateHotspot,
   onSelectHotspot,
   campaignCode,
+  lockedHotspots = [],
   onMapBoundsChange,
   onMapControlsReady,
   onMapZoomChange,
@@ -109,6 +118,34 @@ export function DraggableHotspotOverlay({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
     >
+      {/* Ghost overlays for locked hotspots (non-interactive) */}
+      {lockedHotspots.map((hotspot) => {
+        const IconComponent = LOCKED_HOTSPOT_ICONS[hotspot.type] || Lock;
+        return (
+          <div
+            key={`locked-${hotspot.id}`}
+            className="absolute pointer-events-none select-none opacity-40 z-[5] flex items-center justify-center"
+            style={{
+              left: `${hotspot.x}%`,
+              top: `${hotspot.y}%`,
+              width: `${hotspot.width}%`,
+              height: `${hotspot.height}%`,
+              border: "2px dashed rgba(168, 85, 247, 0.7)",
+              borderRadius: "6px",
+              backgroundColor: "rgba(168, 85, 247, 0.08)",
+            }}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <Lock className="w-4 h-4 text-purple-500" />
+              <IconComponent className="w-5 h-5 text-purple-500" />
+              <span className="text-[10px] font-medium text-purple-600 uppercase tracking-wide">
+                {hotspot.label || hotspot.type}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+
       {hotspots.map((hotspot, index) => {
         const style = hotspot.liveNumberStyle || {};
         const isActive = index === activeIndex;
