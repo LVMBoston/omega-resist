@@ -83,6 +83,7 @@ interface DataTemplateEditorProps {
   templateDescription?: string;
   templateSlug?: string;
   templateId?: string;
+  lockedHotspots?: Hotspot[];
   onSave: (data: {
     hotspots: Hotspot[];
     imageUrl: string;
@@ -101,6 +102,7 @@ export function DataTemplateEditor({
   templateDescription = "",
   templateSlug = "",
   templateId,
+  lockedHotspots = [],
   onSave,
   onCancel,
   mode,
@@ -222,8 +224,9 @@ export function DataTemplateEditor({
     
     setIsAutoSaving(true);
     try {
+      const allHotspots = [...lockedHotspots, ...hotspotsToSave];
       const result = await onSave({
-        hotspots: hotspotsToSave,
+        hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
@@ -376,8 +379,10 @@ export function DataTemplateEditor({
 
     setIsSaving(true);
     try {
+      // Merge data hotspots with locked action hotspots for hybrid templates
+      const allHotspots = [...lockedHotspots, ...hotspots];
       await onSave({
-        hotspots,
+        hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
@@ -434,8 +439,9 @@ export function DataTemplateEditor({
       setHotspots(hotspotsWithBounds);
 
       // First save the template to get/confirm the ID
+      const allHotspots = [...lockedHotspots, ...hotspotsWithBounds];
       const result = await onSave({
-        hotspots: hotspotsWithBounds,
+        hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),

@@ -289,7 +289,9 @@ Deno.serve(async (req) => {
 
     // Parse hotspots from template
     const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
-    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map");
+    // Exclude action hotspots from SVG baking — they remain as client-side interactive overlays
+    const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
+    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
     console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots`);
 
