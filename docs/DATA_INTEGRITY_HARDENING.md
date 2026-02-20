@@ -108,6 +108,14 @@ WHERE mobilize_code IS NOT NULL;
 
 This is a partial unique index — it only applies when `mobilize_code` is not null, allowing EoAs without a mobilize code to coexist freely.
 
+> **Pre-requisite (✅ completed 2026-02-20)**: The global `UNIQUE (mobilize_code, utm_id)` constraint was replaced with a campaign-scoped partial unique index:
+> ```sql
+> CREATE UNIQUE INDEX idx_unique_mobilize_utm_per_campaign
+> ON events_actions (campaign_id, mobilize_code, utm_id)
+> WHERE mobilize_code IS NOT NULL;
+> ```
+> This enables campaign cloning to preserve identical `utm_id` values across campaigns. See `docs/decisions/campaigns/2026-02-20_clone-campaign-tool_feature-doc_lovable.md`.
+
 ### Phase 4: Visual Conflict Detection
 
 **Goal**: Surface `mobilize_code` conflicts in the EoA table before they cause problems.
