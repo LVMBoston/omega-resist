@@ -44,7 +44,9 @@ Campaigns often share the same structure — identical EoAs with the same mobili
 
 ## Schema Changes
 
-None. The tool operates entirely within the existing `campaigns` and `events_actions` tables.
+The global `UNIQUE (mobilize_code, utm_id)` constraint on `events_actions` was replaced with a campaign-scoped partial unique index `idx_unique_mobilize_utm_per_campaign (campaign_id, mobilize_code, utm_id) WHERE mobilize_code IS NOT NULL`. This allows cloned EoAs to preserve their original `utm_id` values.
+
+**Known risk**: Two campaigns sharing the same `mobilize_code + utm_id` will mint identical L00 token strings. The `mint_l00` function handles this by delete-then-insert, so the second mint destroys the first. Mitigated operationally — cloned campaigns use distinct codes and are not deployed simultaneously.
 
 ## References
 
