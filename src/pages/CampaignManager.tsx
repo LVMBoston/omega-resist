@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -91,6 +91,13 @@ export default function CampaignManager() {
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [showStats, setShowStats] = useState(true);
+
+  // Clone state
+  const [cloneCampaign, setCloneCampaign] = useState<Campaign | null>(null);
+  const [cloneCode, setCloneCode] = useState("");
+  const [cloneTitle, setCloneTitle] = useState("");
+  const [cloneCodeError, setCloneCodeError] = useState("");
+  const [cloning, setCloning] = useState(false);
   
   useEffect(() => {
     fetchData();
@@ -476,6 +483,82 @@ export default function CampaignManager() {
     setCampaignToDelete(null);
     setDeleteStep(1);
   };
+
+  const handleCloneOpen = (campaign: Campaign) => {
+    setCloneCampaign(campaign);
+    setCloneCode(`${campaign.code}-clone`);
+    setCloneTitle(`${campaign.title} clone`);
+    setCloneCodeError("");
+  };
+
+  const handleCloneCodeChange = (value: string) => {
+    setCloneCode(value);
+    const validation = codeSchema.safeParse(value);
+    if (!validation.success && value) {
+      setCloneCodeError(validation.error.errors[0].message);
+    } else {
+      setCloneCodeError("");
+    }
+  };
+
+  const handleClone = async () => {
+    if (!cloneCampaign) return;
+    const validation = codeSchema.safeParse(cloneCode);
+    if (!validation.success) {
+      setCloneCodeError(validation.error.errors[0].message);
+      return;
+    }
+    setCloning(true);
+    try {
+      // 1. Insert new campaign
+      const { data: newCampaign, error: campError } = await supabase
+        .from("campaigns")
+        .insert({
+          code: cloneCode,
+          title: cloneTitle,
+          description: cloneCampaign.description,
+        })
+        .select()
+        .single();
+
+      if (campError) throw campError;
+
+      // 2. Fetch all EoAs for the original campaign
+      const { data: originalEoas, error: eoaFetchError } = await supabase
+        .from("events_actions")
+        .select("*")
+        .eq("campaign_id", cloneCampaign.id);
+
+      if (eoaFetchError) throw eoaFetchError;
+
+      // 3. Clone EoAs
+      if (originalEoas && originalEoas.length > 0) {
+        const clonedEoas = originalEoas.map(({ id, created_at, updated_at, campaign_id, ...rest }) => ({
+          ...rest,
+          campaign_id: newCampaign.id,
+        }));
+        const { error: eoaInsertError } = await supabase
+          .from("events_actions")
+          .insert(clonedEoas);
+        if (eoaInsertError) throw eoaInsertError;
+      }
+
+      toast({
+        title: "Campaign cloned",
+        description: `"${cloneTitle}" created with ${originalEoas?.length || 0} EoAs`,
+      });
+      setCloneCampaign(null);
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Clone failed",
+        description: error.message,
+      });
+    } finally {
+      setCloning(false);
+    }
+  };
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -713,6 +796,12 @@ export default function CampaignManager() {
                   handleEditCampaign(campaign);
                 }}>
                   <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  handleCloneOpen(campaign);
+                }}>
+                  <Copy className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
@@ -1064,5 +1153,46 @@ export default function CampaignManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Clone Campaign Dialog */}
+      <Dialog open={!!cloneCampaign} onOpenChange={(open) => !open && setCloneCampaign(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clone Campaign</DialogTitle>
+            <DialogDescription>
+              Create a copy of "{cloneCampaign?.title}" with all its EoAs. No tokens or analytics are copied.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Clone Title</Label>
+              <Input value={cloneTitle} onChange={e => setCloneTitle(e.target.value)} />
+            </div>
+            <div>
+              <Label>Clone Code</Label>
+              <Input 
+                value={cloneCode} 
+                onChange={e => handleCloneCodeChange(e.target.value)} 
+                className={cloneCodeError ? "border-destructive" : ""}
+              />
+              {cloneCodeError && <p className="text-sm text-destructive mt-1">{cloneCodeError}</p>}
+              <p className="text-xs text-muted-foreground mt-1">Only lowercase a-z, 0-9, "-", "_"</p>
+            </div>
+            <Button onClick={handleClone} disabled={cloning || !cloneCode || !cloneTitle} className="w-full">
+              {cloning ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cloning...
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Clone Campaign
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>;
 }
