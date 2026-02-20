@@ -545,17 +545,10 @@ export default function CampaignManager() {
 
       // 3. Clone EoAs
       if (originalEoas && originalEoas.length > 0) {
-        const clonedEoas = originalEoas.map(({ id, created_at, updated_at, campaign_id, last_synced_at, ...rest }) => {
-          // Generate a new utm_id to avoid unique constraint on (mobilize_code, utm_id)
-          const suffix = Math.random().toString(36).substring(2, 6);
-          const newUtmId = `${rest.utm_id}-${suffix}`;
-          return {
-            ...rest,
-            utm_id: newUtmId,
-            utm_content: rest.mobilize_code ? `${rest.mobilize_code}-${newUtmId}` : rest.utm_content,
-            campaign_id: newCampaign.id,
-          };
-        });
+        const clonedEoas = originalEoas.map(({ id, created_at, updated_at, campaign_id, last_synced_at, ...rest }) => ({
+          ...rest,
+          campaign_id: newCampaign.id,
+        }));
         const { error: eoaInsertError } = await supabase
           .from("events_actions")
           .insert(clonedEoas);
