@@ -1,37 +1,40 @@
 
 
-# Add Documentation for Re-point QR Tool and Clone Campaign Tool
+# Fix: Scope `mobilize_code + utm_id` Uniqueness to Campaign
 
-## Overview
+## What Changes
 
-Two tool docs are missing from the `docs/` directory:
-1. The **Re-point QR Tool** (already built at `/repoint-qr`)
-2. The **Clone Campaign Tool** (about to be built)
+Drop the current global unique constraint and replace it with a campaign-scoped one:
 
-Both will be created following the project's naming convention and document structure.
+```sql
+ALTER TABLE events_actions
+  DROP CONSTRAINT events_actions_mobilize_code_utm_id_key;
 
-## Files to Create
+CREATE UNIQUE INDEX idx_unique_mobilize_utm_per_campaign
+  ON events_actions (campaign_id, mobilize_code, utm_id)
+  WHERE mobilize_code IS NOT NULL;
+```
 
-### 1. `docs/decisions/qr-generation/2026-02-20_repoint-qr-tool_feature-doc_lovable.md`
+Then revert the clone logic in `CampaignManager.tsx` to copy `utm_id` as-is (remove the suffix generation added in the last edit).
 
-Documents the Re-point QR Tool:
-- Purpose: swap the destination URL of existing short codes without changing the printed QR code
-- How it works: updates `shortened_urls.full_url` via Campaign + EoA selection with UTM overrides
-- URL construction logic (mirrors `mint_l00`)
-- Key design decisions: no new tokens minted, no EoA record modification, avoids `invalidate_tokens_on_critical_change` trigger
-- References: `src/pages/RepointQrTool.tsx`, `src/components/AppSidebar.tsx`
+## Risks
 
-### 2. `docs/decisions/campaigns/2026-02-20_clone-campaign-tool_feature-doc_lovable.md`
+1. **`invalidate_tokens_on_critical_change` trigger** -- This trigger fires on EoA updates and DELETEs tokens when `mobilize_code`, `utm_id`, or `assigned_deck_slug` changes. The constraint change does not affect this trigger; it only fires on UPDATE, not INSERT. No risk.
 
-Documents the Clone Campaign Tool:
-- Purpose: duplicate a campaign and all its EoAs with a new code and title
-- Clone defaults: code = `{old}-clone`, title = `{old} clone`
-- What gets copied: campaign row + all EoA rows (preserving utm_id, mobilize_code, assigned_deck_slug, etc.)
-- What does NOT get copied: tokens, shortened URLs, click data
-- No schema changes required
-- References: `src/pages/CampaignManager.tsx`
+2. **`mint_l00` token collision** -- The L00 token string is built as `l00-{mobilize_code}-{utm_id_first_10}`. If two campaigns share the same `mobilize_code` + `utm_id`, they would mint identical L00 token strings. However, `mint_l00` deletes any existing token with that string before inserting, so the second mint would destroy the first campaign's token. **This is the main risk.** In practice, cloned campaigns are given different codes and are not both deployed simultaneously, but it is theoretically possible.
 
-## No Other Changes
+3. **Existing data** -- Query confirms zero duplicate `(campaign_id, mobilize_code, utm_id)` rows, so the migration is safe.
 
-These are standalone documentation files -- no code modifications needed.
+4. **Partial index** -- The `WHERE mobilize_code IS NOT NULL` clause means EoAs without a mobilize code are unconstrained, which matches current behavior.
+
+## Mitigation for Risk 2
+
+No code change needed now. The `mint_l00` function already raises awareness by deleting + re-creating. The upcoming Data Integrity Hardening (Phase 1) will lock campaign codes and add pre-mint validation. For now, the clone tool produces a distinct campaign code, and operators understand not to deploy both simultaneously.
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| Migration (SQL) | Drop old constraint, create new partial unique index |
+| `src/pages/CampaignManager.tsx` | Revert utm_id suffix logic; copy EoA fields as-is |
 
