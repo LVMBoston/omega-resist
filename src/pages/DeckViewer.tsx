@@ -32,6 +32,50 @@ export default function DeckViewer() {
   
   const [slides, setSlides] = useState<SlideItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deckRedirectChecked, setDeckRedirectChecked] = useState(false);
+
+  // Check if EoA's assigned_deck_slug differs from the URL deck slug
+  // This handles legacy direct-URL QR codes that bypass the short URL system
+  useEffect(() => {
+    const checkDeckRedirect = async () => {
+      if (!slug || !viralToken) {
+        setDeckRedirectChecked(true);
+        return;
+      }
+
+      try {
+        // Look up the token's EoA to get assigned_deck_slug
+        const { data: tokenData } = await supabase
+          .from("tokens")
+          .select("eoa_id")
+          .eq("token", viralToken)
+          .maybeSingle();
+
+        if (!tokenData?.eoa_id) {
+          setDeckRedirectChecked(true);
+          return;
+        }
+
+        const { data: eoa } = await supabase
+          .from("events_actions")
+          .select("assigned_deck_slug")
+          .eq("id", tokenData.eoa_id)
+          .single();
+
+        if (eoa?.assigned_deck_slug && eoa.assigned_deck_slug !== slug) {
+          console.log(`🔄 Deck redirect: ${slug} → ${eoa.assigned_deck_slug}`);
+          const newPath = window.location.pathname.replace(`/deck/${slug}`, `/deck/${eoa.assigned_deck_slug}`);
+          navigate(`${newPath}${window.location.search}`, { replace: true });
+          return; // Don't set checked - navigation will remount
+        }
+      } catch (err) {
+        console.warn("Deck redirect check failed:", err);
+      }
+      setDeckRedirectChecked(true);
+    };
+
+    checkDeckRedirect();
+  }, [slug, viralToken, navigate]);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iOSFullscreen, setIOSFullscreen] = useState(false);
@@ -122,7 +166,7 @@ export default function DeckViewer() {
 
   useEffect(() => {
     console.log("🔄 Fetch deck useEffect running, slug:", slug);
-    if (!slug) return;
+    if (!slug || !deckRedirectChecked) return;
 
     const fetchDeck = async () => {
       setLoading(true);
@@ -211,7 +255,7 @@ export default function DeckViewer() {
     };
 
     fetchDeck();
-  }, [slug]);
+  }, [slug, deckRedirectChecked]);
 
   // Log view event when deck loads with viral token
   useEffect(() => {
