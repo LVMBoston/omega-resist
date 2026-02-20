@@ -11,6 +11,21 @@ const ShortUrlRedirect = () => {
   
   const [error, setError] = useState<string | null>(null);
 
+  // Prevent iOS Safari from caching redirects
+  useEffect(() => {
+    const meta = (name: string, content: string) => {
+      const el = document.createElement("meta");
+      el.httpEquiv = name;
+      el.content = content;
+      document.head.appendChild(el);
+      return el;
+    };
+    const m1 = meta("Cache-Control", "no-cache, no-store, must-revalidate");
+    const m2 = meta("Pragma", "no-cache");
+    const m3 = meta("Expires", "0");
+    return () => { m1.remove(); m2.remove(); m3.remove(); };
+  }, []);
+
   useEffect(() => {
     console.log("🔄 Redirect useEffect running");
     
@@ -43,10 +58,12 @@ const ShortUrlRedirect = () => {
           return;
         }
 
-        console.log("✅ Redirecting to:", data);
+        // Append cache-buster to prevent iOS Safari from serving stale redirect
+        const separator = data.includes("?") ? "&" : "?";
+        const bustUrl = `${data}${separator}_cb=${Date.now()}`;
+        console.log("✅ Redirecting to:", bustUrl);
         
-        // Redirect to the full URL
-        window.location.href = data;
+        window.location.replace(bustUrl);
       } catch (err) {
         console.error("Redirect error:", err);
         setError("Failed to redirect");
