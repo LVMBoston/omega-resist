@@ -35,6 +35,7 @@ import DataTemplateTestHarness from "./pages/DataTemplateTestHarness";
 import MapDebugTest from "./pages/MapDebugTest";
 import TemplateEditorPage from "./pages/TemplateEditorPage";
 import EdgeFunctionHealth from "./pages/EdgeFunctionHealth";
+import RepointQrTool from "./pages/RepointQrTool";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -191,6 +192,16 @@ const App = () => (
                 <LayoutWithSidebar>
                   <ProtectedRoute requiredRole="admin">
                     <EdgeFunctionHealth />
+                  </ProtectedRoute>
+                </LayoutWithSidebar>
+              } 
+            />
+            <Route 
+              path="/repoint-qr"
+              element={
+                <LayoutWithSidebar>
+                  <ProtectedRoute requiredRole="admin">
+                    <RepointQrTool />
                   </ProtectedRoute>
                 </LayoutWithSidebar>
               } 
