@@ -510,6 +510,18 @@ export default function CampaignManager() {
     }
     setCloning(true);
     try {
+      // 0. Check for duplicate code
+      const { data: existing } = await supabase
+        .from("campaigns")
+        .select("id")
+        .eq("code", cloneCode)
+        .maybeSingle();
+      if (existing) {
+        setCloneCodeError("A campaign with this code already exists");
+        setCloning(false);
+        return;
+      }
+
       // 1. Insert new campaign
       const { data: newCampaign, error: campError } = await supabase
         .from("campaigns")
