@@ -7,14 +7,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
-} from "@/components/ui/dialog";
-import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, RotateCcw } from "lucide-react";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Loader2, Search, ChevronDown, ChevronRight, Check } from "lucide-react";
 
 /* ── types ── */
 interface ShortenedUrl {
@@ -80,16 +80,21 @@ export default function RepointQrTool() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [eoas, setEoas] = useState<Eoa[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
-  // dialog state
-  const [selected, setSelected] = useState<ShortenedUrl | null>(null);
+  // wizard state
+  const [shortCodeInput, setShortCodeInput] = useState("");
+  const [selectedUrl, setSelectedUrl] = useState<ShortenedUrl | null>(null);
   const [selCampaignId, setSelCampaignId] = useState("");
   const [selEoaId, setSelEoaId] = useState("");
   const [deckOverride, setDeckOverride] = useState("");
   const [utmIdOverride, setUtmIdOverride] = useState("");
   const [resetClicks, setResetClicks] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // collapsible table
+  const [tableOpen, setTableOpen] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
 
   /* ── data loading ── */
   useEffect(() => {
@@ -108,18 +113,11 @@ export default function RepointQrTool() {
   }, []);
 
   /* ── derived ── */
-  const filtered = useMemo(() => {
-    if (!search) return urls;
-    const s = search.toLowerCase();
-    return urls.filter((u) => {
-      const p = parseFullUrl(u.full_url);
-      return (
-        u.short_code.toLowerCase().includes(s) ||
-        p.deck.toLowerCase().includes(s) ||
-        p.campaign.toLowerCase().includes(s)
-      );
-    });
-  }, [urls, search]);
+  const matchingUrls = useMemo(() => {
+    if (!shortCodeInput.trim()) return [];
+    const s = shortCodeInput.toLowerCase().replace(/^\/s\//, "").replace(/^\/r\//, "");
+    return urls.filter((u) => u.short_code.toLowerCase().includes(s)).slice(0, 8);
+  }, [urls, shortCodeInput]);
 
   const filteredEoas = useMemo(
     () => (selCampaignId ? eoas.filter((e) => e.campaign_id === selCampaignId) : []),
@@ -146,14 +144,28 @@ export default function RepointQrTool() {
     );
   }, [selectedCampaign, selectedEoa, deckOverride, utmIdOverride]);
 
-  /* ── open dialog ── */
-  function openRepoint(row: ShortenedUrl) {
-    const parsed = parseFullUrl(row.full_url);
-    setSelected(row);
-    setResetClicks(false);
-    setSaving(false);
+  const tableFiltered = useMemo(() => {
+    if (!tableSearch) return urls;
+    const s = tableSearch.toLowerCase();
+    return urls.filter((u) => {
+      const p = parseFullUrl(u.full_url);
+      return (
+        u.short_code.toLowerCase().includes(s) ||
+        p.deck.toLowerCase().includes(s) ||
+        p.campaign.toLowerCase().includes(s)
+      );
+    });
+  }, [urls, tableSearch]);
 
-    // try to pre-select campaign & eoa from current URL
+  /* ── select short code ── */
+  function selectShortCode(row: ShortenedUrl) {
+    setSelectedUrl(row);
+    setShortCodeInput(row.short_code);
+    setShowDropdown(false);
+    setResetClicks(false);
+
+    // pre-select campaign & eoa from current URL
+    const parsed = parseFullUrl(row.full_url);
     const matchCamp = campaigns.find((c) => c.code === parsed.campaign);
     if (matchCamp) {
       setSelCampaignId(matchCamp.id);
@@ -179,9 +191,9 @@ export default function RepointQrTool() {
 
   /* ── save ── */
   async function handleSave() {
-    if (!selected || !previewUrl) return;
+    if (!selectedUrl || !previewUrl) return;
     setSaving(true);
-    const oldUrl = selected.full_url;
+    const oldUrl = selectedUrl.full_url;
 
     const updates: Record<string, unknown> = { full_url: previewUrl };
     if (resetClicks) updates.clicks = 0;
@@ -189,7 +201,7 @@ export default function RepointQrTool() {
     const { error } = await supabase
       .from("shortened_urls")
       .update(updates)
-      .eq("id", selected.id);
+      .eq("id", selectedUrl.id);
 
     setSaving(false);
 
@@ -198,23 +210,43 @@ export default function RepointQrTool() {
       return;
     }
 
-    // refresh local state
     setUrls((prev) =>
       prev.map((u) =>
-        u.id === selected.id
+        u.id === selectedUrl.id
           ? { ...u, full_url: previewUrl, clicks: resetClicks ? 0 : u.clicks }
           : u,
       ),
     );
-    setSelected(null);
 
     toast({
-      title: "Short code re-pointed",
-      description: `${selected.short_code}: URL updated${resetClicks ? " (clicks reset)" : ""}`,
+      title: "Short code re-pointed ✓",
+      description: `/s/${selectedUrl.short_code} → ${selectedCampaign?.title} / ${selectedEoa?.title}`,
     });
+    console.log("[repoint]", { short_code: selectedUrl.short_code, oldUrl, newUrl: previewUrl });
 
-    console.log("[repoint]", { short_code: selected.short_code, oldUrl, newUrl: previewUrl });
+    // reset wizard
+    setSelectedUrl(null);
+    setShortCodeInput("");
+    setSelCampaignId("");
+    setSelEoaId("");
+    setDeckOverride("");
+    setUtmIdOverride("");
+    setResetClicks(false);
   }
+
+  /* ── reset wizard ── */
+  function resetWizard() {
+    setSelectedUrl(null);
+    setShortCodeInput("");
+    setSelCampaignId("");
+    setSelEoaId("");
+    setDeckOverride("");
+    setUtmIdOverride("");
+    setResetClicks(false);
+  }
+
+  /* ── current step ── */
+  const currentStep = !selectedUrl ? 1 : !selCampaignId ? 2 : !selEoaId ? 3 : 4;
 
   /* ── render ── */
   if (loading) {
@@ -232,161 +264,265 @@ export default function RepointQrTool() {
         Update the destination URL of existing short codes without minting new tokens.
       </p>
 
-      {/* search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by short code, deck, or campaign…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* ── WIZARD ── */}
+      <div className="border rounded-lg p-6 space-y-6 bg-card">
+        {/* Step indicators */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {[
+            { n: 1, label: "Short Code" },
+            { n: 2, label: "Campaign" },
+            { n: 3, label: "Event/Action" },
+            { n: 4, label: "Confirm" },
+          ].map(({ n, label }, i) => (
+            <div key={n} className="flex items-center gap-2">
+              {i > 0 && <span className="text-muted-foreground/40">→</span>}
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                  currentStep === n
+                    ? "bg-primary text-primary-foreground"
+                    : currentStep > n
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {currentStep > n ? <Check className="h-3 w-3" /> : n}
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Step 1: Short Code */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">
+            Step 1: Enter or search for the short code
+          </Label>
+          <div className="relative max-w-md">
+            <div className="flex items-center">
+              <span className="text-sm text-muted-foreground font-mono mr-1">/s/</span>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Paste or search short code…"
+                  value={shortCodeInput}
+                  onChange={(e) => {
+                    setShortCodeInput(e.target.value);
+                    setShowDropdown(true);
+                    // check for exact match
+                    const clean = e.target.value.toLowerCase().replace(/^\/s\//, "").replace(/^\/r\//, "");
+                    const exact = urls.find((u) => u.short_code.toLowerCase() === clean);
+                    if (exact) {
+                      selectShortCode(exact);
+                    } else {
+                      setSelectedUrl(null);
+                    }
+                  }}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  className="pl-9 font-mono"
+                />
+                {/* autocomplete dropdown */}
+                {showDropdown && shortCodeInput && !selectedUrl && matchingUrls.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-48 overflow-auto">
+                    {matchingUrls.map((row) => {
+                      const p = parseFullUrl(row.full_url);
+                      return (
+                        <button
+                          key={row.id}
+                          className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex justify-between items-center"
+                          onMouseDown={(e) => { e.preventDefault(); selectShortCode(row); }}
+                        >
+                          <span className="font-mono">/s/{row.short_code}</span>
+                          <span className="text-xs text-muted-foreground truncate ml-3">
+                            {p.campaign || "—"} · {p.deck || "—"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            {selectedUrl && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-muted-foreground">Current destination:</p>
+                <p className="text-xs font-mono bg-muted p-2 rounded break-all">{selectedUrl.full_url}</p>
+                <p className="text-xs text-muted-foreground">{selectedUrl.clicks} clicks</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Step 2: Campaign */}
+        {selectedUrl && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Step 2: Select the target campaign
+            </Label>
+            <div className="max-w-md">
+              <Select
+                value={selCampaignId}
+                onValueChange={(v) => {
+                  setSelCampaignId(v);
+                  setSelEoaId("");
+                  setDeckOverride("");
+                  setUtmIdOverride("");
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select campaign…" /></SelectTrigger>
+                <SelectContent>
+                  {campaigns.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.title} ({c.code})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: EoA */}
+        {selectedUrl && selCampaignId && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Step 3: Select the Event/Action
+            </Label>
+            <div className="max-w-md">
+              <Select
+                value={selEoaId}
+                onValueChange={(v) => {
+                  setSelEoaId(v);
+                  const eoa = eoas.find((e) => e.id === v);
+                  if (eoa) {
+                    setDeckOverride(eoa.assigned_deck_slug ?? "");
+                    setUtmIdOverride(eoa.utm_id);
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select Event/Action…" /></SelectTrigger>
+                <SelectContent>
+                  {filteredEoas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.title} ({e.mobilize_code ?? "no code"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Overrides + Preview + Confirm */}
+        {selectedUrl && selCampaignId && selEoaId && (
+          <div className="space-y-4 border-t pt-4">
+            <Label className="text-sm font-medium">Step 4: Review & Confirm</Label>
+
+            {/* overrides */}
+            <div className="grid grid-cols-2 gap-4 max-w-md">
+              <div className="space-y-1">
+                <Label className="text-xs">Deck slug</Label>
+                <Input value={deckOverride} onChange={(e) => setDeckOverride(e.target.value)} className="font-mono text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">UTM ID override</Label>
+                <Input value={utmIdOverride} onChange={(e) => setUtmIdOverride(e.target.value)} className="font-mono text-sm" />
+              </div>
+            </div>
+
+            {/* preview */}
+            {previewUrl && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">New destination</Label>
+                <p className="text-xs font-mono bg-muted p-2 rounded break-all">{previewUrl}</p>
+              </div>
+            )}
+
+            {/* reset clicks */}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="reset-clicks"
+                checked={resetClicks}
+                onCheckedChange={(v) => setResetClicks(v === true)}
+              />
+              <Label htmlFor="reset-clicks" className="text-sm">Reset click count to 0</Label>
+            </div>
+
+            {/* action buttons */}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={resetWizard}>Start Over</Button>
+              <Button onClick={handleSave} disabled={saving || !previewUrl}>
+                {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Confirm Re-point
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* table */}
-      <div className="border rounded-lg overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Short Code</TableHead>
-              <TableHead>Deck</TableHead>
-              <TableHead>Campaign</TableHead>
-              <TableHead>UTM ID</TableHead>
-              <TableHead className="text-right">Clicks</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No shortened URLs found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((row) => {
-                const p = parseFullUrl(row.full_url);
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-mono">/s/{row.short_code}</TableCell>
-                    <TableCell>{p.deck || "—"}</TableCell>
-                    <TableCell>{p.campaign || "—"}</TableCell>
-                    <TableCell>{p.utmId || "—"}</TableCell>
-                    <TableCell className="text-right">{row.clicks}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => openRepoint(row)}>
-                        <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                        Re-point
-                      </Button>
+      {/* ── COLLAPSIBLE REFERENCE TABLE ── */}
+      <Collapsible open={tableOpen} onOpenChange={setTableOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="text-sm text-muted-foreground gap-1">
+            {tableOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            All shortened URLs ({urls.length})
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 mt-2">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter table…"
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="border rounded-lg overflow-auto max-h-[50vh]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Short Code</TableHead>
+                  <TableHead>Deck</TableHead>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>UTM ID</TableHead>
+                  <TableHead className="text-right">Clicks</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tableFiltered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No shortened URLs found
                     </TableCell>
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* re-point dialog */}
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Re-point: <span className="font-mono">{selected?.short_code}</span></DialogTitle>
-            <DialogDescription>
-              Change the destination URL for this short code. Printed cards using <span className="font-mono">/s/{selected?.short_code}</span> will redirect to the new URL.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* current destination */}
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Current destination</Label>
-            <p className="text-xs font-mono bg-muted p-2 rounded break-all">{selected?.full_url}</p>
+                ) : (
+                  tableFiltered.map((row) => {
+                    const p = parseFullUrl(row.full_url);
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-mono">/s/{row.short_code}</TableCell>
+                        <TableCell>{p.deck || "—"}</TableCell>
+                        <TableCell>{p.campaign || "—"}</TableCell>
+                        <TableCell>{p.utmId || "—"}</TableCell>
+                        <TableCell className="text-right">{row.clicks}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => selectShortCode(row)}
+                          >
+                            Use
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
           </div>
-
-          {/* campaign selector */}
-          <div className="space-y-1">
-            <Label>Campaign</Label>
-            <Select
-              value={selCampaignId}
-              onValueChange={(v) => {
-                setSelCampaignId(v);
-                setSelEoaId("");
-              }}
-            >
-              <SelectTrigger><SelectValue placeholder="Select campaign…" /></SelectTrigger>
-              <SelectContent>
-                {campaigns.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.title} ({c.code})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* eoa selector */}
-          <div className="space-y-1">
-            <Label>Event / Action</Label>
-            <Select
-              value={selEoaId}
-              onValueChange={(v) => {
-                setSelEoaId(v);
-                const eoa = eoas.find((e) => e.id === v);
-                if (eoa) {
-                  setDeckOverride(eoa.assigned_deck_slug ?? "");
-                  setUtmIdOverride(eoa.utm_id);
-                }
-              }}
-              disabled={!selCampaignId}
-            >
-              <SelectTrigger><SelectValue placeholder={selCampaignId ? "Select EoA…" : "Select campaign first"} /></SelectTrigger>
-              <SelectContent>
-                {filteredEoas.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.title} ({e.mobilize_code ?? "no code"})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* overrides */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>Deck slug</Label>
-              <Input value={deckOverride} onChange={(e) => setDeckOverride(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>UTM ID override</Label>
-              <Input value={utmIdOverride} onChange={(e) => setUtmIdOverride(e.target.value)} />
-            </div>
-          </div>
-
-          {/* preview */}
-          {previewUrl && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">New destination preview</Label>
-              <p className="text-xs font-mono bg-muted p-2 rounded break-all">{previewUrl}</p>
-            </div>
-          )}
-
-          {/* reset clicks */}
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="reset-clicks"
-              checked={resetClicks}
-              onCheckedChange={(v) => setResetClicks(v === true)}
-            />
-            <Label htmlFor="reset-clicks" className="text-sm">Reset click count to 0</Label>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving || !previewUrl}>
-              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Confirm Re-point
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
