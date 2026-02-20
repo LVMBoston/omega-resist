@@ -268,7 +268,7 @@ export default function RepointQrTool() {
                 const p = parseFullUrl(row.full_url);
                 return (
                   <TableRow key={row.id}>
-                    <TableCell className="font-mono">{row.short_code}</TableCell>
+                    <TableCell className="font-mono">/s/{row.short_code}</TableCell>
                     <TableCell>{p.deck || "—"}</TableCell>
                     <TableCell>{p.campaign || "—"}</TableCell>
                     <TableCell>{p.utmId || "—"}</TableCell>
