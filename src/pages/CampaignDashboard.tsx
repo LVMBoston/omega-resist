@@ -112,6 +112,7 @@ export default function CampaignDashboard({
   
   // Selected L00 instance for filtering eventsV2 (computed from chainToken)
   const [selectedL00Instance, setSelectedL00Instance] = useState<string | null>(null);
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
   
   // Debug logging for chain filter
   console.log("[CampaignDashboard] Chain filter state:", {
@@ -346,6 +347,8 @@ export default function CampaignDashboard({
       queryClient.invalidateQueries({
         queryKey: ["eventCounts"]
       });
+      // Bump map refresh key so SamizdatMap re-fetches
+      setMapRefreshKey(prev => prev + 1);
     }).subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -1133,6 +1136,7 @@ export default function CampaignDashboard({
                 viewMode={chainViewMode}
                 onViewModeChange={setChainViewMode}
                 showNoSpawns={showNoSpawns}
+                refreshKey={mapRefreshKey}
               />
             </div>
           </TabsContent>

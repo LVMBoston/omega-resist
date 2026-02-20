@@ -49,6 +49,8 @@ interface SamizdatMapProps {
   onViewModeChange?: (mode: "all" | "chain") => void;
   /** When false (default), hide L00 markers that have no engaged spawns */
   showNoSpawns?: boolean;
+  /** Increment to force a data re-fetch (e.g. from realtime events) */
+  refreshKey?: number;
 }
 
 interface EventPoint {
@@ -211,6 +213,7 @@ const SamizdatMap = ({
   viewMode: externalViewMode,
   onViewModeChange,
   showNoSpawns = false,
+  refreshKey,
 }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -760,7 +763,7 @@ const SamizdatMap = ({
 
     fetchEventData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eoaIdsKey]); // Use stable string key instead of array reference
+  }, [eoaIdsKey, refreshKey]); // Use stable string key; refreshKey triggers re-fetch on realtime events
 
   // Store updateViewportStats in a ref to avoid map recreation
   const updateViewportStatsRef = useRef(updateViewportStats);
