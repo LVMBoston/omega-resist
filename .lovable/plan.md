@@ -1,23 +1,32 @@
 
-# ✅ COMPLETED: Scope `mobilize_code + utm_id` Uniqueness to Campaign
 
-**Completed**: 2026-02-20
+# Fix: Real-time Map Not Updating with New Events
 
-## What Changed
+## Problem
+The Real-time Map (SamizdatMap) fetches event data **once** when the selected EoA IDs change, but has **no realtime subscription**. New events appear in the Events tab (which uses React Query + a Supabase realtime channel) but the map never re-fetches.
 
-Dropped the global unique constraint and replaced it with a campaign-scoped partial unique index:
+## Root Cause
+- `CampaignDashboard.tsx` (line 337) subscribes to `url_events` changes but only invalidates `eventsV2` and `eventCounts` queries.
+- `SamizdatMap.tsx` fetches data in a `useEffect` keyed on `eoaIdsKey` (line 473-475) -- a plain fetch, not a React Query, so invalidation has no effect on it.
 
-```sql
-ALTER TABLE events_actions
-  DROP CONSTRAINT events_actions_mobilize_code_utm_id_key;
+## Solution
+Add a `refreshKey` prop to `SamizdatMap` that increments whenever the realtime channel fires. This triggers the existing fetch effect to re-run without adding a second realtime subscription.
 
-CREATE UNIQUE INDEX idx_unique_mobilize_utm_per_campaign
-  ON events_actions (campaign_id, mobilize_code, utm_id)
-  WHERE mobilize_code IS NOT NULL;
-```
+### Step 1: Extend the realtime handler in CampaignDashboard
+- Add a `mapRefreshKey` state counter.
+- Increment it inside the existing realtime callback (alongside the query invalidations).
+- Pass it to `<SamizdatMap refreshKey={mapRefreshKey} />`.
 
-Reverted the clone logic in `CampaignManager.tsx` to copy `utm_id` as-is (removed the suffix generation).
+### Step 2: Accept and use `refreshKey` in SamizdatMap
+- Add `refreshKey?: number` to the props interface.
+- Add `refreshKey` to the dependency array of the data-fetching `useEffect` (line 475), so the map re-fetches whenever it changes.
 
-## Known Risk
+### Files Changed
+| File | Change |
+|------|--------|
+| `src/pages/CampaignDashboard.tsx` | Add `mapRefreshKey` state; increment in realtime callback; pass as prop |
+| `src/components/SamizdatMap.tsx` | Add `refreshKey` prop; include in fetch effect dependencies |
 
-**`mint_l00` token collision**: If two campaigns share the same `mobilize_code` + `utm_id`, they mint identical L00 token strings (`l00-{mobilize_code}-{utm_id_first_10}`). The second mint destroys the first campaign's token. Mitigated by operational practice (cloned campaigns get distinct codes, not deployed simultaneously). Will be fully addressed by Data Integrity Hardening Phase 1.
+### Why Not a Separate Realtime Subscription?
+Adding a second subscription to `url_events` in SamizdatMap would create duplicate channels and unnecessary database load. A simple counter prop is lighter and keeps the single-source-of-truth pattern.
+
