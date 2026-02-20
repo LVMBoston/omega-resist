@@ -1,40 +1,71 @@
 
 
-# Complete Hybrid Template Implementation — Remaining Items
+# Re-point QR Code Tool
 
-Three items were left unfinished from the approved plan. All are straightforward additions to files already modified.
+## Overview
 
-## 1. Ghost overlay rendering for locked hotspots in `DraggableHotspotOverlay.tsx`
+Build an admin page to re-point existing short codes to new destinations, plus handle the immediate need: re-point short code `4aa7a3` (printed on cards as `/s/4aa7a3`) with updated UTM parameters.
 
-Add rendering of `lockedHotspots` passed from `DataTemplateEditor`. These appear as semi-transparent, non-interactive overlays showing where the Action template's share buttons sit. They use a grey/purple tint with a Lock icon and a label (e.g. "SMS", "Email") so the admin knows what space is reserved.
+## Current State of `4aa7a3`
 
-**Props change:** Add `lockedHotspots?: Hotspot[]` to the component's props interface.
+| Field | Current Value |
+|-------|--------------|
+| short_code | `4aa7a3` |
+| clicks | 2 |
+| full_url | `.../deck/renee-good1?utm_campaign=rs-good-1&utm_id=rsg1_qr&utm_content=Z64776-rsg1_qr&t=l00-Z64776-rsg1_qr&v_lvl=00` |
+| EoA | `c2754ef6` (mobilize_code: `Z64776`, utm_id: `rsg1_qr`) |
 
-**Rendering:** Before the editable hotspots loop, render each locked hotspot as a positioned `div` with:
-- Same percentage-based positioning as regular hotspots
-- `opacity-40`, dashed purple border, lock icon
-- `pointer-events-none` so they cannot be clicked or dragged
-- A small label badge showing the hotspot type
+## What Gets Built
 
-## 2. "Hybrid" filter tab in `InteractiveTemplates.tsx`
+### 1. New Page: `src/pages/RepointQrTool.tsx`
 
-The tabs section currently has All / Action / Data. Add a fourth tab: **Hybrid** (purple-themed). Update the filtering logic so selecting "Hybrid" shows only `template_type === 'hybrid'` templates.
+**Features:**
+- Table listing all `shortened_urls` rows with parsed fields (deck, campaign, utm_id, clicks)
+- Search/filter by short code or deck slug
+- "Re-point" button opens a dialog with:
+  - Current destination details (read-only)
+  - Campaign selector (dropdown)
+  - EoA selector (filtered by selected campaign)
+  - Deck override (auto-filled from EoA's `assigned_deck_slug`, editable)
+  - UTM ID override (auto-filled from EoA's `utm_id`, editable -- this is where you can change `rsg1_qr` to `qr`)
+  - Live preview of the new `full_url`
+  - Checkbox: "Reset click count to 0"
+- Confirm button updates `shortened_urls.full_url` (and optionally `clicks`)
+- Toast confirmation with before/after summary
 
-## 3. Split locked vs editable hotspots when editing an existing hybrid template
+**URL construction logic** (mirrors `mint_l00`):
+```text
+https://omega-resist.lovable.app/deck/{deck_slug}
+  ?utm_campaign={campaign.code}
+  &utm_id={utm_id}
+  &utm_source=L00
+  &utm_medium=qr
+  &utm_content={mobilize_code}-{utm_id}
+  &t=l00-{mobilize_code}-{utm_id}
+  &v_lvl=00
+```
 
-When `DataTemplateEditor` opens for an existing hybrid template (not a fresh promote), the `initialHotspots` from the database contain both action and data hotspots mixed together. On load, split them:
-- Action types (`sms`, `email`, `social`, `external_link`) go into the `lockedHotspots` display layer
-- Data types (`live_number`, `chart`, `map`, `manual_entry`) go into the editable hotspots state
+### 2. Route and Navigation
 
-This ensures re-editing a hybrid template preserves the locked/editable distinction without any extra database fields.
+- **`src/App.tsx`**: Add `/repoint-qr` route with `ProtectedRoute requiredRole="admin"` and sidebar layout
+- **`src/components/AppSidebar.tsx`**: Add "Re-point QR" item under Admin section with `QrCode` or a distinct icon
 
-## Files Modified
+### 3. No Database Changes Required
 
-| File | Change |
-|---|---|
-| `src/components/DraggableHotspotOverlay.tsx` | Add `lockedHotspots` prop, render ghost overlays |
-| `src/pages/InteractiveTemplates.tsx` | Add "Hybrid" filter tab |
-| `src/components/DataTemplateEditor.tsx` | Split action vs data hotspots from `initialHotspots` on load |
+- `shortened_urls` already allows admin UPDATE via RLS
+- No new tables, columns, or migrations needed
 
-No new files. No database changes. No edge function changes.
+## Technical Notes
+
+- The tool does NOT mint a new token row -- it only updates the redirect destination string. If you need tracking tokens to exist, mint them separately via the EoA manager first.
+- The `invalidate_tokens_on_critical_change` trigger will fire if you later update `utm_id` on the EoA record itself, deleting associated tokens. The re-point tool avoids this by only touching `shortened_urls`.
+- The editable UTM ID field in the dialog lets you type `qr` instead of the EoA's stored `rsg1_qr`, so the baked URL reflects the new value without modifying the EoA record.
+
+## Files
+
+| File | Action |
+|------|--------|
+| `src/pages/RepointQrTool.tsx` | Create |
+| `src/App.tsx` | Add route |
+| `src/components/AppSidebar.tsx` | Add nav item |
 
