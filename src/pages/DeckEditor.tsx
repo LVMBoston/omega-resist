@@ -352,8 +352,9 @@ export default function DeckEditor() {
 
   const validateImage = async (file: File | Blob): Promise<{ valid: boolean; error?: string; dimensions?: { width: number; height: number }; resizedFile?: Blob }> => {
     // File type validation
-    if (file.type !== 'image/png' && file.type !== 'image/jpeg' && file.type !== 'image/gif') {
-      return { valid: false, error: 'Only PNG, JPG, and GIF images are allowed' };
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return { valid: false, error: 'Only PNG, JPG, GIF, and WebP images are allowed' };
     }
 
     // Size validation (5MB)
