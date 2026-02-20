@@ -108,6 +108,11 @@ export default function CampaignEoaManager() {
   // First view times per mobilize_code (or per individual EoA if no mobilize_code)
   const [firstViewTimes, setFirstViewTimes] = useState<Record<string, string>>({});
   
+  // Double-confirm delete state
+  const [deleteTarget, setDeleteTarget] = useState<EventAction | null>(null);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  
   useEffect(() => {
     if (campaignId) {
       fetchData();
@@ -1090,10 +1095,14 @@ export default function CampaignEoaManager() {
             >
               <Edit2 className="h-4 w-4" />
             </Button>
-            <Button
+             <Button
               variant="ghost"
               size="sm"
-              onClick={() => deleteEoa(eoa.id)}
+              onClick={() => {
+                setDeleteTarget(eoa);
+                setDeleteStep(1);
+                setDeleteConfirmText("");
+              }}
               title="Delete"
             >
               <Trash2 className="h-4 w-4" />
@@ -1891,6 +1900,62 @@ export default function CampaignEoaManager() {
         open={qrDefaultsDialogOpen}
         onOpenChange={setQrDefaultsDialogOpen}
       />
+
+      {/* Double-confirm delete dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteStep(1); setDeleteConfirmText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              {deleteStep === 1 ? "Delete Event/Action?" : "Final Confirmation"}
+            </DialogTitle>
+            <DialogDescription>
+              {deleteStep === 1 ? (
+                <>
+                  Are you sure you want to delete <strong>"{deleteTarget?.title}"</strong>?
+                  This will permanently destroy all associated tokens, events, and viral lineage data. This cannot be undone.
+                </>
+              ) : (
+                <>
+                  Type <strong>DELETE</strong> below to confirm permanent deletion of <strong>"{deleteTarget?.title}"</strong> and all its tracking data.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {deleteStep === 2 && (
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder='Type "DELETE" to confirm'
+              className="font-mono"
+            />
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteStep(1); setDeleteConfirmText(""); }}>
+              Cancel
+            </Button>
+            {deleteStep === 1 ? (
+              <Button variant="destructive" onClick={() => setDeleteStep(2)}>
+                Yes, I want to delete
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                disabled={deleteConfirmText !== "DELETE"}
+                onClick={async () => {
+                  if (deleteTarget) {
+                    await deleteEoa(deleteTarget.id);
+                    setDeleteTarget(null);
+                    setDeleteStep(1);
+                    setDeleteConfirmText("");
+                  }
+                }}
+              >
+                Permanently Delete
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
