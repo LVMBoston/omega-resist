@@ -260,6 +260,24 @@ export default function CampaignEoaManager() {
       shortUrlMap.set(su.full_url, `https://omega-resist.lovable.app/s/${su.short_code}`);
     });
 
+    // Auto-shorten any tokens missing a short URL (fallback for format mismatches)
+    const missingUrls = data
+      .filter(t => !shortUrlMap.has(t.full_url))
+      .map(t => t.full_url);
+
+    if (missingUrls.length > 0) {
+      console.log(`Auto-shortening ${missingUrls.length} URLs without short codes...`);
+      try {
+        const { shortenUrlsBatch } = await import("@/lib/virality/shortener");
+        const newShorts = await shortenUrlsBatch(missingUrls);
+        newShorts.forEach((shortUrl, fullUrl) => {
+          shortUrlMap.set(fullUrl, shortUrl);
+        });
+      } catch (err) {
+        console.error("Auto-shortening fallback failed:", err);
+      }
+    }
+
     const tokenMap: Record<string, { token: string; url: string; shortUrl?: string }> = {};
     data.forEach(t => {
       tokenMap[t.eoa_id] = { 
