@@ -878,7 +878,17 @@ export default function CampaignEoaManager() {
     {
       accessorKey: "mobilize_code",
       header: "Mobilize/ Zip Code",
-      cell: ({ row }) => row.original.mobilize_code || "—",
+      cell: ({ row }) => {
+        const code = row.original.mobilize_code;
+        if (!code) return "—";
+        const isTest = code.startsWith("TEST-");
+        return (
+          <span className="flex items-center gap-1.5">
+            {code}
+            {isTest && <Badge variant="outline" className="text-[10px] px-1 py-0 border-amber-500 text-amber-600 dark:text-amber-400">TEST</Badge>}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "utm_id",
