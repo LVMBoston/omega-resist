@@ -263,9 +263,11 @@ export default function EoaForm({ campaignId, eoaId, initialData, hasMintedToken
           <p className="text-xs text-muted-foreground mt-1">
             {hasMintedToken 
               ? "Locked — changing would invalidate tracking data"
-              : formData.mobilize_code.toLowerCase().startsWith("z")
-                ? "Zip code detected — Fetch is only available for Mobilize IDs"
-                : "Enter Mobilize event ID and click \"Fetch\" to auto-populate fields"}
+              : formData.mobilize_code.toUpperCase().startsWith("TEST-")
+                ? "Test EoA detected — tokens will be auto-flagged as simulated and purged after 24h"
+                : formData.mobilize_code.toLowerCase().startsWith("z")
+                  ? "Zip code detected — Fetch is only available for Mobilize IDs"
+                  : "Enter Mobilize event ID and click \"Fetch\" to auto-populate fields. Prefix with TEST- for a test EoA."}
           </p>
         </div>
         <div>

@@ -1137,6 +1137,7 @@ export default function CampaignDashboard({
                 onViewModeChange={setChainViewMode}
                 showNoSpawns={showNoSpawns}
                 refreshKey={mapRefreshKey}
+                dataSource={dataSourceFilter}
               />
             </div>
           </TabsContent>

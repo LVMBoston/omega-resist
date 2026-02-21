@@ -51,6 +51,8 @@ interface SamizdatMapProps {
   showNoSpawns?: boolean;
   /** Increment to force a data re-fetch (e.g. from realtime events) */
   refreshKey?: number;
+  /** Filter by real, simulated, or both data sources */
+  dataSource?: "real" | "simulated" | "both";
 }
 
 interface EventPoint {
@@ -214,6 +216,7 @@ const SamizdatMap = ({
   onViewModeChange,
   showNoSpawns = false,
   refreshKey,
+  dataSource = "real",
 }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -511,11 +514,13 @@ const SamizdatMap = ({
       setEoaNames(names);
 
       // Step 2: Get tokens for selected EoAs (include chain fields + l00_instance)
-      const { data: tokens, error: tokensError } = await supabase
+      let tokensQuery = supabase
         .from("tokens")
         .select("token, eoa_id, utm_medium, utm_id, root_token, parent_token, level, l00_instance")
-        .in("eoa_id", eoaIds)
-        .eq("is_simulated", false);
+        .in("eoa_id", eoaIds);
+      if (dataSource === "real") tokensQuery = tokensQuery.eq("is_simulated", false);
+      else if (dataSource === "simulated") tokensQuery = tokensQuery.eq("is_simulated", true);
+      const { data: tokens, error: tokensError } = await tokensQuery;
 
       if (tokensError || !tokens?.length) {
         console.log("No tokens found for EoAs:", eoaIds);
@@ -559,24 +564,28 @@ const SamizdatMap = ({
       tokenLookupRef.current = tokenLookup;
 
       // Step 3: Get ALL view events - both with zip codes AND international events with lat/lon
-      const { data: eventsWithZip, error: eventsError } = await supabase
+      let eventsWithZipQuery = supabase
         .from("url_events")
         .select("id, token, zip_code, occurred_at, latitude, longitude, country, country_code, city")
         .in("token", tokenList)
         .eq("event_type", "view")
-        .eq("is_simulated", false)
         .not("zip_code", "is", null);
+      if (dataSource === "real") eventsWithZipQuery = eventsWithZipQuery.eq("is_simulated", false);
+      else if (dataSource === "simulated") eventsWithZipQuery = eventsWithZipQuery.eq("is_simulated", true);
+      const { data: eventsWithZip, error: eventsError } = await eventsWithZipQuery;
 
       // Also fetch international events (have lat/lon but no zip_code)
-      const { data: intlEvents, error: intlError } = await supabase
+      let intlQuery = supabase
         .from("url_events")
         .select("id, token, zip_code, occurred_at, latitude, longitude, country, country_code, city")
         .in("token", tokenList)
         .eq("event_type", "view")
-        .eq("is_simulated", false)
         .is("zip_code", null)
         .not("latitude", "is", null)
         .not("longitude", "is", null);
+      if (dataSource === "real") intlQuery = intlQuery.eq("is_simulated", false);
+      else if (dataSource === "simulated") intlQuery = intlQuery.eq("is_simulated", true);
+      const { data: intlEvents, error: intlError } = await intlQuery;
 
       // Combine both event sets
       const events = [...(eventsWithZip || []), ...(intlEvents || [])];
@@ -763,7 +772,7 @@ const SamizdatMap = ({
 
     fetchEventData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eoaIdsKey, refreshKey]); // Use stable string key; refreshKey triggers re-fetch on realtime events
+  }, [eoaIdsKey, refreshKey, dataSource]); // Use stable string key; refreshKey triggers re-fetch on realtime events
 
   // Store updateViewportStats in a ref to avoid map recreation
   const updateViewportStatsRef = useRef(updateViewportStats);
