@@ -854,7 +854,7 @@ export default function CampaignDashboard({
               if (!checked) params.set("showNoSpawns", "false"); else params.delete("showNoSpawns");
               setSearchParams(params);
             }} />
-            Show No Spawns
+            Show events having no spawns
           </label>
         </div>
 
