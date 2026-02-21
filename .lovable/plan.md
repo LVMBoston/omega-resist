@@ -1,48 +1,41 @@
 
+# Add ZIP Import to Deck Editor
 
-# Resilient Short URL Lookup for EoA Tokens
+## What it does
+Adds a new "Import ZIP" button to the Deck Editor sidebar (next to "Add Slide" and "Interactive"). Clicking it opens a file picker for a `.zip` file. The ZIP is extracted client-side, images are compressed (matching the existing DeckBuilder logic), and each image is added as a pending slide at the end of the current deck -- just like pasting or uploading a single image, but in bulk.
 
-## Problem
+## How it works
 
-When the EoA Manager loads existing L00 tokens, it looks up short codes by doing an **exact match** on `full_url` against the `shortened_urls` table. If the deck slug, UTM format, or instance suffix changed since the short code was created, the lookup silently fails and the QR/short URL appears missing -- even though a valid short code may exist, or could be created.
+1. **New button** in the left sidebar button row (`src/pages/DeckEditor.tsx`, around line 996)
+   - Label: "Import ZIP"
+   - Icon: `FileDown` (already imported)
+   - Hidden `<input type="file" accept=".zip">` triggered on click
 
-## Solution
+2. **New handler: `handleZipImport(file: File)`** added to `DeckEditor`
+   - Uses `JSZip` (already a project dependency) to extract `.png/.jpg/.jpeg/.gif` files
+   - Sorts extracted images alphabetically (same as DeckBuilder)
+   - For each image:
+     - Validates via existing `validateImage()`
+     - Uses resized file if returned
+     - Calls existing `handleImageUpload()` which creates temp slides, adds to `pendingUploads`, and marks `hasChanges`
+   - Shows a toast with count of slides added
+   - User then clicks "Save Changes" to persist (consistent with existing draft/save workflow)
 
-After the existing exact-match lookup, add a **fallback step**: for any token that has no matching short URL, automatically shorten it. This uses the existing `shortenUrl()` function which already handles caching and deduplication via the `shorten_url` RPC (which returns the existing short code if the URL was already shortened, or creates a new one).
+3. **No new files or dependencies** -- `JSZip` is already installed and `DeckBuilder` already imports it. We just add the import to `DeckEditor.tsx`.
 
-This avoids any re-minting and preserves all event history. It simply ensures every L00 token always has a working short URL.
+## Technical details
 
-## Technical Detail
+**File changed:** `src/pages/DeckEditor.tsx`
 
-**File**: `src/pages/CampaignEoaManager.tsx` (lines ~237-270)
+- Add `import JSZip from "jszip"` at top
+- Add `handleZipImport` async function (~25 lines) that:
+  - Calls `JSZip.loadAsync(file)`
+  - Collects image entries matching `/\.(png|jpg|jpeg|gif)$/i`
+  - Sorts by filename
+  - Sets `uploading = true` with progress toast
+  - Loops through images, calling `handleImageUpload(new File([blob], name, { type }))` for each
+  - Sets `uploading = false`
+- Add hidden `<input id="zip-upload" type="file" accept=".zip">` in the sidebar
+- Add a third button in the button row that triggers the file input
 
-After building `shortUrlMap` from the batch lookup, iterate over tokens that have no match and call `shortenUrlsBatch()` for the missing URLs:
-
-```typescript
-// After existing shortUrlMap is built (line ~261)...
-
-// Collect tokens missing a short URL
-const missingUrls = data
-  .filter(t => !shortUrlMap.has(t.full_url))
-  .map(t => t.full_url);
-
-if (missingUrls.length > 0) {
-  console.log(`Auto-shortening ${missingUrls.length} URLs without short codes...`);
-  const { shortenUrlsBatch } = await import("@/lib/virality/shortener");
-  const newShorts = await shortenUrlsBatch(missingUrls);
-  newShorts.forEach((shortUrl, fullUrl) => {
-    shortUrlMap.set(fullUrl, shortUrl);
-  });
-}
-```
-
-No other files change. The `shortenUrlsBatch` function already exists and handles batch creation plus local caching.
-
-## What stays the same
-
-- No re-minting of tokens
-- No modification of `events_actions` or `tokens` tables
-- No deletion of existing short codes
-- Existing short codes continue to work
-- The `invalidate_tokens_on_critical_change` trigger is never fired
-
+**UI layout change:** The three buttons ("Add Slide", "Interactive", "Import ZIP") will stack -- the first two stay on one row, and "Import ZIP" goes on a second row below them (full width), keeping the sidebar tidy.
