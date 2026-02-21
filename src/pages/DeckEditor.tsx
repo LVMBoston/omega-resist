@@ -19,6 +19,8 @@ import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotE
 import { DeploymentConfirmDialog } from "@/components/DeploymentConfirmDialog";
 import { mintL00 } from "@/lib/virality/mint";
 import { isAnimatedGif } from "@/lib/gifUtils";
+import JSZip from "jszip";
+import { FileDown } from "lucide-react";
 
 interface Slide {
   id: string;
@@ -468,6 +470,38 @@ export default function DeckEditor() {
     setPendingUploads([...pendingUploads, { file: fileToUpload, position: insertPosition }]);
     setHasChanges(true);
     toast.success('Slide staged for upload');
+  };
+
+  const handleZipImport = async (file: File) => {
+    setUploading(true);
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const imageEntries = Object.entries(zip.files)
+        .filter(([name]) => /\.(png|jpg|jpeg|gif|webp)$/i.test(name) && !name.startsWith('__MACOSX'))
+        .sort(([a], [b]) => a.localeCompare(b));
+
+      if (imageEntries.length === 0) {
+        toast.error('No image files found in ZIP');
+        return;
+      }
+
+      let added = 0;
+      for (const [name, entry] of imageEntries) {
+        const blob = await entry.async('blob');
+        const ext = name.split('.').pop()?.toLowerCase() || 'png';
+        const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
+        const imageFile = new File([blob], name.split('/').pop() || name, { type: mimeMap[ext] || 'image/png' });
+        await handleImageUpload(imageFile);
+        added++;
+      }
+
+      toast.success(`${added} slide${added !== 1 ? 's' : ''} imported from ZIP`);
+    } catch (error) {
+      console.error('ZIP import error:', error);
+      toast.error('Failed to import ZIP file');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = () => {
@@ -993,27 +1027,52 @@ export default function DeckEditor() {
           {/* Left Sidebar - Slide Thumbnails */}
           <Card>
             <CardContent className="p-4 space-y-4">
-              <div className="flex gap-2">
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Add Slide
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setTemplateDialogOpen(true)}
+                    disabled={uploading}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Interactive
+                  </Button>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
-                  onClick={() => document.getElementById('file-upload')?.click()}
+                  className="w-full"
+                  onClick={() => document.getElementById('zip-upload')?.click()}
                   disabled={uploading}
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Add Slide
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Import ZIP
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setTemplateDialogOpen(true)}
-                  disabled={uploading}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Interactive
-                </Button>
+                <input
+                  id="zip-upload"
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      await handleZipImport(file);
+                      e.target.value = '';
+                    }
+                  }}
+                />
               </div>
               <input
                 id="file-upload"
