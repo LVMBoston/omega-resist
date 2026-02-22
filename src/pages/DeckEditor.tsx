@@ -1071,7 +1071,7 @@ export default function DeckEditor() {
                     disabled={uploading}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Add Slide
+Add Slide(s)
                   </Button>
                   <Button
                     variant="outline"
