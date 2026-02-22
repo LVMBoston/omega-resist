@@ -473,6 +473,7 @@ export default function DeckEditor() {
   };
 
   const handleZipImport = async (file: File) => {
+    if (!slug) return;
     setUploading(true);
     try {
       const zip = await JSZip.loadAsync(file);
@@ -485,17 +486,50 @@ export default function DeckEditor() {
         return;
       }
 
-      let added = 0;
+      const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
+      const newTempSlides: Slide[] = [];
+      const newPendingUploads: { file: File | Blob; position?: number }[] = [];
+
+      // Determine starting position from current slides state
+      let nextPosition = slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1;
+
       for (const [name, entry] of imageEntries) {
         const blob = await entry.async('blob');
         const ext = name.split('.').pop()?.toLowerCase() || 'png';
-        const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
-        const imageFile = new File([blob], name.split('/').pop() || name, { type: mimeMap[ext] || 'image/png' });
-        await handleImageUpload(imageFile);
-        added++;
+        let imageFile: File | Blob = new File([blob], name.split('/').pop() || name, { type: mimeMap[ext] || 'image/png' });
+
+        const validation = await validateImage(imageFile);
+        if (!validation.valid) {
+          console.warn(`Skipping ${name}: ${validation.error}`);
+          continue;
+        }
+        const fileToUpload = validation.resizedFile || imageFile;
+        const isGif = fileToUpload.type === 'image/gif';
+
+        const tempSlide: Slide = {
+          id: `temp-${Date.now()}-${nextPosition}`,
+          position: nextPosition,
+          type: 'image',
+          content_url: URL.createObjectURL(fileToUpload),
+          is_compressed: !isGif,
+          deck_slug: slug!,
+        };
+
+        newTempSlides.push(tempSlide);
+        newPendingUploads.push({ file: fileToUpload });
+        nextPosition++;
       }
 
-      toast.success(`${added} slide${added !== 1 ? 's' : ''} imported from ZIP`);
+      if (newTempSlides.length === 0) {
+        toast.error('No valid images found in ZIP');
+        return;
+      }
+
+      // Batch-update state once so nothing gets overwritten
+      setSlides(prev => [...prev, ...newTempSlides].sort((a, b) => a.position - b.position));
+      setPendingUploads(prev => [...prev, ...newPendingUploads]);
+      setHasChanges(true);
+      toast.success(`${newTempSlides.length} slide${newTempSlides.length !== 1 ? 's' : ''} imported from ZIP`);
     } catch (error) {
       console.error('ZIP import error:', error);
       toast.error('Failed to import ZIP file');
