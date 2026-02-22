@@ -89,8 +89,12 @@ function formatTimestamp(
   try {
     const d = new Date(value);
     if (isNaN(d.getTime())) return "--";
-    const fmt = includeDate ? "MMM d, yyyy h:mm a zzz" : "h:mm a zzz";
-    return formatInTimeZone(d, timezone, fmt);
+    if (includeDate) {
+      const datePart = formatInTimeZone(d, timezone, "MMM d, yyyy");
+      const timePart = formatInTimeZone(d, timezone, "h:mm a zzz");
+      return `${datePart}\n${timePart}`;
+    }
+    return formatInTimeZone(d, timezone, "h:mm a zzz");
   } catch {
     return "--";
   }
