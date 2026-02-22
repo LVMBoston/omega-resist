@@ -1111,12 +1111,54 @@ export default function DeckEditor() {
               <input
                 id="file-upload"
                 type="file"
-                accept="image/png,image/jpeg,image/gif"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                multiple
                 className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImageUpload(file);
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length === 0) return;
                   e.target.value = '';
+
+                  if (files.length === 1) {
+                    await handleImageUpload(files[0]);
+                    return;
+                  }
+
+                  // Batch multiple files (same pattern as handleZipImport)
+                  const newTempSlides: Slide[] = [];
+                  const newPendingUploads: { file: File | Blob; position?: number }[] = [];
+                  let basePosition = slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1;
+                  let skipped = 0;
+
+                  for (const file of files) {
+                    const validation = await validateImage(file);
+                    if (!validation.valid) {
+                      console.warn(`Skipped ${file.name}: ${validation.error}`);
+                      skipped++;
+                      continue;
+                    }
+                    const fileToUpload = validation.resizedFile || file;
+                    const isGif = fileToUpload.type === 'image/gif';
+                    const tempSlide: Slide = {
+                      id: `temp-${Date.now()}-${newTempSlides.length}`,
+                      position: basePosition + newTempSlides.length,
+                      type: 'image',
+                      content_url: URL.createObjectURL(fileToUpload),
+                      is_compressed: !isGif,
+                      deck_slug: slug!,
+                    };
+                    newTempSlides.push(tempSlide);
+                    newPendingUploads.push({ file: fileToUpload });
+                  }
+
+                  if (newTempSlides.length > 0) {
+                    setSlides(prev => [...prev, ...newTempSlides].sort((a, b) => a.position - b.position));
+                    setPendingUploads(prev => [...prev, ...newPendingUploads]);
+                    setHasChanges(true);
+                    toast.success(`${newTempSlides.length} slide(s) staged for upload${skipped ? ` (${skipped} skipped)` : ''}`);
+                  } else {
+                    toast.error('No valid images found in selection');
+                  }
                 }}
               />
               <div className="text-xs text-muted-foreground text-center">
