@@ -25,3 +25,16 @@ Adds a new "Import ZIP" button to the Deck Editor sidebar (next to "Add Slide" a
 
 ## File changed
 - `src/pages/DeckEditor.tsx`
+
+## Update — 2026-02-22
+
+### Enable Multi-File Selection on "Add Slide"
+
+**Status: Approved & Implemented**
+
+Updated the "Add Slide" file picker to accept multiple files at once:
+
+1. Added `multiple` attribute and `image/webp` to the hidden `<input id="file-upload">`.
+2. When multiple files are selected, they are batched into local arrays (`newTempSlides`, `newPendingUploads`) and applied in a single state update — same pattern as `handleZipImport` — to avoid the stale-state overwrite bug.
+3. Single-file selection still delegates to `handleImageUpload()` directly for simplicity.
+4. Skipped files (invalid type/size) are logged and reported in the toast.
