@@ -585,11 +585,11 @@ export default function DeckViewer() {
             </CarouselContent>
             <CarouselPrevious 
               data-carousel-prev 
-              className="left-4 -translate-y-1/2 z-10"
+              className="left-4 -translate-y-1/2 z-10 opacity-50"
             />
             <CarouselNext 
               data-carousel-next 
-              className="right-4 -translate-y-1/2 z-10"
+              className="right-4 -translate-y-1/2 z-10 opacity-50"
             />
           </Carousel>
         )}
