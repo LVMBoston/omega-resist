@@ -225,8 +225,12 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   if (viewTimestamps.length > 0) {
     const earliest = new Date(Math.min(...viewTimestamps));
     const latest = new Date(Math.max(...viewTimestamps));
-    metrics.earliest_active = earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
-    metrics.latest_active = latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+    const earlyDate = earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const earlyTime = earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+    metrics.earliest_active = `${earlyDate}\n${earlyTime}`;
+    const lateDate = latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const lateTime = latest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+    metrics.latest_active = `${lateDate}\n${lateTime}`;
   } else {
     metrics.earliest_active = "--";
     metrics.latest_active = "--";
