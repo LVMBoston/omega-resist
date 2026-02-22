@@ -79,27 +79,26 @@ Deno.serve(async (req) => {
 
       const templateIds = [...new Set(slideItems.map((s: any) => s.template_id))];
 
-      // Step 4: Check staleness for each template
-      const { data: templates, error: templateError } = await supabase
-        .from("viral_slide_configs")
-        .select("id, snapshot_rendered_at")
-        .in("id", templateIds);
+      // Step 4: Check staleness per (template, campaign) by checking actual storage file age
+      for (const templateId of templateIds) {
+        const snapshotPath = `${templateId}/snapshot-${campaign.code}.svg`;
 
-      if (templateError || !templates) {
-        console.warn(`[refresh-all-snapshots] Failed to fetch templates for campaign ${campaign.code}`);
-        continue;
-      }
+        // Check if the snapshot file exists and its age via storage API
+        const { data: files, error: listError } = await supabase.storage
+          .from("slide-snapshots")
+          .list(templateId, { search: `snapshot-${campaign.code}.svg` });
 
-      for (const template of templates) {
-        const now = Date.now();
-        const renderedAt = template.snapshot_rendered_at
-          ? new Date(template.snapshot_rendered_at).getTime()
-          : 0;
-        const ageMinutes = (now - renderedAt) / 60000;
+        let ageMinutes = Infinity;
+        if (!listError && files && files.length > 0) {
+          const file = files.find((f: any) => f.name === `snapshot-${campaign.code}.svg`);
+          if (file?.updated_at) {
+            ageMinutes = (Date.now() - new Date(file.updated_at).getTime()) / 60000;
+          }
+        }
 
         if (ageMinutes < intervalMinutes) {
           skipped.push({
-            template_id: template.id,
+            template_id: templateId,
             campaign_code: campaign.code,
             status: "skipped",
             reason: `Fresh (${Math.round(ageMinutes)}m < ${intervalMinutes}m)`,
@@ -108,7 +107,7 @@ Deno.serve(async (req) => {
         }
 
         // Step 5: Call render-stats-snapshot
-        console.log(`[refresh-all-snapshots] Rendering template ${template.id} for campaign ${campaign.code} (age: ${Math.round(ageMinutes)}m)`);
+        console.log(`[refresh-all-snapshots] Rendering template ${templateId} for campaign ${campaign.code} (age: ${Math.round(ageMinutes)}m)`);
 
         try {
           const renderResponse = await fetch(
@@ -120,7 +119,7 @@ Deno.serve(async (req) => {
                 Authorization: `Bearer ${supabaseServiceKey}`,
               },
               body: JSON.stringify({
-                template_id: template.id,
+                template_id: templateId,
                 campaign_code: campaign.code,
               }),
             }
@@ -132,15 +131,15 @@ Deno.serve(async (req) => {
           }
 
           rendered.push({
-            template_id: template.id,
+            template_id: templateId,
             campaign_code: campaign.code,
             status: "rendered",
           });
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Unknown error";
-          console.error(`[refresh-all-snapshots] Render failed for ${template.id}/${campaign.code}: ${msg}`);
+          console.error(`[refresh-all-snapshots] Render failed for ${templateId}/${campaign.code}: ${msg}`);
           errors.push({
-            template_id: template.id,
+            template_id: templateId,
             campaign_code: campaign.code,
             status: "error",
             reason: msg,
