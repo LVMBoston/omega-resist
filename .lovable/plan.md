@@ -1,36 +1,44 @@
 
 
-# Save Architectural Decision Documents
+# Universal App Download Link -- Implementation Plan
 
-## What Will Be Created
+**Status**: Planned
+**Date**: 2026-02-25
 
-A single decision document capturing both the Unified Slide Architecture plan and the GitHub Branching Strategy, saved to:
+## Summary
 
-```
-docs/decisions/architecture/2026-02-25_unified-slide-model_feature-doc_lovable.md
-```
+Add an `app_download` hotspot type that detects the viewer's device (iOS/Android/Desktop) and redirects to the correct app store. Uses the Lucide `Smartphone` icon as a placeholder.
 
-## Document Contents
+## Changes
 
-The file will include:
+### 1. Type System -- `src/types/viralTemplates.ts`
+- Add `'app_download'` to `HotspotActionType` union
+- Add optional fields to `Hotspot`: `appStoreUrl?: string`, `playStoreUrl?: string`, `fallbackUrl?: string`
 
-1. **Header** with `Status: Planned` (not yet implemented), date, and author
-2. **Part A -- Unified Slide Architecture**
-   - Problem statement (hard-forked `image` vs `spread-word` types)
-   - Proposed image-first, auto-detect model
-   - Auto-demotion logic (removing all hotspots demotes back to `image` and cleans up the empty `viral_slide_configs` row)
-   - Deletion handling across all three code paths (DeckEditor, DeckViewer, DeckManagement)
-   - Risk assessment and files affected vs untouched
-   - Three implementation phases
-3. **Part B -- GitHub Branch Workflow**
-   - Setup steps (Labs toggle, branch creation, Lovable branch switch)
-   - Day-to-day switching workflow
-   - Merge via Pull Request
-   - Backend caveat (migrations/edge functions are branch-agnostic)
+### 2. Hotspot Editor -- `src/components/FullResolutionHotspotEditor.tsx`
+- Add `'app_download'` to `IconCategory` type and category list
+- Add icon preset using Lucide `Smartphone` icon (rendered to canvas for thumbnail compatibility)
+- When selected hotspot is `app_download`, show three URL inputs (iOS App Store, Google Play, Desktop Fallback) instead of the single URL field
 
-## Technical Details
+### 3. Runtime Overlay -- `src/components/InteractiveSlideOverlay.tsx`
+- Add `handleAppDownload(hotspot)` with user-agent detection:
+  - `/iPad|iPhone|iPod/` --> `appStoreUrl`
+  - `/android/i` --> `playStoreUrl`
+  - else --> `fallbackUrl || appStoreUrl || playStoreUrl`
+- Add `app_download` case to `getHotspotAction` and `getHotspotIcon`
 
-- Single new file creation, no code changes
-- Content is a consolidation of the discussion from this conversation thread
-- Future updates will be appended as `## Update -- YYYY-MM-DD` sections per the project's decision-log convention
+### 4. Decision Document
+- Save to `docs/decisions/architecture/2026-02-25_universal-app-download-link_feature-doc_lovable.md` with Status: Approved and Implemented
+
+## No Database Changes
+Hotspot data lives in the existing `hotspots` JSONB column -- no migration needed.
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/types/viralTemplates.ts` | New type + fields |
+| `src/components/FullResolutionHotspotEditor.tsx` | New category, preset, URL inputs |
+| `src/components/InteractiveSlideOverlay.tsx` | Device detection + redirect |
+| `docs/decisions/architecture/...` | Decision doc |
 
