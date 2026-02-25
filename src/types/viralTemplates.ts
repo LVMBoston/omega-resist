@@ -115,6 +115,10 @@ export interface Hotspot {
   height: number;   // percentage
   labelPosition?: 'top' | 'bottom';
   url?: string;     // For external_link type
+  // App download hotspot properties
+  appStoreUrl?: string;   // iOS App Store link
+  playStoreUrl?: string;  // Google Play Store link
+  fallbackUrl?: string;   // Desktop/other fallback link
   // Live number hotspot properties
   metricKey?: LiveMetricKey;
   manualLabel?: string;  // For manual_entry metric type
@@ -173,4 +177,5 @@ export type HotspotActionType =
   | 'custom'           // Future: custom action
   | 'live_number'      // Live metrics overlay
   | 'chart'            // Chart visualization
-  | 'map';             // Map visualization
+  | 'map'              // Map visualization
+  | 'app_download';    // Universal app store redirect
