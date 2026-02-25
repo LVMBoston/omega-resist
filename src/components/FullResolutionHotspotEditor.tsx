@@ -5,7 +5,7 @@ import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, X, AlertTriangle } from "lucide-react";
+import { Trash2, X, AlertTriangle, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
@@ -19,7 +19,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link";
+  type: "sms" | "email" | "social" | "external_link" | "app_download";
   icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
   imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
@@ -29,7 +29,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link";
+  type: "sms" | "email" | "social" | "external_link" | "app_download";
   label: string;
   x: number;
   y: number;
@@ -37,6 +37,9 @@ interface Hotspot {
   height: number;
   labelPosition?: "top" | "bottom";
   url?: string;
+  appStoreUrl?: string;
+  playStoreUrl?: string;
+  fallbackUrl?: string;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
@@ -61,9 +64,12 @@ const ICON_PRESETS: IconPreset[] = [
   
   // External link variants
   { id: "link-icon", label: "External Link", type: "external_link", imageUrl: playButton, width: 5, height: 4 },
+  
+  // App download variants
+  { id: "app-download", label: "App Download", type: "app_download", icon: Smartphone as any, width: 5, height: 4 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -97,21 +103,24 @@ export const FullResolutionHotspotEditor = ({
     sms: textIcon,
     email: mailIcon,
     social: "", // Will use icon component for social
-    external_link: playButton
+    external_link: playButton,
+    app_download: "", // Will use icon component
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
     sms: null,
     email: null,
     social: BsShare,
-    external_link: BsShare
+    external_link: BsShare,
+    app_download: Smartphone,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
     sms: "SMS/Text",
     email: "Email",
     social: "Social Share",
-    external_link: "External Link"
+    external_link: "External Link",
+    app_download: "App Download",
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -145,6 +154,7 @@ export const FullResolutionHotspotEditor = ({
       height: selectedIconPreset.height,
       labelPosition: "bottom",
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
+      ...(selectedIconPreset.type === "app_download" && { appStoreUrl: "", playStoreUrl: "", fallbackUrl: "" }),
     };
 
     const updatedHotspots = [...hotspots, newHotspot];
@@ -322,7 +332,7 @@ export const FullResolutionHotspotEditor = ({
               {!selectedCategory ? (
                 // Step 1: Category selection
                 <div className="grid grid-cols-8 gap-2">
-                  {(["sms", "email", "social", "external_link"] as IconCategory[]).map((category) => {
+                  {(["sms", "email", "social", "external_link", "app_download"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
                     return (
@@ -602,6 +612,44 @@ export const FullResolutionHotspotEditor = ({
                             placeholder="https://example.com"
                             type="url"
                           />
+                        </div>
+                      )}
+
+                      {selectedHotspotData.type === "app_download" && (
+                        <div className="space-y-3">
+                          <div>
+                            <Label>iOS App Store URL</Label>
+                            <Input
+                              value={(selectedHotspotData as any).appStoreUrl || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { appStoreUrl: e.target.value } as any)
+                              }
+                              placeholder="https://apps.apple.com/app/..."
+                              type="url"
+                            />
+                          </div>
+                          <div>
+                            <Label>Google Play Store URL</Label>
+                            <Input
+                              value={(selectedHotspotData as any).playStoreUrl || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { playStoreUrl: e.target.value } as any)
+                              }
+                              placeholder="https://play.google.com/store/apps/..."
+                              type="url"
+                            />
+                          </div>
+                          <div>
+                            <Label>Desktop Fallback URL (optional)</Label>
+                            <Input
+                              value={(selectedHotspotData as any).fallbackUrl || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { fallbackUrl: e.target.value } as any)
+                              }
+                              placeholder="https://yourapp.com/download"
+                              type="url"
+                            />
+                          </div>
                         </div>
                       )}
 
