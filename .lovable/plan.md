@@ -1,27 +1,36 @@
 
-# Enable Multi-File Selection on "Add Slide"
 
-## What it does
-Updates the "Add Slide" file picker to accept multiple files at once, so you can select several images in the file dialog and have them all added as new slides.
+# Save Architectural Decision Documents
 
-## Changes (single file: `src/pages/DeckEditor.tsx`)
+## What Will Be Created
 
-1. **Add `multiple` attribute** to the hidden `<input id="file-upload">` (line 1111-1121)
-2. **Add `image/webp`** to the `accept` attribute (currently missing, but supported elsewhere)
-3. **Loop over all selected files** instead of only taking `files[0]` -- use the same batched approach from the ZIP import fix (aggregate temp slides and pending uploads, then set state once) to avoid the stale-state overwrite bug
+A single decision document capturing both the Unified Slide Architecture plan and the GitHub Branching Strategy, saved to:
 
-## Technical detail
-
-```text
-Before:
-  <input type="file" accept="image/png,image/jpeg,image/gif" ...>
-  onChange -> takes files[0], calls handleImageUpload(file)
-
-After:
-  <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple ...>
-  onChange -> loops over all files, validates each, batches into
-             newTempSlides + newPendingUploads arrays,
-             then does a single setState call (same pattern as handleZipImport)
+```
+docs/decisions/architecture/2026-02-25_unified-slide-model_feature-doc_lovable.md
 ```
 
-No new dependencies or files.
+## Document Contents
+
+The file will include:
+
+1. **Header** with `Status: Planned` (not yet implemented), date, and author
+2. **Part A -- Unified Slide Architecture**
+   - Problem statement (hard-forked `image` vs `spread-word` types)
+   - Proposed image-first, auto-detect model
+   - Auto-demotion logic (removing all hotspots demotes back to `image` and cleans up the empty `viral_slide_configs` row)
+   - Deletion handling across all three code paths (DeckEditor, DeckViewer, DeckManagement)
+   - Risk assessment and files affected vs untouched
+   - Three implementation phases
+3. **Part B -- GitHub Branch Workflow**
+   - Setup steps (Labs toggle, branch creation, Lovable branch switch)
+   - Day-to-day switching workflow
+   - Merge via Pull Request
+   - Backend caveat (migrations/edge functions are branch-agnostic)
+
+## Technical Details
+
+- Single new file creation, no code changes
+- Content is a consolidation of the discussion from this conversation thread
+- Future updates will be appended as `## Update -- YYYY-MM-DD` sections per the project's decision-log convention
+
