@@ -479,7 +479,7 @@ export default function DeckEditor() {
       const zip = await JSZip.loadAsync(file);
       const imageEntries = Object.entries(zip.files)
         .filter(([name]) => /\.(png|jpg|jpeg|gif|webp)$/i.test(name) && !name.startsWith('__MACOSX'))
-        .sort(([a], [b]) => a.localeCompare(b));
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
       if (imageEntries.length === 0) {
         toast.error('No image files found in ZIP');
