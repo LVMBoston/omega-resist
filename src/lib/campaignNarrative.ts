@@ -48,9 +48,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .is("deleted_at", null)
       .neq("country", "United States")
       .not("country", "is", null),
-    // Views
+    // Views scoped to campaign via token join
     supabase.from("url_events")
-      .select("id", { count: "exact", head: true })
+      .select("id, tokens!inner(utm_campaign)", { count: "exact", head: true })
+      .eq("tokens.utm_campaign", campaignCode)
       .eq("event_type", "view")
       .eq("is_simulated", false)
       .is("deleted_at", null),
