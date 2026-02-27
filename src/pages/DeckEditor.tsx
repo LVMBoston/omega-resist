@@ -1002,10 +1002,10 @@ export default function DeckEditor() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1800px] mx-auto space-y-6">
+    <div className="h-screen bg-background p-6 flex flex-col overflow-hidden">
+      <div className="max-w-[1800px] mx-auto flex flex-col flex-1 min-h-0 w-full gap-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/deck-management')}>
               <ArrowLeft className="h-5 w-5" />
@@ -1057,7 +1057,7 @@ export default function DeckEditor() {
         </div>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_220px] gap-6 lg:h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_220px] gap-6 flex-1 min-h-0">
           {/* Left Sidebar - Slide Thumbnails */}
           <Card className="overflow-hidden h-full">
             <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
