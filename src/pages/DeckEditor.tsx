@@ -746,7 +746,56 @@ export default function DeckEditor() {
     setPendingDeletes([]);
     setHotspotChanges({});
     setHasChanges(false);
+    setSelectedSlideIds(new Set());
     toast.info('Changes discarded');
+  };
+
+  const toggleSlideCheck = (slideId: string) => {
+    setSelectedSlideIds(prev => {
+      const next = new Set(prev);
+      if (next.has(slideId)) next.delete(slideId);
+      else next.add(slideId);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = () => {
+    const toDelete = slides.filter(s => selectedSlideIds.has(s.id));
+    const nonTemp = toDelete.filter(s => !s.id.startsWith('temp-'));
+    setPendingDeletes(prev => [...prev, ...nonTemp]);
+
+    const remaining = slides
+      .filter(s => !selectedSlideIds.has(s.id))
+      .map((s, idx) => ({ ...s, position: idx + 1 }));
+
+    setSlides(remaining);
+    setHasChanges(true);
+    setSelectedSlideIds(new Set());
+    setBulkDeleteDialogOpen(false);
+    if (selectedSlide && selectedSlideIds.has(selectedSlide.id)) {
+      setSelectedSlide(remaining[0] || null);
+    }
+    toast.success(`${toDelete.length} slide(s) marked for deletion`);
+  };
+
+  const handleBulkMove = () => {
+    const target = parseInt(bulkMoveTarget, 10);
+    if (isNaN(target) || target < 1 || target > slides.length) {
+      toast.error(`Position must be between 1 and ${slides.length}`);
+      return;
+    }
+    const selected = slides.filter(s => selectedSlideIds.has(s.id));
+    const rest = slides.filter(s => !selectedSlideIds.has(s.id));
+    // Insert selected block at target-1 index
+    const insertIdx = Math.min(target - 1, rest.length);
+    rest.splice(insertIdx, 0, ...selected);
+    const reordered = rest.map((s, idx) => ({ ...s, position: idx + 1 }));
+    setSlides(reordered);
+    setHasChanges(true);
+    setSelectedSlideIds(new Set());
+    setBulkMoveDialogOpen(false);
+    setBulkMoveTarget('');
+    toast.success(`Moved ${selected.length} slide(s) to position ${target}`);
   };
 
   const handleSaveChanges = async () => {
