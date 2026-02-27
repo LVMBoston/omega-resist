@@ -1002,10 +1002,10 @@ export default function DeckEditor() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-[1800px] mx-auto space-y-6">
+    <div className="h-screen bg-background p-6 flex flex-col overflow-hidden">
+      <div className="max-w-[1800px] mx-auto flex flex-col flex-1 min-h-0 w-full gap-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/deck-management')}>
               <ArrowLeft className="h-5 w-5" />
