@@ -52,3 +52,14 @@ Registered `campaign_story` as a new `LiveMetricKey` so it can be placed as a ho
 | `src/hooks/useLiveMetrics.ts` | Resolve `campaign_story` metric from narrative data |
 | `supabase/functions/render-stats-snapshot/index.ts` | Generate headline inline in `calculateMetrics` |
 | `src/pages/DataTemplateTestHarness.tsx` | Add `campaign_story` to local `METRIC_LABELS` |
+
+## Update — 2026-02-27
+
+Enhanced full story to match slide mockup:
+
+- **Duration**: Shows "X days Y hours active" (both tiers + snapshot headline).
+- **Seed explanation**: Added "(A seed is a QR scan not shared.)" to the sprout paragraph.
+- **Share medium breakdown**: Fetches `utm_medium` counts (sms→text, em→email) and appends "##% text, ##% email" to the sprout rate line.
+- **Varied closing**: Four closing paragraphs cycling deterministically on `(seedCount + sproutCount) % 4`, maintaining themes of virality, solidarity, anonymity, and whimsy.
+- **Date of report**: Appended `Date of this report: Mon DD, YYYY HH:MM TZ` at the bottom of the full story.
+- **New data field**: `shareMediums: { medium: string; count: number }[]` added to `NarrativeData` interface and `fetchNarrativeData`.
