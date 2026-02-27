@@ -50,7 +50,7 @@ interface ViralConfig {
   hotspots: any;
 }
 
-const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
+const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onToggleCheck, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; isChecked: boolean; onToggleCheck: () => void; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: slide.id });
   
   const style = {
@@ -83,8 +83,17 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: 
         <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
       </div>
       
-      <div className="absolute top-1 left-1 bg-background/90 px-2 py-1 rounded text-xs font-medium">
-        {slide.position}
+      {/* Checkbox + Position badge */}
+      <div className="absolute top-1 left-1 flex items-center gap-1">
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleCheck(); }}
+          className="cursor-pointer"
+        >
+          <Checkbox checked={isChecked} className="h-4 w-4 bg-background/90 border-muted-foreground" />
+        </div>
+        <div className="bg-background/90 px-2 py-0.5 rounded text-xs font-medium">
+          {slide.position}
+        </div>
       </div>
       {slide.type === 'spread-word' && (
         <div className="absolute top-1 right-8 flex flex-col items-end gap-0.5">
