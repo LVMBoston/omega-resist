@@ -129,6 +129,7 @@ export default function InteractiveTemplates() {
       const { data, error } = await supabase
         .from("viral_slide_configs")
         .select("*")
+        .is("slide_id", null)
         .order("is_default", { ascending: false })
         .order("created_at", { ascending: false });
       
