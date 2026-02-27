@@ -286,7 +286,7 @@ export default function DeckBuilder() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="zip" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="zip">
                   <Upload className="h-4 w-4 mr-2" />
                   ZIP File
@@ -294,10 +294,6 @@ export default function DeckBuilder() {
                 <TabsTrigger value="google">
                   <FileDown className="h-4 w-4 mr-2" />
                   Google Slides
-                </TabsTrigger>
-                <TabsTrigger value="pptx">
-                  <Presentation className="h-4 w-4 mr-2" />
-                  PowerPoint
                 </TabsTrigger>
               </TabsList>
 
