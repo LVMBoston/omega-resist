@@ -348,6 +348,16 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         source: "url_events",
       });
 
+      // Campaign story (headline narrative)
+      try {
+        const narrativeData = await fetchNarrativeData(campaign.code, campaign.id);
+        const { headline } = generateCampaignNarrative(narrativeData);
+        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: headline, source: "narrative" });
+      } catch (narrativeErr) {
+        console.warn("[useLiveMetrics] campaign_story generation failed:", narrativeErr);
+        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: "--", source: "fallback" });
+      }
+
       console.log("[useLiveMetrics] Final metrics count:", metricResults.length, metricResults.map((m) => m.key));
       setMetrics(metricResults);
     } catch (err) {
