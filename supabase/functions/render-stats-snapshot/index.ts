@@ -247,14 +247,20 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     "campaign info for story"
   );
   if (campaignInfo) {
-    const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignInfo.created_at).getTime()) / (1000 * 60 * 60 * 24)));
+    const msActive = Date.now() - new Date(campaignInfo.created_at).getTime();
+    const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
+    const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const seedCount = parseInt(String(metrics.seeds).replace(/,/g, ""), 10) || 0;
     const viewCountNum = parseInt(String(metrics.opens).replace(/,/g, ""), 10) || 0;
     const zipCountNum = parseInt(String(metrics.neighborhoods).replace(/,/g, ""), 10) || 0;
-    const maxDepth = parseInt(String(metrics.depth), 10) || 0;
-    const spawnsNum = parseInt(String(metrics.seeds_with_spawns).replace(/,/g, ""), 10) || 0;
+    const spawnsNum = parseInt(String(metrics.shares).replace(/,/g, ""), 10) || 0;
+    const maxDepth = Math.max(
+      parseInt(String(metrics.l01_count).replace(/,/g, ""), 10) > 0 ? 1 : 0,
+      parseInt(String(metrics.l02_count).replace(/,/g, ""), 10) > 0 ? 2 : 0,
+      parseInt(String(metrics.l03_count).replace(/,/g, ""), 10) > 0 ? 3 : 0,
+    );
 
-    // Query US states for geographic context
+    // States for geographic narrative
     const statesData = await fetchWithRetry(
       () => supabase.from("url_events")
         .select("region, tokens!inner(utm_campaign)")
@@ -285,7 +291,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
     const storyLines: string[] = [];
     storyLines.push(campaignInfo.title || campaignCode);
-    storyLines.push(`${daysActive} days active`);
+    storyLines.push(`${daysActive} days ${hoursRemainder} hours active`);
     storyLines.push("");
     storyLines.push(`${seedCount} cards dropped`);
     if (seedCount > 0 && spawnsNum > 0) {
