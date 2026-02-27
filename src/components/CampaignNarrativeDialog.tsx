@@ -15,7 +15,6 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
   const [open, setOpen] = useState(false);
   const [narrative, setNarrative] = useState<CampaignNarrativeResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
 
   const handleOpen = async () => {
