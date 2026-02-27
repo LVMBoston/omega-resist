@@ -241,6 +241,81 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
+  // Campaign story headline (inline generation from already-fetched data)
+  const campaignInfo = await fetchWithRetry(
+    () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
+    "campaign info for story"
+  );
+  if (campaignInfo) {
+    const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignInfo.created_at).getTime()) / (1000 * 60 * 60 * 24)));
+    const seedCount = parseInt(String(metrics.seeds).replace(/,/g, ""), 10) || 0;
+    const viewCountNum = parseInt(String(metrics.opens).replace(/,/g, ""), 10) || 0;
+    const zipCountNum = parseInt(String(metrics.neighborhoods).replace(/,/g, ""), 10) || 0;
+    const maxDepth = parseInt(String(metrics.depth), 10) || 0;
+    const spawnsNum = parseInt(String(metrics.seeds_with_spawns).replace(/,/g, ""), 10) || 0;
+
+    // Query US states for geographic context
+    const statesData = await fetchWithRetry(
+      () => supabase.from("url_events")
+        .select("region, tokens!inner(utm_campaign)")
+        .eq("tokens.utm_campaign", campaignCode)
+        .eq("is_simulated", false)
+        .eq("country", "United States")
+        .is("deleted_at", null)
+        .not("region", "is", null),
+      "states for story"
+    ) || [];
+    const stateCount = new Set((statesData as any[]).map((r: any) => r.region).filter(Boolean)).size;
+
+    // Propagation speed from tokens
+    const speedTokens = await fetchWithRetry(
+      () => supabase.from("tokens")
+        .select("level, minted_at")
+        .eq("utm_campaign", campaignCode)
+        .eq("is_simulated", false)
+        .is("deleted_at", null)
+        .order("minted_at", { ascending: true }),
+      "speed tokens for story"
+    ) || [];
+    const speedMap = new Map<number, string>();
+    for (const t of speedTokens as any[]) {
+      if (!speedMap.has(t.level)) speedMap.set(t.level, t.minted_at);
+    }
+    const speedEntries = Array.from(speedMap.entries()).sort((a, b) => a[0] - b[0]);
+
+    const storyLines: string[] = [];
+    storyLines.push(campaignInfo.title || campaignCode);
+    storyLines.push(`${daysActive} days active`);
+    storyLines.push("");
+    storyLines.push(`${seedCount} cards dropped`);
+    if (seedCount > 0 && spawnsNum > 0) {
+      const sproutRate = Math.round((spawnsNum / seedCount) * 100);
+      storyLines.push(`${spawnsNum} sprouted (${sproutRate}%)`);
+    }
+    storyLines.push("");
+    if (maxDepth > 0) {
+      storyLines.push(`Longest chain: ${maxDepth} levels`);
+      if (speedEntries.length >= 2) {
+        const l0Time = new Date(speedEntries[0][1]);
+        const last = speedEntries[speedEntries.length - 1];
+        const diffHours = Math.round((new Date(last[1]).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
+        if (diffHours < 1) storyLines.push(`Reached L${last[0]} in < 1 hour`);
+        else if (diffHours < 24) storyLines.push(`Reached L${last[0]} in ${diffHours} hours`);
+        else { const d = Math.round(diffHours / 24); storyLines.push(`Reached L${last[0]} in ${d} day${d > 1 ? "s" : ""}`); }
+      }
+      storyLines.push("");
+    }
+    storyLines.push(`${viewCountNum} views, ${zipCountNum} zip codes`);
+    if (stateCount > 0) storyLines.push(`across ${stateCount} state${stateCount > 1 ? "s" : ""}`);
+    storyLines.push("");
+    storyLines.push("No ad budget.");
+    storyLines.push("Every view earned.");
+
+    metrics.campaign_story = storyLines.join("\n");
+  } else {
+    metrics.campaign_story = "--";
+  }
+
   return metrics;
 }
 
