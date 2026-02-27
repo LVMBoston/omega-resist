@@ -146,11 +146,21 @@ export const FullResolutionHotspotEditor = ({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
+    // Auto-number label for types that allow multiples
+    const allowMultipleTypes = ['external_link', 'app_download'];
+    let label = selectedIconPreset.label;
+    if (allowMultipleTypes.includes(selectedIconPreset.type)) {
+      const existingCount = hotspots.filter(h => h.type === selectedIconPreset.type).length;
+      if (existingCount > 0) {
+        label = `${selectedIconPreset.label} ${existingCount + 1}`;
+      }
+    }
+
     const newHotspot: Hotspot = {
       id: `hotspot-${Date.now()}`,
       iconId: selectedIconPreset.id,
       type: selectedIconPreset.type,
-      label: selectedIconPreset.label,
+      label,
       x: Math.max(0, Math.min(100 - selectedIconPreset.width, x)),
       y: Math.max(labelPadding, Math.min(100 - labelPadding - selectedIconPreset.height, y)),
       width: selectedIconPreset.width,
