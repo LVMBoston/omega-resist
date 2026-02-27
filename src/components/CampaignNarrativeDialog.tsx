@@ -20,7 +20,6 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
   const handleOpen = async () => {
     setOpen(true);
     setNarrative(null);
-    setExpanded(false);
     setLoading(true);
     try {
       const data = await fetchNarrativeData(campaignCode, campaignId);
