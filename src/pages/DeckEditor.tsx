@@ -1296,6 +1296,11 @@ Add Slide(s)
                         isSelected={selectedSlide?.id === slide.id}
                         isChecked={selectedSlideIds.has(slide.id)}
                         onToggleCheck={() => toggleSlideCheck(slide.id)}
+                        isSkipped={slide.skip_deploy}
+                        onToggleSkip={() => {
+                          setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, skip_deploy: !s.skip_deploy } : s));
+                          setHasChanges(true);
+                        }}
                         onSelect={() => setSelectedSlide(slide)}
                         onDelete={() => {
                           setSlideToDelete(slide);
