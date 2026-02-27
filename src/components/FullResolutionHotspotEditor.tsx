@@ -126,16 +126,19 @@ export const FullResolutionHotspotEditor = ({
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
-    // Check if a hotspot of this type already exists
-    const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
-    if (existingTypeHotspot) {
-      toast({
-        title: "Duplicate hotspot type",
-        description: `A ${selectedIconPreset.type} hotspot already exists. Please remove it first before adding another.`,
-        variant: "destructive",
-      });
-      setIsPlacing(false);
-      return;
+    // Check if a hotspot of this type already exists (allow multiple external_link and app_download)
+    const allowMultiple = ['external_link', 'app_download'];
+    if (!allowMultiple.includes(selectedIconPreset.type)) {
+      const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
+      if (existingTypeHotspot) {
+        toast({
+          title: "Duplicate hotspot type",
+          description: `A ${selectedIconPreset.type} hotspot already exists. Please remove it first before adding another.`,
+          variant: "destructive",
+        });
+        setIsPlacing(false);
+        return;
+      }
     }
 
     const labelPadding = 2; // 2% padding for labels (reduced from 4%)
