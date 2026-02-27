@@ -52,6 +52,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   earliest_active: "Earliest Active",
   latest_active: "Latest Active",
   last_updated: "Last Updated",
+  campaign_story: "Campaign Story",
 };
 
 // ─── Sanitization helpers ────────────────────────────────────────────
