@@ -11,11 +11,12 @@ export interface NarrativeData {
   internationalCountries: string[];
   propagationSpeed: { level: number; first_mint: string }[];
   maxLevel: number;
+  shareMediums: { medium: string; count: number }[];
 }
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
   // Run queries in parallel
-  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes] = await Promise.all([
+  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
     supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
     supabase.from("tokens")
@@ -56,6 +57,13 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .order("minted_at", { ascending: true }),
+    supabase.from("tokens")
+      .select("utm_medium")
+      .eq("utm_campaign", campaignCode)
+      .eq("is_simulated", false)
+      .is("deleted_at", null)
+      .gt("level", 0)
+      .not("parent_token", "is", null),
   ]);
 
   const stats = (tokensRes.data as any)?.[0];
@@ -93,6 +101,16 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .filter(Boolean)
   );
 
+  // Aggregate share mediums
+  const mediumCounts = new Map<string, number>();
+  for (const t of (mediumRes.data || []) as any[]) {
+    const m = t.utm_medium || "unknown";
+    mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
+  }
+  const shareMediums = Array.from(mediumCounts.entries())
+    .map(([medium, count]) => ({ medium, count }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
     campaignCreatedAt: campaignRes.data?.created_at || new Date().toISOString(),
@@ -104,6 +122,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     internationalCountries: internationalCountries as string[],
     propagationSpeed,
     maxLevel,
+    shareMediums,
   };
 }
 
@@ -123,12 +142,14 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   } = data;
 
   const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
-  const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignCreatedAt).getTime()) / (1000 * 60 * 60 * 24)));
+  const msActive = Date.now() - new Date(campaignCreatedAt).getTime();
+  const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
+  const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   const lines: string[] = [];
 
   lines.push(campaignTitle);
-  lines.push(`${daysActive} days active`);
+  lines.push(`${daysActive} days ${hoursRemainder} hours active`);
   lines.push("");
 
   lines.push(`${seedCount} cards dropped`);
@@ -186,10 +207,22 @@ function generateFullStory(data: NarrativeData): string {
     internationalCountries,
     propagationSpeed,
     maxLevel,
+    shareMediums,
   } = data;
 
   const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
-  const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignCreatedAt).getTime()) / (1000 * 60 * 60 * 24)));
+  const msActive = Date.now() - new Date(campaignCreatedAt).getTime();
+  const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
+  const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+  // Share medium percentages
+  const totalShares = shareMediums.reduce((s, m) => s + m.count, 0);
+  const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
+  const mediumLine = totalShares > 0
+    ? shareMediums
+        .map(m => `${Math.round((m.count / totalShares) * 100)}% ${mediumLabels[m.medium] || m.medium}`)
+        .join(", ")
+    : "";
 
   // Propagation speed narrative
   let speedNarrative = "";
@@ -202,7 +235,7 @@ function generateFullStory(data: NarrativeData): string {
     if (diffHours < 1) {
       speedNarrative = `The message reached Level ${lastLevel.level} in under an hour.`;
     } else if (diffHours < 24) {
-      speedNarrative = `The message reached Level ${lastLevel.level} — ${lastLevel.level} degrees of separation from the original — in just ${diffHours} hours.`;
+      speedNarrative = `The message reached Level ${lastLevel.level} in just ${diffHours} hours.`;
     } else {
       const days = Math.round(diffHours / 24);
       speedNarrative = `The message reached Level ${lastLevel.level} within ${days} day${days > 1 ? "s" : ""}.`;
@@ -223,19 +256,35 @@ function generateFullStory(data: NarrativeData): string {
     }
   }
 
+  // Varied closing — deterministic pick based on seedCount to stay stable per campaign
+  const closings = [
+    "No ad budget. No algorithm. Every view came because one person decided another person needed to see it.",
+    "No ads. No tricks. Just people passing something along because it mattered to them.",
+    "No promotion. No platform boost. This spread the old-fashioned way — person to person, because it resonated.",
+    "Zero dollars spent. Every single view was a conscious act of solidarity — someone choosing to share.",
+  ];
+  const closingIndex = (seedCount + sproutCount) % closings.length;
+
   const lines: string[] = [];
 
-  lines.push(`__TITLE__${campaignTitle}__TITLE__`);
-  lines.push(`Campaign active for ${daysActive} days`);
+  lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+  lines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
   lines.push("");
 
-  lines.push(`🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains.`);
+  // Seeds & sprouts
+  lines.push(`🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`);
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    lines.push(`That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared.`);
+    let sproutLine = `That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared`;
+    if (mediumLine) {
+      sproutLine += `: ${mediumLine}`;
+    }
+    sproutLine += ".";
+    lines.push(sproutLine);
   }
   lines.push("");
 
+  // Depth
   if (maxLevel > 0) {
     lines.push(`🔗 Longest chain: ${maxLevel} levels deep.`);
     if (maxLevel >= 3) {
@@ -248,16 +297,28 @@ function generateFullStory(data: NarrativeData): string {
     lines.push("");
   }
 
+  // Speed
   if (speedNarrative) {
     lines.push(`⚡ ${speedNarrative}`);
     lines.push("");
   }
 
+  // Views
   lines.push(`👀 The content was viewed ${viewCount} times — sometimes more than once by the same person.`);
+
+  // Geography
   lines.push(`📍 ${geoNarrative}`);
   lines.push("");
 
-  lines.push(`No ad budget. No algorithm. Every view came because one person decided another person needed to see it.`);
+  // Closing
+  lines.push(closings[closingIndex]);
+  lines.push("");
+
+  // Date of report
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
+  lines.push(`Date of this report: ${dateStr} ${timeStr}`);
 
   return lines.join("\n");
 }
