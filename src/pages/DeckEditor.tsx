@@ -130,6 +130,22 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
           GIF
         </div>
       )}
+      {/* Skip Deploy toggle — right side */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 right-1 z-20"
+        onClick={(e) => { e.stopPropagation(); onToggleSkip(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Checkbox
+          checked={isSkipped}
+          className={`h-4 w-4 border-muted-foreground ${isSkipped ? 'bg-destructive border-destructive data-[state=checked]:bg-destructive data-[state=checked]:text-destructive-foreground' : 'bg-background/90'}`}
+        />
+      </div>
+      {isSkipped && (
+        <div className="absolute inset-0 bg-background/50 pointer-events-none flex items-center justify-center">
+          <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded">SKIP</span>
+        </div>
+      )}
     </div>
   );
 };
