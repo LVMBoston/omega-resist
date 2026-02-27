@@ -83,11 +83,12 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
         <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
       </div>
       
-      {/* Checkbox + Position badge */}
-      <div className="absolute top-1 left-1 flex items-center gap-1">
+      {/* Checkbox + Position badge — placed above drag handle z-index */}
+      <div className="absolute top-1 left-1 flex items-center gap-1 z-20">
         <div
           onClick={(e) => { e.stopPropagation(); onToggleCheck(); }}
-          className="cursor-pointer"
+          onPointerDown={(e) => e.stopPropagation()}
+          className="cursor-pointer p-0.5"
         >
           <Checkbox checked={isChecked} className="h-4 w-4 bg-background/90 border-muted-foreground" />
         </div>
