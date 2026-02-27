@@ -400,64 +400,6 @@ export default function DeckBuilder() {
                 </Form>
               </TabsContent>
 
-              <TabsContent value="pptx" className="space-y-4 mt-6">
-                <Form {...pptxForm}>
-                  <form onSubmit={pptxForm.handleSubmit(onPptxSubmit)} className="space-y-6">
-                    <FormField control={pptxForm.control} name="file" render={({
-                    field: {
-                      onChange,
-                      value,
-                      ...field
-                    }
-                  }) => <FormItem>
-                          <FormLabel>Upload PowerPoint File</FormLabel>
-                          <FormControl>
-                            <Input type="file" accept=".pptx" onChange={e => onChange(e.target.files)} disabled={uploading} {...field} />
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            PowerPoint (.pptx) file with embedded images
-                          </p>
-                          <FormMessage />
-                        </FormItem>} />
-
-                    <FormField control={pptxForm.control} name="slug" render={({
-                    field
-                  }) => <FormItem>
-                          <FormLabel className="text-lg font-semibold">Step 2: Enter Deck Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="my-deck-2024" {...field} disabled={uploading} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
-
-                    <FormField control={pptxForm.control} name="compress" render={({
-                    field
-                  }) => <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={uploading} />
-                          </FormControl>
-                          <FormLabel className="!mt-0 cursor-pointer">
-                            Compress images for faster loading
-                          </FormLabel>
-                        </FormItem>} />
-
-                    {progress && <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {progress}
-                      </div>}
-
-                    <Button type="submit" disabled={uploading} className="w-full">
-                      {uploading ? <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Deck...
-                        </> : <>
-                          <Presentation className="mr-2 h-4 w-4" />
-                          Create Deck
-                        </>}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

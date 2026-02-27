@@ -1022,43 +1022,6 @@ export default function InteractiveTemplates() {
         } : undefined}
       />
 
-      {/* PowerPoint Slide Picker Dialog */}
-      <Dialog open={showPowerPointPicker} onOpenChange={setShowPowerPointPicker}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Select a Slide</DialogTitle>
-            <DialogDescription>
-              Choose which slide image to use for your template
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[60vh] p-4">
-            {powerPointSlides.map((slide) => (
-              <Card 
-                key={slide.index} 
-                className="cursor-pointer hover:border-primary transition-colors"
-                onClick={() => handleSlideSelection(slide)}
-              >
-                <CardContent className="p-4">
-                  <div className="aspect-[9/16] w-full mb-2">
-                    <img 
-                      src={slide.imageData} 
-                      alt={`Slide ${slide.index + 1}`} 
-                      className="w-full h-full object-contain rounded"
-                    />
-                  </div>
-                  <p className="text-sm text-center font-medium">
-                    Image {slide.index + 1}
-                  </p>
-                  <p className="text-xs text-center text-muted-foreground">
-                    {slide.fileName}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Filter Tabs and Template Grid */}
       <Tabs value={activeFilter} onValueChange={(val) => setActiveFilter(val as "all" | "action" | "data" | "hybrid")} className="mt-6">
         <TabsList className="mb-6">
