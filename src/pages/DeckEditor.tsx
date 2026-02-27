@@ -1057,7 +1057,7 @@ export default function DeckEditor() {
         </div>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-6 lg:h-[calc(100vh-180px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_220px] gap-6 lg:h-[calc(100vh-180px)]">
           {/* Left Sidebar - Slide Thumbnails */}
           <Card className="overflow-hidden h-full">
             <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
