@@ -1483,8 +1483,56 @@ Add Slide(s)
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedSlideIds.size} Slide{selectedSlideIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedSlideIds.size} slide{selectedSlideIds.size !== 1 ? 's' : ''} from the deck.
+              {slides.filter(s => selectedSlideIds.has(s.id) && s.type === 'spread-word').length > 0 && (
+                <span className="block mt-2 text-destructive">
+                  Some selected slides are interactive — their configurations will also be deleted.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Deployment Confirmation Dialog */}
+      {/* Bulk Move Dialog */}
+      <Dialog open={bulkMoveDialogOpen} onOpenChange={setBulkMoveDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Move {selectedSlideIds.size} Slide{selectedSlideIds.size !== 1 ? 's' : ''}</DialogTitle>
+            <DialogDescription>
+              Move selected slides as a group to a target position (1–{slides.length}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="bulk-move-pos">Target Position</Label>
+            <Input
+              id="bulk-move-pos"
+              type="number"
+              min={1}
+              max={slides.length}
+              value={bulkMoveTarget}
+              onChange={(e) => setBulkMoveTarget(e.target.value)}
+              placeholder="e.g. 1"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkMoveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkMove} disabled={!bulkMoveTarget}>Move</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <DeploymentConfirmDialog
         open={deploymentDialogOpen}
         onOpenChange={setDeploymentDialogOpen}
