@@ -24,14 +24,7 @@ const googleSlidesFormSchema = z.object({
   slug: z.string().min(1, "Deck slug is required").max(60, "Slug must be less than 60 characters").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
   slidesUrl: z.string().min(1, "Google Slides URL is required")
 });
-const pptxFormSchema = z.object({
-  slug: z.string().min(1, "Deck slug is required").max(60, "Slug must be less than 60 characters").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
-  file: z.instanceof(FileList).refine(files => files.length > 0, "PowerPoint file is required"),
-  compress: z.boolean().default(true)
-});
 type ZipFormValues = z.infer<typeof zipFormSchema>;
-type GoogleSlidesFormValues = z.infer<typeof googleSlidesFormSchema>;
-type PptxFormValues = z.infer<typeof pptxFormSchema>;
 export default function DeckBuilder() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
