@@ -71,9 +71,6 @@ export default function InteractiveTemplates() {
   const [showingHotspots, setShowingHotspots] = useState<string | null>(null);
   const [viewingCampaigns, setViewingCampaigns] = useState<string | null>(null);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
-  const [isPowerPointImporting, setIsPowerPointImporting] = useState(false);
-  const [powerPointSlides, setPowerPointSlides] = useState<Array<{index: number, imageData: string, fileName: string}>>([]);
-  const [showPowerPointPicker, setShowPowerPointPicker] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "action" | "data" | "hybrid">("all");
   
   // Data template dialog state
