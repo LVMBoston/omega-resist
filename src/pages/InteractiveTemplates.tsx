@@ -922,26 +922,6 @@ export default function InteractiveTemplates() {
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="powerpoint-upload" className="text-sm font-medium">
-                        Upload PowerPoint File (.pptx)
-                      </Label>
-                      <Input
-                        id="powerpoint-upload"
-                        type="file"
-                        accept=".pptx"
-                        disabled={isPowerPointImporting}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handlePowerPointUpload(file);
-                        }}
-                      />
-                      {isPowerPointImporting && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Extracting slides from PowerPoint...
-                        </p>
-                      )}
-                    </div>
                   </div>
                   
                   {!formData.image_url && (
