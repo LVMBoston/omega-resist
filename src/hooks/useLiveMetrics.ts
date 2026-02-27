@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInTimeZone } from "date-fns-tz";
 import { LiveMetricKey } from "@/types/viralTemplates";
+import { fetchNarrativeData, generateCampaignNarrative } from "@/lib/campaignNarrative";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
