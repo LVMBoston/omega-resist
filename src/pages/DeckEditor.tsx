@@ -6,8 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import imageCompression from "browser-image-compression";
@@ -49,7 +50,7 @@ interface ViralConfig {
   hotspots: any;
 }
 
-const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
+const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onToggleCheck, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; isChecked: boolean; onToggleCheck: () => void; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: slide.id });
   
   const style = {
@@ -82,8 +83,17 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, templateInfo }: 
         <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
       </div>
       
-      <div className="absolute top-1 left-1 bg-background/90 px-2 py-1 rounded text-xs font-medium">
-        {slide.position}
+      {/* Checkbox + Position badge */}
+      <div className="absolute top-1 left-1 flex items-center gap-1">
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleCheck(); }}
+          className="cursor-pointer"
+        >
+          <Checkbox checked={isChecked} className="h-4 w-4 bg-background/90 border-muted-foreground" />
+        </div>
+        <div className="bg-background/90 px-2 py-0.5 rounded text-xs font-medium">
+          {slide.position}
+        </div>
       </div>
       {slide.type === 'spread-word' && (
         <div className="absolute top-1 right-8 flex flex-col items-end gap-0.5">
@@ -169,7 +179,10 @@ export default function DeckEditor() {
   const [newDeckSlug, setNewDeckSlug] = useState('');
   const [savingAs, setSavingAs] = useState(false);
   const [saveAsError, setSaveAsError] = useState('');
-
+  const [selectedSlideIds, setSelectedSlideIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkMoveDialogOpen, setBulkMoveDialogOpen] = useState(false);
+  const [bulkMoveTarget, setBulkMoveTarget] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -733,7 +746,56 @@ export default function DeckEditor() {
     setPendingDeletes([]);
     setHotspotChanges({});
     setHasChanges(false);
+    setSelectedSlideIds(new Set());
     toast.info('Changes discarded');
+  };
+
+  const toggleSlideCheck = (slideId: string) => {
+    setSelectedSlideIds(prev => {
+      const next = new Set(prev);
+      if (next.has(slideId)) next.delete(slideId);
+      else next.add(slideId);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = () => {
+    const toDelete = slides.filter(s => selectedSlideIds.has(s.id));
+    const nonTemp = toDelete.filter(s => !s.id.startsWith('temp-'));
+    setPendingDeletes(prev => [...prev, ...nonTemp]);
+
+    const remaining = slides
+      .filter(s => !selectedSlideIds.has(s.id))
+      .map((s, idx) => ({ ...s, position: idx + 1 }));
+
+    setSlides(remaining);
+    setHasChanges(true);
+    setSelectedSlideIds(new Set());
+    setBulkDeleteDialogOpen(false);
+    if (selectedSlide && selectedSlideIds.has(selectedSlide.id)) {
+      setSelectedSlide(remaining[0] || null);
+    }
+    toast.success(`${toDelete.length} slide(s) marked for deletion`);
+  };
+
+  const handleBulkMove = () => {
+    const target = parseInt(bulkMoveTarget, 10);
+    if (isNaN(target) || target < 1 || target > slides.length) {
+      toast.error(`Position must be between 1 and ${slides.length}`);
+      return;
+    }
+    const selected = slides.filter(s => selectedSlideIds.has(s.id));
+    const rest = slides.filter(s => !selectedSlideIds.has(s.id));
+    // Insert selected block at target-1 index
+    const insertIdx = Math.min(target - 1, rest.length);
+    rest.splice(insertIdx, 0, ...selected);
+    const reordered = rest.map((s, idx) => ({ ...s, position: idx + 1 }));
+    setSlides(reordered);
+    setHasChanges(true);
+    setSelectedSlideIds(new Set());
+    setBulkMoveDialogOpen(false);
+    setBulkMoveTarget('');
+    toast.success(`Moved ${selected.length} slide(s) to position ${target}`);
   };
 
   const handleSaveChanges = async () => {
@@ -1164,6 +1226,48 @@ Add Slide(s)
               <div className="text-xs text-muted-foreground text-center">
                 Paste images (Ctrl+V) or drag to reorder
               </div>
+
+              {/* Select All / Bulk Toolbar */}
+              {slides.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      onClick={() => {
+                        if (selectedSlideIds.size === slides.length) {
+                          setSelectedSlideIds(new Set());
+                        } else {
+                          setSelectedSlideIds(new Set(slides.map(s => s.id)));
+                        }
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedSlideIds.size === slides.length && slides.length > 0}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedSlideIds.size > 0 ? `${selectedSlideIds.size} selected` : 'Select all'}
+                    </span>
+                  </div>
+                  {selectedSlideIds.size > 0 && (
+                    <div className="flex gap-1">
+                      <Button variant="destructive" size="sm" className="flex-1 h-7 text-xs" onClick={() => setBulkDeleteDialogOpen(true)}>
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete ({selectedSlideIds.size})
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => { setBulkMoveTarget(''); setBulkMoveDialogOpen(true); }}>
+                        <MoveVertical className="h-3 w-3 mr-1" />
+                        Move to…
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setSelectedSlideIds(new Set())}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={slides.map(s => s.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
@@ -1172,6 +1276,8 @@ Add Slide(s)
                         key={slide.id}
                         slide={slide}
                         isSelected={selectedSlide?.id === slide.id}
+                        isChecked={selectedSlideIds.has(slide.id)}
+                        onToggleCheck={() => toggleSlideCheck(slide.id)}
                         onSelect={() => setSelectedSlide(slide)}
                         onDelete={() => {
                           setSlideToDelete(slide);
@@ -1377,8 +1483,56 @@ Add Slide(s)
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedSlideIds.size} Slide{selectedSlideIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedSlideIds.size} slide{selectedSlideIds.size !== 1 ? 's' : ''} from the deck.
+              {slides.filter(s => selectedSlideIds.has(s.id) && s.type === 'spread-word').length > 0 && (
+                <span className="block mt-2 text-destructive">
+                  Some selected slides are interactive — their configurations will also be deleted.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Deployment Confirmation Dialog */}
+      {/* Bulk Move Dialog */}
+      <Dialog open={bulkMoveDialogOpen} onOpenChange={setBulkMoveDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Move {selectedSlideIds.size} Slide{selectedSlideIds.size !== 1 ? 's' : ''}</DialogTitle>
+            <DialogDescription>
+              Move selected slides as a group to a target position (1–{slides.length}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="bulk-move-pos">Target Position</Label>
+            <Input
+              id="bulk-move-pos"
+              type="number"
+              min={1}
+              max={slides.length}
+              value={bulkMoveTarget}
+              onChange={(e) => setBulkMoveTarget(e.target.value)}
+              placeholder="e.g. 1"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkMoveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkMove} disabled={!bulkMoveTarget}>Move</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <DeploymentConfirmDialog
         open={deploymentDialogOpen}
         onOpenChange={setDeploymentDialogOpen}
