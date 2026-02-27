@@ -1226,6 +1226,48 @@ Add Slide(s)
               <div className="text-xs text-muted-foreground text-center">
                 Paste images (Ctrl+V) or drag to reorder
               </div>
+
+              {/* Select All / Bulk Toolbar */}
+              {slides.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      onClick={() => {
+                        if (selectedSlideIds.size === slides.length) {
+                          setSelectedSlideIds(new Set());
+                        } else {
+                          setSelectedSlideIds(new Set(slides.map(s => s.id)));
+                        }
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedSlideIds.size === slides.length && slides.length > 0}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedSlideIds.size > 0 ? `${selectedSlideIds.size} selected` : 'Select all'}
+                    </span>
+                  </div>
+                  {selectedSlideIds.size > 0 && (
+                    <div className="flex gap-1">
+                      <Button variant="destructive" size="sm" className="flex-1 h-7 text-xs" onClick={() => setBulkDeleteDialogOpen(true)}>
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete ({selectedSlideIds.size})
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => { setBulkMoveTarget(''); setBulkMoveDialogOpen(true); }}>
+                        <MoveVertical className="h-3 w-3 mr-1" />
+                        Move to…
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setSelectedSlideIds(new Set())}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={slides.map(s => s.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
@@ -1234,6 +1276,8 @@ Add Slide(s)
                         key={slide.id}
                         slide={slide}
                         isSelected={selectedSlide?.id === slide.id}
+                        isChecked={selectedSlideIds.has(slide.id)}
+                        onToggleCheck={() => toggleSlideCheck(slide.id)}
                         onSelect={() => setSelectedSlide(slide)}
                         onDelete={() => {
                           setSlideToDelete(slide);
