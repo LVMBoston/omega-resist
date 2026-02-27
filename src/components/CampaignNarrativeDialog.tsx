@@ -15,13 +15,11 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
   const [open, setOpen] = useState(false);
   const [narrative, setNarrative] = useState<CampaignNarrativeResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
 
   const handleOpen = async () => {
     setOpen(true);
     setNarrative(null);
-    setExpanded(false);
     setLoading(true);
     try {
       const data = await fetchNarrativeData(campaignCode, campaignId);
@@ -95,29 +93,7 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
           ) : narrative ? (
             <>
               <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto space-y-1">
-                {!expanded ? (
-                  <>
-                    {narrative.headline.split("\n").map((line, i) => (
-                      <p key={i} className="whitespace-pre-wrap">{line || "\u00A0"}</p>
-                    ))}
-                    <button
-                      onClick={() => setExpanded(true)}
-                      className="text-primary text-xs font-medium hover:underline mt-2 block"
-                    >
-                      More...
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {narrative.fullStory.split("\n").map((line, i) => renderFullStoryLine(line, i))}
-                    <button
-                      onClick={() => setExpanded(false)}
-                      className="text-primary text-xs font-medium hover:underline mt-2 block"
-                    >
-                      Less
-                    </button>
-                  </>
-                )}
+                {narrative.fullStory.split("\n").map((line, i) => renderFullStoryLine(line, i))}
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" size="sm" onClick={handleCopy} className="flex-1">
