@@ -18,9 +18,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
     supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
-    // Sprout count: distinct L0 tokens that have at least one L1 child
+    // Sprout count: distinct parent_tokens among L1+ children for this campaign
     supabase.from("tokens")
-      .select("parent_token", { count: "exact", head: true })
+      .select("token, parent_token")
+      .eq("utm_campaign", campaignCode)
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .gt("level", 0)
