@@ -31,6 +31,7 @@ interface Slide {
   is_compressed: boolean;
   template_id?: string;
   deck_slug: string;
+  skip_deploy: boolean;
 }
 
 interface Template {
@@ -50,7 +51,7 @@ interface ViralConfig {
   hotspots: any;
 }
 
-const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onToggleCheck, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; isChecked: boolean; onToggleCheck: () => void; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
+const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onToggleCheck, isSkipped, onToggleSkip, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; isChecked: boolean; onToggleCheck: () => void; isSkipped: boolean; onToggleSkip: () => void; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: slide.id });
   
   const style = {
@@ -127,6 +128,22 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
       {slide.content_url.toLowerCase().endsWith('.gif') && (
         <div className="absolute bottom-1 left-1 bg-purple-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
           GIF
+        </div>
+      )}
+      {/* Skip Deploy toggle — right side */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 right-1 z-20"
+        onClick={(e) => { e.stopPropagation(); onToggleSkip(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Checkbox
+          checked={isSkipped}
+          className={`h-4 w-4 border-muted-foreground ${isSkipped ? 'bg-destructive border-destructive data-[state=checked]:bg-destructive data-[state=checked]:text-destructive-foreground' : 'bg-background/90'}`}
+        />
+      </div>
+      {isSkipped && (
+        <div className="absolute inset-0 bg-background/50 pointer-events-none flex items-center justify-center">
+          <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded">SKIP</span>
         </div>
       )}
     </div>
@@ -467,6 +484,7 @@ export default function DeckEditor() {
       content_url: URL.createObjectURL(fileToUpload),
       is_compressed: !isGif, // GIFs are never compressed
       deck_slug: slug!,
+      skip_deploy: false,
     };
 
     // Update draft slides
@@ -527,6 +545,7 @@ export default function DeckEditor() {
           content_url: URL.createObjectURL(fileToUpload),
           is_compressed: !isGif,
           deck_slug: slug!,
+          skip_deploy: false,
         };
 
         newTempSlides.push(tempSlide);
@@ -627,6 +646,7 @@ export default function DeckEditor() {
         is_compressed: false,
         template_id: template.id,
         deck_slug: slug,
+        skip_deploy: false,
       };
 
       setSlides([...slides, tempSlide]);
@@ -837,11 +857,11 @@ export default function DeckEditor() {
           .eq('id', realSlides[i].id);
       }
       
-      // Then update to final positions
+      // Then update to final positions and skip_deploy
       for (let i = 0; i < realSlides.length; i++) {
         await supabase
           .from('slide_items')
-          .update({ position: realSlides[i].position })
+          .update({ position: realSlides[i].position, skip_deploy: (realSlides[i] as any).skip_deploy ?? false })
           .eq('id', realSlides[i].id);
       }
 
@@ -1209,6 +1229,7 @@ Add Slide(s)
                       content_url: URL.createObjectURL(fileToUpload),
                       is_compressed: !isGif,
                       deck_slug: slug!,
+                      skip_deploy: false,
                     };
                     newTempSlides.push(tempSlide);
                     newPendingUploads.push({ file: fileToUpload });
@@ -1279,6 +1300,11 @@ Add Slide(s)
                         isSelected={selectedSlide?.id === slide.id}
                         isChecked={selectedSlideIds.has(slide.id)}
                         onToggleCheck={() => toggleSlideCheck(slide.id)}
+                        isSkipped={slide.skip_deploy}
+                        onToggleSkip={() => {
+                          setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, skip_deploy: !s.skip_deploy } : s));
+                          setHasChanges(true);
+                        }}
                         onSelect={() => setSelectedSlide(slide)}
                         onDelete={() => {
                           setSlideToDelete(slide);

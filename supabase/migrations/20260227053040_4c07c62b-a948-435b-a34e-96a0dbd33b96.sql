@@ -1,0 +1,1 @@
+ALTER TABLE public.slide_items ADD COLUMN skip_deploy boolean NOT NULL DEFAULT false;

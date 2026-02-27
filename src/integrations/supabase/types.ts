@@ -433,6 +433,7 @@ export type Database = {
           import_source: string | null
           is_compressed: boolean | null
           position: number
+          skip_deploy: boolean
           template_id: string | null
           type: string
         }
@@ -444,6 +445,7 @@ export type Database = {
           import_source?: string | null
           is_compressed?: boolean | null
           position: number
+          skip_deploy?: boolean
           template_id?: string | null
           type?: string
         }
@@ -455,6 +457,7 @@ export type Database = {
           import_source?: string | null
           is_compressed?: boolean | null
           position?: number
+          skip_deploy?: boolean
           template_id?: string | null
           type?: string
         }
