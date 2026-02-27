@@ -1229,6 +1229,7 @@ Add Slide(s)
                       content_url: URL.createObjectURL(fileToUpload),
                       is_compressed: !isGif,
                       deck_slug: slug!,
+                      skip_deploy: false,
                     };
                     newTempSlides.push(tempSlide);
                     newPendingUploads.push({ file: fileToUpload });
