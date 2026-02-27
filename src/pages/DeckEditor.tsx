@@ -1198,8 +1198,8 @@ Add Slide(s)
           </Card>
 
           {/* Center - Preview */}
-          <Card>
-            <CardContent className="p-6">
+          <Card className="h-full overflow-hidden">
+            <CardContent className="p-6 overflow-y-auto h-full">
               {selectedSlide ? (
                 <div className="space-y-4">
                   <div className="relative">
