@@ -95,11 +95,11 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     .map(([level, first_mint]) => ({ level, first_mint }))
     .sort((a, b) => a.level - b.level);
 
-  // Count sprouts: distinct parent_tokens in L1+ tokens for this campaign
+  // Count sprouts: distinct parent_tokens from the sprouts query (L1+ tokens for this campaign)
   const parentTokens = new Set(
-    ((speedRes.data || []) as any[])
-      .filter(t => t.level > 0)
-      .map(t => t.parent_token || t.token) // approximate
+    ((sproutsRes.data || []) as any[])
+      .map(t => t.parent_token)
+      .filter(Boolean)
   );
 
   return {
