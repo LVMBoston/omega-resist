@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, FileDown, Presentation } from "lucide-react";
+import { Upload, Loader2, FileDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -24,14 +24,8 @@ const googleSlidesFormSchema = z.object({
   slug: z.string().min(1, "Deck slug is required").max(60, "Slug must be less than 60 characters").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
   slidesUrl: z.string().min(1, "Google Slides URL is required")
 });
-const pptxFormSchema = z.object({
-  slug: z.string().min(1, "Deck slug is required").max(60, "Slug must be less than 60 characters").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
-  file: z.instanceof(FileList).refine(files => files.length > 0, "PowerPoint file is required"),
-  compress: z.boolean().default(true)
-});
 type ZipFormValues = z.infer<typeof zipFormSchema>;
 type GoogleSlidesFormValues = z.infer<typeof googleSlidesFormSchema>;
-type PptxFormValues = z.infer<typeof pptxFormSchema>;
 export default function DeckBuilder() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
@@ -48,13 +42,6 @@ export default function DeckBuilder() {
     defaultValues: {
       slug: "",
       slidesUrl: ""
-    }
-  });
-  const pptxForm = useForm<PptxFormValues>({
-    resolver: zodResolver(pptxFormSchema),
-    defaultValues: {
-      slug: "",
-      compress: true
     }
   });
   const compressImage = async (file: File): Promise<Blob> => {
@@ -253,155 +240,6 @@ export default function DeckBuilder() {
     if (error) throw error;
     setProgress(`Successfully imported ${data.slidesCount} slides`);
   };
-  const handlePowerPointUpload = async (file: File, slug: string, compress: boolean) => {
-    setProgress("Processing PowerPoint file...");
-
-    // Process PPTX client-side (PPTX is a ZIP archive)
-    const zip = await JSZip.loadAsync(file);
-    
-    setProgress("Extracting slides from PowerPoint...");
-    
-    // Log all files in the PPTX for debugging
-    const allFiles: string[] = [];
-    zip.forEach((relativePath) => {
-      allFiles.push(relativePath);
-    });
-    console.log("PPTX contents:", allFiles);
-    console.log("Files in ppt/media/:", allFiles.filter(f => f.startsWith('ppt/media/')));
-    
-    // Extract images from ppt/media/ folder
-    // Support PNG, JPG, JPEG, GIF, TIFF, BMP
-    const imageFiles: { name: string; data: Blob; mimeType: string }[] = [];
-    const filePromises: Promise<void>[] = [];
-    
-    const getMimeType = (ext: string): string => {
-      const types: Record<string, string> = {
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'gif': 'image/gif',
-        'tiff': 'image/tiff',
-        'tif': 'image/tiff',
-        'bmp': 'image/bmp',
-      };
-      return types[ext] || 'image/png';
-    };
-    
-    zip.forEach((relativePath, zipFile) => {
-      // PowerPoint stores slide images in ppt/media/
-      if (!zipFile.dir && relativePath.startsWith('ppt/media/') && 
-          /\.(png|jpg|jpeg|gif|tiff|tif|bmp)$/i.test(relativePath)) {
-        filePromises.push(
-          zipFile.async("blob").then(blob => {
-            const ext = relativePath.split('.').pop()?.toLowerCase() || 'png';
-            imageFiles.push({
-              name: relativePath.split('/').pop() || `image.${ext}`,
-              data: blob,
-              mimeType: getMimeType(ext)
-            });
-          })
-        );
-      }
-    });
-    
-    await Promise.all(filePromises);
-    
-    console.log(`Found ${imageFiles.length} images in ppt/media/`);
-    
-    if (imageFiles.length === 0) {
-      // Provide more helpful error with what we found
-      const mediaFiles = allFiles.filter(f => f.startsWith('ppt/media/'));
-      const slideFiles = allFiles.filter(f => f.startsWith('ppt/slides/'));
-      console.error("No compatible images found. Media files:", mediaFiles);
-      console.error("Slide XML files:", slideFiles);
-      throw new Error(
-        `No images found in PowerPoint file. This PPTX has ${slideFiles.length} slides but no embedded images. ` +
-        `To import slides, please export them as images first (File → Export → Change File Type → PNG/JPEG).`
-      );
-    }
-    
-    // Sort images by filename for consistent ordering
-    imageFiles.sort((a, b) => a.name.localeCompare(b.name));
-    
-    setProgress(`Found ${imageFiles.length} images. Creating deck...`);
-
-    // Check if deck exists and delete it if so
-    const {
-      data: existingDeck
-    } = await supabase.from("decks").select("slug").eq("slug", slug).single();
-    if (existingDeck) {
-      setProgress("Deleting existing deck...");
-
-      // Delete old slides from storage
-      const {
-        data: existingSlides
-      } = await supabase.from("slide_items").select("content_url").eq("deck_slug", slug);
-      if (existingSlides && existingSlides.length > 0) {
-        const filePaths = existingSlides.map(slide => {
-          const url = new URL(slide.content_url);
-          return url.pathname.split('/slides/')[1];
-        }).filter(path => path);
-        if (filePaths.length > 0) {
-          await supabase.storage.from("slides").remove(filePaths);
-        }
-      }
-      await supabase.from("decks").delete().eq("slug", slug);
-    }
-
-    // Create deck record
-    const {
-      error: deckError
-    } = await supabase.from("decks").insert({
-      slug
-    });
-    if (deckError) throw deckError;
-
-    // Upload slides to storage
-    for (let i = 0; i < imageFiles.length; i++) {
-      const image = imageFiles[i];
-      setProgress(`Uploading slide ${i + 1} of ${imageFiles.length}...`);
-
-      let uploadBlob: Blob = image.data;
-
-      // Compress if enabled
-      let isCompressed = false;
-      if (compress) {
-        setProgress(`Compressing slide ${i + 1}...`);
-        const imageFile = new File([uploadBlob], image.name, {
-          type: image.mimeType
-        });
-        uploadBlob = await compressImage(imageFile);
-        isCompressed = true;
-      }
-      
-      const ext = image.name.split('.').pop() || 'png';
-      const fileName = `${slug}/${i.toString().padStart(3, "0")}-${image.name}`;
-
-      // Upload to storage
-      const {
-        error: uploadError
-      } = await supabase.storage.from("slides").upload(fileName, uploadBlob, {
-        contentType: image.mimeType,
-        upsert: true
-      });
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const {
-        data: urlData
-      } = supabase.storage.from("slides").getPublicUrl(fileName);
-
-      // Create slide_item record
-      await supabase.from("slide_items").insert({
-        deck_slug: slug,
-        position: i,
-        type: "image",
-        content_url: urlData.publicUrl,
-        is_compressed: isCompressed,
-        import_source: 'powerpoint'
-      });
-    }
-  };
   const onZipSubmit = async (values: ZipFormValues) => {
     setUploading(true);
     try {
@@ -431,27 +269,12 @@ export default function DeckBuilder() {
       setProgress("");
     }
   };
-  const onPptxSubmit = async (values: PptxFormValues) => {
-    setUploading(true);
-    try {
-      const file = values.file[0];
-      await handlePowerPointUpload(file, values.slug, values.compress);
-      toast.success("Deck created successfully!");
-      navigate("/deck-management");
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error(error.message || "Failed to create deck");
-    } finally {
-      setUploading(false);
-      setProgress("");
-    }
-  };
   return <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-4xl font-bold mb-2">Deck Builder</h1>
           <p className="text-muted-foreground">
-            Import slides from ZIP files, Google Slides, or PowerPoint presentations
+            Import slides from ZIP files or Google Slides
           </p>
         </div>
 
@@ -464,7 +287,7 @@ export default function DeckBuilder() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="zip" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="zip">
                   <Upload className="h-4 w-4 mr-2" />
                   ZIP File
@@ -472,10 +295,6 @@ export default function DeckBuilder() {
                 <TabsTrigger value="google">
                   <FileDown className="h-4 w-4 mr-2" />
                   Google Slides
-                </TabsTrigger>
-                <TabsTrigger value="pptx">
-                  <Presentation className="h-4 w-4 mr-2" />
-                  PowerPoint
                 </TabsTrigger>
               </TabsList>
 
@@ -582,64 +401,6 @@ export default function DeckBuilder() {
                 </Form>
               </TabsContent>
 
-              <TabsContent value="pptx" className="space-y-4 mt-6">
-                <Form {...pptxForm}>
-                  <form onSubmit={pptxForm.handleSubmit(onPptxSubmit)} className="space-y-6">
-                    <FormField control={pptxForm.control} name="file" render={({
-                    field: {
-                      onChange,
-                      value,
-                      ...field
-                    }
-                  }) => <FormItem>
-                          <FormLabel>Upload PowerPoint File</FormLabel>
-                          <FormControl>
-                            <Input type="file" accept=".pptx" onChange={e => onChange(e.target.files)} disabled={uploading} {...field} />
-                          </FormControl>
-                          <p className="text-sm text-muted-foreground">
-                            PowerPoint (.pptx) file with embedded images
-                          </p>
-                          <FormMessage />
-                        </FormItem>} />
-
-                    <FormField control={pptxForm.control} name="slug" render={({
-                    field
-                  }) => <FormItem>
-                          <FormLabel className="text-lg font-semibold">Step 2: Enter Deck Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="my-deck-2024" {...field} disabled={uploading} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
-
-                    <FormField control={pptxForm.control} name="compress" render={({
-                    field
-                  }) => <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={uploading} />
-                          </FormControl>
-                          <FormLabel className="!mt-0 cursor-pointer">
-                            Compress images for faster loading
-                          </FormLabel>
-                        </FormItem>} />
-
-                    {progress && <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {progress}
-                      </div>}
-
-                    <Button type="submit" disabled={uploading} className="w-full">
-                      {uploading ? <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Deck...
-                        </> : <>
-                          <Presentation className="mr-2 h-4 w-4" />
-                          Create Deck
-                        </>}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

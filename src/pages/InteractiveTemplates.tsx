@@ -71,9 +71,6 @@ export default function InteractiveTemplates() {
   const [showingHotspots, setShowingHotspots] = useState<string | null>(null);
   const [viewingCampaigns, setViewingCampaigns] = useState<string | null>(null);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
-  const [isPowerPointImporting, setIsPowerPointImporting] = useState(false);
-  const [powerPointSlides, setPowerPointSlides] = useState<Array<{index: number, imageData: string, fileName: string}>>([]);
-  const [showPowerPointPicker, setShowPowerPointPicker] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "action" | "data" | "hybrid">("all");
   
   // Data template dialog state
@@ -343,97 +340,6 @@ export default function InteractiveTemplates() {
       .getPublicUrl(filePath);
 
     setFormData(prev => ({ ...prev, image_url: publicUrl }));
-  };
-
-  const handlePowerPointUpload = async (file: File) => {
-    setIsPowerPointImporting(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-powerpoint`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error);
-
-      setPowerPointSlides(data.slides);
-      setShowPowerPointPicker(true);
-      toast({
-        title: "PowerPoint Imported",
-        description: data.message,
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Import Failed",
-        description: error.message || "Failed to import PowerPoint file",
-      });
-    } finally {
-      setIsPowerPointImporting(false);
-    }
-  };
-
-  const handleSlideSelection = async (slide: {index: number, imageData: string, fileName: string}) => {
-    try {
-      // Convert base64 to blob
-      const response = await fetch(slide.imageData);
-      const blob = await response.blob();
-      
-      // Upload to storage
-      const fileName = `${crypto.randomUUID()}.${slide.fileName.split('.').pop()}`;
-      const filePath = `interactive-templates/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('slides')
-        .upload(filePath, blob);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('slides')
-        .getPublicUrl(filePath);
-
-      // Generate name and slug from original filename
-      const baseName = slide.fileName.replace(/\.[^/.]+$/, ""); // Remove extension
-      const defaultName = baseName || `Slide ${slide.index + 1}`;
-      const defaultSlug = defaultName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-      setFormData(prev => ({ 
-        ...prev, 
-        image_url: publicUrl,
-        name: prev.name || defaultName,
-        slug: prev.slug || defaultSlug
-      }));
-      setShowPowerPointPicker(false);
-      setPowerPointSlides([]);
-      
-      toast({
-        title: "Slide Selected",
-        description: "Image uploaded successfully",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Upload Failed",
-        description: error.message || "Failed to upload slide",
-      });
-    }
   };
 
   const resetForm = () => {
@@ -1016,26 +922,6 @@ export default function InteractiveTemplates() {
                       />
                     </div>
                     
-                    <div>
-                      <Label htmlFor="powerpoint-upload" className="text-sm font-medium">
-                        Upload PowerPoint File (.pptx)
-                      </Label>
-                      <Input
-                        id="powerpoint-upload"
-                        type="file"
-                        accept=".pptx"
-                        disabled={isPowerPointImporting}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handlePowerPointUpload(file);
-                        }}
-                      />
-                      {isPowerPointImporting && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Extracting slides from PowerPoint...
-                        </p>
-                      )}
-                    </div>
                   </div>
                   
                   {!formData.image_url && (
@@ -1135,43 +1021,6 @@ export default function InteractiveTemplates() {
           description: hybridSourceTemplate.description || undefined,
         } : undefined}
       />
-
-      {/* PowerPoint Slide Picker Dialog */}
-      <Dialog open={showPowerPointPicker} onOpenChange={setShowPowerPointPicker}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Select a Slide</DialogTitle>
-            <DialogDescription>
-              Choose which slide image to use for your template
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[60vh] p-4">
-            {powerPointSlides.map((slide) => (
-              <Card 
-                key={slide.index} 
-                className="cursor-pointer hover:border-primary transition-colors"
-                onClick={() => handleSlideSelection(slide)}
-              >
-                <CardContent className="p-4">
-                  <div className="aspect-[9/16] w-full mb-2">
-                    <img 
-                      src={slide.imageData} 
-                      alt={`Slide ${slide.index + 1}`} 
-                      className="w-full h-full object-contain rounded"
-                    />
-                  </div>
-                  <p className="text-sm text-center font-medium">
-                    Image {slide.index + 1}
-                  </p>
-                  <p className="text-xs text-center text-muted-foreground">
-                    {slide.fileName}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Filter Tabs and Template Grid */}
       <Tabs value={activeFilter} onValueChange={(val) => setActiveFilter(val as "all" | "action" | "data" | "hybrid")} className="mt-6">
