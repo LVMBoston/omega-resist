@@ -143,7 +143,8 @@ export function getAllIntersections(hotspots: Hotspot[]): Array<{
  * Allows 2% padding at top/bottom for labels (reduced from 4%)
  */
 export function isOutOfBounds(hotspot: Hotspot): boolean {
-  const labelPadding = 2; // 2% padding for labels at top/bottom (half of previous 4%)
+  const hasLabel = hotspot.label && hotspot.label.trim().length > 0;
+  const labelPadding = hasLabel ? 2 : 0;
   
   return (
     hotspot.x < 0 ||
