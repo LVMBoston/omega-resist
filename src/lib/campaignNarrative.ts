@@ -142,12 +142,14 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   } = data;
 
   const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
-  const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignCreatedAt).getTime()) / (1000 * 60 * 60 * 24)));
+  const msActive = Date.now() - new Date(campaignCreatedAt).getTime();
+  const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
+  const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   const lines: string[] = [];
 
   lines.push(campaignTitle);
-  lines.push(`${daysActive} days active`);
+  lines.push(`${daysActive} days ${hoursRemainder} hours active`);
   lines.push("");
 
   lines.push(`${seedCount} cards dropped`);
