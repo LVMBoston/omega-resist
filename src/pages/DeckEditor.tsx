@@ -484,6 +484,7 @@ export default function DeckEditor() {
       content_url: URL.createObjectURL(fileToUpload),
       is_compressed: !isGif, // GIFs are never compressed
       deck_slug: slug!,
+      skip_deploy: false,
     };
 
     // Update draft slides
