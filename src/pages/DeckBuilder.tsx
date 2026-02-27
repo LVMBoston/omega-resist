@@ -43,13 +43,6 @@ export default function DeckBuilder() {
       slidesUrl: ""
     }
   });
-  const pptxForm = useForm<PptxFormValues>({
-    resolver: zodResolver(pptxFormSchema),
-    defaultValues: {
-      slug: "",
-      compress: true
-    }
-  });
   const compressImage = async (file: File): Promise<Blob> => {
     try {
       const options = {
