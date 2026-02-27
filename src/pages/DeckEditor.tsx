@@ -31,6 +31,7 @@ interface Slide {
   is_compressed: boolean;
   template_id?: string;
   deck_slug: string;
+  skip_deploy: boolean;
 }
 
 interface Template {
