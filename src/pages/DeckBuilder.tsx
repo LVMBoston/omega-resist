@@ -268,21 +268,6 @@ export default function DeckBuilder() {
       setProgress("");
     }
   };
-  const onPptxSubmit = async (values: PptxFormValues) => {
-    setUploading(true);
-    try {
-      const file = values.file[0];
-      await handlePowerPointUpload(file, values.slug, values.compress);
-      toast.success("Deck created successfully!");
-      navigate("/deck-management");
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error(error.message || "Failed to create deck");
-    } finally {
-      setUploading(false);
-      setProgress("");
-    }
-  };
   return <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
