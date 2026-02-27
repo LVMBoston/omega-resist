@@ -646,6 +646,7 @@ export default function DeckEditor() {
         is_compressed: false,
         template_id: template.id,
         deck_slug: slug,
+        skip_deploy: false,
       };
 
       setSlides([...slides, tempSlide]);
