@@ -1057,10 +1057,10 @@ export default function DeckEditor() {
         </div>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-6 lg:h-[calc(100vh-180px)]">
           {/* Left Sidebar - Slide Thumbnails */}
-          <Card>
-            <CardContent className="p-4 space-y-4">
+          <Card className="overflow-hidden h-full">
+            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
@@ -1198,8 +1198,8 @@ Add Slide(s)
           </Card>
 
           {/* Center - Preview */}
-          <Card>
-            <CardContent className="p-6">
+          <Card className="h-full overflow-hidden">
+            <CardContent className="p-6 overflow-y-auto h-full">
               {selectedSlide ? (
                 <div className="space-y-4">
                   <div className="relative">
@@ -1224,8 +1224,8 @@ Add Slide(s)
           </Card>
 
           {/* Right Sidebar - Properties */}
-          <Card>
-            <CardContent className="p-4 space-y-4">
+          <Card className="h-full overflow-hidden">
+            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
               <h3 className="font-semibold">Slide Properties</h3>
               {selectedSlide ? (
                 <div className="space-y-3 text-sm">
