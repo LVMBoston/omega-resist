@@ -179,7 +179,10 @@ export default function DeckEditor() {
   const [newDeckSlug, setNewDeckSlug] = useState('');
   const [savingAs, setSavingAs] = useState(false);
   const [saveAsError, setSaveAsError] = useState('');
-
+  const [selectedSlideIds, setSelectedSlideIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkMoveDialogOpen, setBulkMoveDialogOpen] = useState(false);
+  const [bulkMoveTarget, setBulkMoveTarget] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
