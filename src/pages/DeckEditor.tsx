@@ -854,11 +854,11 @@ export default function DeckEditor() {
           .eq('id', realSlides[i].id);
       }
       
-      // Then update to final positions
+      // Then update to final positions and skip_deploy
       for (let i = 0; i < realSlides.length; i++) {
         await supabase
           .from('slide_items')
-          .update({ position: realSlides[i].position })
+          .update({ position: realSlides[i].position, skip_deploy: (realSlides[i] as any).skip_deploy ?? false })
           .eq('id', realSlides[i].id);
       }
 
