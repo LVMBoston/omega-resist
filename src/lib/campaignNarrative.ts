@@ -203,7 +203,7 @@ export function generateCampaignNarrative(data: NarrativeData): string {
   }
 
   // Total reach
-  lines.push(`👀 ${viewCount} people opened the content.`);
+  lines.push(`👀 The content was viewed ${viewCount} times — sometimes more than once by the same person.`);
   lines.push(`📍 ${geoNarrative}`);
   lines.push("");
 
