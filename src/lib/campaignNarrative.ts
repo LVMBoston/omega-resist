@@ -101,6 +101,16 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .filter(Boolean)
   );
 
+  // Aggregate share mediums
+  const mediumCounts = new Map<string, number>();
+  for (const t of (mediumRes.data || []) as any[]) {
+    const m = t.utm_medium || "unknown";
+    mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
+  }
+  const shareMediums = Array.from(mediumCounts.entries())
+    .map(([medium, count]) => ({ medium, count }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
     campaignCreatedAt: campaignRes.data?.created_at || new Date().toISOString(),
@@ -112,6 +122,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     internationalCountries: internationalCountries as string[],
     propagationSpeed,
     maxLevel,
+    shareMediums,
   };
 }
 
