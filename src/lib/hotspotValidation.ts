@@ -4,24 +4,27 @@ interface Hotspot {
   y: number;
   width: number;
   height: number;
+  label?: string;
   labelPosition?: 'top' | 'bottom';
 }
 
 /**
- * Get expanded bounds for a hotspot including its label area
+ * Get expanded bounds for a hotspot including its label area.
+ * Only expands if the hotspot has a non-empty label.
  */
 function getExpandedBounds(h: Hotspot): { x: number; y: number; right: number; bottom: number } {
-  const labelArea = 4; // 4% total space for label (text height + padding)
+  const hasLabel = h.label && h.label.trim().length > 0;
+  const labelArea = hasLabel ? 4 : 0;
   
   let expandedY = h.y;
   let expandedBottom = h.y + h.height;
   
-  // Expand bounds to include label area
-  if (h.labelPosition === 'top') {
-    expandedY = Math.max(0, h.y - labelArea);
-  } else {
-    // Default to bottom if not specified
-    expandedBottom = Math.min(100, h.y + h.height + labelArea);
+  if (labelArea > 0) {
+    if (h.labelPosition === 'top') {
+      expandedY = Math.max(0, h.y - labelArea);
+    } else {
+      expandedBottom = Math.min(100, h.y + h.height + labelArea);
+    }
   }
   
   return {
