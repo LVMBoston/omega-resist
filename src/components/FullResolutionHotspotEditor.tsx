@@ -653,24 +653,26 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      <div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full mb-4 flex items-center gap-2"
-                          onClick={() => {
-                            window.open("https://vimeo.com/1133027713?fl=ml&fe=ec", "_blank");
-                            toast({
-                              title: "Test URL Launched",
-                              description: "Opening Vimeo test link",
-                            });
-                          }}
-                        >
-                          <img src={playButton} alt="Play" className="w-4 h-4" />
-                          Test Share URL
-                        </Button>
-                      </div>
+                      {selectedHotspotData.type === 'external_link' && selectedHotspotData.url && (
+                        <div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full mb-4 flex items-center gap-2"
+                            onClick={() => {
+                              window.open(selectedHotspotData.url, "_blank");
+                              toast({
+                                title: "Test URL Launched",
+                                description: `Opening ${selectedHotspotData.url}`,
+                              });
+                            }}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Test URL
+                          </Button>
+                        </div>
+                      )}
 
                       <div>
                         <Label>Label Position</Label>
