@@ -156,7 +156,7 @@ export function generateCampaignNarrative(data: NarrativeData): string {
   let geoNarrative = "";
   if (zipCount > 0) {
     const stateCount = usStates.length;
-    geoNarrative = `The content reached ${zipCount} different neighborhoods`;
+    geoNarrative = `The content reached ${zipCount} different zip codes`;
     if (stateCount > 0) {
       geoNarrative += ` across ${stateCount} state${stateCount > 1 ? "s" : ""}`;
     }
