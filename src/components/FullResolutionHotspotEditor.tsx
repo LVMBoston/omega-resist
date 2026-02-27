@@ -483,6 +483,7 @@ export const FullResolutionHotspotEditor = ({
                             ⚠
                           </div>
                         )}
+                        {hotspot.label && hotspot.label.trim().length > 0 && (
                         <div 
                           className={`absolute left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-bold whitespace-nowrap pointer-events-none rounded-md shadow-lg ${
                             hotspot.labelPosition === "top" ? "-top-8" : "-bottom-8"
@@ -498,6 +499,7 @@ export const FullResolutionHotspotEditor = ({
                         >
                           {hotspot.label}
                         </div>
+                        )}
                       </div>
                     );
                   })}
