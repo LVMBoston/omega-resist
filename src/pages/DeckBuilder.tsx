@@ -25,6 +25,7 @@ const googleSlidesFormSchema = z.object({
   slidesUrl: z.string().min(1, "Google Slides URL is required")
 });
 type ZipFormValues = z.infer<typeof zipFormSchema>;
+type GoogleSlidesFormValues = z.infer<typeof googleSlidesFormSchema>;
 export default function DeckBuilder() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
