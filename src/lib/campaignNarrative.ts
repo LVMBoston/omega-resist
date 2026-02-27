@@ -11,6 +11,7 @@ export interface NarrativeData {
   internationalCountries: string[];
   propagationSpeed: { level: number; first_mint: string }[];
   maxLevel: number;
+  shareMediums: { medium: string; count: number }[];
 }
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
