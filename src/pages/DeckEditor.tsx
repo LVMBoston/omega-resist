@@ -1224,8 +1224,8 @@ Add Slide(s)
           </Card>
 
           {/* Right Sidebar - Properties */}
-          <Card>
-            <CardContent className="p-4 space-y-4">
+          <Card className="h-full overflow-hidden">
+            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
               <h3 className="font-semibold">Slide Properties</h3>
               {selectedSlide ? (
                 <div className="space-y-3 text-sm">
