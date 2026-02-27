@@ -18,7 +18,6 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
     supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
-    // Sprout count: distinct parent_tokens among L1+ children for this campaign
     supabase.from("tokens")
       .select("token, parent_token")
       .eq("utm_campaign", campaignCode)
@@ -26,13 +25,11 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .is("deleted_at", null)
       .gt("level", 0)
       .not("parent_token", "is", null),
-    // Geo
     supabase.from("url_events")
       .select("zip_code, region, country, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", false)
       .is("deleted_at", null),
-    // US states
     supabase.from("url_events")
       .select("region, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
@@ -40,7 +37,6 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("country", "United States")
       .is("deleted_at", null)
       .not("region", "is", null),
-    // International countries
     supabase.from("url_events")
       .select("country, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
@@ -48,14 +44,12 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .is("deleted_at", null)
       .neq("country", "United States")
       .not("country", "is", null),
-    // Views scoped to campaign via token join
     supabase.from("url_events")
       .select("id, tokens!inner(utm_campaign)", { count: "exact", head: true })
       .eq("tokens.utm_campaign", campaignCode)
       .eq("event_type", "view")
       .eq("is_simulated", false)
       .is("deleted_at", null),
-    // Propagation speed - get min minted_at per level
     supabase.from("tokens")
       .select("level, minted_at, events_actions!inner(campaign_id)")
       .eq("events_actions.campaign_id", campaignId)
@@ -79,12 +73,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
 
   const maxLevel = levelCounts.length > 0 ? Math.max(...levelCounts.map(l => l.level)) : 0;
 
-  // Deduplicate states and countries
   const usStates = [...new Set((statesRes.data || []).map((r: any) => r.region).filter(Boolean))];
   const internationalCountries = [...new Set((intlRes.data || []).map((r: any) => r.country).filter(Boolean))];
   const zipCodes = new Set((geoRes.data || []).map((r: any) => r.zip_code).filter(Boolean));
 
-  // Compute propagation speed from tokens
   const speedMap = new Map<number, string>();
   for (const t of (speedRes.data || []) as any[]) {
     if (!speedMap.has(t.level)) {
@@ -95,7 +87,6 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     .map(([level, first_mint]) => ({ level, first_mint }))
     .sort((a, b) => a.level - b.level);
 
-  // Count sprouts: distinct parent_tokens from the sprouts query (L1+ tokens for this campaign)
   const parentTokens = new Set(
     ((sproutsRes.data || []) as any[])
       .map(t => t.parent_token)
@@ -116,7 +107,74 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   };
 }
 
-export function generateCampaignNarrative(data: NarrativeData): string {
+// ─── Headline tier (compact, fits one iPhone screen at 30pt) ─────────
+
+export function generateHeadlineOnly(data: NarrativeData): string {
+  const {
+    campaignTitle,
+    campaignCreatedAt,
+    levelCounts,
+    sproutCount,
+    viewCount,
+    zipCount,
+    usStates,
+    propagationSpeed,
+    maxLevel,
+  } = data;
+
+  const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
+  const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignCreatedAt).getTime()) / (1000 * 60 * 60 * 24)));
+
+  const lines: string[] = [];
+
+  lines.push(campaignTitle);
+  lines.push(`${daysActive} days active`);
+  lines.push("");
+
+  lines.push(`${seedCount} cards dropped`);
+  if (seedCount > 0 && sproutCount > 0) {
+    const sproutRate = Math.round((sproutCount / seedCount) * 100);
+    lines.push(`${sproutCount} sprouted (${sproutRate}%)`);
+  }
+  lines.push("");
+
+  if (maxLevel > 0) {
+    lines.push(`Longest chain: ${maxLevel} levels`);
+
+    // Speed line
+    if (propagationSpeed.length >= 2) {
+      const l0Time = new Date(propagationSpeed[0].first_mint);
+      const lastLevel = propagationSpeed[propagationSpeed.length - 1];
+      const lastTime = new Date(lastLevel.first_mint);
+      const diffHours = Math.round((lastTime.getTime() - l0Time.getTime()) / (1000 * 60 * 60));
+      if (diffHours < 1) {
+        lines.push(`Reached L${lastLevel.level} in < 1 hour`);
+      } else if (diffHours < 24) {
+        lines.push(`Reached L${lastLevel.level} in ${diffHours} hours`);
+      } else {
+        const days = Math.round(diffHours / 24);
+        lines.push(`Reached L${lastLevel.level} in ${days} day${days > 1 ? "s" : ""}`);
+      }
+    }
+    lines.push("");
+  }
+
+  lines.push(`${viewCount} views, ${zipCount} zip codes`);
+  const stateCount = usStates.length;
+  if (stateCount > 0) {
+    lines.push(`across ${stateCount} state${stateCount > 1 ? "s" : ""}`);
+  }
+  lines.push("");
+
+  lines.push("No ad budget.");
+  lines.push("Every view earned.");
+
+  return lines.join("\n");
+}
+
+// ─── Full story tier (verbose narrative with emojis) ─────────────────
+
+function generateFullStory(data: NarrativeData): string {
   const {
     campaignTitle,
     campaignCreatedAt,
@@ -131,7 +189,6 @@ export function generateCampaignNarrative(data: NarrativeData): string {
   } = data;
 
   const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
-  const totalTokens = levelCounts.reduce((sum, l) => sum + l.count, 0);
   const daysActive = Math.max(1, Math.floor((Date.now() - new Date(campaignCreatedAt).getTime()) / (1000 * 60 * 60 * 24)));
 
   // Propagation speed narrative
@@ -161,21 +218,17 @@ export function generateCampaignNarrative(data: NarrativeData): string {
       geoNarrative += ` across ${stateCount} state${stateCount > 1 ? "s" : ""}`;
     }
     geoNarrative += ".";
-
     if (internationalCountries.length > 0) {
       geoNarrative += ` It even crossed borders, reaching ${internationalCountries.join(", ")}.`;
     }
   }
 
-  // Build the narrative — compact for iPhone
   const lines: string[] = [];
 
-  // Opening
   lines.push(`__TITLE__${campaignTitle}__TITLE__`);
   lines.push(`Campaign active for ${daysActive} days`);
   lines.push("");
 
-  // Seeds & sprouts
   lines.push(`🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains.`);
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
@@ -183,7 +236,6 @@ export function generateCampaignNarrative(data: NarrativeData): string {
   }
   lines.push("");
 
-  // Chain depth
   if (maxLevel > 0) {
     lines.push(`🔗 Longest chain: ${maxLevel} levels deep.`);
     if (maxLevel >= 3) {
@@ -196,19 +248,30 @@ export function generateCampaignNarrative(data: NarrativeData): string {
     lines.push("");
   }
 
-  // Speed
   if (speedNarrative) {
     lines.push(`⚡ ${speedNarrative}`);
     lines.push("");
   }
 
-  // Total reach
   lines.push(`👀 The content was viewed ${viewCount} times — sometimes more than once by the same person.`);
   lines.push(`📍 ${geoNarrative}`);
   lines.push("");
 
-  // Closing
   lines.push(`No ad budget. No algorithm. Every view came because one person decided another person needed to see it.`);
 
   return lines.join("\n");
+}
+
+// ─── Two-tier narrative generator ────────────────────────────────────
+
+export interface CampaignNarrativeResult {
+  headline: string;
+  fullStory: string;
+}
+
+export function generateCampaignNarrative(data: NarrativeData): CampaignNarrativeResult {
+  return {
+    headline: generateHeadlineOnly(data),
+    fullStory: generateFullStory(data),
+  };
 }

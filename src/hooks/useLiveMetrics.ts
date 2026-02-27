@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInTimeZone } from "date-fns-tz";
 import { LiveMetricKey } from "@/types/viralTemplates";
+import { fetchNarrativeData, generateCampaignNarrative } from "@/lib/campaignNarrative";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   earliest_active: "Earliest Active",
   latest_active: "Latest Active",
   last_updated: "Last Updated",
+  campaign_story: "Campaign Story",
 };
 
 // ─── Sanitization helpers ────────────────────────────────────────────
@@ -139,7 +141,7 @@ const NUMERIC_KEYS: LiveMetricKey[] = [
 
 const TEXT_KEYS: LiveMetricKey[] = [
   "viral_coefficient", "campaign_name", "current_date", "current_time",
-  "earliest_active", "latest_active", "last_updated",
+  "earliest_active", "latest_active", "last_updated", "campaign_story",
 ];
 
 const EMPTY_METRICS: MetricResult[] = [
@@ -345,6 +347,16 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         value: formatTimestamp(latestTimestamp, viewerTz),
         source: "url_events",
       });
+
+      // Campaign story (headline narrative)
+      try {
+        const narrativeData = await fetchNarrativeData(campaign.code, campaign.id);
+        const { headline } = generateCampaignNarrative(narrativeData);
+        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: headline, source: "narrative" });
+      } catch (narrativeErr) {
+        console.warn("[useLiveMetrics] campaign_story generation failed:", narrativeErr);
+        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: "--", source: "fallback" });
+      }
 
       console.log("[useLiveMetrics] Final metrics count:", metricResults.length, metricResults.map((m) => m.key));
       setMetrics(metricResults);
