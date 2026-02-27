@@ -18,9 +18,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
     supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
-    // Sprout count: distinct L0 tokens that have at least one L1 child
+    // Sprout count: distinct parent_tokens among L1+ children for this campaign
     supabase.from("tokens")
-      .select("parent_token", { count: "exact", head: true })
+      .select("token, parent_token")
+      .eq("utm_campaign", campaignCode)
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .gt("level", 0)
@@ -47,9 +48,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .is("deleted_at", null)
       .neq("country", "United States")
       .not("country", "is", null),
-    // Views
+    // Views scoped to campaign via token join
     supabase.from("url_events")
-      .select("id", { count: "exact", head: true })
+      .select("id, tokens!inner(utm_campaign)", { count: "exact", head: true })
+      .eq("tokens.utm_campaign", campaignCode)
       .eq("event_type", "view")
       .eq("is_simulated", false)
       .is("deleted_at", null),
@@ -93,11 +95,11 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     .map(([level, first_mint]) => ({ level, first_mint }))
     .sort((a, b) => a.level - b.level);
 
-  // Count sprouts: distinct parent_tokens in L1+ tokens for this campaign
+  // Count sprouts: distinct parent_tokens from the sprouts query (L1+ tokens for this campaign)
   const parentTokens = new Set(
-    ((speedRes.data || []) as any[])
-      .filter(t => t.level > 0)
-      .map(t => t.parent_token || t.token) // approximate
+    ((sproutsRes.data || []) as any[])
+      .map(t => t.parent_token)
+      .filter(Boolean)
   );
 
   return {
