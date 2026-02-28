@@ -42,28 +42,72 @@ const InteractiveSlideOverlay = ({
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const vimeoPlayerRef = useRef<Player | null>(null);
 
-  // Fetch email and SMS templates
+  // EoA context for scoped template resolution
+  const [eoaContext, setEoaContext] = useState<{ campaign_id: string; mobilize_code: string | null; city: string | null; state: string | null; site_name: string | null } | null>(null);
+
+  // Fetch EoA context from viralToken, then resolve templates
   useEffect(() => {
     const fetchTemplates = async () => {
-      const { data: emailData } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("category", "email")
-        .eq("key", "l01_template")
-        .maybeSingle();
-      
-      const { data: smsData } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("category", "sms")
-        .eq("key", "l01_template")
-        .maybeSingle();
-      
-      if (emailData) setEmailTemplate(emailData.value as any);
-      if (smsData) setSmsTemplate(smsData.value as any);
+      let campaignId: string | null = null;
+      let mobilizeCode: string | null = null;
+      let city: string | null = null;
+      let state: string | null = null;
+      let siteName: string | null = null;
+
+      // Try to derive campaign_id and mobilize_code from the token
+      if (viralToken) {
+        const { data: tokenData } = await supabase
+          .from("tokens")
+          .select("eoa_id")
+          .eq("token", viralToken)
+          .maybeSingle();
+
+        if (tokenData?.eoa_id) {
+          const { data: eoaData } = await supabase
+            .from("events_actions")
+            .select("campaign_id, mobilize_code, city, state, site_name")
+            .eq("id", tokenData.eoa_id)
+            .maybeSingle();
+
+          if (eoaData) {
+            campaignId = eoaData.campaign_id;
+            mobilizeCode = eoaData.mobilize_code;
+            city = eoaData.city;
+            state = eoaData.state;
+            siteName = eoaData.site_name;
+            setEoaContext({ campaign_id: campaignId, mobilize_code: mobilizeCode, city, state, site_name: siteName });
+          }
+        }
+      }
+
+      // Use resolve_message_template RPC if we have campaign context
+      if (campaignId) {
+        const [emailRes, smsRes] = await Promise.all([
+          supabase.rpc("resolve_message_template", { p_campaign_id: campaignId, p_mobilize_code: mobilizeCode, p_category: "email", p_key: "l01_template" }),
+          supabase.rpc("resolve_message_template", { p_campaign_id: campaignId, p_mobilize_code: mobilizeCode, p_category: "sms", p_key: "l01_template" }),
+        ]);
+        if (emailRes.data) setEmailTemplate(emailRes.data as any);
+        if (smsRes.data) setSmsTemplate(smsRes.data as any);
+      } else {
+        // Fallback to global settings (no token context)
+        const { data: emailData } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("category", "email")
+          .eq("key", "l01_template")
+          .maybeSingle();
+        const { data: smsData } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("category", "sms")
+          .eq("key", "l01_template")
+          .maybeSingle();
+        if (emailData) setEmailTemplate(emailData.value as any);
+        if (smsData) setSmsTemplate(smsData.value as any);
+      }
     };
     fetchTemplates();
-  }, []);
+  }, [viralToken]);
 
   useEffect(() => {
     console.log("🔧 InteractiveSlideOverlay effect running, imageRef:", !!imageRef.current);
