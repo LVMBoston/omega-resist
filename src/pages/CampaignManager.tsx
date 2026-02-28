@@ -557,9 +557,23 @@ export default function CampaignManager() {
         if (eoaInsertError) throw eoaInsertError;
       }
 
+      // 4. Clone campaign_message_overrides
+      const { data: originalOverrides } = await supabase
+        .from("campaign_message_overrides")
+        .select("mobilize_code, category, key, value")
+        .eq("campaign_id", cloneCampaign.id);
+
+      if (originalOverrides && originalOverrides.length > 0) {
+        const clonedOverrides = originalOverrides.map(({ ...rest }) => ({
+          ...rest,
+          campaign_id: newCampaign.id,
+        }));
+        await supabase.from("campaign_message_overrides").insert(clonedOverrides);
+      }
+
       toast({
         title: "Campaign cloned",
-        description: `"${cloneTitle}" created with ${originalEoas?.length || 0} EoAs`,
+        description: `"${cloneTitle}" created with ${originalEoas?.length || 0} EoAs and ${originalOverrides?.length || 0} messaging overrides`,
       });
       setCloneCampaign(null);
       fetchData();
