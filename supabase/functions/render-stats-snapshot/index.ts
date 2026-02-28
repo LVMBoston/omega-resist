@@ -241,7 +241,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
-  // Campaign story headline (inline generation from already-fetched data)
+  // Campaign story — full narrative (inline generation from already-fetched data)
   const campaignInfo = await fetchWithRetry(
     () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
     "campaign info for story"
@@ -273,6 +273,19 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     ) || [];
     const stateCount = new Set((statesData as any[]).map((r: any) => r.region).filter(Boolean)).size;
 
+    // International countries
+    const intlData = await fetchWithRetry(
+      () => supabase.from("url_events")
+        .select("country, tokens!inner(utm_campaign)")
+        .eq("tokens.utm_campaign", campaignCode)
+        .eq("is_simulated", false)
+        .is("deleted_at", null)
+        .not("country", "is", null)
+        .neq("country", "United States"),
+      "intl countries for story"
+    ) || [];
+    const intlCountries = [...new Set((intlData as any[]).map((r: any) => r.country).filter(Boolean))];
+
     // Propagation speed from tokens
     const speedTokens = await fetchWithRetry(
       () => supabase.from("tokens")
@@ -289,33 +302,93 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     }
     const speedEntries = Array.from(speedMap.entries()).sort((a, b) => a[0] - b[0]);
 
+    // Share medium breakdown
+    const mediumData = await fetchWithRetry(
+      () => supabase.from("tokens")
+        .select("utm_medium")
+        .eq("utm_campaign", campaignCode)
+        .eq("is_simulated", false)
+        .is("deleted_at", null)
+        .gt("level", 0)
+        .not("utm_medium", "is", null),
+      "share mediums for story"
+    ) || [];
+    const mediumCounts = new Map<string, number>();
+    for (const t of mediumData as any[]) {
+      if (t.utm_medium) mediumCounts.set(t.utm_medium, (mediumCounts.get(t.utm_medium) || 0) + 1);
+    }
+    const totalMediums = Array.from(mediumCounts.values()).reduce((s, c) => s + c, 0);
+    const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
+    const mediumLine = totalMediums > 0
+      ? Array.from(mediumCounts.entries())
+          .map(([m, c]) => `${Math.round((c / totalMediums) * 100)}% ${mediumLabels[m] || m}`)
+          .join(", ")
+      : "";
+
+    // Speed narrative
+    let speedNarrative = "";
+    if (speedEntries.length >= 2) {
+      const l0Time = new Date(speedEntries[0][1]);
+      const last = speedEntries[speedEntries.length - 1];
+      const diffHours = Math.round((new Date(last[1]).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
+      if (diffHours < 1) speedNarrative = `The message reached Level ${last[0]} in under an hour.`;
+      else if (diffHours < 24) speedNarrative = `The message reached Level ${last[0]} in just ${diffHours} hours.`;
+      else { const d = Math.round(diffHours / 24); speedNarrative = `The message reached Level ${last[0]} within ${d} day${d > 1 ? "s" : ""}.`; }
+    }
+
+    // Geographic narrative
+    let geoNarrative = "";
+    if (zipCountNum > 0) {
+      geoNarrative = `The content reached ${zipCountNum} different zip codes`;
+      if (stateCount > 0) geoNarrative += ` across ${stateCount} state${stateCount > 1 ? "s" : ""}`;
+      geoNarrative += ".";
+      if (intlCountries.length > 0) geoNarrative += ` It even crossed borders, reaching ${intlCountries.join(", ")}.`;
+    }
+
+    // Closing — deterministic
+    const closings = [
+      "No ad budget. No algorithm. Every view came because one person decided another person needed to see it.",
+      "No ads. No tricks. Just people passing something along because it mattered to them.",
+      "No promotion. No platform boost. This spread the old-fashioned way — person to person, because it resonated.",
+      "Zero dollars spent. Every single view was a conscious act of solidarity — someone choosing to share.",
+    ];
+    const closingIndex = (seedCount + spawnsNum) % closings.length;
+
     const storyLines: string[] = [];
-    storyLines.push(campaignInfo.title || campaignCode);
-    storyLines.push(`${daysActive} days ${hoursRemainder} hours active`);
+    storyLines.push(`Campaign: ${campaignInfo.title || campaignCode}`);
+    storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
     storyLines.push("");
-    storyLines.push(`${seedCount} cards dropped`);
+    storyLines.push(`🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`);
     if (seedCount > 0 && spawnsNum > 0) {
-      const sproutRate = Math.round((spawnsNum / seedCount) * 100);
-      storyLines.push(`${spawnsNum} sprouted (${sproutRate}%)`);
+      let sproutLine = `That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared`;
+      if (mediumLine) sproutLine += `: ${mediumLine}`;
+      sproutLine += ".";
+      storyLines.push(sproutLine);
     }
     storyLines.push("");
     if (maxDepth > 0) {
-      storyLines.push(`Longest chain: ${maxDepth} levels`);
-      if (speedEntries.length >= 2) {
-        const l0Time = new Date(speedEntries[0][1]);
-        const last = speedEntries[speedEntries.length - 1];
-        const diffHours = Math.round((new Date(last[1]).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
-        if (diffHours < 1) storyLines.push(`Reached L${last[0]} in < 1 hour`);
-        else if (diffHours < 24) storyLines.push(`Reached L${last[0]} in ${diffHours} hours`);
-        else { const d = Math.round(diffHours / 24); storyLines.push(`Reached L${last[0]} in ${d} day${d > 1 ? "s" : ""}`); }
-      }
+      storyLines.push(`🔗 Longest chain: ${maxDepth} levels deep.`);
+      if (maxDepth >= 3) storyLines.push("Someone scanned a card → shared it → that person shared it → and it kept going.");
+      else if (maxDepth === 2) storyLines.push("A scan became a share, which became another share.");
+      else storyLines.push("Seeds turned into shares.");
       storyLines.push("");
     }
-    storyLines.push(`${viewCountNum} views, ${zipCountNum} zip codes`);
-    if (stateCount > 0) storyLines.push(`across ${stateCount} state${stateCount > 1 ? "s" : ""}`);
+    if (speedNarrative) {
+      storyLines.push(`⚡ ${speedNarrative}`);
+      storyLines.push("");
+    }
+    storyLines.push(`👀 The content was viewed ${viewCountNum} times — sometimes more than once by the same person.`);
+    if (geoNarrative) {
+      storyLines.push(`📍 ${geoNarrative}`);
+      storyLines.push("");
+    }
     storyLines.push("");
-    storyLines.push("No ad budget.");
-    storyLines.push("Every view earned.");
+    storyLines.push(closings[closingIndex]);
+    storyLines.push("");
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
+    storyLines.push(`Date of this report: ${dateStr} ${timeStr}`);
 
     metrics.campaign_story = storyLines.join("\n");
   } else {
