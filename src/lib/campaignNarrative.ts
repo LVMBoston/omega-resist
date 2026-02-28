@@ -101,9 +101,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   );
 
   // Aggregate share mediums
+  // Aggregate open events by share medium (from the token's utm_medium)
   const mediumCounts = new Map<string, number>();
-  for (const t of (mediumRes.data || []) as any[]) {
-    const m = t.utm_medium || "unknown";
+  for (const evt of (mediumRes.data || []) as any[]) {
+    const m = evt.tokens?.utm_medium || "unknown";
     mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
   }
   const shareMediums = Array.from(mediumCounts.entries())
