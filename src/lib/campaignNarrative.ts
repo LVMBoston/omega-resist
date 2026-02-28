@@ -268,6 +268,10 @@ function generateFullStory(data: NarrativeData): string {
   const lines: string[] = [];
 
   lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
+  lines.push(`Date of this report: ${dateStr} ${timeStr}`);
   const startDate = new Date(campaignCreatedAt);
   const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   lines.push(`Started ${startFormatted}`);
@@ -319,11 +323,6 @@ function generateFullStory(data: NarrativeData): string {
   lines.push(closings[closingIndex]);
   lines.push("");
 
-  // Date of report
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
-  lines.push(`Date of this report: ${dateStr} ${timeStr}`);
 
   return lines.join("\n");
 }
