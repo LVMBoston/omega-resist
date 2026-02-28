@@ -302,20 +302,20 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     }
     const speedEntries = Array.from(speedMap.entries()).sort((a, b) => a[0] - b[0]);
 
-    // Share medium breakdown
+    // Open events by share medium (count view events, not tokens)
     const mediumData = await fetchWithRetry(
-      () => supabase.from("tokens")
-        .select("utm_medium")
-        .eq("utm_campaign", campaignCode)
+      () => supabase.from("url_events")
+        .select("tokens!inner(utm_medium, utm_campaign)")
+        .eq("tokens.utm_campaign", campaignCode)
         .eq("is_simulated", false)
         .is("deleted_at", null)
-        .gt("level", 0)
-        .not("utm_medium", "is", null),
-      "share mediums for story"
+        .eq("event_type", "view"),
+      "open mediums for story"
     ) || [];
     const mediumCounts = new Map<string, number>();
-    for (const t of mediumData as any[]) {
-      if (t.utm_medium) mediumCounts.set(t.utm_medium, (mediumCounts.get(t.utm_medium) || 0) + 1);
+    for (const evt of mediumData as any[]) {
+      const m = (evt as any).tokens?.utm_medium;
+      if (m) mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
     }
     const totalMediums = Array.from(mediumCounts.values()).reduce((s, c) => s + c, 0);
     const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
