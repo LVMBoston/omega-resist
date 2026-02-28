@@ -347,7 +347,7 @@ export function DraggableHotspotOverlay({
           <div
             key={hotspot.id}
             data-hotspot-overlay
-            className={`absolute flex select-none transition-shadow overflow-hidden ${
+            className={`absolute select-none transition-shadow overflow-y-auto ${
               isEditMode ? "cursor-text" : "cursor-move"
             } ${isActive ? "ring-2 ring-primary ring-offset-2" : ""} ${
               isDragging ? "z-50 shadow-2xl" : "z-10"
