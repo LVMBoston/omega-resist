@@ -365,19 +365,19 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     storyLines.push(`Started ${startFormatted}`);
     storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
     storyLines.push("");
-    storyLines.push(`🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`);
+    let seedLine = `🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`;
     if (seedCount > 0 && spawnsNum > 0) {
-      let sproutLine = `That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared. Opens by medium`;
-      if (mediumLine) sproutLine += `: ${mediumLine}`;
-      sproutLine += ".";
-      storyLines.push(sproutLine);
+      seedLine += ` That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared.`;
+      if (mediumLine) seedLine += ` Opens by medium: ${mediumLine}.`;
     }
+    storyLines.push(seedLine);
     storyLines.push("");
     if (maxDepth > 0) {
-      storyLines.push(`🔗 Longest chain: ${maxDepth} levels deep.`);
-      if (maxDepth >= 3) storyLines.push("Someone scanned a card → shared it → that person shared it → and it kept going.");
-      else if (maxDepth === 2) storyLines.push("A scan became a share, which became another share.");
-      else storyLines.push("Seeds turned into shares.");
+      let chainLine = `🔗 Longest chain: ${maxDepth} levels deep.`;
+      if (maxDepth >= 3) chainLine += " Someone scanned a card → shared it → that person shared it → and it kept going.";
+      else if (maxDepth === 2) chainLine += " A scan became a share, which became another share.";
+      else chainLine += " Seeds turned into shares.";
+      storyLines.push(chainLine);
       storyLines.push("");
     }
     if (speedNarrative) {

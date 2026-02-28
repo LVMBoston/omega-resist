@@ -279,28 +279,28 @@ function generateFullStory(data: NarrativeData): string {
   lines.push("");
 
   // Seeds & sprouts
-  lines.push(`🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`);
+  let seedLine = `🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`;
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    let sproutLine = `That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared. Opens by medium`;
+    seedLine += ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared.`;
     if (mediumLine) {
-      sproutLine += `: ${mediumLine}`;
+      seedLine += ` Opens by medium: ${mediumLine}.`;
     }
-    sproutLine += ".";
-    lines.push(sproutLine);
   }
+  lines.push(seedLine);
   lines.push("");
 
   // Depth
   if (maxLevel > 0) {
-    lines.push(`🔗 Longest chain: ${maxLevel} levels deep.`);
+    let chainLine = `🔗 Longest chain: ${maxLevel} levels deep.`;
     if (maxLevel >= 3) {
-      lines.push(`Someone scanned a card → shared it → that person shared it → and it kept going.`);
+      chainLine += ` Someone scanned a card → shared it → that person shared it → and it kept going.`;
     } else if (maxLevel === 2) {
-      lines.push(`A scan became a share, which became another share.`);
+      chainLine += ` A scan became a share, which became another share.`;
     } else {
-      lines.push(`Seeds turned into shares.`);
+      chainLine += ` Seeds turned into shares.`;
     }
+    lines.push(chainLine);
     lines.push("");
   }
 
