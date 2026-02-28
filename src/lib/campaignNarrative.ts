@@ -279,16 +279,15 @@ function generateFullStory(data: NarrativeData): string {
   lines.push("");
 
   // Seeds & sprouts
-  lines.push(`🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`);
+  let seedLine = `🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`;
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    let sproutLine = `That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared. Opens by medium`;
+    seedLine += ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared.`;
     if (mediumLine) {
-      sproutLine += `: ${mediumLine}`;
+      seedLine += ` Opens by medium: ${mediumLine}.`;
     }
-    sproutLine += ".";
-    lines.push(sproutLine);
   }
+  lines.push(seedLine);
   lines.push("");
 
   // Depth
