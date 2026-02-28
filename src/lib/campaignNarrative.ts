@@ -268,6 +268,9 @@ function generateFullStory(data: NarrativeData): string {
   const lines: string[] = [];
 
   lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+  const startDate = new Date(campaignCreatedAt);
+  const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  lines.push(`Started ${startFormatted}`);
   lines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
   lines.push("");
 
