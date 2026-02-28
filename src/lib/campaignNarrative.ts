@@ -292,14 +292,15 @@ function generateFullStory(data: NarrativeData): string {
 
   // Depth
   if (maxLevel > 0) {
-    lines.push(`🔗 Longest chain: ${maxLevel} levels deep.`);
+    let chainLine = `🔗 Longest chain: ${maxLevel} levels deep.`;
     if (maxLevel >= 3) {
-      lines.push(`Someone scanned a card → shared it → that person shared it → and it kept going.`);
+      chainLine += ` Someone scanned a card → shared it → that person shared it → and it kept going.`;
     } else if (maxLevel === 2) {
-      lines.push(`A scan became a share, which became another share.`);
+      chainLine += ` A scan became a share, which became another share.`;
     } else {
-      lines.push(`Seeds turned into shares.`);
+      chainLine += ` Seeds turned into shares.`;
     }
+    lines.push(chainLine);
     lines.push("");
   }
 

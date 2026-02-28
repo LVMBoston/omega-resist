@@ -373,10 +373,11 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     storyLines.push(seedLine);
     storyLines.push("");
     if (maxDepth > 0) {
-      storyLines.push(`🔗 Longest chain: ${maxDepth} levels deep.`);
-      if (maxDepth >= 3) storyLines.push("Someone scanned a card → shared it → that person shared it → and it kept going.");
-      else if (maxDepth === 2) storyLines.push("A scan became a share, which became another share.");
-      else storyLines.push("Seeds turned into shares.");
+      let chainLine = `🔗 Longest chain: ${maxDepth} levels deep.`;
+      if (maxDepth >= 3) chainLine += " Someone scanned a card → shared it → that person shared it → and it kept going.";
+      else if (maxDepth === 2) chainLine += " A scan became a share, which became another share.";
+      else chainLine += " Seeds turned into shares.";
+      storyLines.push(chainLine);
       storyLines.push("");
     }
     if (speedNarrative) {
