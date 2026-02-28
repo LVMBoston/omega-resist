@@ -392,10 +392,6 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     storyLines.push("");
     storyLines.push(closings[closingIndex]);
     storyLines.push("");
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
-    storyLines.push(`Date of this report: ${dateStr} ${timeStr}`);
 
     metrics.campaign_story = storyLines.join("\n");
   } else {
