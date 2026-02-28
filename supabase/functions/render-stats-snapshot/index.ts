@@ -437,15 +437,22 @@ Deno.serve(async (req) => {
     const metrics = await calculateMetrics(supabase, campaign_code);
     console.log("[render-stats-snapshot] Metrics calculated:", JSON.stringify(metrics));
 
-    // Fetch background image as base64 data URL
+    // Fetch background image as base64 data URL, or handle solid color
     const imageUrl = template.image_url as string;
-    const bgDataUrl = await fetchImageAsDataUrl(imageUrl);
-    
-    if (!bgDataUrl) {
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch background image" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let bgDataUrl: string | null = null;
+    let bgSolidColor: string | null = null;
+
+    if (imageUrl.startsWith("solid:")) {
+      bgSolidColor = imageUrl.replace("solid:", "");
+      console.log(`[render-stats-snapshot] Using solid background color: ${bgSolidColor}`);
+    } else {
+      bgDataUrl = await fetchImageAsDataUrl(imageUrl);
+      if (!bgDataUrl) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch background image" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Parse hotspots from template
@@ -554,7 +561,7 @@ Deno.serve(async (req) => {
 
     const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>
+  ${bgSolidColor ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${bgSolidColor}"/>` : `<image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`}
   ${mapSvgElements.join("\n  ")}
   ${hotspotSvgElements}
 </svg>`;
