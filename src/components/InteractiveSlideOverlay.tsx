@@ -323,10 +323,17 @@ const InteractiveSlideOverlay = ({
       console.log("4️⃣ mintShare Response:", JSON.stringify(result, null, 2));
       const { token, full_url, level } = result;
 
-      // Use template or fallback
-      const subject = emailTemplate?.subject || "Check out this presentation";
+      // Use template with placeholder substitution
+      const substituteGeoPlaceholders = (text: string) => {
+        return text
+          .replace(/\{\{city\}\}/g, eoaContext?.city || "")
+          .replace(/\{\{state\}\}/g, eoaContext?.state || "")
+          .replace(/\{\{site_name\}\}/g, eoaContext?.site_name || "");
+      };
+
+      const subject = emailTemplate?.subject ? substituteGeoPlaceholders(emailTemplate.subject) : "Check out this presentation";
       const body = emailTemplate?.body 
-        ? emailTemplate.body.replace("{{link}}", full_url)
+        ? substituteGeoPlaceholders(emailTemplate.body.replace("{{link}}", full_url))
         : `I thought you might be interested in this: ${full_url}`;
 
       const finalPayload = {
