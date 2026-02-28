@@ -215,8 +215,8 @@ function generateFullStory(data: NarrativeData): string {
   const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
   const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-  // Share medium percentages
-  const totalShares = shareMediums.reduce((s, m) => s + m.count, 0);
+  // Open medium percentages (based on view events, not tokens)
+  const totalOpens = shareMediums.reduce((s, m) => s + m.count, 0);
   const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
   const mediumLine = totalShares > 0
     ? shareMediums
