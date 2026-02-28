@@ -306,9 +306,11 @@ function generateFullStory(data: NarrativeData): string {
   // Views
   lines.push(`👀 The content was viewed ${viewCount} times — sometimes more than once by the same person.`);
 
-  // Geography
-  lines.push(`📍 ${geoNarrative}`);
-  lines.push("");
+  // Geography — only include if we have geo data
+  if (geoNarrative) {
+    lines.push(`📍 ${geoNarrative}`);
+    lines.push("");
+  }
 
   // Closing
   lines.push(closings[closingIndex]);
