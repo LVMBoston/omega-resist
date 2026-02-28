@@ -356,6 +356,9 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
     const storyLines: string[] = [];
     storyLines.push(`Campaign: ${campaignInfo.title || campaignCode}`);
+    const startDate = new Date(campaignInfo.created_at || Date.now());
+    const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    storyLines.push(`Started ${startFormatted}`);
     storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
     storyLines.push("");
     storyLines.push(`🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`);
