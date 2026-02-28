@@ -244,9 +244,16 @@ const InteractiveSlideOverlay = ({
       console.log("4️⃣ mintShare Response:", JSON.stringify(result, null, 2));
       const { token, full_url, level } = result;
 
-      // Use template or fallback
+      // Use template with placeholder substitution
+      const substituteGeoPlaceholders = (text: string) => {
+        return text
+          .replace(/\{\{city\}\}/g, eoaContext?.city || "")
+          .replace(/\{\{state\}\}/g, eoaContext?.state || "")
+          .replace(/\{\{site_name\}\}/g, eoaContext?.site_name || "");
+      };
+
       const message = smsTemplate?.body 
-        ? smsTemplate.body.replace("{{link}}", full_url)
+        ? substituteGeoPlaceholders(smsTemplate.body.replace("{{link}}", full_url))
         : `Check out this deck: ${full_url}`;
 
       const finalPayload = {
