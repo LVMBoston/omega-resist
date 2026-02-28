@@ -352,7 +352,9 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       try {
         const narrativeData = await fetchNarrativeData(campaign.code, campaign.id);
         const { fullStory } = generateCampaignNarrative(narrativeData);
-        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: fullStory, source: "narrative" });
+        // Strip __TITLE__ sentinels — they're only for dialog rendering
+        const cleanStory = fullStory.replace(/__TITLE__/g, "");
+        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: cleanStory, source: "narrative" });
       } catch (narrativeErr) {
         console.warn("[useLiveMetrics] campaign_story generation failed:", narrativeErr);
         metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: "--", source: "fallback" });
