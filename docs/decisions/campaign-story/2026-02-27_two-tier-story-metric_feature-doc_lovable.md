@@ -59,7 +59,15 @@ Enhanced full story to match slide mockup:
 
 - **Duration**: Shows "X days Y hours active" (both tiers + snapshot headline).
 - **Seed explanation**: Added "(A seed is a QR scan not shared.)" to the sprout paragraph.
-- **Share medium breakdown**: Fetches `utm_medium` counts (sms→text, em→email) and appends "##% text, ##% email" to the sprout rate line.
+- **Share medium breakdown**: Fetches `utm_medium` counts (sms→text, em→email) and appends only when data exists — omitted entirely if no share medium data.
 - **Varied closing**: Four closing paragraphs cycling deterministically on `(seedCount + sproutCount) % 4`, maintaining themes of virality, solidarity, anonymity, and whimsy.
 - **Date of report**: Appended `Date of this report: Mon DD, YYYY HH:MM TZ` at the bottom of the full story.
 - **New data field**: `shareMediums: { medium: string; count: number }[]` added to `NarrativeData` interface and `fetchNarrativeData`.
+
+## Update — 2026-02-28
+
+Switched `campaign_story` metric to use full story instead of headline:
+
+- **Client-side** (`useLiveMetrics.ts`): `campaign_story` now resolves to `fullStory` (verbose, with emojis) instead of `headline`.
+- **Server-side** (`render-stats-snapshot`): Snapshot story generation updated to match full story format with emojis, verbose prose, share medium breakdown, geo narrative, and date of report.
+- **Data integrity fix**: Geography section (`📍`) omitted when no geo data exists. Share medium line omitted when no medium data exists. No `##%` placeholders ever rendered.
