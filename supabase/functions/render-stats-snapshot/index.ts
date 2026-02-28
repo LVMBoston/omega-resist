@@ -360,7 +360,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     storyLines.push("");
     storyLines.push(`🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`);
     if (seedCount > 0 && spawnsNum > 0) {
-      let sproutLine = `That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared`;
+      let sproutLine = `That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared. Opens by medium`;
       if (mediumLine) sproutLine += `: ${mediumLine}`;
       sproutLine += ".";
       storyLines.push(sproutLine);
