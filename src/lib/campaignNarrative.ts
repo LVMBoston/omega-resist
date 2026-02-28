@@ -57,13 +57,12 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .order("minted_at", { ascending: true }),
-    supabase.from("tokens")
-      .select("utm_medium")
-      .eq("utm_campaign", campaignCode)
+    supabase.from("url_events")
+      .select("tokens!inner(utm_medium, utm_campaign)")
+      .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", false)
       .is("deleted_at", null)
-      .gt("level", 0)
-      .not("parent_token", "is", null),
+      .eq("event_type", "view"),
   ]);
 
   const stats = (tokensRes.data as any)?.[0];
@@ -102,9 +101,10 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   );
 
   // Aggregate share mediums
+  // Aggregate open events by share medium (from the token's utm_medium)
   const mediumCounts = new Map<string, number>();
-  for (const t of (mediumRes.data || []) as any[]) {
-    const m = t.utm_medium || "unknown";
+  for (const evt of (mediumRes.data || []) as any[]) {
+    const m = evt.tokens?.utm_medium || "unknown";
     mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
   }
   const shareMediums = Array.from(mediumCounts.entries())
@@ -215,12 +215,12 @@ function generateFullStory(data: NarrativeData): string {
   const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
   const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-  // Share medium percentages
-  const totalShares = shareMediums.reduce((s, m) => s + m.count, 0);
+  // Open medium percentages (based on view events, not tokens)
+  const totalOpens = shareMediums.reduce((s, m) => s + m.count, 0);
   const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
-  const mediumLine = totalShares > 0
+  const mediumLine = totalOpens > 0
     ? shareMediums
-        .map(m => `${Math.round((m.count / totalShares) * 100)}% ${mediumLabels[m.medium] || m.medium}`)
+        .map(m => `${Math.round((m.count / totalOpens) * 100)}% ${mediumLabels[m.medium] || m.medium}`)
         .join(", ")
     : "";
 
@@ -275,7 +275,7 @@ function generateFullStory(data: NarrativeData): string {
   lines.push(`🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`);
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    let sproutLine = `That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared`;
+    let sproutLine = `That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared. Opens by medium`;
     if (mediumLine) {
       sproutLine += `: ${mediumLine}`;
     }
