@@ -67,15 +67,23 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
     URL.revokeObjectURL(url);
   };
 
-  const emojiRegex = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u;
+  const emojiRegex = /^([\p{Emoji_Presentation}\p{Extended_Pictographic}]\uFE0F?\s?)/u;
 
   const renderFullStoryLine = (line: string, i: number) => {
     if (line.startsWith("__TITLE__") && line.endsWith("__TITLE__")) {
       const title = line.replace(/__TITLE__/g, "");
       return <p key={i} className="text-xl font-bold">{title}</p>;
     }
-    if (emojiRegex.test(line.trim())) {
-      return <p key={i} className="whitespace-pre-wrap" style={{ paddingLeft: '1.75em', textIndent: '-1.75em' }}>{line}</p>;
+    const emojiMatch = line.trim().match(emojiRegex);
+    if (emojiMatch) {
+      const emoji = emojiMatch[1];
+      const rest = line.trim().slice(emoji.length);
+      return (
+        <div key={i} className="flex">
+          <span className="shrink-0 w-[1.75em]">{emoji}</span>
+          <span className="whitespace-pre-wrap">{rest}</span>
+        </div>
+      );
     }
     return <p key={i} className="whitespace-pre-wrap">{line || "\u00A0"}</p>;
   };
