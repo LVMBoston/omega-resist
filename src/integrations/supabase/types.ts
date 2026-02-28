@@ -14,8 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_message_overrides: {
+        Row: {
+          campaign_id: string
+          category: string
+          created_at: string
+          id: string
+          key: string
+          mobilize_code: string | null
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          campaign_id: string
+          category: string
+          created_at?: string
+          id?: string
+          key: string
+          mobilize_code?: string | null
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          campaign_id?: string
+          category?: string
+          created_at?: string
+          id?: string
+          key?: string
+          mobilize_code?: string | null
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_message_overrides_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
+          campaign_type: string
           code: string
           created_at: string
           description: string | null
@@ -27,6 +69,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          campaign_type?: string
           code: string
           created_at?: string
           description?: string | null
@@ -38,6 +81,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          campaign_type?: string
           code?: string
           created_at?: string
           description?: string | null
@@ -919,6 +963,15 @@ export type Database = {
         }[]
       }
       refresh_daily_aggregates: { Args: never; Returns: undefined }
+      resolve_message_template: {
+        Args: {
+          p_campaign_id: string
+          p_category: string
+          p_key: string
+          p_mobilize_code: string
+        }
+        Returns: Json
+      }
       shorten_url: {
         Args: { _full_url: string }
         Returns: {

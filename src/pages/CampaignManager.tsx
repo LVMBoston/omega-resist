@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import CampaignWizard from "@/components/CampaignWizard";
 interface Campaign {
   id: string;
   code: string;
@@ -98,6 +99,7 @@ export default function CampaignManager() {
   const [cloneTitle, setCloneTitle] = useState("");
   const [cloneCodeError, setCloneCodeError] = useState("");
   const [cloning, setCloning] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   
   useEffect(() => {
     fetchData();
@@ -555,9 +557,23 @@ export default function CampaignManager() {
         if (eoaInsertError) throw eoaInsertError;
       }
 
+      // 4. Clone campaign_message_overrides
+      const { data: originalOverrides } = await supabase
+        .from("campaign_message_overrides")
+        .select("mobilize_code, category, key, value")
+        .eq("campaign_id", cloneCampaign.id);
+
+      if (originalOverrides && originalOverrides.length > 0) {
+        const clonedOverrides = originalOverrides.map(({ ...rest }) => ({
+          ...rest,
+          campaign_id: newCampaign.id,
+        }));
+        await supabase.from("campaign_message_overrides").insert(clonedOverrides);
+      }
+
       toast({
         title: "Campaign cloned",
-        description: `"${cloneTitle}" created with ${originalEoas?.length || 0} EoAs`,
+        description: `"${cloneTitle}" created with ${originalEoas?.length || 0} EoAs and ${originalOverrides?.length || 0} messaging overrides`,
       });
       setCloneCampaign(null);
       fetchData();
@@ -1052,18 +1068,27 @@ export default function CampaignManager() {
                 </Label>
               </div>
             </div>
+            {/* New Campaign Wizard (for creation) */}
+            <Button onClick={() => setWizardOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Campaign
+            </Button>
+            <CampaignWizard
+              open={wizardOpen}
+              onOpenChange={setWizardOpen}
+              onSuccess={(campaignId) => {
+                fetchData();
+                navigate(`/campaign/${campaignId}`);
+              }}
+            />
+
+            {/* Edit Campaign Dialog (simple form, no wizard) */}
             <Dialog open={campaignDialogOpen} onOpenChange={handleDialogClose}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Campaign
-                  </Button>
-                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>{editingCampaign ? "Edit Campaign" : "Create Campaign"}</DialogTitle>
+                    <DialogTitle>Edit Campaign</DialogTitle>
                     <DialogDescription>
-                      {editingCampaign ? "Update the campaign details." : "Add a new campaign to organize your events and actions."}
+                      Update the campaign details.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -1089,8 +1114,8 @@ export default function CampaignManager() {
                       description: e.target.value
                     })} placeholder="Optional description..." />
                     </div>
-                    <Button onClick={editingCampaign ? updateCampaign : createCampaign} className="w-full">
-                      {editingCampaign ? "Update Campaign" : "Create Campaign"}
+                    <Button onClick={updateCampaign} className="w-full">
+                      Update Campaign
                     </Button>
                   </div>
                 </DialogContent>
