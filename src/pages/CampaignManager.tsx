@@ -99,6 +99,7 @@ export default function CampaignManager() {
   const [cloneTitle, setCloneTitle] = useState("");
   const [cloneCodeError, setCloneCodeError] = useState("");
   const [cloning, setCloning] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   
   useEffect(() => {
     fetchData();
