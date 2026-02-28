@@ -218,9 +218,9 @@ function generateFullStory(data: NarrativeData): string {
   // Open medium percentages (based on view events, not tokens)
   const totalOpens = shareMediums.reduce((s, m) => s + m.count, 0);
   const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
-  const mediumLine = totalShares > 0
+  const mediumLine = totalOpens > 0
     ? shareMediums
-        .map(m => `${Math.round((m.count / totalShares) * 100)}% ${mediumLabels[m.medium] || m.medium}`)
+        .map(m => `${Math.round((m.count / totalOpens) * 100)}% ${mediumLabels[m.medium] || m.medium}`)
         .join(", ")
     : "";
 
