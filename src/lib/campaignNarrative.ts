@@ -57,13 +57,12 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .order("minted_at", { ascending: true }),
-    supabase.from("tokens")
-      .select("utm_medium")
-      .eq("utm_campaign", campaignCode)
+    supabase.from("url_events")
+      .select("tokens!inner(utm_medium, utm_campaign)")
+      .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", false)
       .is("deleted_at", null)
-      .gt("level", 0)
-      .not("parent_token", "is", null),
+      .eq("event_type", "view"),
   ]);
 
   const stats = (tokensRes.data as any)?.[0];
