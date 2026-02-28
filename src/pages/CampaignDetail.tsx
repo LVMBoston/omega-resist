@@ -2,13 +2,14 @@ import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import CampaignEoaManager from "./CampaignEoaManager";
 import CampaignDashboard from "./CampaignDashboard";
+import CampaignChapters from "@/components/CampaignChapters";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 
 export default function CampaignDetail() {
   const { campaignId } = useParams();
-  const [activeView, setActiveView] = useState<"events" | "config">("events");
+  const [activeView, setActiveView] = useState<"events" | "config" | "chapters">("events");
 
   const { data: campaign } = useQuery({
     queryKey: ["campaign", campaignId],
@@ -47,6 +48,12 @@ export default function CampaignDetail() {
             Manage Events/Actions
           </Button>
           <Button 
+            variant={activeView === "chapters" ? "default" : "outline"}
+            onClick={() => setActiveView("chapters")}
+          >
+            Chapters
+          </Button>
+          <Button 
             variant={activeView === "config" ? "default" : "outline"}
             onClick={() => setActiveView("config")}
           >
@@ -55,6 +62,7 @@ export default function CampaignDetail() {
         </div>
 
         {activeView === "events" && <CampaignEoaManager />}
+        {activeView === "chapters" && campaignId && <CampaignChapters campaignId={campaignId} />}
         {activeView === "config" && <CampaignDashboard campaignId={campaignId} />}
       </main>
     </div>
