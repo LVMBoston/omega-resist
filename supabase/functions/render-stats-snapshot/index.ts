@@ -365,13 +365,12 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     storyLines.push(`Started ${startFormatted}`);
     storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
     storyLines.push("");
-    storyLines.push(`🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`);
+    let seedLine = `🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`;
     if (seedCount > 0 && spawnsNum > 0) {
-      let sproutLine = `That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared. Opens by medium`;
-      if (mediumLine) sproutLine += `: ${mediumLine}`;
-      sproutLine += ".";
-      storyLines.push(sproutLine);
+      seedLine += ` That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared.`;
+      if (mediumLine) seedLine += ` Opens by medium: ${mediumLine}.`;
     }
+    storyLines.push(seedLine);
     storyLines.push("");
     if (maxDepth > 0) {
       storyLines.push(`🔗 Longest chain: ${maxDepth} levels deep.`);
