@@ -156,7 +156,7 @@ export const FullResolutionHotspotEditor = ({
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
     // Auto-number label for types that allow multiples
-    const allowMultipleTypes = ['external_link', 'app_download'];
+    const allowMultipleTypes = ['external_link'];
     let label = selectedIconPreset.label;
     if (allowMultipleTypes.includes(selectedIconPreset.type)) {
       const existingCount = hotspots.filter(h => h.type === selectedIconPreset.type).length;
