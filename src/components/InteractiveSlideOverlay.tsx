@@ -488,7 +488,7 @@ const InteractiveSlideOverlay = ({
       case "app-download":
         return iconWrapper(<Smartphone style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "email-links":
-        return iconWrapper(<MailPlus style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return iconWrapper(<img src={emailLinksIcon} alt="Email Links" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
