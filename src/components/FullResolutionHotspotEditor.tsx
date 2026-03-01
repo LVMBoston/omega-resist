@@ -15,6 +15,8 @@ import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.png";
 import playButton from "@/assets/play-button.png";
+import shareIcon from "@/assets/share-icon.png";
+import emailLinksIcon from "@/assets/email-links-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
