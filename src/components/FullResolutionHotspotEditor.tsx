@@ -176,7 +176,7 @@ export const FullResolutionHotspotEditor = ({
       height: selectedIconPreset.height,
       labelPosition: "bottom",
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
-      ...(selectedIconPreset.type === "app_download" && { appStoreUrl: "", playStoreUrl: "", fallbackUrl: "" }),
+      
       ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
     };
 
