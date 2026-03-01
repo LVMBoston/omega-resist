@@ -29,7 +29,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "app_download";
+  type: "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
   label: string;
   x: number;
   y: number;
@@ -40,6 +40,8 @@ interface Hotspot {
   appStoreUrl?: string;
   playStoreUrl?: string;
   fallbackUrl?: string;
+  emailLinksSubject?: string;
+  emailLinksShowLabels?: boolean;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
