@@ -678,6 +678,31 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
+                      {selectedHotspotData.type === "email_links" && (
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Email Subject</Label>
+                            <Input
+                              value={(selectedHotspotData as any).emailLinksSubject || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { emailLinksSubject: e.target.value } as any)
+                              }
+                              placeholder="Resources for Action"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="show-labels-switch" className="font-normal cursor-pointer">Show label on slide</Label>
+                            <Switch
+                              id="show-labels-switch"
+                              checked={(selectedHotspotData as any).emailLinksShowLabels || false}
+                              onCheckedChange={(checked) =>
+                                updateHotspot(selectedHotspotData.id, { emailLinksShowLabels: checked } as any)
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {selectedHotspotData.type === 'external_link' && selectedHotspotData.url && (
                         <div>
                           <Button
