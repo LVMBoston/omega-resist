@@ -17,6 +17,7 @@ import textIcon from "@/assets/text-icon.png";
 import playButton from "@/assets/play-button.png";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
+import externalLinkIcon from "@/assets/external-link-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
@@ -68,7 +69,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "social-share-filled", label: "Share Filled (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   
   // External link variants
-  { id: "link-icon", label: "External Link", type: "external_link", imageUrl: playButton, width: 5, height: 4 },
+  { id: "link-icon", label: "External Link", type: "external_link", imageUrl: externalLinkIcon, width: 5, height: 4 },
   
   
   // Email links variant
@@ -109,7 +110,7 @@ export const FullResolutionHotspotEditor = ({
     sms: textIcon,
     email: mailIcon,
     social: shareIcon,
-    external_link: playButton,
+    external_link: externalLinkIcon,
     
     email_links: emailLinksIcon,
   };
