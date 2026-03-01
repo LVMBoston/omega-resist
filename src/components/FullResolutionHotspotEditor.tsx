@@ -120,6 +120,7 @@ export const FullResolutionHotspotEditor = ({
     social: BsShare,
     external_link: BsShare,
     app_download: Smartphone,
+    email_links: MailPlus,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
