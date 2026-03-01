@@ -640,8 +640,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                        </div>
-                      )}
+
 
                       {selectedHotspotData.type === "email_links" && (
                         <div className="space-y-3">

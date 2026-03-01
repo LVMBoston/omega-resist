@@ -540,9 +540,7 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-      });
-    }
-  };
+
 
   const closeVideo = () => {
     if (vimeoPlayerRef.current) {
