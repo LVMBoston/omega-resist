@@ -119,7 +119,7 @@ export const FullResolutionHotspotEditor = ({
     email: null,
     social: null,
     external_link: null,
-    app_download: Smartphone,
+    
     email_links: null,
   };
 
