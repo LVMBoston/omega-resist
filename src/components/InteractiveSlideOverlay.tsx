@@ -887,18 +887,30 @@ const InteractiveSlideOverlay = ({
         }
         
         // Use button for other hotspot types
-        const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
+        // Guard against double-fire from touchStart + click on mobile
+        let touchFired = false;
+        const handleTouchStart = (e: React.TouchEvent) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log(`📱 Hotspot ${hotspot.type} clicked/touched`);
+          touchFired = true;
+          console.log(`📱 Hotspot ${hotspot.type} touched`);
+          getHotspotAction(hotspot.type, hotspot)();
+        };
+        const handleClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          if (touchFired) {
+            touchFired = false;
+            return; // Already handled by touchStart
+          }
+          console.log(`📱 Hotspot ${hotspot.type} clicked`);
           getHotspotAction(hotspot.type, hotspot)();
         };
         
         return (
           <button
             key={hotspot.id}
-            onClick={handleInteraction}
-            onTouchStart={handleInteraction}
+            onClick={handleClick}
+            onTouchStart={handleTouchStart}
             className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
             style={{
               left: `${left}px`,
