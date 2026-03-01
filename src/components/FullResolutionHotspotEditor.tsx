@@ -125,10 +125,10 @@ export const FullResolutionHotspotEditor = ({
   };
 
   const categoryLabels: Record<IconCategory, string> = {
-    sms: "SMS/Text",
+    sms: "SMS",
     email: "Email",
-    social: "Social Share",
-    external_link: "External Link",
+    social: "Social",
+    external_link: "Link",
     
     email_links: "Email Links",
   };
@@ -355,7 +355,7 @@ export const FullResolutionHotspotEditor = ({
               
               {!selectedCategory ? (
                 // Step 1: Category selection
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-6 gap-2">
                   {(["sms", "email", "social", "external_link", "email_links"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
@@ -383,7 +383,7 @@ export const FullResolutionHotspotEditor = ({
                     title="Coming soon"
                   >
                     <img src={playButtonIcon} alt="Play Video" className="w-6 h-6 object-contain" />
-                    <span className="text-xs font-medium text-center leading-tight">Play Video</span>
+                    <span className="text-xs font-medium text-center leading-tight">Video</span>
                   </Button>
                 </div>
               ) : (
