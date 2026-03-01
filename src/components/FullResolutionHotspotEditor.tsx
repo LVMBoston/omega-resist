@@ -22,7 +22,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
+  type: "sms" | "email" | "social" | "external_link" | "email_links";
   icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
   imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
