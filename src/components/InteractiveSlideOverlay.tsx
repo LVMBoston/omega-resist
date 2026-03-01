@@ -909,8 +909,8 @@ const InteractiveSlideOverlay = ({
         return (
           <button
             key={hotspot.id}
-            onClick={handleInteraction}
-            onTouchStart={handleInteraction}
+            onClick={handleClick}
+            onTouchStart={handleTouchStart}
             className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
             style={{
               left: `${left}px`,
