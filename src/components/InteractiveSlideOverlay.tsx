@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Smartphone, MailPlus } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
 import shareIcon from "@/assets/share-icon.png";
+import emailLinksIcon from "@/assets/email-links-icon.png";
 import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
 import Player from "@vimeo/player";
@@ -487,7 +488,7 @@ const InteractiveSlideOverlay = ({
       case "app-download":
         return iconWrapper(<Smartphone style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "email-links":
-        return iconWrapper(<MailPlus style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return iconWrapper(<img src={emailLinksIcon} alt="Email Links" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
