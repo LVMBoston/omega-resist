@@ -125,10 +125,10 @@ export const FullResolutionHotspotEditor = ({
   };
 
   const categoryLabels: Record<IconCategory, string> = {
-    sms: "SMS/Text",
+    sms: "SMS",
     email: "Email",
-    social: "Social Share",
-    external_link: "External Link",
+    social: "Social",
+    external_link: "Link",
     
     email_links: "Email Links",
   };
