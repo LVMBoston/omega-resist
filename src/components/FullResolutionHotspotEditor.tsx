@@ -110,7 +110,7 @@ export const FullResolutionHotspotEditor = ({
     email: mailIcon,
     social: shareIcon,
     external_link: playButton,
-    app_download: "", // Will use icon component
+    
     email_links: emailLinksIcon,
   };
 
