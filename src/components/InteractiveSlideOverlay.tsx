@@ -9,6 +9,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.svg";
+import shareIcon from "@/assets/share-icon.png";
 import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
 import Player from "@vimeo/player";
@@ -476,7 +477,7 @@ const InteractiveSlideOverlay = ({
       case "social-whatsapp":
         return iconWrapper(<FaWhatsapp style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-share":
-        return iconWrapper(<BsShare style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return iconWrapper(<img src={shareIcon} alt="Share" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       case "social-share-filled":
         return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "link-icon":
