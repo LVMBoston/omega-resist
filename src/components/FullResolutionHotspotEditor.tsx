@@ -111,6 +111,7 @@ export const FullResolutionHotspotEditor = ({
     social: "", // Will use icon component for social
     external_link: playButton,
     app_download: "", // Will use icon component
+    email_links: "", // Will use icon component
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
