@@ -70,8 +70,6 @@ const ICON_PRESETS: IconPreset[] = [
   // External link variants
   { id: "link-icon", label: "External Link", type: "external_link", imageUrl: playButton, width: 5, height: 4 },
   
-  // App download variants
-  { id: "app-download", label: "App Download", type: "app_download", icon: Smartphone as any, width: 5, height: 4 },
   
   // Email links variant
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
