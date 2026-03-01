@@ -128,7 +128,7 @@ export const FullResolutionHotspotEditor = ({
     email: "Email",
     social: "Social Share",
     external_link: "External Link",
-    app_download: "App Download",
+    
     email_links: "Email Links",
   };
 
