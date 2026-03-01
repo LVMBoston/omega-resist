@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Smartphone } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
