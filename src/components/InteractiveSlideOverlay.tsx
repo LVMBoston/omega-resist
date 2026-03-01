@@ -913,6 +913,26 @@ const InteractiveSlideOverlay = ({
             }}
           >
             {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            {hotspot.type === 'email_links' && hotspot.emailLinksShowLabels && hotspot.label && (
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: '-20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                }}
+              >
+                {hotspot.label}
+              </span>
+            )}
           </button>
         );
       })}
