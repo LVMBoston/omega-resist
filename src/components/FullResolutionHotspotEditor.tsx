@@ -14,7 +14,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.png";
-import playButton from "@/assets/play-button.png";
+import playButtonIcon from "@/assets/play-button.png";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
 import externalLinkIcon from "@/assets/external-link-icon.png";
