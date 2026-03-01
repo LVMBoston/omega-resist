@@ -639,6 +639,41 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
+  const handleEmailLinks = (hotspot: Hotspot) => {
+    // Collect all external_link siblings with non-empty URLs
+    const externalLinks = hotspots.filter(h => h.type === 'external_link' && h.url && h.url.trim().length > 0);
+
+    if (externalLinks.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No links found",
+        description: "There are no external link hotspots on this slide to bundle.",
+      });
+      return;
+    }
+
+    // Build numbered list body
+    const lines = externalLinks.map((link, i) => {
+      const num = i + 1;
+      return link.label && link.label.trim().length > 0
+        ? `${num}. ${link.label}: ${link.url}`
+        : `${num}. ${link.url}`;
+    });
+    const body = lines.join('\n');
+    const subject = hotspot.emailLinksSubject || '';
+
+    const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailUrl;
+
+    // Post-action nudge toast (6s)
+    setTimeout(() => {
+      toast({
+        title: "Don't forget to share this with people you trust!",
+        duration: 6000,
+      });
+    }, 500);
+  };
+
   const getHotspotAction = (type: string, hotspot?: Hotspot) => {
     switch (type) {
       case "sms":
@@ -655,6 +690,12 @@ const InteractiveSlideOverlay = ({
         return () => {
           if (hotspot) {
             handleAppDownload(hotspot);
+          }
+        };
+      case "email_links":
+        return () => {
+          if (hotspot) {
+            handleEmailLinks(hotspot);
           }
         };
       case "social":
