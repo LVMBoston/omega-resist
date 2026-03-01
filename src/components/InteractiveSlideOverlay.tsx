@@ -661,12 +661,6 @@ const InteractiveSlideOverlay = ({
             handleExternalLink(hotspot.url);
           }
         };
-      case "app_download":
-        return () => {
-          if (hotspot) {
-            handleAppDownload(hotspot);
-          }
-        };
       case "email_links":
         return () => {
           if (hotspot) {

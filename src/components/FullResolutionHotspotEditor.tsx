@@ -640,41 +640,6 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {selectedHotspotData.type === "app_download" && (
-                        <div className="space-y-3">
-                          <div>
-                            <Label>iOS App Store URL</Label>
-                            <Input
-                              value={(selectedHotspotData as any).appStoreUrl || ""}
-                              onChange={(e) =>
-                                updateHotspot(selectedHotspotData.id, { appStoreUrl: e.target.value } as any)
-                              }
-                              placeholder="https://apps.apple.com/app/..."
-                              type="url"
-                            />
-                          </div>
-                          <div>
-                            <Label>Google Play Store URL</Label>
-                            <Input
-                              value={(selectedHotspotData as any).playStoreUrl || ""}
-                              onChange={(e) =>
-                                updateHotspot(selectedHotspotData.id, { playStoreUrl: e.target.value } as any)
-                              }
-                              placeholder="https://play.google.com/store/apps/..."
-                              type="url"
-                            />
-                          </div>
-                          <div>
-                            <Label>Desktop Fallback URL (optional)</Label>
-                            <Input
-                              value={(selectedHotspotData as any).fallbackUrl || ""}
-                              onChange={(e) =>
-                                updateHotspot(selectedHotspotData.id, { fallbackUrl: e.target.value } as any)
-                              }
-                              placeholder="https://yourapp.com/download"
-                              type="url"
-                            />
-                          </div>
                         </div>
                       )}
 
