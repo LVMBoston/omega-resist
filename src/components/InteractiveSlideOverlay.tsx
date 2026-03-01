@@ -660,7 +660,7 @@ const InteractiveSlideOverlay = ({
         : `${num}. ${link.url}`;
     });
     const body = lines.join('\n');
-    const subject = hotspot.emailLinksSubject || '';
+    const subject = hotspot.emailLinksSubject || 'Here are the links you requested…';
 
     const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailUrl;
