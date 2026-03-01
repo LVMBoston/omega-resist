@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Smartphone } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -486,8 +486,6 @@ const InteractiveSlideOverlay = ({
         return iconWrapper(<img src={externalLinkIcon} alt="External Link" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       case "play-button":
         return iconWrapper(<img src={playButton} alt="Play Video" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
-      case "app-download":
-        return iconWrapper(<Smartphone style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "email-links":
         return iconWrapper(<img src={emailLinksIcon} alt="Email Links" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       // Fallback for legacy or unknown icons
@@ -542,35 +540,7 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-  const handleAppDownload = (hotspot: Hotspot) => {
-    const ua = navigator.userAgent;
-    let targetUrl: string | undefined;
 
-    if (/iPad|iPhone|iPod/.test(ua)) {
-      targetUrl = hotspot.appStoreUrl || hotspot.playStoreUrl || hotspot.fallbackUrl;
-    } else if (/android/i.test(ua)) {
-      targetUrl = hotspot.playStoreUrl || hotspot.appStoreUrl || hotspot.fallbackUrl;
-    } else {
-      targetUrl = hotspot.fallbackUrl || hotspot.appStoreUrl || hotspot.playStoreUrl;
-    }
-
-    if (targetUrl) {
-      const link = document.createElement('a');
-      link.href = targetUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      toast({
-        variant: "destructive",
-        title: "No download link",
-        description: "No app store URL configured for this device.",
-      });
-    }
-  };
 
   const closeVideo = () => {
     if (vimeoPlayerRef.current) {
@@ -687,12 +657,6 @@ const InteractiveSlideOverlay = ({
         return () => {
           if (hotspot?.url) {
             handleExternalLink(hotspot.url);
-          }
-        };
-      case "app_download":
-        return () => {
-          if (hotspot) {
-            handleAppDownload(hotspot);
           }
         };
       case "email_links":

@@ -6,7 +6,7 @@ import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, X, AlertTriangle, Smartphone, ExternalLink, MailPlus } from "lucide-react";
+import { Trash2, X, AlertTriangle, ExternalLink, MailPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
@@ -22,7 +22,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
+  type: "sms" | "email" | "social" | "external_link" | "email_links";
   icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
   imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
@@ -32,7 +32,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
+  type: "sms" | "email" | "social" | "external_link" | "email_links";
   label: string;
   x: number;
   y: number;
@@ -70,14 +70,12 @@ const ICON_PRESETS: IconPreset[] = [
   // External link variants
   { id: "link-icon", label: "External Link", type: "external_link", imageUrl: playButton, width: 5, height: 4 },
   
-  // App download variants
-  { id: "app-download", label: "App Download", type: "app_download", icon: Smartphone as any, width: 5, height: 4 },
   
   // Email links variant
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -112,7 +110,7 @@ export const FullResolutionHotspotEditor = ({
     email: mailIcon,
     social: shareIcon,
     external_link: playButton,
-    app_download: "", // Will use icon component
+    
     email_links: emailLinksIcon,
   };
 
@@ -121,7 +119,7 @@ export const FullResolutionHotspotEditor = ({
     email: null,
     social: null,
     external_link: null,
-    app_download: Smartphone,
+    
     email_links: null,
   };
 
@@ -130,7 +128,7 @@ export const FullResolutionHotspotEditor = ({
     email: "Email",
     social: "Social Share",
     external_link: "External Link",
-    app_download: "App Download",
+    
     email_links: "Email Links",
   };
 
@@ -138,7 +136,7 @@ export const FullResolutionHotspotEditor = ({
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     // Check if a hotspot of this type already exists (allow multiple external_link and app_download)
-    const allowMultiple = ['external_link', 'app_download'];
+    const allowMultiple = ['external_link'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
@@ -158,7 +156,7 @@ export const FullResolutionHotspotEditor = ({
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
     // Auto-number label for types that allow multiples
-    const allowMultipleTypes = ['external_link', 'app_download'];
+    const allowMultipleTypes = ['external_link'];
     let label = selectedIconPreset.label;
     if (allowMultipleTypes.includes(selectedIconPreset.type)) {
       const existingCount = hotspots.filter(h => h.type === selectedIconPreset.type).length;
@@ -178,7 +176,7 @@ export const FullResolutionHotspotEditor = ({
       height: selectedIconPreset.height,
       labelPosition: "bottom",
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
-      ...(selectedIconPreset.type === "app_download" && { appStoreUrl: "", playStoreUrl: "", fallbackUrl: "" }),
+      
       ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
     };
 
@@ -357,7 +355,7 @@ export const FullResolutionHotspotEditor = ({
               {!selectedCategory ? (
                 // Step 1: Category selection
                 <div className="grid grid-cols-8 gap-2">
-                  {(["sms", "email", "social", "external_link", "app_download", "email_links"] as IconCategory[]).map((category) => {
+                  {(["sms", "email", "social", "external_link", "email_links"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
                     return (
@@ -642,43 +640,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {selectedHotspotData.type === "app_download" && (
-                        <div className="space-y-3">
-                          <div>
-                            <Label>iOS App Store URL</Label>
-                            <Input
-                              value={(selectedHotspotData as any).appStoreUrl || ""}
-                              onChange={(e) =>
-                                updateHotspot(selectedHotspotData.id, { appStoreUrl: e.target.value } as any)
-                              }
-                              placeholder="https://apps.apple.com/app/..."
-                              type="url"
-                            />
-                          </div>
-                          <div>
-                            <Label>Google Play Store URL</Label>
-                            <Input
-                              value={(selectedHotspotData as any).playStoreUrl || ""}
-                              onChange={(e) =>
-                                updateHotspot(selectedHotspotData.id, { playStoreUrl: e.target.value } as any)
-                              }
-                              placeholder="https://play.google.com/store/apps/..."
-                              type="url"
-                            />
-                          </div>
-                          <div>
-                            <Label>Desktop Fallback URL (optional)</Label>
-                            <Input
-                              value={(selectedHotspotData as any).fallbackUrl || ""}
-                              onChange={(e) =>
-                                updateHotspot(selectedHotspotData.id, { fallbackUrl: e.target.value } as any)
-                              }
-                              placeholder="https://yourapp.com/download"
-                              type="url"
-                            />
-                          </div>
-                        </div>
-                      )}
+
 
                       {selectedHotspotData.type === "email_links" && (
                         <div className="space-y-3">
