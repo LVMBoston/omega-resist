@@ -127,6 +127,9 @@ export interface Hotspot {
   chartConfig?: ChartConfig;
   // Map hotspot properties
   mapConfig?: MapConfig;
+  // Email links hotspot properties
+  emailLinksSubject?: string;      // Subject line for mailto
+  emailLinksShowLabels?: boolean;  // Show label text on overlay at runtime
 }
 
 // Live number style configuration
