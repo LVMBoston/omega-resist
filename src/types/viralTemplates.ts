@@ -182,4 +182,5 @@ export type HotspotActionType =
   | 'live_number'      // Live metrics overlay
   | 'chart'            // Chart visualization
   | 'map'              // Map visualization
-  | 'app_download';    // Universal app store redirect
+  | 'app_download'     // Universal app store redirect
+  | 'email_links';     // Bundle sibling external_link URLs into mailto
