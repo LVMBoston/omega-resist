@@ -127,6 +127,9 @@ export interface Hotspot {
   chartConfig?: ChartConfig;
   // Map hotspot properties
   mapConfig?: MapConfig;
+  // Email links hotspot properties
+  emailLinksSubject?: string;      // Subject line for mailto
+  emailLinksShowLabels?: boolean;  // Show label text on overlay at runtime
 }
 
 // Live number style configuration
@@ -179,4 +182,5 @@ export type HotspotActionType =
   | 'live_number'      // Live metrics overlay
   | 'chart'            // Chart visualization
   | 'map'              // Map visualization
-  | 'app_download';    // Universal app store redirect
+  | 'app_download'     // Universal app store redirect
+  | 'email_links';     // Bundle sibling external_link URLs into mailto

@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, X, AlertTriangle, Smartphone, ExternalLink } from "lucide-react";
+import { Trash2, X, AlertTriangle, Smartphone, ExternalLink, MailPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
@@ -19,7 +20,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "app_download";
+  type: "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
   icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
   imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
@@ -29,7 +30,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "app_download";
+  type: "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
   label: string;
   x: number;
   y: number;
@@ -40,6 +41,8 @@ interface Hotspot {
   appStoreUrl?: string;
   playStoreUrl?: string;
   fallbackUrl?: string;
+  emailLinksSubject?: string;
+  emailLinksShowLabels?: boolean;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
@@ -67,9 +70,12 @@ const ICON_PRESETS: IconPreset[] = [
   
   // App download variants
   { id: "app-download", label: "App Download", type: "app_download", icon: Smartphone as any, width: 5, height: 4 },
+  
+  // Email links variant
+  { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -105,6 +111,7 @@ export const FullResolutionHotspotEditor = ({
     social: "", // Will use icon component for social
     external_link: playButton,
     app_download: "", // Will use icon component
+    email_links: "", // Will use icon component
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
@@ -113,6 +120,7 @@ export const FullResolutionHotspotEditor = ({
     social: BsShare,
     external_link: BsShare,
     app_download: Smartphone,
+    email_links: MailPlus,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
@@ -121,6 +129,7 @@ export const FullResolutionHotspotEditor = ({
     social: "Social Share",
     external_link: "External Link",
     app_download: "App Download",
+    email_links: "Email Links",
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -168,6 +177,7 @@ export const FullResolutionHotspotEditor = ({
       labelPosition: "bottom",
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
       ...(selectedIconPreset.type === "app_download" && { appStoreUrl: "", playStoreUrl: "", fallbackUrl: "" }),
+      ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
     };
 
     const updatedHotspots = [...hotspots, newHotspot];
@@ -345,7 +355,7 @@ export const FullResolutionHotspotEditor = ({
               {!selectedCategory ? (
                 // Step 1: Category selection
                 <div className="grid grid-cols-8 gap-2">
-                  {(["sms", "email", "social", "external_link", "app_download"] as IconCategory[]).map((category) => {
+                  {(["sms", "email", "social", "external_link", "app_download", "email_links"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
                     return (
@@ -663,6 +673,31 @@ export const FullResolutionHotspotEditor = ({
                               }
                               placeholder="https://yourapp.com/download"
                               type="url"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedHotspotData.type === "email_links" && (
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Email Subject</Label>
+                            <Input
+                              value={(selectedHotspotData as any).emailLinksSubject || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { emailLinksSubject: e.target.value } as any)
+                              }
+                              placeholder="Resources for Action"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="show-labels-switch" className="font-normal cursor-pointer">Show label on slide</Label>
+                            <Switch
+                              id="show-labels-switch"
+                              checked={(selectedHotspotData as any).emailLinksShowLabels || false}
+                              onCheckedChange={(checked) =>
+                                updateHotspot(selectedHotspotData.id, { emailLinksShowLabels: checked } as any)
+                              }
                             />
                           </div>
                         </div>

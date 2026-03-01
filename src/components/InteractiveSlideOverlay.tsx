@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Smartphone } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X, Smartphone, MailPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -485,6 +485,8 @@ const InteractiveSlideOverlay = ({
         return iconWrapper(<img src={playButton} alt="Play Video" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
       case "app-download":
         return iconWrapper(<Smartphone style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+      case "email-links":
+        return iconWrapper(<MailPlus style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
@@ -637,6 +639,41 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
+  const handleEmailLinks = (hotspot: Hotspot) => {
+    // Collect all external_link siblings with non-empty URLs
+    const externalLinks = hotspots.filter(h => h.type === 'external_link' && h.url && h.url.trim().length > 0);
+
+    if (externalLinks.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No links found",
+        description: "There are no external link hotspots on this slide to bundle.",
+      });
+      return;
+    }
+
+    // Build numbered list body
+    const lines = externalLinks.map((link, i) => {
+      const num = i + 1;
+      return link.label && link.label.trim().length > 0
+        ? `${num}. ${link.label}: ${link.url}`
+        : `${num}. ${link.url}`;
+    });
+    const body = lines.join('\n');
+    const subject = hotspot.emailLinksSubject || '';
+
+    const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailUrl;
+
+    // Post-action nudge toast (6s)
+    setTimeout(() => {
+      toast({
+        title: "Don't forget to share this with people you trust!",
+        duration: 6000,
+      });
+    }, 500);
+  };
+
   const getHotspotAction = (type: string, hotspot?: Hotspot) => {
     switch (type) {
       case "sms":
@@ -653,6 +690,12 @@ const InteractiveSlideOverlay = ({
         return () => {
           if (hotspot) {
             handleAppDownload(hotspot);
+          }
+        };
+      case "email_links":
+        return () => {
+          if (hotspot) {
+            handleEmailLinks(hotspot);
           }
         };
       case "social":
@@ -870,6 +913,26 @@ const InteractiveSlideOverlay = ({
             }}
           >
             {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            {hotspot.type === 'email_links' && hotspot.emailLinksShowLabels && hotspot.label && (
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: '-20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#fff',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                }}
+              >
+                {hotspot.label}
+              </span>
+            )}
           </button>
         );
       })}
