@@ -110,7 +110,7 @@ export const FullResolutionHotspotEditor = ({
     sms: textIcon,
     email: mailIcon,
     social: shareIcon,
-    external_link: playButton,
+    external_link: externalLinkIcon,
     
     email_links: emailLinksIcon,
   };
