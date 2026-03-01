@@ -383,7 +383,7 @@ export const FullResolutionHotspotEditor = ({
                     title="Coming soon"
                   >
                     <img src={playButtonIcon} alt="Play Video" className="w-6 h-6 object-contain" />
-                    <span className="text-xs font-medium text-center leading-tight">Play Video</span>
+                    <span className="text-xs font-medium text-center leading-tight">Video</span>
                   </Button>
                 </div>
               ) : (
