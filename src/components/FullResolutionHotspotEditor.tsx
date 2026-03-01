@@ -375,6 +375,16 @@ export const FullResolutionHotspotEditor = ({
                       </Button>
                     );
                   })}
+                  {/* Play Video — inoperative placeholder */}
+                  <Button
+                    variant="outline"
+                    disabled
+                    className="flex flex-col items-center gap-1.5 h-auto py-3 px-2 opacity-50 cursor-not-allowed"
+                    title="Coming soon"
+                  >
+                    <img src={playButtonIcon} alt="Play Video" className="w-6 h-6 object-contain" />
+                    <span className="text-xs font-medium text-center leading-tight">Play Video</span>
+                  </Button>
                 </div>
               ) : (
                 // Step 2: Icon variant selection
