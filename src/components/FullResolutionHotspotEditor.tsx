@@ -129,6 +129,7 @@ export const FullResolutionHotspotEditor = ({
     social: "Social Share",
     external_link: "External Link",
     app_download: "App Download",
+    email_links: "Email Links",
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
