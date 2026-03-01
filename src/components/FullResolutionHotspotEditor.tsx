@@ -15,6 +15,8 @@ import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.png";
 import playButton from "@/assets/play-button.png";
+import shareIcon from "@/assets/share-icon.png";
+import emailLinksIcon from "@/assets/email-links-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
@@ -108,19 +110,19 @@ export const FullResolutionHotspotEditor = ({
   const categoryImages: Record<IconCategory, string> = {
     sms: textIcon,
     email: mailIcon,
-    social: "", // Will use icon component for social
+    social: shareIcon,
     external_link: playButton,
     app_download: "", // Will use icon component
-    email_links: "", // Will use icon component
+    email_links: emailLinksIcon,
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
     sms: null,
     email: null,
-    social: BsShare,
-    external_link: BsShare,
+    social: null,
+    external_link: null,
     app_download: Smartphone,
-    email_links: MailPlus,
+    email_links: null,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
