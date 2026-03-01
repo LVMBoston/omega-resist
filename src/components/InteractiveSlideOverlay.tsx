@@ -540,32 +540,6 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-  const handleAppDownload = (hotspot: Hotspot) => {
-    const ua = navigator.userAgent;
-    let targetUrl: string | undefined;
-
-    if (/iPad|iPhone|iPod/.test(ua)) {
-      targetUrl = hotspot.appStoreUrl || hotspot.playStoreUrl || hotspot.fallbackUrl;
-    } else if (/android/i.test(ua)) {
-      targetUrl = hotspot.playStoreUrl || hotspot.appStoreUrl || hotspot.fallbackUrl;
-    } else {
-      targetUrl = hotspot.fallbackUrl || hotspot.appStoreUrl || hotspot.playStoreUrl;
-    }
-
-    if (targetUrl) {
-      const link = document.createElement('a');
-      link.href = targetUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      toast({
-        variant: "destructive",
-        title: "No download link",
-        description: "No app store URL configured for this device.",
       });
     }
   };
