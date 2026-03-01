@@ -75,7 +75,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
