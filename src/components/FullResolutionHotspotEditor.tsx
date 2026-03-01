@@ -17,6 +17,7 @@ import textIcon from "@/assets/text-icon.png";
 import playButton from "@/assets/play-button.png";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
+import externalLinkIcon from "@/assets/external-link-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 
 interface IconPreset {
