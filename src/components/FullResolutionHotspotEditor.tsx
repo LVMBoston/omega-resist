@@ -69,9 +69,12 @@ const ICON_PRESETS: IconPreset[] = [
   
   // App download variants
   { id: "app-download", label: "App Download", type: "app_download", icon: Smartphone as any, width: 5, height: 4 },
+  
+  // Email links variant
+  { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "app_download" | "email_links";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
