@@ -99,6 +99,57 @@ export default function InteractiveTemplates() {
     config: {},
   });
 
+  // Unsaved changes guard
+  const [formSnapshot, setFormSnapshot] = useState<string>("");
+  const [pendingCloseAction, setPendingCloseAction] = useState<null | "action" | "data">(null);
+
+  const isActionFormDirty = (): boolean => {
+    if (!editingTemplate && !isCreateOpen) return false;
+    return JSON.stringify(formData) !== formSnapshot;
+  };
+
+  const handleActionDialogClose = (open: boolean) => {
+    if (!open && isActionFormDirty()) {
+      setPendingCloseAction("action");
+      return;
+    }
+    if (!open) {
+      setIsCreateOpen(false);
+      setEditingTemplate(null);
+      resetForm();
+    }
+  };
+
+  const confirmDiscardAction = () => {
+    setPendingCloseAction(null);
+    setIsCreateOpen(false);
+    setEditingTemplate(null);
+    resetForm();
+  };
+
+  // Data dialog unsaved guard
+  const dataDialogDirtyRef = useRef(false);
+  const handleDataDialogClose = (open: boolean) => {
+    if (!open && dataDialogDirtyRef.current) {
+      setPendingCloseAction("data");
+      return;
+    }
+    setIsDataDialogOpen(open);
+    if (!open) {
+      setEditingDataTemplate(null);
+      setHybridSourceTemplate(null);
+      dataDialogDirtyRef.current = false;
+    }
+  };
+
+  const confirmDiscardData = () => {
+    setPendingCloseAction(null);
+    dataDialogDirtyRef.current = false;
+    setIsDataDialogOpen(false);
+    setEditingDataTemplate(null);
+    setHybridSourceTemplate(null);
+  };
+
   // Pre-delete linkage check
   const handleDeleteClick = useCallback(async (template: Template) => {
     setDeleteTargetTemplate(template);
@@ -364,13 +415,13 @@ export default function InteractiveTemplates() {
       setEditingDataTemplate(template);
       setDataDialogMode("edit");
       setHybridSourceTemplate(null);
+      dataDialogDirtyRef.current = true;
       setIsDataDialogOpen(true);
       return;
     }
     
     // Action template - use existing dialog
-    setEditingTemplate(template);
-    setFormData({
+    const newFormData = {
       name: template.name,
       slug: template.slug,
       description: template.description || "",
@@ -378,9 +429,12 @@ export default function InteractiveTemplates() {
       thumbnail_url: template.thumbnail_url || undefined,
       hotspots: template.hotspots,
       is_default: template.is_default,
-      template_type: template.template_type || "interactive_share",
+      template_type: template.template_type || "interactive_share" as TemplateType,
       config: template.config || {},
-    });
+    };
+    setEditingTemplate(template);
+    setFormData(newFormData);
+    setFormSnapshot(JSON.stringify(newFormData));
   };
 
   const handleSubmit = async () => {
@@ -494,6 +548,8 @@ export default function InteractiveTemplates() {
     slug: string;
     description?: string;
   }): Promise<string | void> => {
+    // Clear dirty flag on save
+    dataDialogDirtyRef.current = false;
     // Determine the template type to save: hybrid if upgrading, else stats_page
     const saveType: TemplateType = hybridSourceTemplate ? "hybrid" : 
       (editingDataTemplate?.template_type === "hybrid" ? "hybrid" : "stats_page");
@@ -770,8 +826,9 @@ export default function InteractiveTemplates() {
                 onClick={() => {
                   setHybridSourceTemplate(template);
                   setEditingDataTemplate(null);
-                  setDataDialogMode("create");
-                  setIsDataDialogOpen(true);
+                   setDataDialogMode("create");
+                   dataDialogDirtyRef.current = true;
+                   setIsDataDialogOpen(true);
                 }}
                 className="border-purple-400 text-purple-600 hover:bg-purple-50"
               >
@@ -805,18 +862,14 @@ export default function InteractiveTemplates() {
         
         {/* Dual Entry Buttons */}
         <div className="flex gap-3">
-          <Dialog open={isCreateOpen || !!editingTemplate} onOpenChange={(open) => {
-            if (!open) {
-              setIsCreateOpen(false);
-              setEditingTemplate(null);
-              resetForm();
-            }
-          }}>
+          <Dialog open={isCreateOpen || !!editingTemplate} onOpenChange={handleActionDialogClose}>
             <DialogTrigger asChild>
               <Button 
                 onClick={() => {
                   resetForm();
-                  setFormData(prev => ({ ...prev, template_type: "interactive_share" }));
+                  const newForm = { ...formData, name: "", slug: "", description: "", image_url: "", thumbnail_url: undefined, hotspots: [] as any[], is_default: false, template_type: "interactive_share" as TemplateType, config: {} };
+                  setFormData(newForm);
+                  setFormSnapshot(JSON.stringify(newForm));
                   setIsCreateOpen(true);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 gap-2"
@@ -985,6 +1038,7 @@ export default function InteractiveTemplates() {
               setEditingDataTemplate(null);
               setHybridSourceTemplate(null);
               setDataDialogMode("create");
+              dataDialogDirtyRef.current = true;
               setIsDataDialogOpen(true);
             }}
             className="bg-green-600 hover:bg-green-700 gap-2"
@@ -998,13 +1052,7 @@ export default function InteractiveTemplates() {
       {/* Data Template Dialog */}
       <DataTemplateDialog
         open={isDataDialogOpen}
-        onOpenChange={(open) => {
-          setIsDataDialogOpen(open);
-          if (!open) {
-            setEditingDataTemplate(null);
-            setHybridSourceTemplate(null);
-          }
-        }}
+        onOpenChange={handleDataDialogClose}
         onSave={handleDataTemplateSave}
         mode={dataDialogMode}
         isHybrid={!!hybridSourceTemplate || editingDataTemplate?.template_type === 'hybrid'}
@@ -1024,6 +1072,27 @@ export default function InteractiveTemplates() {
           description: hybridSourceTemplate.description || undefined,
         } : undefined}
       />
+
+      {/* Unsaved Changes Confirmation */}
+      <AlertDialog open={!!pendingCloseAction} onOpenChange={(open) => { if (!open) setPendingCloseAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this template. Are you sure you want to discard them?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingCloseAction(null)}>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingCloseAction === "data" ? confirmDiscardData() : confirmDiscardAction()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Filter Tabs and Template Grid */}
       <Tabs value={activeFilter} onValueChange={(val) => setActiveFilter(val as "all" | "action" | "data" | "hybrid")} className="mt-6">
