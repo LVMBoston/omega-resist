@@ -16,17 +16,18 @@ import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
 import Player from "@vimeo/player";
 
-const ICON_CACHE_BUSTER = "?v=2";
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-/** Renders a custom PNG icon with an onError fallback to a Lucide SVG icon */
+/** Renders a custom PNG icon with an onError fallback to a Lucide SVG icon.
+ *  On iOS, skips the PNG entirely and renders the Lucide fallback immediately. */
 const FallbackImg = ({ src, alt, style, fallback }: { 
   src: string; alt: string; style: React.CSSProperties; fallback: React.ReactNode;
 }) => {
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(isIOS);
   if (failed) return <>{fallback}</>;
   return (
     <img
-      src={`${src}${ICON_CACHE_BUSTER}`}
+      src={src}
       alt={alt}
       style={style}
       onError={() => setFailed(true)}
