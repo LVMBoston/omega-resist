@@ -1068,6 +1068,27 @@ export default function InteractiveTemplates() {
         } : undefined}
       />
 
+      {/* Unsaved Changes Confirmation */}
+      <AlertDialog open={!!pendingCloseAction} onOpenChange={(open) => { if (!open) setPendingCloseAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this template. Are you sure you want to discard them?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingCloseAction(null)}>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingCloseAction === "data" ? confirmDiscardData() : confirmDiscardAction()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Filter Tabs and Template Grid */}
       <Tabs value={activeFilter} onValueChange={(val) => setActiveFilter(val as "all" | "action" | "data" | "hybrid")} className="mt-6">
         <TabsList className="mb-6">
