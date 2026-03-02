@@ -415,6 +415,7 @@ export default function InteractiveTemplates() {
       setEditingDataTemplate(template);
       setDataDialogMode("edit");
       setHybridSourceTemplate(null);
+      dataDialogDirtyRef.current = true;
       setIsDataDialogOpen(true);
       return;
     }
