@@ -589,18 +589,18 @@ export const FullResolutionHotspotEditor = ({
 
                 {selectedHotspotData && (
                   <Card>
-                    <CardContent className="p-4 space-y-3">
+                    <CardContent className="p-3 space-y-2">
                       {/* Position controls - active when not dragging */}
-                      <h4 className="font-semibold">Position</h4>
-                      <div className={`space-y-2 ${isDragging ? 'opacity-40 pointer-events-none' : ''}`}>
+                      <div className={`${isDragging ? 'opacity-40 pointer-events-none' : ''}`}>
+                        <h4 className="font-semibold text-sm mb-1">Position</h4>
                         <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <Label className="text-xs w-4">X</Label>
-                            <span className="text-sm font-medium w-12">{selectedHotspotData.x.toFixed(1)}%</span>
+                            <span className="text-xs font-medium w-12">{selectedHotspotData.x.toFixed(1)}%</span>
                             <div className="flex flex-col">
                               <button
                                 type="button"
-                                className="h-5 w-7 p-0 flex items-center justify-center hover:bg-muted rounded"
+                                className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
                                 tabIndex={-1}
                                 onClick={() => {
                                   const newX = Math.min(100 - selectedHotspotData.width, selectedHotspotData.x + 0.5);
@@ -611,7 +611,7 @@ export const FullResolutionHotspotEditor = ({
                               </button>
                               <button
                                 type="button"
-                                className="h-5 w-7 p-0 flex items-center justify-center hover:bg-muted rounded"
+                                className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
                                 tabIndex={-1}
                                 onClick={() => {
                                   const newX = Math.max(0, selectedHotspotData.x - 0.5);
@@ -622,13 +622,13 @@ export const FullResolutionHotspotEditor = ({
                               </button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <Label className="text-xs w-4">Y</Label>
-                            <span className="text-sm font-medium w-12">{selectedHotspotData.y.toFixed(1)}%</span>
+                            <span className="text-xs font-medium w-12">{selectedHotspotData.y.toFixed(1)}%</span>
                             <div className="flex flex-col">
                               <button
                                 type="button"
-                                className="h-5 w-7 p-0 flex items-center justify-center hover:bg-muted rounded"
+                                className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
                                 tabIndex={-1}
                                 onClick={() => {
                                   const newY = Math.min(100 - selectedHotspotData.height, selectedHotspotData.y + 0.5);
@@ -639,7 +639,7 @@ export const FullResolutionHotspotEditor = ({
                               </button>
                               <button
                                 type="button"
-                                className="h-5 w-7 p-0 flex items-center justify-center hover:bg-muted rounded"
+                                className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
                                 tabIndex={-1}
                                 onClick={() => {
                                   const newY = Math.max(0, selectedHotspotData.y - 0.5);
@@ -653,7 +653,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       </div>
 
-                      <h4 className="font-semibold">Resize </h4>
+                      <h4 className="font-semibold text-sm">Resize</h4>
 
                       <div>
                         <Label>Icon Size</Label>
