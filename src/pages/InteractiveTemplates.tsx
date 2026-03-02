@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers, ChevronsUpDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor, generateAndUploadThumbnail } from "@/components/FullResolutionHotspotEditor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -897,20 +898,22 @@ export default function InteractiveTemplates() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="image">
-                    {formData.image_url ? "Replace Template Image" : "Template Image"}
-                  </Label>
-                  {formData.image_url && (
-                    <div className="mb-3 p-3 border rounded-lg bg-muted">
-                      <p className="text-sm text-muted-foreground mb-2">Current image:</p>
-                      <div className="aspect-[9/16] w-full max-w-[160px] mx-auto">
-                        <img src={formData.image_url} alt="Current template" className="w-full h-full object-contain rounded" />
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full py-1">
+                    <Label htmlFor="image" className="cursor-pointer">
+                      {formData.image_url ? "Replace Template Image" : "Template Image"}
+                    </Label>
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2 space-y-2">
+                    {formData.image_url && (
+                      <div className="p-3 border rounded-lg bg-muted">
+                        <p className="text-sm text-muted-foreground mb-2">Current image:</p>
+                        <div className="aspect-[9/16] w-full max-w-[160px] mx-auto">
+                          <img src={formData.image_url} alt="Current template" className="w-full h-full object-contain rounded" />
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2">
+                    )}
                     <div>
                       <Label htmlFor="image-upload" className="text-sm font-medium">Upload Image File</Label>
                       <Input
@@ -923,15 +926,13 @@ export default function InteractiveTemplates() {
                         }}
                       />
                     </div>
-                    
-                  </div>
-                  
-                  {!formData.image_url && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Upload a portrait/mobile sized image (9:16 aspect ratio recommended)
-                    </p>
-                  )}
-                </div>
+                    {!formData.image_url && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload a portrait/mobile sized image (9:16 aspect ratio recommended)
+                      </p>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {formData.image_url && formData.template_type === 'interactive_share' && (
                   <div>
