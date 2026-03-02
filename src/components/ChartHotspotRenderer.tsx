@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useChartData, LEVEL_COLORS, WeeklyLevelData } from "@/hooks/useChartData";
 import { ChartConfig } from "@/types/viralTemplates";
 import { Loader2 } from "lucide-react";
