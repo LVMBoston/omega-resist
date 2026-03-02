@@ -593,36 +593,43 @@ export const FullResolutionHotspotEditor = ({
 
                       <div>
                         <Label>Icon Size</Label>
-                        <div className="flex items-center gap-4 pt-2">
-                          <Slider
-                            value={[selectedHotspotData.width]}
-                            onValueChange={(vals) => {
-                              const newSize = vals[0];
-                              const aspectRatio = selectedHotspotData.height / selectedHotspotData.width;
-                              const newHeight = newSize * aspectRatio;
-                              
-                              // Calculate max size based on position to prevent out-of-bounds
-                              const maxSizeConstraints = getMaxSize(
-                                selectedHotspotData.x, 
-                                selectedHotspotData.y, 
-                                aspectRatio
-                              );
-                              
-                              // Constrain to prevent going out of bounds
-                              const constrainedWidth = Math.min(newSize, maxSizeConstraints.maxWidth);
-                              const constrainedHeight = Math.min(newHeight, maxSizeConstraints.maxHeight);
-                              
-                              updateHotspot(selectedHotspotData.id, {
-                                width: constrainedWidth,
-                                height: constrainedHeight
-                              });
-                            }}
-                            min={5}
-                            max={100}
-                            step={1}
-                            className="flex-1"
-                          />
-                          <span className="text-sm font-medium w-12 text-right">{selectedHotspotData.width.toFixed(0)}%</span>
+                        <div className="flex items-center gap-2 pt-2">
+                          <span className="text-sm font-medium w-12">{selectedHotspotData.width.toFixed(0)}%</span>
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              className="h-5 w-7 p-0 flex items-center justify-center hover:bg-muted rounded"
+                              tabIndex={-1}
+                              onClick={() => {
+                                const newSize = Math.min(100, selectedHotspotData.width + 1);
+                                const aspectRatio = selectedHotspotData.height / selectedHotspotData.width;
+                                const newHeight = newSize * aspectRatio;
+                                const maxSizeConstraints = getMaxSize(selectedHotspotData.x, selectedHotspotData.y, aspectRatio);
+                                updateHotspot(selectedHotspotData.id, {
+                                  width: Math.min(newSize, maxSizeConstraints.maxWidth),
+                                  height: Math.min(newHeight, maxSizeConstraints.maxHeight),
+                                });
+                              }}
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              className="h-5 w-7 p-0 flex items-center justify-center hover:bg-muted rounded"
+                              tabIndex={-1}
+                              onClick={() => {
+                                const newSize = Math.max(5, selectedHotspotData.width - 1);
+                                const aspectRatio = selectedHotspotData.height / selectedHotspotData.width;
+                                const newHeight = newSize * aspectRatio;
+                                updateHotspot(selectedHotspotData.id, {
+                                  width: newSize,
+                                  height: newHeight,
+                                });
+                              }}
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
