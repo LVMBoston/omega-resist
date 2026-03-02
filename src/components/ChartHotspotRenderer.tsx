@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useChartData, LEVEL_COLORS, WeeklyLevelData } from "@/hooks/useChartData";
 import { ChartConfig } from "@/types/viralTemplates";
 import { Loader2 } from "lucide-react";
@@ -63,6 +63,10 @@ export function ChartHotspotRenderer({
             width={30}
           />
         )}
+        <Legend 
+          wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
+          iconSize={8}
+        />
         <Tooltip 
           contentStyle={{ 
             backgroundColor: "rgba(255,255,255,0.95)", 
