@@ -78,7 +78,7 @@ export function ChartHotspotRenderer({
           formatter={(value: number, name: string) => [value, name]}
         />
         <Bar dataKey="L00_seeds" stackId="levels" fill={LEVEL_COLORS.L00_seeds} name="Seeds" />
-        <Bar dataKey="L00_spawns" stackId="levels" fill="hsl(142, 71%, 45%)" name="Seeds w/ Spawns" />
+        <Bar dataKey="L00_spawns" stackId="levels" fill={LEVEL_COLORS.L00_spawns} name="Seeds w/ Spawns" />
         <Bar dataKey="L01" stackId="levels" fill={LEVEL_COLORS.L01} name="L01" />
         <Bar dataKey="L02" stackId="levels" fill={LEVEL_COLORS.L02} name="L02" />
         <Bar dataKey="L03" stackId="levels" fill={LEVEL_COLORS.L03} name="L03+" />
