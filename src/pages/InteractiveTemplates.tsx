@@ -420,8 +420,7 @@ export default function InteractiveTemplates() {
     }
     
     // Action template - use existing dialog
-    setEditingTemplate(template);
-    setFormData({
+    const newFormData = {
       name: template.name,
       slug: template.slug,
       description: template.description || "",
@@ -429,9 +428,12 @@ export default function InteractiveTemplates() {
       thumbnail_url: template.thumbnail_url || undefined,
       hotspots: template.hotspots,
       is_default: template.is_default,
-      template_type: template.template_type || "interactive_share",
+      template_type: template.template_type || "interactive_share" as TemplateType,
       config: template.config || {},
-    });
+    };
+    setEditingTemplate(template);
+    setFormData(newFormData);
+    setFormSnapshot(JSON.stringify(newFormData));
   };
 
   const handleSubmit = async () => {
