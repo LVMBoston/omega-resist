@@ -634,6 +634,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       </div>
 
+                      {selectedHotspotData.type !== 'email_links' && (
                       <div>
                         <div className="flex items-center gap-1">
                           <Label>Label</Label>
@@ -658,6 +659,7 @@ export const FullResolutionHotspotEditor = ({
                           maxLength={15}
                         />
                       </div>
+                      )}
 
                       {selectedHotspotData.type === "external_link" && (
                         <div>
