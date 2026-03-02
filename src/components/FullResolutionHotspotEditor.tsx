@@ -687,16 +687,6 @@ export const FullResolutionHotspotEditor = ({
                               placeholder="Resources for Action"
                             />
                           </div>
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="show-labels-switch" className="font-normal cursor-pointer">Show label on slide</Label>
-                            <Switch
-                              id="show-labels-switch"
-                              checked={(selectedHotspotData as any).emailLinksShowLabels || false}
-                              onCheckedChange={(checked) =>
-                                updateHotspot(selectedHotspotData.id, { emailLinksShowLabels: checked } as any)
-                              }
-                            />
-                          </div>
                         </div>
                       )}
 
