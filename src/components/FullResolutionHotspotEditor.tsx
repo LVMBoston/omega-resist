@@ -590,7 +590,7 @@ export const FullResolutionHotspotEditor = ({
                 {selectedHotspotData && (
                   <Card>
                     <CardContent className="p-4 space-y-3">
-                      <h4 className="font-semibold">Resize Icon</h4>
+                      <h4 className="font-semibold">Resize </h4>
 
                       <div>
                         <Label>Icon Size</Label>
