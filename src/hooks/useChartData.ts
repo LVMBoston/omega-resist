@@ -5,7 +5,8 @@ import { startOfWeek, format, parseISO, differenceInWeeks } from "date-fns";
 export interface WeeklyLevelData {
   week: string;        // ISO week label e.g. "W04"
   weekStart: Date;
-  L00: number;
+  L00_seeds: number;   // L00 tokens without engaged spawns
+  L00_spawns: number;  // L00 tokens with at least one viewed child
   L01: number;
   L02: number;
   L03: number;
@@ -20,10 +21,11 @@ interface UseChartDataResult {
 
 // Fixed level color palette (HSL values for chart colors)
 export const LEVEL_COLORS = {
-  L00: "hsl(221, 83%, 53%)",  // Blue
-  L01: "hsl(142, 71%, 45%)",  // Green
-  L02: "hsl(32, 95%, 44%)",   // Orange
-  L03: "hsl(0, 72%, 51%)",    // Red
+  L00_seeds: "hsl(221, 83%, 53%)",   // Blue – seeds without spawns
+  L00_spawns: "hsl(221, 83%, 53%)",  // Blue base (border green applied in renderer)
+  L01: "hsl(142, 71%, 45%)",         // Green
+  L02: "hsl(32, 95%, 44%)",          // Orange
+  L03: "hsl(0, 72%, 51%)",           // Red
 };
 
 export function useChartData(): UseChartDataResult {
