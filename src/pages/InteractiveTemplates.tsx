@@ -620,11 +620,12 @@ export default function InteractiveTemplates() {
     return (
       <Card 
         key={template.id} 
-        className={`relative ${borderClasses} ${
+        className={`relative cursor-pointer hover:ring-2 hover:ring-primary/40 transition-shadow ${borderClasses} ${
           !isValidInteractiveTemplate(template) 
             ? 'bg-red-50 dark:bg-red-950/30' 
             : ''
         }`}
+        onClick={() => handleEdit(template)}
       >
         {!isValidInteractiveTemplate(template) ? (
           <TooltipProvider>
