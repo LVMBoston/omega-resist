@@ -6,6 +6,7 @@ interface Hotspot {
   height: number;
   label?: string;
   labelPosition?: 'top' | 'bottom';
+  type?: string;
 }
 
 /**
