@@ -863,7 +863,9 @@ export default function InteractiveTemplates() {
               <Button 
                 onClick={() => {
                   resetForm();
-                  setFormData(prev => ({ ...prev, template_type: "interactive_share" }));
+                  const newForm = { ...formData, name: "", slug: "", description: "", image_url: "", thumbnail_url: undefined, hotspots: [] as any[], is_default: false, template_type: "interactive_share" as TemplateType, config: {} };
+                  setFormData(newForm);
+                  setFormSnapshot(JSON.stringify(newForm));
                   setIsCreateOpen(true);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 gap-2"
