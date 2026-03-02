@@ -16,6 +16,24 @@ import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
 import Player from "@vimeo/player";
 
+const ICON_CACHE_BUSTER = "?v=2";
+
+/** Renders a custom PNG icon with an onError fallback to a Lucide SVG icon */
+const FallbackImg = ({ src, alt, style, fallback }: { 
+  src: string; alt: string; style: React.CSSProperties; fallback: React.ReactNode;
+}) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <>{fallback}</>;
+  return (
+    <img
+      src={`${src}${ICON_CACHE_BUSTER}`}
+      alt={alt}
+      style={style}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 interface InteractiveSlideOverlayProps {
   hotspots: Hotspot[];
   deckSlug: string;
