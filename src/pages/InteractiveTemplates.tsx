@@ -548,6 +548,8 @@ export default function InteractiveTemplates() {
     slug: string;
     description?: string;
   }): Promise<string | void> => {
+    // Clear dirty flag on save
+    dataDialogDirtyRef.current = false;
     // Determine the template type to save: hybrid if upgrading, else stats_page
     const saveType: TemplateType = hybridSourceTemplate ? "hybrid" : 
       (editingDataTemplate?.template_type === "hybrid" ? "hybrid" : "stats_page");
