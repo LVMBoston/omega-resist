@@ -481,11 +481,14 @@ const InteractiveSlideOverlay = ({
       height: `${iconSize}px`,
     };
     
+    const dropShadow = 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))';
+    const imgWithShadow = { ...imgStyle, filter: dropShadow };
+
     switch (iconId) {
       case "sms-ios":
-        return iconWrapper(<img src={textIcon} alt="Text Message" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
+        return iconWrapper(<FallbackImg src={textIcon} alt="Text Message" style={imgWithShadow} fallback={<MessageSquare style={{ ...svgStyle, color: '#22c55e' }} />} />);
       case "email-ios":
-        return iconWrapper(<img src={mailIcon} alt="Email" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
+        return iconWrapper(<FallbackImg src={mailIcon} alt="Email" style={imgWithShadow} fallback={<Mail style={{ ...svgStyle, color: '#22c55e' }} />} />);
       case "social-facebook":
         return iconWrapper(<FaFacebookF style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-instagram":
@@ -497,15 +500,15 @@ const InteractiveSlideOverlay = ({
       case "social-whatsapp":
         return iconWrapper(<FaWhatsapp style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "social-share":
-        return iconWrapper(<img src={shareIcon} alt="Share" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
+        return iconWrapper(<FallbackImg src={shareIcon} alt="Share" style={imgWithShadow} fallback={<Share2 style={{ ...svgStyle, color: '#22c55e' }} />} />);
       case "social-share-filled":
         return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "link-icon":
-        return iconWrapper(<img src={externalLinkIcon} alt="External Link" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
+        return iconWrapper(<FallbackImg src={externalLinkIcon} alt="External Link" style={imgWithShadow} fallback={<Link2 style={{ ...svgStyle, color: '#eab308' }} />} />);
       case "play-button":
-        return iconWrapper(<img src={playButton} alt="Play Video" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
+        return iconWrapper(<FallbackImg src={playButton} alt="Play Video" style={imgWithShadow} fallback={<Play style={{ ...svgStyle, color: '#22c55e' }} />} />);
       case "email-links":
-        return iconWrapper(<img src={emailLinksIcon} alt="Email Links" style={{ ...imgStyle, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />);
+        return iconWrapper(<FallbackImg src={emailLinksIcon} alt="Email Links" style={imgWithShadow} fallback={<MailPlus style={{ ...svgStyle, color: '#22c55e' }} />} />);
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
