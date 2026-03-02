@@ -1036,6 +1036,7 @@ export default function InteractiveTemplates() {
               setEditingDataTemplate(null);
               setHybridSourceTemplate(null);
               setDataDialogMode("create");
+              dataDialogDirtyRef.current = true;
               setIsDataDialogOpen(true);
             }}
             className="bg-green-600 hover:bg-green-700 gap-2"
