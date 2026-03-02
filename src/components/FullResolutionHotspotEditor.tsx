@@ -635,7 +635,21 @@ export const FullResolutionHotspotEditor = ({
                       </div>
 
                       <div>
-                        <Label>Label</Label>
+                        <div className="flex items-center gap-1">
+                          <Label>Label</Label>
+                          {selectedHotspotData.type === 'external_link' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-muted-foreground cursor-help text-xs">ⓘ</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-[200px] text-xs">If present, this label will appear in the bundled email message.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                         <Input
                           value={selectedHotspotData.label}
                           onChange={(e) =>
