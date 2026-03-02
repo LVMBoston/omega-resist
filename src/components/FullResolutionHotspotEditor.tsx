@@ -5,6 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Card, CardContent } from "./ui/card";
 import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -634,7 +635,21 @@ export const FullResolutionHotspotEditor = ({
                       </div>
 
                       <div>
-                        <Label>Label</Label>
+                        <div className="flex items-center gap-1">
+                          <Label>Label</Label>
+                          {selectedHotspotData.type === 'external_link' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-muted-foreground cursor-help text-xs">ⓘ</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-[200px] text-xs">If present, this label will appear in the bundled email message.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                         <Input
                           value={selectedHotspotData.label}
                           onChange={(e) =>
@@ -706,25 +721,27 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      <div>
-                        <Label>Label Position</Label>
-                        <RadioGroup
-                          value={selectedHotspotData.labelPosition || "bottom"}
-                          onValueChange={(value: "top" | "bottom") =>
-                            updateHotspot(selectedHotspotData.id, { labelPosition: value })
-                          }
-                          className="flex flex-col gap-2 pt-2"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="top" id="top" />
-                            <Label htmlFor="top" className="font-normal cursor-pointer">Top Center</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="bottom" id="bottom" />
-                            <Label htmlFor="bottom" className="font-normal cursor-pointer">Bottom Center</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
+                      {selectedHotspotData.type !== 'external_link' && (
+                        <div>
+                          <Label>Label Position</Label>
+                          <RadioGroup
+                            value={selectedHotspotData.labelPosition || "bottom"}
+                            onValueChange={(value: "top" | "bottom") =>
+                              updateHotspot(selectedHotspotData.id, { labelPosition: value })
+                            }
+                            className="flex flex-col gap-2 pt-2"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="top" id="top" />
+                              <Label htmlFor="top" className="font-normal cursor-pointer">Top Center</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="bottom" id="bottom" />
+                              <Label htmlFor="bottom" className="font-normal cursor-pointer">Bottom Center</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}
