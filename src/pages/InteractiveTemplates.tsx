@@ -858,13 +858,7 @@ export default function InteractiveTemplates() {
         
         {/* Dual Entry Buttons */}
         <div className="flex gap-3">
-          <Dialog open={isCreateOpen || !!editingTemplate} onOpenChange={(open) => {
-            if (!open) {
-              setIsCreateOpen(false);
-              setEditingTemplate(null);
-              resetForm();
-            }
-          }}>
+          <Dialog open={isCreateOpen || !!editingTemplate} onOpenChange={handleActionDialogClose}>
             <DialogTrigger asChild>
               <Button 
                 onClick={() => {
