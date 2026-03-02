@@ -721,25 +721,27 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      <div>
-                        <Label>Label Position</Label>
-                        <RadioGroup
-                          value={selectedHotspotData.labelPosition || "bottom"}
-                          onValueChange={(value: "top" | "bottom") =>
-                            updateHotspot(selectedHotspotData.id, { labelPosition: value })
-                          }
-                          className="flex flex-col gap-2 pt-2"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="top" id="top" />
-                            <Label htmlFor="top" className="font-normal cursor-pointer">Top Center</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="bottom" id="bottom" />
-                            <Label htmlFor="bottom" className="font-normal cursor-pointer">Bottom Center</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
+                      {selectedHotspotData.type !== 'external_link' && (
+                        <div>
+                          <Label>Label Position</Label>
+                          <RadioGroup
+                            value={selectedHotspotData.labelPosition || "bottom"}
+                            onValueChange={(value: "top" | "bottom") =>
+                              updateHotspot(selectedHotspotData.id, { labelPosition: value })
+                            }
+                            className="flex flex-col gap-2 pt-2"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="top" id="top" />
+                              <Label htmlFor="top" className="font-normal cursor-pointer">Top Center</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="bottom" id="bottom" />
+                              <Label htmlFor="bottom" className="font-normal cursor-pointer">Bottom Center</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

@@ -15,7 +15,8 @@ interface Hotspot {
  */
 function getExpandedBounds(h: Hotspot): { x: number; y: number; right: number; bottom: number } {
   const hasLabel = h.label && h.label.trim().length > 0;
-  const labelArea = hasLabel ? 4 : 0;
+  // external_link labels are email metadata only — don't expand bounding box
+  const labelArea = (hasLabel && h.type !== 'external_link') ? 4 : 0;
   
   let expandedY = h.y;
   let expandedBottom = h.y + h.height;
