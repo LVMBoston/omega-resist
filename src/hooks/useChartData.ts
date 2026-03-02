@@ -21,8 +21,8 @@ interface UseChartDataResult {
 
 // Fixed level color palette (HSL values for chart colors)
 export const LEVEL_COLORS = {
-  L00_seeds: "hsl(221, 83%, 53%)",   // Blue – seeds without spawns
-  L00_spawns: "hsl(221, 83%, 53%)",  // Blue base (border green applied in renderer)
+  L00_seeds: "hsl(221, 83%, 35%)",   // Darker blue – seeds without spawns
+  L00_spawns: "hsl(221, 83%, 65%)",  // Lighter blue – seeds with spawns
   L01: "hsl(142, 71%, 45%)",         // Green
   L02: "hsl(32, 95%, 44%)",          // Orange
   L03: "hsl(0, 72%, 51%)",           // Red
