@@ -624,7 +624,7 @@ export const FullResolutionHotspotEditor = ({
                           </div>
                           <div className="flex items-center gap-1">
                             <Label className="text-xs w-4">Y</Label>
-                            <span className="text-xs font-medium w-12">{selectedHotspotData.y.toFixed(1)}%</span>
+                            <span className="text-xs font-medium w-12">{Math.round(selectedHotspotData.y)}%</span>
                             <div className="flex flex-col">
                               <button
                                 type="button"
