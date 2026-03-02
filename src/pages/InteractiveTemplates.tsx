@@ -901,7 +901,7 @@ export default function InteractiveTemplates() {
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center justify-between w-full py-1">
                     <Label htmlFor="image" className="cursor-pointer">
-                      {formData.image_url ? "Replace Template Image" : "Template Image"}
+                      {formData.image_url ? "Replace Template Image, preserve hotspots" : "Template Image"}
                     </Label>
                     <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
                   </CollapsibleTrigger>
