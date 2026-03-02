@@ -99,6 +99,57 @@ export default function InteractiveTemplates() {
     config: {},
   });
 
+  // Unsaved changes guard
+  const [formSnapshot, setFormSnapshot] = useState<string>("");
+  const [pendingCloseAction, setPendingCloseAction] = useState<null | "action" | "data">(null);
+
+  const isActionFormDirty = (): boolean => {
+    if (!editingTemplate && !isCreateOpen) return false;
+    return JSON.stringify(formData) !== formSnapshot;
+  };
+
+  const handleActionDialogClose = (open: boolean) => {
+    if (!open && isActionFormDirty()) {
+      setPendingCloseAction("action");
+      return;
+    }
+    if (!open) {
+      setIsCreateOpen(false);
+      setEditingTemplate(null);
+      resetForm();
+    }
+  };
+
+  const confirmDiscardAction = () => {
+    setPendingCloseAction(null);
+    setIsCreateOpen(false);
+    setEditingTemplate(null);
+    resetForm();
+  };
+
+  // Data dialog unsaved guard
+  const dataDialogDirtyRef = useRef(false);
+  const handleDataDialogClose = (open: boolean) => {
+    if (!open && dataDialogDirtyRef.current) {
+      setPendingCloseAction("data");
+      return;
+    }
+    setIsDataDialogOpen(open);
+    if (!open) {
+      setEditingDataTemplate(null);
+      setHybridSourceTemplate(null);
+      dataDialogDirtyRef.current = false;
+    }
+  };
+
+  const confirmDiscardData = () => {
+    setPendingCloseAction(null);
+    dataDialogDirtyRef.current = false;
+    setIsDataDialogOpen(false);
+    setEditingDataTemplate(null);
+    setHybridSourceTemplate(null);
+  };
+
   // Pre-delete linkage check
   const handleDeleteClick = useCallback(async (template: Template) => {
     setDeleteTargetTemplate(template);
