@@ -63,6 +63,10 @@ export function ChartHotspotRenderer({
             width={30}
           />
         )}
+        <Legend 
+          wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
+          iconSize={8}
+        />
         <Tooltip 
           contentStyle={{ 
             backgroundColor: "rgba(255,255,255,0.95)", 
