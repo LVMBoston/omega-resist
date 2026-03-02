@@ -1047,13 +1047,7 @@ export default function InteractiveTemplates() {
       {/* Data Template Dialog */}
       <DataTemplateDialog
         open={isDataDialogOpen}
-        onOpenChange={(open) => {
-          setIsDataDialogOpen(open);
-          if (!open) {
-            setEditingDataTemplate(null);
-            setHybridSourceTemplate(null);
-          }
-        }}
+        onOpenChange={handleDataDialogClose}
         onSave={handleDataTemplateSave}
         mode={dataDialogMode}
         isHybrid={!!hybridSourceTemplate || editingDataTemplate?.template_type === 'hybrid'}
