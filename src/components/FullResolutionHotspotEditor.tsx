@@ -655,7 +655,7 @@ export const FullResolutionHotspotEditor = ({
                           onChange={(e) =>
                             updateHotspot(selectedHotspotData.id, { label: e.target.value })
                           }
-                          maxLength={10}
+                          maxLength={15}
                         />
                       </div>
 
