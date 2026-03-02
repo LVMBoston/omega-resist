@@ -806,7 +806,8 @@ export const generateThumbnail = async (
             // Draw icon
             ctx.drawImage(iconImg, x, y, width, height);
             
-            // Draw label
+            // Draw label (skip for external_link — label is email metadata only)
+            if (hotspot.type !== 'external_link') {
             const fontSize = Math.max(14, width * 0.15);
             ctx.font = `bold ${fontSize}px sans-serif`;
             ctx.textAlign = 'center';
@@ -839,6 +840,7 @@ export const generateThumbnail = async (
             // Draw text
             ctx.fillStyle = '#ffffff';
             ctx.fillText(text, labelX, labelY);
+            }
             
             resolveIcon();
           };
