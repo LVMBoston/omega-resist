@@ -5,7 +5,8 @@ import { startOfWeek, format, parseISO, differenceInWeeks } from "date-fns";
 export interface WeeklyLevelData {
   week: string;        // ISO week label e.g. "W04"
   weekStart: Date;
-  L00: number;
+  L00_seeds: number;   // L00 tokens without engaged spawns
+  L00_spawns: number;  // L00 tokens with at least one viewed child
   L01: number;
   L02: number;
   L03: number;
@@ -20,10 +21,11 @@ interface UseChartDataResult {
 
 // Fixed level color palette (HSL values for chart colors)
 export const LEVEL_COLORS = {
-  L00: "hsl(221, 83%, 53%)",  // Blue
-  L01: "hsl(142, 71%, 45%)",  // Green
-  L02: "hsl(32, 95%, 44%)",   // Orange
-  L03: "hsl(0, 72%, 51%)",    // Red
+  L00_seeds: "hsl(221, 83%, 53%)",   // Blue – seeds without spawns
+  L00_spawns: "hsl(221, 83%, 53%)",  // Blue base (border green applied in renderer)
+  L01: "hsl(142, 71%, 45%)",         // Green
+  L02: "hsl(32, 95%, 44%)",          // Orange
+  L03: "hsl(0, 72%, 51%)",           // Red
 };
 
 export function useChartData(): UseChartDataResult {
@@ -44,7 +46,7 @@ export function useChartData(): UseChartDataResult {
       // Get tokens for this campaign
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
-        .select("token, level, minted_at")
+        .select("token, level, minted_at, parent_token")
         .eq("utm_campaign", campaignCode)
         .is("deleted_at", null);
 
@@ -77,6 +79,19 @@ export function useChartData(): UseChartDataResult {
       const tokenLevelMap = new Map<string, number>();
       tokens.forEach((t) => tokenLevelMap.set(t.token, t.level));
 
+      // Determine which L00 tokens have spawns (L01 children with views)
+      const tokensWithViews = new Set(events.map((e) => e.token));
+      const l00WithSpawns = new Set<string>();
+      tokens.forEach((t) => {
+        if (t.level >= 1 && t.parent_token && tokensWithViews.has(t.token)) {
+          // This child has been viewed — mark its parent as a spawn-bearing seed
+          const parent = tokens.find((p) => p.token === t.parent_token);
+          if (parent && parent.level === 0) {
+            l00WithSpawns.add(parent.token);
+          }
+        }
+      });
+
       // Find the campaign start (earliest event)
       const startDate = parseISO(events[0].occurred_at);
       const startWeek = startOfWeek(startDate, { weekStartsOn: 1 }); // Monday
@@ -86,13 +101,13 @@ export function useChartData(): UseChartDataResult {
       const totalWeeks = Math.max(1, differenceInWeeks(endDate, startWeek) + 1);
 
       // Initialize weekly buckets
-      const weeklyData: Map<string, { weekStart: Date; L00: number; L01: number; L02: number; L03: number }> = new Map();
+      const weeklyData: Map<string, { weekStart: Date; L00_seeds: number; L00_spawns: number; L01: number; L02: number; L03: number }> = new Map();
       
       for (let i = 0; i < totalWeeks; i++) {
         const weekStart = new Date(startWeek);
         weekStart.setDate(weekStart.getDate() + i * 7);
         const weekLabel = `W${format(weekStart, "ww")}`;
-        weeklyData.set(weekLabel, { weekStart, L00: 0, L01: 0, L02: 0, L03: 0 });
+        weeklyData.set(weekLabel, { weekStart, L00_seeds: 0, L00_spawns: 0, L01: 0, L02: 0, L03: 0 });
       }
 
       // Count events per week per level
@@ -102,10 +117,17 @@ export function useChartData(): UseChartDataResult {
         const weekLabel = `W${format(eventWeek, "ww")}`;
         
         const level = tokenLevelMap.get(event.token) ?? 0;
-        const levelKey = `L0${Math.min(level, 3)}` as "L00" | "L01" | "L02" | "L03";
-
         const weekData = weeklyData.get(weekLabel);
-        if (weekData) {
+        if (!weekData) return;
+
+        if (level === 0) {
+          if (l00WithSpawns.has(event.token)) {
+            weekData.L00_spawns++;
+          } else {
+            weekData.L00_seeds++;
+          }
+        } else {
+          const levelKey = `L0${Math.min(level, 3)}` as "L01" | "L02" | "L03";
           weekData[levelKey]++;
         }
       });
@@ -114,16 +136,18 @@ export function useChartData(): UseChartDataResult {
       const sortedWeeks = Array.from(weeklyData.entries())
         .sort((a, b) => a[1].weekStart.getTime() - b[1].weekStart.getTime());
 
-      let cumL00 = 0, cumL01 = 0, cumL02 = 0, cumL03 = 0;
+      let cumSeeds = 0, cumSpawns = 0, cumL01 = 0, cumL02 = 0, cumL03 = 0;
       const cumulativeData: WeeklyLevelData[] = sortedWeeks.map(([week, counts]) => {
-        cumL00 += counts.L00;
+        cumSeeds += counts.L00_seeds;
+        cumSpawns += counts.L00_spawns;
         cumL01 += counts.L01;
         cumL02 += counts.L02;
         cumL03 += counts.L03;
         return {
           week,
           weekStart: counts.weekStart,
-          L00: cumL00,
+          L00_seeds: cumSeeds,
+          L00_spawns: cumSpawns,
           L01: cumL01,
           L02: cumL02,
           L03: cumL03,
