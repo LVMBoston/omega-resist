@@ -824,8 +824,9 @@ export default function InteractiveTemplates() {
                 onClick={() => {
                   setHybridSourceTemplate(template);
                   setEditingDataTemplate(null);
-                  setDataDialogMode("create");
-                  setIsDataDialogOpen(true);
+                   setDataDialogMode("create");
+                   dataDialogDirtyRef.current = true;
+                   setIsDataDialogOpen(true);
                 }}
                 className="border-purple-400 text-purple-600 hover:bg-purple-50"
               >
