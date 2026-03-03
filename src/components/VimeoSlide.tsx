@@ -27,10 +27,13 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
 
-  // Destroy player when navigating away
+  // Pause player when navigating away, resume when coming back
   useEffect(() => {
-    if (!isActive && isPlaying) {
-      destroyPlayer();
+    if (!isActive && isPlaying && playerRef.current) {
+      playerRef.current.pause().catch(() => {});
+    }
+    if (isActive && isPlaying && playerRef.current) {
+      playerRef.current.play().catch(() => {});
     }
   }, [isActive]);
 
