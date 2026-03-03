@@ -75,9 +75,12 @@ const ICON_PRESETS: IconPreset[] = [
   
   // Email links variant
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
+
+  // Vimeo video variant
+  { id: "vimeo-video", label: "Vimeo Video", type: "vimeo", imageUrl: playButtonIcon, width: 5, height: 4 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
