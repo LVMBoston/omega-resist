@@ -50,6 +50,7 @@ const InteractiveSlideOverlay = ({
   imageRef,
   viralToken,
   mockMetricValue,
+  isActive = true,
 }: InteractiveSlideOverlayProps) => {
   const { toast } = useToast();
   const [imageDimensions, setImageDimensions] = useState({ 
