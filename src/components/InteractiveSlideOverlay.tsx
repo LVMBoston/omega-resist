@@ -636,6 +636,13 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
+  // Close video when slide becomes inactive (user swipes away)
+  useEffect(() => {
+    if (!isActive && isVideoOpen) {
+      closeVideo();
+    }
+  }, [isActive]);
+
   const handleEmailLinks = (hotspot: Hotspot) => {
     // Collect all external_link siblings with non-empty URLs
     const externalLinks = hotspots.filter(h => h.type === 'external_link' && h.url && h.url.trim().length > 0);
