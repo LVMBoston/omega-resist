@@ -1177,16 +1177,28 @@ Add Slide(s)
                     Interactive
                   </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => document.getElementById('zip-upload')?.click()}
-                  disabled={uploading}
-                >
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Import ZIP
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => document.getElementById('zip-upload')?.click()}
+                    disabled={uploading}
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Import ZIP
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setVimeoDialogOpen(true)}
+                    disabled={uploading}
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    Vimeo
+                  </Button>
+                </div>
                 <input
                   id="zip-upload"
                   type="file"
