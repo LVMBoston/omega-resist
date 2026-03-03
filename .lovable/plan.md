@@ -1,7 +1,7 @@
 
-# Email Links Hotspot Type (Revised)
+# Vimeo Video Slide Type
 
 **Status:** Approved & Implemented
-**Date:** 2026-03-01
+**Date:** 2026-03-03
 
-Adds an `email_links` hotspot type that bundles sibling `external_link` URLs into a single `mailto:` body with a post-action sharing nudge toast. See `docs/decisions/hotspots/2026-03-01_email-links-hotspot_feature-doc_lovable.md` for full details.
+Adds a `vimeo` slide type to the carousel with full-viewport overlay playback and audio cleanup on swipe. See `docs/decisions/deck-editor/2026-03-03_vimeo-slide-type_feature-doc_lovable.md` for full details.
