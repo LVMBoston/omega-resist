@@ -532,7 +532,7 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className="w-full h-full">
+          <Carousel className="w-full h-full" setApi={setCarouselApi}>
             <CarouselContent className="h-full">
               {slides.map((slide, index) => {
                 console.log(`🎨 Rendering slide ${index + 1}:`, { 
