@@ -681,6 +681,14 @@ const InteractiveSlideOverlay = ({
             handleExternalLink(hotspot.url);
           }
         };
+      case "vimeo":
+        return () => {
+          if (hotspot?.url) {
+            // Always use inline Vimeo player for vimeo hotspot type
+            setVideoUrl(hotspot.url);
+            setIsVideoOpen(true);
+          }
+        };
       case "email_links":
         return () => {
           if (hotspot) {

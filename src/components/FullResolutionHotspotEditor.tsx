@@ -141,7 +141,7 @@ export const FullResolutionHotspotEditor = ({
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     // Check if a hotspot of this type already exists (allow multiple external_link and app_download)
-    const allowMultiple = ['external_link'];
+    const allowMultiple = ['external_link', 'vimeo'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
