@@ -52,7 +52,16 @@ The previously disabled "Video" placeholder in the hotspot category grid is now 
 - **Editor (`FullResolutionHotspotEditor.tsx`)**: Added `vimeo` to `IconCategory`, `ICON_PRESETS` (using play-button asset), category maps, and the grid. Removed the disabled placeholder button. Shows a "Vimeo URL" input when a vimeo hotspot is selected. Allows multiple vimeo hotspots per slide.
 - **Overlay (`InteractiveSlideOverlay.tsx`)**: Added `vimeo` case to `getHotspotAction` and a dedicated render branch that opens the full-viewport inline Vimeo player. Existing `external_link` Vimeo-URL interception remains as a fallback for legacy data.
 
+## Update — 2026-03-03 (b)
+
+### 6. Pause/resume on swipe instead of destroy
+
+Both `VimeoSlide` and `InteractiveSlideOverlay` now **pause** the Vimeo player when the slide scrolls out of view and **resume** playback when the user returns. Previously, navigating away destroyed the player and reset to the poster state.
+
+- **`VimeoSlide.tsx`**: `isActive` effect calls `player.pause()` / `player.play()` instead of `destroyPlayer()`.
+- **`InteractiveSlideOverlay.tsx`**: Both the `isActive` effect and the `IntersectionObserver` call `pause()` / `play()` instead of `closeVideo()`.
+- The overlay and close (X / Escape / ended) still fully destroy the player as before.
+
 ## Out of scope
 
-- Resume-from-timestamp (replay from start by design).
 - MP4 direct upload, GIF restart logic, link slide type.

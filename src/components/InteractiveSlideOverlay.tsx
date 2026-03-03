@@ -636,20 +636,26 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
-  // Close video when slide becomes inactive (prop-based or visibility-based)
+  // Pause/resume video when slide becomes inactive/active (prop-based)
   useEffect(() => {
-    if (!isActive && isVideoOpen) {
-      closeVideo();
+    if (!isVideoOpen || !vimeoPlayerRef.current) return;
+    if (!isActive) {
+      vimeoPlayerRef.current.pause().catch(() => {});
+    } else {
+      vimeoPlayerRef.current.play().catch(() => {});
     }
   }, [isActive]);
 
-  // Also detect when overlay scrolls out of view (carousel swipe) via IntersectionObserver
+  // Also pause/resume when overlay scrolls out of view (carousel swipe) via IntersectionObserver
   useEffect(() => {
     if (!isVideoOpen || !imageRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting && isVideoOpen) {
-          closeVideo();
+        if (!vimeoPlayerRef.current) return;
+        if (!entry.isIntersecting) {
+          vimeoPlayerRef.current.pause().catch(() => {});
+        } else {
+          vimeoPlayerRef.current.play().catch(() => {});
         }
       },
       { threshold: 0.1 }
