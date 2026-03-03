@@ -42,6 +42,16 @@ Embla carousel doesn't handle Vimeo iframes well: videos render small (requiring
 - Save logic passes `media_url` through to `slide_items` insert.
 - Vimeo badge shown on sidebar thumbnails.
 
+## Update — 2026-03-03
+
+### 5. Activated `vimeo` hotspot type in the Interactive Slide Template Editor
+
+The previously disabled "Video" placeholder in the hotspot category grid is now a fully functional `vimeo` category:
+
+- **Type system**: Added `'vimeo'` to `HotspotActionType` in `src/types/viralTemplates.ts`.
+- **Editor (`FullResolutionHotspotEditor.tsx`)**: Added `vimeo` to `IconCategory`, `ICON_PRESETS` (using play-button asset), category maps, and the grid. Removed the disabled placeholder button. Shows a "Vimeo URL" input when a vimeo hotspot is selected. Allows multiple vimeo hotspots per slide.
+- **Overlay (`InteractiveSlideOverlay.tsx`)**: Added `vimeo` case to `getHotspotAction` and a dedicated render branch that opens the full-viewport inline Vimeo player. Existing `external_link` Vimeo-URL interception remains as a fallback for legacy data.
+
 ## Out of scope
 
 - Resume-from-timestamp (replay from start by design).

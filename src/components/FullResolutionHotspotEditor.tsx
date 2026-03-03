@@ -24,7 +24,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo";
   icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
   imageUrl?: string; // Custom image URL (optional)
   width: number; // percentage
@@ -34,7 +34,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo";
   label: string;
   x: number;
   y: number;
@@ -75,9 +75,12 @@ const ICON_PRESETS: IconPreset[] = [
   
   // Email links variant
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
+
+  // Vimeo video variant
+  { id: "vimeo-video", label: "Vimeo Video", type: "vimeo", imageUrl: playButtonIcon, width: 5, height: 4 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -112,8 +115,8 @@ export const FullResolutionHotspotEditor = ({
     email: mailIcon,
     social: shareIcon,
     external_link: externalLinkIcon,
-    
     email_links: emailLinksIcon,
+    vimeo: playButtonIcon,
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
@@ -121,8 +124,8 @@ export const FullResolutionHotspotEditor = ({
     email: null,
     social: null,
     external_link: null,
-    
     email_links: null,
+    vimeo: null,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
@@ -130,15 +133,15 @@ export const FullResolutionHotspotEditor = ({
     email: "Email",
     social: "Social",
     external_link: "Link",
-    
     email_links: "Email Links",
+    vimeo: "Video",
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     // Check if a hotspot of this type already exists (allow multiple external_link and app_download)
-    const allowMultiple = ['external_link'];
+    const allowMultiple = ['external_link', 'vimeo'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
@@ -357,7 +360,7 @@ export const FullResolutionHotspotEditor = ({
               {!selectedCategory ? (
                 // Step 1: Category selection
                 <div className="grid grid-cols-6 gap-2">
-                  {(["sms", "email", "social", "external_link", "email_links"] as IconCategory[]).map((category) => {
+                  {(["sms", "email", "social", "external_link", "email_links", "vimeo"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
                     return (
@@ -376,16 +379,6 @@ export const FullResolutionHotspotEditor = ({
                       </Button>
                     );
                   })}
-                  {/* Play Video — inoperative placeholder */}
-                  <Button
-                    variant="outline"
-                    disabled
-                    className="flex flex-col items-center gap-1.5 h-auto py-3 px-2 opacity-50 cursor-not-allowed"
-                    title="Coming soon"
-                  >
-                    <img src={playButtonIcon} alt="Play Video" className="w-6 h-6 object-contain" />
-                    <span className="text-xs font-medium text-center leading-tight">Video</span>
-                  </Button>
                 </div>
               ) : (
                 // Step 2: Icon variant selection
@@ -505,7 +498,7 @@ export const FullResolutionHotspotEditor = ({
                             ⚠
                           </div>
                         )}
-                        {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && (
+                        {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && hotspot.type !== 'vimeo' && (
                         <div 
                           className={`absolute left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-bold whitespace-nowrap pointer-events-none rounded-md shadow-lg ${
                             hotspot.labelPosition === "top" ? "-top-8" : "-bottom-8"
@@ -724,15 +717,15 @@ export const FullResolutionHotspotEditor = ({
                       </div>
                       )}
 
-                      {selectedHotspotData.type === "external_link" && (
+                      {(selectedHotspotData.type === "external_link" || selectedHotspotData.type === "vimeo") && (
                         <div>
-                          <Label>URL</Label>
+                          <Label>{selectedHotspotData.type === "vimeo" ? "Vimeo URL" : "URL"}</Label>
                           <Input
                             value={selectedHotspotData.url || ""}
                             onChange={(e) =>
                               updateHotspot(selectedHotspotData.id, { url: e.target.value })
                             }
-                            placeholder="https://example.com"
+                            placeholder={selectedHotspotData.type === "vimeo" ? "https://vimeo.com/123456789" : "https://example.com"}
                             type="url"
                           />
                         </div>
@@ -755,7 +748,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {selectedHotspotData.type === 'external_link' && selectedHotspotData.url && (
+                      {(selectedHotspotData.type === 'external_link' || selectedHotspotData.type === 'vimeo') && selectedHotspotData.url && (
                         <div>
                           <Button
                             type="button"
@@ -776,7 +769,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {selectedHotspotData.type !== 'external_link' && selectedHotspotData.type !== 'email_links' && (
+                      {selectedHotspotData.type !== 'external_link' && selectedHotspotData.type !== 'email_links' && selectedHotspotData.type !== 'vimeo' && (
                         <div>
                           <Label>Label Position</Label>
                           <RadioGroup

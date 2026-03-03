@@ -681,6 +681,14 @@ const InteractiveSlideOverlay = ({
             handleExternalLink(hotspot.url);
           }
         };
+      case "vimeo":
+        return () => {
+          if (hotspot?.url) {
+            // Always use inline Vimeo player for vimeo hotspot type
+            setVideoUrl(hotspot.url);
+            setIsVideoOpen(true);
+          }
+        };
       case "email_links":
         return () => {
           if (hotspot) {
@@ -808,6 +816,36 @@ const InteractiveSlideOverlay = ({
           );
         }
         
+        // Handle vimeo hotspot type — always use inline player
+        if (hotspot.type === 'vimeo' && hotspot.url) {
+          return (
+            <button
+              key={hotspot.id}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`📱 Vimeo hotspot tapped for inline playback: ${hotspot.url}`);
+                setVideoUrl(hotspot.url!);
+                setIsVideoOpen(true);
+              }}
+              className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+              style={{
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${buttonWidth}px`,
+                height: `${buttonHeight}px`,
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+              }}
+            >
+              {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            </button>
+          );
+        }
+
         // Check if this is a Vimeo link that should use the overlay
         console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}`);
         if (hotspot.type === 'external_link' && hotspot.url) {

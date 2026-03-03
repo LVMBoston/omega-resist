@@ -183,4 +183,5 @@ export type HotspotActionType =
   | 'chart'            // Chart visualization
   | 'map'              // Map visualization
   | 'app_download'     // Universal app store redirect
-  | 'email_links';     // Bundle sibling external_link URLs into mailto
+  | 'email_links'      // Bundle sibling external_link URLs into mailto
+  | 'vimeo';           // Inline Vimeo video player
