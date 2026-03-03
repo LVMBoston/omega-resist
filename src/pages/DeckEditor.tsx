@@ -32,6 +32,7 @@ interface Slide {
   template_id?: string;
   deck_slug: string;
   skip_deploy: boolean;
+  media_url?: string;
 }
 
 interface Template {

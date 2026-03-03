@@ -544,6 +544,12 @@ export default function DeckViewer() {
                             viralToken={activeToken}
                             templateId={slide.template_id}
                           />
+                        ) : slide.type === "vimeo" && slide.media_url ? (
+                          <VimeoSlide
+                            contentUrl={slide.content_url}
+                            mediaUrl={slide.media_url}
+                            isActive={true}
+                          />
                         ) : (
                           <div className="relative w-full h-full flex items-center justify-center">
                             <img
