@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { VimeoSlide } from "@/components/VimeoSlide";
 import { toast } from "sonner";
@@ -35,6 +35,17 @@ export default function DeckViewer() {
   const [slides, setSlides] = useState<SlideItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deckRedirectChecked, setDeckRedirectChecked] = useState(false);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Track active slide index via Embla API for Vimeo pause-on-swipe
+  useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setActiveIndex(carouselApi.selectedScrollSnap());
+    onSelect();
+    carouselApi.on("select", onSelect);
+    return () => { carouselApi.off("select", onSelect); };
+  }, [carouselApi]);
 
   // Check if EoA's assigned_deck_slug differs from the URL deck slug
   // This handles legacy direct-URL QR codes that bypass the short URL system
@@ -521,7 +532,7 @@ export default function DeckViewer() {
             </CardContent>
           </Card>
         ) : (
-          <Carousel className="w-full h-full">
+          <Carousel className="w-full h-full" setApi={setCarouselApi}>
             <CarouselContent className="h-full">
               {slides.map((slide, index) => {
                 console.log(`🎨 Rendering slide ${index + 1}:`, { 
@@ -548,7 +559,7 @@ export default function DeckViewer() {
                           <VimeoSlide
                             contentUrl={slide.content_url}
                             mediaUrl={slide.media_url}
-                            isActive={true}
+                            isActive={index === activeIndex}
                           />
                         ) : (
                           <div className="relative w-full h-full flex items-center justify-center">
