@@ -202,6 +202,10 @@ export default function DeckEditor() {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkMoveDialogOpen, setBulkMoveDialogOpen] = useState(false);
   const [bulkMoveTarget, setBulkMoveTarget] = useState('');
+  const [vimeoDialogOpen, setVimeoDialogOpen] = useState(false);
+  const [vimeoUrl, setVimeoUrl] = useState('');
+  const [vimeoPosterFile, setVimeoPosterFile] = useState<File | null>(null);
+  const [vimeoPosterPreview, setVimeoPosterPreview] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
