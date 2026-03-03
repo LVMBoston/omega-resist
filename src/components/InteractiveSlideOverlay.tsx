@@ -797,31 +797,54 @@ const InteractiveSlideOverlay = ({
       {/* Video Overlay - Full Screen */}
       {isVideoOpen && videoUrl && (
         <div 
-          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
-          onClick={closeVideo}
-        >
+      {/* Inline Vimeo player with swipe-passthrough zones */}
+      {isVideoOpen && videoUrl && (
+        <div className="absolute inset-0 z-[9999] bg-black">
           {/* Close button */}
           <button
             onClick={closeVideo}
-            className="absolute top-4 right-4 z-[10000] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+            className="absolute top-4 right-4 z-[10001] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
             aria-label="Close video"
           >
             <X size={24} />
           </button>
 
-          {/* Video container with letterbox */}
+          {/* Left swipe-passthrough zone */}
+          <div className="absolute inset-y-0 left-0 w-[15%] z-[10000] pointer-events-none" />
+
+          {/* Center tap zone */}
+          <button
+            onClick={handleVimeoCenterTap}
+            className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer"
+            aria-label="Toggle sound or pause"
+          />
+
+          {/* Right swipe-passthrough zone */}
+          <div className="absolute inset-y-0 right-0 w-[15%] z-[10000] pointer-events-none" />
+
+          {/* Video container */}
           <div 
             ref={videoContainerRef}
-            className="relative bg-black mx-auto"
-            style={{ 
-              position: 'relative',
-              width: 'min(90vw, 1280px)',
-              height: 'min(calc(90vw * 9/16), calc(90vh), calc(1280px * 9/16))',
-              maxWidth: '1280px',
-              maxHeight: '90vh'
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="w-full h-full bg-black"
           />
+
+          {/* Feedback icon overlay */}
+          {vimeoFeedbackIcon && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[10002] animate-fade-in">
+              <div className="bg-black/50 rounded-full p-4">
+                {vimeoFeedbackIcon}
+              </div>
+            </div>
+          )}
+
+          {/* Muted indicator */}
+          {vimeoPlayerState === "playing-muted" && !vimeoFeedbackIcon && (
+            <div className="absolute bottom-4 right-4 z-[10002] pointer-events-none">
+              <div className="bg-black/50 rounded-full p-2">
+                <VolumeX className="h-5 w-5 text-white" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
