@@ -1,6 +1,6 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { mintShare } from "@/lib/virality/mint";
 import { useSearchParams } from "react-router-dom";
@@ -63,6 +63,10 @@ const InteractiveSlideOverlay = ({
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [vimeoPlayerState, setVimeoPlayerState] = useState<"idle" | "playing-muted" | "playing-unmuted" | "paused">("idle");
+  const [vimeoFeedbackIcon, setVimeoFeedbackIcon] = useState<React.ReactNode | null>(null);
+  const vimeoWasUnmutedRef = useRef(false);
+  const vimeoFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const vimeoPlayerRef = useRef<Player | null>(null);
 
@@ -525,25 +529,19 @@ const InteractiveSlideOverlay = ({
   };
 
   const getVimeoEmbedUrl = (url: string) => {
-    // Match multiple Vimeo URL formats:
-    // - vimeo.com/{id}
-    // - player.vimeo.com/video/{id}
-    // - vimeo.com/channels/{channel}/{id}
-    // - vimeo.com/{id}/{hash}
     const patterns = [
-      /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,  // Main site with optional channel/hash
-      /player\.vimeo\.com\/video\/(\d+)/,                        // Player embed URLs
+      /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,
+      /player\.vimeo\.com\/video\/(\d+)/,
     ];
     
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        // Use Vimeo's embed player with enhanced parameters for proper display
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
-    return url; // Fallback to original URL if parsing fails
+    return url;
   };
 
   const handleExternalLink = (url: string) => {
@@ -566,23 +564,29 @@ const InteractiveSlideOverlay = ({
 
 
 
+  const showVimeoFeedback = useCallback((icon: React.ReactNode) => {
+    if (vimeoFeedbackTimerRef.current) clearTimeout(vimeoFeedbackTimerRef.current);
+    setVimeoFeedbackIcon(icon);
+    vimeoFeedbackTimerRef.current = setTimeout(() => setVimeoFeedbackIcon(null), 1500);
+  }, []);
+
   const closeVideo = () => {
     if (vimeoPlayerRef.current) {
       vimeoPlayerRef.current.destroy();
       vimeoPlayerRef.current = null;
     }
-    // Clear the video container
     if (videoContainerRef.current) {
       videoContainerRef.current.innerHTML = '';
     }
+    vimeoWasUnmutedRef.current = false;
+    setVimeoPlayerState("idle");
     setIsVideoOpen(false);
     setVideoUrl(null);
   };
 
-  // Initialize Vimeo player when video opens
+  // Initialize Vimeo player when video opens (muted autoplay)
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
-      // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
       
       const iframe = document.createElement('iframe');
@@ -594,19 +598,17 @@ const InteractiveSlideOverlay = ({
       iframe.style.backgroundColor = '#000';
       iframe.style.display = 'block';
       iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('webkitallowfullscreen', '');
-      iframe.setAttribute('mozallowfullscreen', '');
       
       videoContainerRef.current.appendChild(iframe);
       
       const player = new Player(iframe, {
-        muted: false,
+        muted: true,
         autoplay: true,
       });
       
       vimeoPlayerRef.current = player;
+      setVimeoPlayerState("playing-muted");
       
-      // Close video when it ends
       player.on('ended', () => {
         closeVideo();
       });
@@ -616,7 +618,6 @@ const InteractiveSlideOverlay = ({
           vimeoPlayerRef.current.destroy();
           vimeoPlayerRef.current = null;
         }
-        // Clean up iframe
         if (videoContainerRef.current) {
           videoContainerRef.current.innerHTML = '';
         }
@@ -636,33 +637,78 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
-  // Pause/resume video when slide becomes inactive/active (prop-based)
+  // Pause/resume video on isActive change with state machine
   useEffect(() => {
     if (!isVideoOpen || !vimeoPlayerRef.current) return;
     if (!isActive) {
-      vimeoPlayerRef.current.pause().catch(() => {});
+      if (vimeoPlayerState === "playing-muted" || vimeoPlayerState === "playing-unmuted") {
+        vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
+        vimeoPlayerRef.current.pause().catch(() => {});
+        vimeoPlayerRef.current.setVolume(0).catch(() => {});
+        setVimeoPlayerState("paused");
+      }
     } else {
-      vimeoPlayerRef.current.play().catch(() => {});
+      if (vimeoPlayerState === "paused") {
+        vimeoPlayerRef.current.play().catch(() => {});
+        if (vimeoWasUnmutedRef.current) {
+          vimeoPlayerRef.current.setVolume(1).catch(() => {});
+          setVimeoPlayerState("playing-unmuted");
+        } else {
+          setVimeoPlayerState("playing-muted");
+        }
+      }
     }
   }, [isActive]);
 
-  // Also pause/resume when overlay scrolls out of view (carousel swipe) via IntersectionObserver
+  // Also pause/resume when overlay scrolls out of view via IntersectionObserver
   useEffect(() => {
     if (!isVideoOpen || !imageRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!vimeoPlayerRef.current) return;
         if (!entry.isIntersecting) {
+          vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
           vimeoPlayerRef.current.pause().catch(() => {});
-        } else {
+          vimeoPlayerRef.current.setVolume(0).catch(() => {});
+          setVimeoPlayerState("paused");
+        } else if (vimeoPlayerState === "paused") {
           vimeoPlayerRef.current.play().catch(() => {});
+          if (vimeoWasUnmutedRef.current) {
+            vimeoPlayerRef.current.setVolume(1).catch(() => {});
+            setVimeoPlayerState("playing-unmuted");
+          } else {
+            setVimeoPlayerState("playing-muted");
+          }
         }
       },
       { threshold: 0.1 }
     );
     observer.observe(imageRef.current);
     return () => observer.disconnect();
-  }, [isVideoOpen]);
+  }, [isVideoOpen, vimeoPlayerState]);
+
+  const handleVimeoCenterTap = useCallback(() => {
+    const player = vimeoPlayerRef.current;
+    if (!player) return;
+    switch (vimeoPlayerState) {
+      case "playing-muted":
+        player.setVolume(1).catch(() => {});
+        setVimeoPlayerState("playing-unmuted");
+        showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
+        break;
+      case "playing-unmuted":
+        player.pause().catch(() => {});
+        setVimeoPlayerState("paused");
+        showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
+        break;
+      case "paused":
+        player.play().catch(() => {});
+        player.setVolume(1).catch(() => {});
+        setVimeoPlayerState("playing-unmuted");
+        showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
+        break;
+    }
+  }, [vimeoPlayerState, showVimeoFeedback]);
 
   const handleEmailLinks = (hotspot: Hotspot) => {
     // Collect all external_link siblings with non-empty URLs
@@ -748,34 +794,54 @@ const InteractiveSlideOverlay = ({
 
   return (
     <>
-      {/* Video Overlay - Full Screen */}
+      {/* Inline Vimeo player with swipe-passthrough zones */}
       {isVideoOpen && videoUrl && (
-        <div 
-          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center p-4"
-          onClick={closeVideo}
-        >
+        <div className="absolute inset-0 z-[9999] bg-black">
           {/* Close button */}
           <button
             onClick={closeVideo}
-            className="absolute top-4 right-4 z-[10000] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+            className="absolute top-4 right-4 z-[10001] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
             aria-label="Close video"
           >
             <X size={24} />
           </button>
 
-          {/* Video container with letterbox */}
+          {/* Left swipe-passthrough zone */}
+          <div className="absolute inset-y-0 left-0 w-[15%] z-[10000] pointer-events-none" />
+
+          {/* Center tap zone */}
+          <button
+            onClick={handleVimeoCenterTap}
+            className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer"
+            aria-label="Toggle sound or pause"
+          />
+
+          {/* Right swipe-passthrough zone */}
+          <div className="absolute inset-y-0 right-0 w-[15%] z-[10000] pointer-events-none" />
+
+          {/* Video container */}
           <div 
             ref={videoContainerRef}
-            className="relative bg-black mx-auto"
-            style={{ 
-              position: 'relative',
-              width: 'min(90vw, 1280px)',
-              height: 'min(calc(90vw * 9/16), calc(90vh), calc(1280px * 9/16))',
-              maxWidth: '1280px',
-              maxHeight: '90vh'
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="w-full h-full bg-black"
           />
+
+          {/* Feedback icon overlay */}
+          {vimeoFeedbackIcon && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[10002] animate-fade-in">
+              <div className="bg-black/50 rounded-full p-4">
+                {vimeoFeedbackIcon}
+              </div>
+            </div>
+          )}
+
+          {/* Muted indicator */}
+          {vimeoPlayerState === "playing-muted" && !vimeoFeedbackIcon && (
+            <div className="absolute bottom-4 right-4 z-[10002] pointer-events-none">
+              <div className="bg-black/50 rounded-full p-2">
+                <VolumeX className="h-5 w-5 text-white" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
