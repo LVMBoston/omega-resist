@@ -38,6 +38,15 @@ export default function DeckViewer() {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Track active slide index via Embla API for Vimeo pause-on-swipe
+  useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setActiveIndex(carouselApi.selectedScrollSnap());
+    onSelect();
+    carouselApi.on("select", onSelect);
+    return () => { carouselApi.off("select", onSelect); };
+  }, [carouselApi]);
+
   // Check if EoA's assigned_deck_slug differs from the URL deck slug
   // This handles legacy direct-URL QR codes that bypass the short URL system
   useEffect(() => {
