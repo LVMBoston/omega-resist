@@ -476,6 +476,7 @@ export type Database = {
           id: string
           import_source: string | null
           is_compressed: boolean | null
+          media_url: string | null
           position: number
           skip_deploy: boolean
           template_id: string | null
@@ -488,6 +489,7 @@ export type Database = {
           id?: string
           import_source?: string | null
           is_compressed?: boolean | null
+          media_url?: string | null
           position: number
           skip_deploy?: boolean
           template_id?: string | null
@@ -500,6 +502,7 @@ export type Database = {
           id?: string
           import_source?: string | null
           is_compressed?: boolean | null
+          media_url?: string | null
           position?: number
           skip_deploy?: boolean
           template_id?: string | null

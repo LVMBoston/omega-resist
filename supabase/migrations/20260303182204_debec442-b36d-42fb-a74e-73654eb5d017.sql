@@ -1,0 +1,1 @@
+ALTER TABLE public.slide_items ADD COLUMN IF NOT EXISTS media_url text;

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { VimeoSlide } from "@/components/VimeoSlide";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlideV2";
 import { logEvent, instantiateL00Token, maybeReinstantiateL00, fetchGeolocation } from "@/lib/virality/mint";
@@ -17,6 +18,7 @@ interface SlideItem {
   is_compressed: boolean;
   type: string;
   template_id?: string;
+  media_url?: string;
 }
 
 export default function DeckViewer() {
@@ -541,6 +543,12 @@ export default function DeckViewer() {
                             deckSlug={slug || ""} 
                             viralToken={activeToken}
                             templateId={slide.template_id}
+                          />
+                        ) : slide.type === "vimeo" && slide.media_url ? (
+                          <VimeoSlide
+                            contentUrl={slide.content_url}
+                            mediaUrl={slide.media_url}
+                            isActive={true}
                           />
                         ) : (
                           <div className="relative w-full h-full flex items-center justify-center">
