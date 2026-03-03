@@ -131,6 +131,11 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
           GIF
         </div>
       )}
+      {slide.type === 'vimeo' && (
+        <div className="absolute top-1 right-8 bg-accent text-accent-foreground px-2 py-0.5 rounded text-xs font-medium">
+          Vimeo
+        </div>
+      )}
       {/* Skip Deploy toggle — right side */}
       <div
         className="absolute top-1/2 -translate-y-1/2 right-1 z-20"
