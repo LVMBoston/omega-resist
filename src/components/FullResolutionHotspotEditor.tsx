@@ -34,7 +34,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo";
   label: string;
   x: number;
   y: number;
