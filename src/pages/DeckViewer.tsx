@@ -559,7 +559,7 @@ export default function DeckViewer() {
                           <VimeoSlide
                             contentUrl={slide.content_url}
                             mediaUrl={slide.media_url}
-                            isActive={true}
+                            isActive={index === activeIndex}
                           />
                         ) : (
                           <div className="relative w-full h-full flex items-center justify-center">
