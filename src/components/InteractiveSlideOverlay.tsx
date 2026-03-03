@@ -1,6 +1,6 @@
 import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { mintShare } from "@/lib/virality/mint";
 import { useSearchParams } from "react-router-dom";
