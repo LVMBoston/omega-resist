@@ -564,23 +564,29 @@ const InteractiveSlideOverlay = ({
 
 
 
+  const showVimeoFeedback = useCallback((icon: React.ReactNode) => {
+    if (vimeoFeedbackTimerRef.current) clearTimeout(vimeoFeedbackTimerRef.current);
+    setVimeoFeedbackIcon(icon);
+    vimeoFeedbackTimerRef.current = setTimeout(() => setVimeoFeedbackIcon(null), 1500);
+  }, []);
+
   const closeVideo = () => {
     if (vimeoPlayerRef.current) {
       vimeoPlayerRef.current.destroy();
       vimeoPlayerRef.current = null;
     }
-    // Clear the video container
     if (videoContainerRef.current) {
       videoContainerRef.current.innerHTML = '';
     }
+    vimeoWasUnmutedRef.current = false;
+    setVimeoPlayerState("idle");
     setIsVideoOpen(false);
     setVideoUrl(null);
   };
 
-  // Initialize Vimeo player when video opens
+  // Initialize Vimeo player when video opens (muted autoplay)
   useEffect(() => {
     if (isVideoOpen && videoUrl && videoContainerRef.current) {
-      // Clear any existing content first
       videoContainerRef.current.innerHTML = '';
       
       const iframe = document.createElement('iframe');
@@ -592,19 +598,17 @@ const InteractiveSlideOverlay = ({
       iframe.style.backgroundColor = '#000';
       iframe.style.display = 'block';
       iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('webkitallowfullscreen', '');
-      iframe.setAttribute('mozallowfullscreen', '');
       
       videoContainerRef.current.appendChild(iframe);
       
       const player = new Player(iframe, {
-        muted: false,
+        muted: true,
         autoplay: true,
       });
       
       vimeoPlayerRef.current = player;
+      setVimeoPlayerState("playing-muted");
       
-      // Close video when it ends
       player.on('ended', () => {
         closeVideo();
       });
@@ -614,7 +618,6 @@ const InteractiveSlideOverlay = ({
           vimeoPlayerRef.current.destroy();
           vimeoPlayerRef.current = null;
         }
-        // Clean up iframe
         if (videoContainerRef.current) {
           videoContainerRef.current.innerHTML = '';
         }
@@ -634,33 +637,78 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
-  // Pause/resume video when slide becomes inactive/active (prop-based)
+  // Pause/resume video on isActive change with state machine
   useEffect(() => {
     if (!isVideoOpen || !vimeoPlayerRef.current) return;
     if (!isActive) {
-      vimeoPlayerRef.current.pause().catch(() => {});
+      if (vimeoPlayerState === "playing-muted" || vimeoPlayerState === "playing-unmuted") {
+        vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
+        vimeoPlayerRef.current.pause().catch(() => {});
+        vimeoPlayerRef.current.setVolume(0).catch(() => {});
+        setVimeoPlayerState("paused");
+      }
     } else {
-      vimeoPlayerRef.current.play().catch(() => {});
+      if (vimeoPlayerState === "paused") {
+        vimeoPlayerRef.current.play().catch(() => {});
+        if (vimeoWasUnmutedRef.current) {
+          vimeoPlayerRef.current.setVolume(1).catch(() => {});
+          setVimeoPlayerState("playing-unmuted");
+        } else {
+          setVimeoPlayerState("playing-muted");
+        }
+      }
     }
   }, [isActive]);
 
-  // Also pause/resume when overlay scrolls out of view (carousel swipe) via IntersectionObserver
+  // Also pause/resume when overlay scrolls out of view via IntersectionObserver
   useEffect(() => {
     if (!isVideoOpen || !imageRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!vimeoPlayerRef.current) return;
         if (!entry.isIntersecting) {
+          vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
           vimeoPlayerRef.current.pause().catch(() => {});
-        } else {
+          vimeoPlayerRef.current.setVolume(0).catch(() => {});
+          setVimeoPlayerState("paused");
+        } else if (vimeoPlayerState === "paused") {
           vimeoPlayerRef.current.play().catch(() => {});
+          if (vimeoWasUnmutedRef.current) {
+            vimeoPlayerRef.current.setVolume(1).catch(() => {});
+            setVimeoPlayerState("playing-unmuted");
+          } else {
+            setVimeoPlayerState("playing-muted");
+          }
         }
       },
       { threshold: 0.1 }
     );
     observer.observe(imageRef.current);
     return () => observer.disconnect();
-  }, [isVideoOpen]);
+  }, [isVideoOpen, vimeoPlayerState]);
+
+  const handleVimeoCenterTap = useCallback(() => {
+    const player = vimeoPlayerRef.current;
+    if (!player) return;
+    switch (vimeoPlayerState) {
+      case "playing-muted":
+        player.setVolume(1).catch(() => {});
+        setVimeoPlayerState("playing-unmuted");
+        showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
+        break;
+      case "playing-unmuted":
+        player.pause().catch(() => {});
+        setVimeoPlayerState("paused");
+        showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
+        break;
+      case "paused":
+        player.play().catch(() => {});
+        player.setVolume(1).catch(() => {});
+        setVimeoPlayerState("playing-unmuted");
+        showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
+        break;
+    }
+  }, [vimeoPlayerState, showVimeoFeedback]);
 
   const handleEmailLinks = (hotspot: Hotspot) => {
     // Collect all external_link siblings with non-empty URLs
