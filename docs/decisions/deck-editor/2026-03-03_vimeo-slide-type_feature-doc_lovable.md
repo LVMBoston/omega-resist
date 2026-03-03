@@ -62,6 +62,34 @@ Both `VimeoSlide` and `InteractiveSlideOverlay` now **pause** the Vimeo player w
 - **`InteractiveSlideOverlay.tsx`**: Both the `isActive` effect and the `IntersectionObserver` call `pause()` / `play()` instead of `closeVideo()`.
 - The overlay and close (X / Escape / ended) still fully destroy the player as before.
 
+## Update — 2026-03-03 (c)
+
+### 7. Inline autoplay with tap-to-toggle sound & swipe-passthrough
+
+Replaced the full-viewport `fixed inset-0` Vimeo overlay with an **inline player** that sits inside the carousel slide (or inside the hotspot overlay area). This fixes the root cause: the fixed overlay was capturing all touch events, preventing Embla from detecting swipes, so `isActive` never changed.
+
+**New UX model:**
+
+| State | Behavior |
+|---|---|
+| Slide enters view | Video autoplays **muted** (browser requirement) |
+| Tap center (70%) | Unmute → pause → resume → pause (toggle cycle) |
+| Swipe (15% edges) | Events pass through to Embla; player pauses, mutes |
+| Swipe back | Player resumes, restores previous mute state |
+| Video ends | Reset to poster image |
+| X / Escape | Destroy player, show poster |
+
+**Layout:** Left/right 15% strips use `pointer-events: none` so Embla carousel receives touch events natively. Center 70% handles tap-to-toggle.
+
+**State machine:** `playerState` cycles through `idle → playing-muted → playing-unmuted → paused`. A `wasUnmuted` ref tracks whether sound should be restored on return.
+
+**Visual feedback:** Brief (1.5s) icon overlay shows Volume/Pause/Play on each tap. Persistent mute indicator in bottom-right when muted.
+
+**Files changed:**
+- `VimeoSlide.tsx` — Full rewrite: inline player, state machine, swipe zones
+- `InteractiveSlideOverlay.tsx` — Vimeo hotspot uses same inline pattern (absolute, not fixed)
+- Embed URL changed to `muted=1` for browser autoplay compliance
+
 ## Out of scope
 
 - MP4 direct upload, GIF restart logic, link slide type.
