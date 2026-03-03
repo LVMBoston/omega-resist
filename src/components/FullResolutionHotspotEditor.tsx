@@ -360,7 +360,7 @@ export const FullResolutionHotspotEditor = ({
               {!selectedCategory ? (
                 // Step 1: Category selection
                 <div className="grid grid-cols-6 gap-2">
-                  {(["sms", "email", "social", "external_link", "email_links"] as IconCategory[]).map((category) => {
+                  {(["sms", "email", "social", "external_link", "email_links", "vimeo"] as IconCategory[]).map((category) => {
                     const CategoryIcon = categoryIcons[category];
                     const categoryImageUrl = categoryImages[category];
                     return (
