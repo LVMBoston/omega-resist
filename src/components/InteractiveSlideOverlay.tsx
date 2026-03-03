@@ -636,12 +636,27 @@ const InteractiveSlideOverlay = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
-  // Close video when slide becomes inactive (user swipes away)
+  // Close video when slide becomes inactive (prop-based or visibility-based)
   useEffect(() => {
     if (!isActive && isVideoOpen) {
       closeVideo();
     }
   }, [isActive]);
+
+  // Also detect when overlay scrolls out of view (carousel swipe) via IntersectionObserver
+  useEffect(() => {
+    if (!isVideoOpen || !imageRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting && isVideoOpen) {
+          closeVideo();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(imageRef.current);
+    return () => observer.disconnect();
+  }, [isVideoOpen]);
 
   const handleEmailLinks = (hotspot: Hotspot) => {
     // Collect all external_link siblings with non-empty URLs
