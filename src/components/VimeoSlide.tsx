@@ -29,13 +29,15 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
 
   // Pause player when navigating away, resume when coming back
   useEffect(() => {
-    if (!isActive && isPlaying && playerRef.current) {
-      playerRef.current.pause().catch(() => {});
+    const player = playerRef.current;
+    if (!player) return;
+    if (!isActive && isPlaying) {
+      player.pause().catch(() => {});
     }
-    if (isActive && isPlaying && playerRef.current) {
-      playerRef.current.play().catch(() => {});
+    if (isActive && isPlaying) {
+      player.play().catch(() => {});
     }
-  }, [isActive]);
+  }, [isActive, isPlaying]);
 
   // Escape key closes video
   useEffect(() => {
