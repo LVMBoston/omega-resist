@@ -1636,6 +1636,88 @@ Add Slide(s)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Vimeo Dialog */}
+      <Dialog open={vimeoDialogOpen} onOpenChange={(open) => {
+        setVimeoDialogOpen(open);
+        if (!open) { setVimeoUrl(''); setVimeoPosterFile(null); setVimeoPosterPreview(null); }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Vimeo Slide</DialogTitle>
+            <DialogDescription>
+              Provide a Vimeo URL and a poster image. The poster displays in the carousel; tapping play opens a full-screen video overlay.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="vimeo-url">Vimeo URL</Label>
+              <Input
+                id="vimeo-url"
+                value={vimeoUrl}
+                onChange={(e) => setVimeoUrl(e.target.value)}
+                placeholder="https://vimeo.com/123456789"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vimeo-poster">Poster Image</Label>
+              <Input
+                id="vimeo-poster"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setVimeoPosterFile(file);
+                    setVimeoPosterPreview(URL.createObjectURL(file));
+                  }
+                }}
+              />
+              {vimeoPosterPreview && (
+                <img src={vimeoPosterPreview} alt="Poster preview" className="w-full aspect-video object-contain bg-muted rounded" />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVimeoDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!vimeoUrl.trim() || !vimeoPosterFile}
+              onClick={async () => {
+                if (!vimeoPosterFile || !slug) return;
+                // Validate Vimeo URL
+                const vimeoPattern = /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)|player\.vimeo\.com\/video\/(\d+)/;
+                if (!vimeoPattern.test(vimeoUrl)) {
+                  toast.error('Invalid Vimeo URL. Please use a standard vimeo.com link.');
+                  return;
+                }
+                // Create temp slide with poster as blob URL and media_url
+                const nextPos = slides.length > 0 ? Math.max(...slides.map(s => s.position)) + 1 : 1;
+                const posterUrl = URL.createObjectURL(vimeoPosterFile);
+                const tempSlide: Slide = {
+                  id: `temp-vimeo-${Date.now()}`,
+                  position: nextPos,
+                  type: 'vimeo',
+                  content_url: posterUrl,
+                  is_compressed: false,
+                  deck_slug: slug,
+                  skip_deploy: false,
+                  media_url: vimeoUrl,
+                };
+                setSlides(prev => [...prev, tempSlide]);
+                setPendingUploads(prev => [...prev, { file: vimeoPosterFile, position: nextPos }]);
+                setHasChanges(true);
+                setVimeoDialogOpen(false);
+                setVimeoUrl('');
+                setVimeoPosterFile(null);
+                setVimeoPosterPreview(null);
+                toast.success('Vimeo slide added. Save to persist.');
+              }}
+            >
+              Add Vimeo Slide
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
