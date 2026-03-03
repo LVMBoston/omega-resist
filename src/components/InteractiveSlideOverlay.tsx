@@ -525,25 +525,19 @@ const InteractiveSlideOverlay = ({
   };
 
   const getVimeoEmbedUrl = (url: string) => {
-    // Match multiple Vimeo URL formats:
-    // - vimeo.com/{id}
-    // - player.vimeo.com/video/{id}
-    // - vimeo.com/channels/{channel}/{id}
-    // - vimeo.com/{id}/{hash}
     const patterns = [
-      /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,  // Main site with optional channel/hash
-      /player\.vimeo\.com\/video\/(\d+)/,                        // Player embed URLs
+      /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,
+      /player\.vimeo\.com\/video\/(\d+)/,
     ];
     
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        // Use Vimeo's embed player with enhanced parameters for proper display
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
-    return url; // Fallback to original URL if parsing fails
+    return url;
   };
 
   const handleExternalLink = (url: string) => {
