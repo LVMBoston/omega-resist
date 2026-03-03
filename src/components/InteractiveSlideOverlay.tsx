@@ -41,6 +41,7 @@ interface InteractiveSlideOverlayProps {
   imageRef: React.RefObject<HTMLImageElement>;
   viralToken: string | null;
   mockMetricValue?: string; // For demo/testing - overrides metric lookup
+  isActive?: boolean; // When false, close any playing video
 }
 
 const InteractiveSlideOverlay = ({
@@ -49,6 +50,7 @@ const InteractiveSlideOverlay = ({
   imageRef,
   viralToken,
   mockMetricValue,
+  isActive = true,
 }: InteractiveSlideOverlayProps) => {
   const { toast } = useToast();
   const [imageDimensions, setImageDimensions] = useState({ 
@@ -632,6 +634,28 @@ const InteractiveSlideOverlay = ({
     
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
+  }, [isVideoOpen]);
+
+  // Close video when slide becomes inactive (prop-based or visibility-based)
+  useEffect(() => {
+    if (!isActive && isVideoOpen) {
+      closeVideo();
+    }
+  }, [isActive]);
+
+  // Also detect when overlay scrolls out of view (carousel swipe) via IntersectionObserver
+  useEffect(() => {
+    if (!isVideoOpen || !imageRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting && isVideoOpen) {
+          closeVideo();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(imageRef.current);
+    return () => observer.disconnect();
   }, [isVideoOpen]);
 
   const handleEmailLinks = (hotspot: Hotspot) => {
