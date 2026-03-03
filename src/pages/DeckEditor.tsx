@@ -953,6 +953,7 @@ export default function DeckEditor() {
               type: tempSlide.type,
               is_compressed: !isGif, // GIFs are never compressed
               template_id: tempSlide.template_id,
+              media_url: (tempSlide as any).media_url || null,
             })
             .select()
             .single();
