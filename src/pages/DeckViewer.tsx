@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { VimeoSlide } from "@/components/VimeoSlide";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlideV2";
 import { logEvent, instantiateL00Token, maybeReinstantiateL00, fetchGeolocation } from "@/lib/virality/mint";
