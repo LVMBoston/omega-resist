@@ -794,9 +794,6 @@ const InteractiveSlideOverlay = ({
 
   return (
     <>
-      {/* Video Overlay - Full Screen */}
-      {isVideoOpen && videoUrl && (
-        <div 
       {/* Inline Vimeo player with swipe-passthrough zones */}
       {isVideoOpen && videoUrl && (
         <div className="absolute inset-0 z-[9999] bg-black">
