@@ -35,6 +35,8 @@ export default function DeckViewer() {
   const [slides, setSlides] = useState<SlideItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deckRedirectChecked, setDeckRedirectChecked] = useState(false);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // Check if EoA's assigned_deck_slug differs from the URL deck slug
   // This handles legacy direct-URL QR codes that bypass the short URL system
