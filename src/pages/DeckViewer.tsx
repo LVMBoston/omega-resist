@@ -17,6 +17,7 @@ interface SlideItem {
   is_compressed: boolean;
   type: string;
   template_id?: string;
+  media_url?: string;
 }
 
 export default function DeckViewer() {
