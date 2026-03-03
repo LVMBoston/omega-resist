@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { VimeoSlide } from "@/components/VimeoSlide";
 import { toast } from "sonner";
