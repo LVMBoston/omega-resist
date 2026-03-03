@@ -41,6 +41,7 @@ interface InteractiveSlideOverlayProps {
   imageRef: React.RefObject<HTMLImageElement>;
   viralToken: string | null;
   mockMetricValue?: string; // For demo/testing - overrides metric lookup
+  isActive?: boolean; // When false, close any playing video
 }
 
 const InteractiveSlideOverlay = ({
