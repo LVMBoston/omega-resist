@@ -178,10 +178,12 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
           {/* Left swipe-passthrough zone */}
           <div className="absolute inset-y-0 left-0 w-[15%] z-10 pointer-events-none" />
 
-          {/* Center tap zone */}
+          {/* Center tap zone — use onTouchEnd for iOS Safari compatibility */}
           <button
+            onTouchEnd={(e) => { e.preventDefault(); handleCenterTap(); }}
             onClick={handleCenterTap}
             className="absolute inset-y-0 left-[15%] w-[70%] z-10 bg-transparent border-none cursor-pointer"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label="Toggle sound or pause"
           />
 
