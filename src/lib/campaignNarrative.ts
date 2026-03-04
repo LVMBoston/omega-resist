@@ -13,6 +13,8 @@ export interface NarrativeData {
   maxLevel: number;
   shareMediums: { medium: string; count: number }[];
   lastShareAt: string | null;
+  speedOriginCity: string | null;
+  speedDestCity: string | null;
 }
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
