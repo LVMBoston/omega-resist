@@ -67,6 +67,8 @@ serve(async (req) => {
 
     // For US locations, query our zip_codes table to find the nearest zip code
     let zipCode: string | null = null;
+    let finalCity = city;
+    let finalRegion = region;
     
     if (countryCode === 'US' || (!countryCode && latitude > 24 && latitude < 50 && longitude > -125 && longitude < -66)) {
       console.log('🗺️ US location detected, querying local zip_codes table...');
@@ -90,6 +92,16 @@ serve(async (req) => {
           zip_lon: nearest.longitude
         });
         
+        // Fallback: if Nominatim didn't return city/region, use zip_codes table data
+        if (!finalCity && nearest.city) {
+          finalCity = nearest.city;
+          console.log('🗺️ City fallback from zip_codes table:', finalCity);
+        }
+        if (!finalRegion && nearest.state_name) {
+          finalRegion = nearest.state_name;
+          console.log('🗺️ Region fallback from zip_codes table:', finalRegion);
+        }
+        
         // Calculate distance for logging
         const R = 6371; // Earth's radius in km
         const dLat = (nearest.latitude - latitude) * Math.PI / 180;
@@ -110,8 +122,8 @@ serve(async (req) => {
     }
 
     const result = {
-      city,
-      region,
+      city: finalCity,
+      region: finalRegion,
       country,
       country_code: countryCode,
       zip_code: zipCode,
