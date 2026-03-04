@@ -81,3 +81,16 @@ Enriched the ⚡ speed line with "Fastest share:" prefix and geographic origin/d
 - **Destination logic**: First max-level token on the same `l00_instance` chain → first view event with a city.
 - **New interface fields**: `speedOriginCity: string | null` and `speedDestCity: string | null` added to `NarrativeData`.
 - **Data integrity**: Geographic suffix omitted entirely when either city is null. No placeholders.
+
+## Update — 2026-03-04 (SVG Formatting)
+
+Synchronized server-side SVG snapshot rendering with client-side dialog formatting:
+
+- **Title rendering**: `__TITLE__` sentinels now used in server-side narrative. SVG renderer strips sentinels and renders title text at 1.25× font size, bold.
+- **Emoji hanging indents**: Emoji-prefixed paragraphs rendered with emoji at left margin and body text indented, matching the flexbox pattern in the dialog.
+- **Paragraph spacing**: Blank lines produce vertical gaps instead of zero-height tspans.
+- **Word wrapping**: Long lines auto-wrap to fit within hotspot width.
+- **Top-aligned text**: `campaign_story` hotspot uses top-aligned layout instead of vertical centering.
+- **Clipping**: SVG `clipPath` prevents text overflow beyond hotspot bounds.
+- **Content sync**: Added `__TITLE__` markers, "Last share" timestamp query, "Fastest share:" prefix with geographic origin/destination queries.
+- **UTC fix**: Removed manual `" UTC"` suffixes that caused "UTC UTC" duplication with Deno's `timeZoneName: "short"`.

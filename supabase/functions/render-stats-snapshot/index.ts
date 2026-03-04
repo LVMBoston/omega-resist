@@ -238,7 +238,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
   const now = new Date();
   metrics.current_date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+  metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
   // Campaign story — full narrative (inline generation matching client-side generateFullStory)
