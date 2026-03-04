@@ -120,7 +120,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     .map(([medium, count]) => ({ medium, count }))
     .sort((a, b) => b.count - a.count);
 
-  const lastShareAt = (lastShareRes.data as any)?.[0]?.occurred_at || null;
+  const lastShareAt = (lastShareRes.data as any)?.[0]?.minted_at || null;
 
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
