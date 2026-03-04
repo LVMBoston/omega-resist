@@ -124,6 +124,75 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
 
   const lastShareAt = (lastShareRes.data as any)?.[0]?.minted_at || null;
 
+  // Resolve geographic origin/destination for fastest share line
+  let speedOriginCity: string | null = null;
+  let speedDestCity: string | null = null;
+
+  if (maxLevel >= 1) {
+    // 1. First L1 token
+    const firstL1Res = await supabase.from("tokens")
+      .select("token, l00_instance")
+      .eq("utm_campaign", campaignCode)
+      .eq("level", 1)
+      .eq("is_simulated", false)
+      .is("deleted_at", null)
+      .order("minted_at", { ascending: true })
+      .limit(1);
+
+    const firstL1 = (firstL1Res.data as any)?.[0];
+    if (firstL1?.token) {
+      // 2. City of first L1 event
+      const originEvtRes = await supabase.from("url_events")
+        .select("city, region")
+        .eq("token", firstL1.token)
+        .eq("is_simulated", false)
+        .is("deleted_at", null)
+        .not("city", "is", null)
+        .order("occurred_at", { ascending: true })
+        .limit(1);
+
+      const originEvt = (originEvtRes.data as any)?.[0];
+      if (originEvt?.city) {
+        speedOriginCity = originEvt.region
+          ? `${originEvt.city}, ${originEvt.region}`
+          : originEvt.city;
+      }
+
+      // 3. First max-level token on same l00_instance
+      if (firstL1.l00_instance && maxLevel > 1) {
+        const destTokenRes = await supabase.from("tokens")
+          .select("token")
+          .eq("utm_campaign", campaignCode)
+          .eq("level", maxLevel)
+          .eq("l00_instance", firstL1.l00_instance)
+          .eq("is_simulated", false)
+          .is("deleted_at", null)
+          .order("minted_at", { ascending: true })
+          .limit(1);
+
+        const destToken = (destTokenRes.data as any)?.[0];
+        if (destToken?.token) {
+          // 4. City of destination event
+          const destEvtRes = await supabase.from("url_events")
+            .select("city, region")
+            .eq("token", destToken.token)
+            .eq("is_simulated", false)
+            .is("deleted_at", null)
+            .not("city", "is", null)
+            .order("occurred_at", { ascending: true })
+            .limit(1);
+
+          const destEvt = (destEvtRes.data as any)?.[0];
+          if (destEvt?.city) {
+            speedDestCity = destEvt.region
+              ? `${destEvt.city}, ${destEvt.region}`
+              : destEvt.city;
+          }
+        }
+      }
+    }
+  }
+
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
     campaignCreatedAt: campaignRes.data?.created_at || new Date().toISOString(),
@@ -137,6 +206,8 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     maxLevel,
     shareMediums,
     lastShareAt,
+    speedOriginCity,
+    speedDestCity,
   };
 }
 
