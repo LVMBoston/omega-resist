@@ -70,4 +70,14 @@ Switched `campaign_story` metric to use full story instead of headline:
 
 - **Client-side** (`useLiveMetrics.ts`): `campaign_story` now resolves to `fullStory` (verbose, with emojis) instead of `headline`.
 - **Server-side** (`render-stats-snapshot`): Snapshot story generation updated to match full story format with emojis, verbose prose, share medium breakdown, geo narrative, and date of report.
-- **Data integrity fix**: Geography section (`📍`) omitted when no geo data exists. Share medium line omitted when no medium data exists. No `##%` placeholders ever rendered.
+
+## Update — 2026-03-04
+
+Enriched the ⚡ speed line with "Fastest share:" prefix and geographic origin/destination:
+
+- **Prefix**: Speed line now opens with "Fastest share:" in both headline and full story tiers.
+- **Geographic suffix**: Appends "; {origin city, region} to {dest city, region}" when both cities resolve from `url_events`.
+- **Origin logic**: First L1 token minted for the campaign → first view event with a city.
+- **Destination logic**: First max-level token on the same `l00_instance` chain → first view event with a city.
+- **New interface fields**: `speedOriginCity: string | null` and `speedDestCity: string | null` added to `NarrativeData`.
+- **Data integrity**: Geographic suffix omitted entirely when either city is null. No placeholders.
