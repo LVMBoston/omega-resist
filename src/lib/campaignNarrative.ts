@@ -220,6 +220,7 @@ function generateFullStory(data: NarrativeData): string {
     propagationSpeed,
     maxLevel,
     shareMediums,
+    lastShareAt,
   } = data;
 
   const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
