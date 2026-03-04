@@ -253,14 +253,20 @@ export function generateHeadlineOnly(data: NarrativeData): string {
       const lastLevel = propagationSpeed[propagationSpeed.length - 1];
       const lastTime = new Date(lastLevel.first_mint);
       const diffHours = Math.round((lastTime.getTime() - l0Time.getTime()) / (1000 * 60 * 60));
+      let timePart: string;
       if (diffHours < 1) {
-        lines.push(`Reached L${lastLevel.level} in < 1 hour`);
+        timePart = "< 1 hour";
       } else if (diffHours < 24) {
-        lines.push(`Reached L${lastLevel.level} in ${diffHours} hours`);
+        timePart = `${diffHours} hours`;
       } else {
         const days = Math.round(diffHours / 24);
-        lines.push(`Reached L${lastLevel.level} in ${days} day${days > 1 ? "s" : ""}`);
+        timePart = `${days} day${days > 1 ? "s" : ""}`;
       }
+      let speedLine = `Fastest share: ${timePart}`;
+      if (data.speedOriginCity && data.speedDestCity) {
+        speedLine += `; ${data.speedOriginCity} to ${data.speedDestCity}`;
+      }
+      lines.push(speedLine);
     }
     lines.push("");
   }
