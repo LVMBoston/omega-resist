@@ -241,7 +241,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
-  // Campaign story — full narrative (inline generation from already-fetched data)
+  // Campaign story — full narrative (inline generation matching client-side generateFullStory)
   const campaignInfo = await fetchWithRetry(
     () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
     "campaign info for story"
@@ -289,18 +289,35 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     // Propagation speed from tokens
     const speedTokens = await fetchWithRetry(
       () => supabase.from("tokens")
-        .select("level, minted_at")
+        .select("token, level, minted_at, l00_instance")
         .eq("utm_campaign", campaignCode)
         .eq("is_simulated", false)
         .is("deleted_at", null)
         .order("minted_at", { ascending: true }),
       "speed tokens for story"
     ) || [];
-    const speedMap = new Map<number, string>();
+    const speedMap = new Map<number, any>();
     for (const t of speedTokens as any[]) {
-      if (!speedMap.has(t.level)) speedMap.set(t.level, t.minted_at);
+      if (!speedMap.has(t.level)) speedMap.set(t.level, t);
     }
     const speedEntries = Array.from(speedMap.entries()).sort((a, b) => a[0] - b[0]);
+
+    // Last share — most recent L1+ token
+    let lastShareAt: string | null = null;
+    const lastShareData = await fetchWithRetry(
+      () => supabase.from("tokens")
+        .select("minted_at")
+        .eq("utm_campaign", campaignCode)
+        .eq("is_simulated", false)
+        .is("deleted_at", null)
+        .gt("level", 0)
+        .order("minted_at", { ascending: false })
+        .limit(1),
+      "last share for story"
+    );
+    if (lastShareData && Array.isArray(lastShareData) && lastShareData.length > 0) {
+      lastShareAt = lastShareData[0].minted_at;
+    }
 
     // Open events by share medium (count view events, not tokens)
     const mediumData = await fetchWithRetry(
@@ -325,15 +342,76 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
           .join(", ")
       : "";
 
-    // Speed narrative
+    // Speed narrative with "Fastest share:" prefix and geographic origin/destination
     let speedNarrative = "";
     if (speedEntries.length >= 2) {
-      const l0Time = new Date(speedEntries[0][1]);
+      const l0Time = new Date(speedEntries[0][1].minted_at);
       const last = speedEntries[speedEntries.length - 1];
-      const diffHours = Math.round((new Date(last[1]).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
-      if (diffHours < 1) speedNarrative = `The message reached Level ${last[0]} in under an hour.`;
-      else if (diffHours < 24) speedNarrative = `The message reached Level ${last[0]} in just ${diffHours} hours.`;
-      else { const d = Math.round(diffHours / 24); speedNarrative = `The message reached Level ${last[0]} within ${d} day${d > 1 ? "s" : ""}.`; }
+      const diffHours = Math.round((new Date(last[1].minted_at).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
+      let timePart: string;
+      if (diffHours < 1) timePart = "under an hour";
+      else if (diffHours < 24) timePart = `just ${diffHours} hours`;
+      else { const d = Math.round(diffHours / 24); timePart = `${d} day${d > 1 ? "s" : ""}`; }
+      speedNarrative = `Fastest share: From the first card drop shared to the first Level ${last[0]} share took ${timePart}.`;
+
+      // Geographic origin/destination
+      let originCity: string | null = null;
+      let destCity: string | null = null;
+      try {
+        // Origin: first L1 token → first view event with city
+        const firstL1 = speedEntries.find(([lvl]) => lvl === 1);
+        if (firstL1) {
+          const l1Token = firstL1[1];
+          const originEvents = await fetchWithRetry(
+            () => supabase.from("url_events")
+              .select("city, region")
+              .eq("token", l1Token.token)
+              .not("city", "is", null)
+              .order("occurred_at", { ascending: true })
+              .limit(1),
+            "speed origin city"
+          );
+          if (originEvents && Array.isArray(originEvents) && originEvents.length > 0) {
+            const oe = originEvents[0];
+            originCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
+          }
+          // Destination: first max-level token on same l00_instance
+          if (l1Token.l00_instance && last[0] > 1) {
+            const destTokens = await fetchWithRetry(
+              () => supabase.from("tokens")
+                .select("token")
+                .eq("utm_campaign", campaignCode)
+                .eq("level", last[0])
+                .eq("l00_instance", l1Token.l00_instance)
+                .eq("is_simulated", false)
+                .is("deleted_at", null)
+                .order("minted_at", { ascending: true })
+                .limit(1),
+              "speed dest token"
+            );
+            if (destTokens && Array.isArray(destTokens) && destTokens.length > 0) {
+              const destEvents = await fetchWithRetry(
+                () => supabase.from("url_events")
+                  .select("city, region")
+                  .eq("token", destTokens[0].token)
+                  .not("city", "is", null)
+                  .order("occurred_at", { ascending: true })
+                  .limit(1),
+                "speed dest city"
+              );
+              if (destEvents && Array.isArray(destEvents) && destEvents.length > 0) {
+                const de = destEvents[0];
+                destCity = de.region ? `${de.city}, ${de.region}` : de.city;
+              }
+            }
+          }
+        }
+        if (originCity && destCity) {
+          speedNarrative = speedNarrative.slice(0, -1) + `; ${originCity} to ${destCity}.`;
+        }
+      } catch (e) {
+        console.warn("[render-stats-snapshot] Speed geo lookup failed:", e);
+      }
     }
 
     // Geographic narrative
@@ -355,15 +433,21 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     const closingIndex = (seedCount + spawnsNum) % closings.length;
 
     const storyLines: string[] = [];
-    storyLines.push(`Campaign: ${campaignInfo.title || campaignCode}`);
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
-    storyLines.push(`Date of this report: ${dateStr} ${timeStr} UTC`);
+    storyLines.push(`__TITLE__Campaign: ${campaignInfo.title || campaignCode}__TITLE__`);
+    const storyNow = new Date();
+    const dateStr = storyNow.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timeStr = storyNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
+    storyLines.push(`Date of this report: ${dateStr} ${timeStr}`);
     const startDate = new Date(campaignInfo.created_at || Date.now());
     const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     storyLines.push(`Started ${startFormatted}`);
     storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
+    if (lastShareAt) {
+      const lastShare = new Date(lastShareAt);
+      const lastShareDateStr = lastShare.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const lastShareTimeStr = lastShare.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" });
+      storyLines.push(`Last share: ${lastShareDateStr} ${lastShareTimeStr}`);
+    }
     storyLines.push("");
     let seedLine = `🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`;
     if (seedCount > 0 && spawnsNum > 0) {
