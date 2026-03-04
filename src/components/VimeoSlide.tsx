@@ -64,6 +64,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     iframe.style.border = "none";
     iframe.style.backgroundColor = "#000";
     iframe.style.display = "block";
+    iframe.style.pointerEvents = "none";
     iframe.setAttribute("allowfullscreen", "");
 
     videoContainerRef.current.appendChild(iframe);
