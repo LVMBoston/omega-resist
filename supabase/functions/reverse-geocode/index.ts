@@ -122,8 +122,8 @@ serve(async (req) => {
     }
 
     const result = {
-      city,
-      region,
+      city: finalCity,
+      region: finalRegion,
       country,
       country_code: countryCode,
       zip_code: zipCode,
