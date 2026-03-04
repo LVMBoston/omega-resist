@@ -17,7 +17,7 @@ export interface NarrativeData {
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
   // Run queries in parallel
-  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes] = await Promise.all([
+  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes, lastShareRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
     supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
     supabase.from("tokens")
@@ -64,6 +64,14 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .eq("event_type", "view"),
+    supabase.from("url_events")
+      .select("occurred_at, tokens!inner(utm_campaign)")
+      .eq("tokens.utm_campaign", campaignCode)
+      .eq("event_type", "share")
+      .eq("is_simulated", false)
+      .is("deleted_at", null)
+      .order("occurred_at", { ascending: false })
+      .limit(1),
   ]);
 
   const stats = (tokensRes.data as any)?.[0];
