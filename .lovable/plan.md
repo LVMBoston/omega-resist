@@ -1,7 +1,7 @@
 
-# Vimeo Slide: Inline Autoplay with Tap-to-Toggle Sound & Swipe Navigation
+# Fix: Resolve City/Region from zip_codes Table When Reverse-Geocode Returns Null
 
 **Status:** Approved & Implemented
-**Date:** 2026-03-03
+**Date:** 2026-03-04
 
-Replaces the full-viewport Vimeo overlay with inline autoplay (muted), tap-to-toggle sound, and swipe-passthrough zones for carousel navigation. See `docs/decisions/deck-editor/2026-03-03_vimeo-slide-type_feature-doc_lovable.md` for full details.
+Adds a fallback in the `reverse-geocode` edge function to populate city/region from the local `zip_codes` table when Nominatim returns null. Also backfilled existing `url_events` rows. See `docs/decisions/geocoding/2026-03-04_zip-fallback-city-region_feature-doc_lovable.md` for full details.
