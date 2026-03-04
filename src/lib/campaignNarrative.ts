@@ -324,13 +324,19 @@ function generateFullStory(data: NarrativeData): string {
     const lastTime = new Date(lastLevel.first_mint);
     const diffHours = Math.round((lastTime.getTime() - l0Time.getTime()) / (1000 * 60 * 60));
 
+    let timePart: string;
     if (diffHours < 1) {
-      speedNarrative = `The message reached Level ${lastLevel.level} in under an hour.`;
+      timePart = "under an hour";
     } else if (diffHours < 24) {
-      speedNarrative = `The message reached Level ${lastLevel.level} in just ${diffHours} hours.`;
+      timePart = `just ${diffHours} hours`;
     } else {
       const days = Math.round(diffHours / 24);
-      speedNarrative = `The message reached Level ${lastLevel.level} within ${days} day${days > 1 ? "s" : ""}.`;
+      timePart = `${days} day${days > 1 ? "s" : ""}`;
+    }
+    speedNarrative = `Fastest share: From the first card drop shared to the first Level ${lastLevel.level} share took ${timePart}.`;
+    if (data.speedOriginCity && data.speedDestCity) {
+      // Replace trailing period with geo suffix
+      speedNarrative = speedNarrative.slice(0, -1) + `; ${data.speedOriginCity} to ${data.speedDestCity}.`;
     }
   }
 
