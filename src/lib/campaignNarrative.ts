@@ -289,6 +289,12 @@ function generateFullStory(data: NarrativeData): string {
   const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   lines.push(`Started ${startFormatted}`);
   lines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
+  if (lastShareAt) {
+    const lastShare = new Date(lastShareAt);
+    const lastShareDateStr = lastShare.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const lastShareTimeStr = lastShare.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" });
+    lines.push(`Last share: ${lastShareDateStr} ${lastShareTimeStr}`);
+  }
   lines.push("");
 
   // Seeds & sprouts
