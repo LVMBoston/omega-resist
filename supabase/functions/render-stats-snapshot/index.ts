@@ -226,10 +226,10 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     const earliest = new Date(Math.min(...viewTimestamps));
     const latest = new Date(Math.max(...viewTimestamps));
     const earlyDate = earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const earlyTime = earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+    const earlyTime = earliest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
     metrics.earliest_active = `${earlyDate}\n${earlyTime}`;
     const lateDate = latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const lateTime = latest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+    const lateTime = latest.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
     metrics.latest_active = `${lateDate}\n${lateTime}`;
   } else {
     metrics.earliest_active = "--";
@@ -238,10 +238,10 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
   const now = new Date();
   metrics.current_date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' UTC';
+  metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
-  // Campaign story — full narrative (inline generation from already-fetched data)
+  // Campaign story — full narrative (inline generation matching client-side generateFullStory)
   const campaignInfo = await fetchWithRetry(
     () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
     "campaign info for story"
@@ -289,18 +289,35 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     // Propagation speed from tokens
     const speedTokens = await fetchWithRetry(
       () => supabase.from("tokens")
-        .select("level, minted_at")
+        .select("token, level, minted_at, l00_instance")
         .eq("utm_campaign", campaignCode)
         .eq("is_simulated", false)
         .is("deleted_at", null)
         .order("minted_at", { ascending: true }),
       "speed tokens for story"
     ) || [];
-    const speedMap = new Map<number, string>();
+    const speedMap = new Map<number, any>();
     for (const t of speedTokens as any[]) {
-      if (!speedMap.has(t.level)) speedMap.set(t.level, t.minted_at);
+      if (!speedMap.has(t.level)) speedMap.set(t.level, t);
     }
     const speedEntries = Array.from(speedMap.entries()).sort((a, b) => a[0] - b[0]);
+
+    // Last share — most recent L1+ token
+    let lastShareAt: string | null = null;
+    const lastShareData = await fetchWithRetry(
+      () => supabase.from("tokens")
+        .select("minted_at")
+        .eq("utm_campaign", campaignCode)
+        .eq("is_simulated", false)
+        .is("deleted_at", null)
+        .gt("level", 0)
+        .order("minted_at", { ascending: false })
+        .limit(1),
+      "last share for story"
+    );
+    if (lastShareData && Array.isArray(lastShareData) && lastShareData.length > 0) {
+      lastShareAt = lastShareData[0].minted_at;
+    }
 
     // Open events by share medium (count view events, not tokens)
     const mediumData = await fetchWithRetry(
@@ -325,15 +342,76 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
           .join(", ")
       : "";
 
-    // Speed narrative
+    // Speed narrative with "Fastest share:" prefix and geographic origin/destination
     let speedNarrative = "";
     if (speedEntries.length >= 2) {
-      const l0Time = new Date(speedEntries[0][1]);
+      const l0Time = new Date(speedEntries[0][1].minted_at);
       const last = speedEntries[speedEntries.length - 1];
-      const diffHours = Math.round((new Date(last[1]).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
-      if (diffHours < 1) speedNarrative = `The message reached Level ${last[0]} in under an hour.`;
-      else if (diffHours < 24) speedNarrative = `The message reached Level ${last[0]} in just ${diffHours} hours.`;
-      else { const d = Math.round(diffHours / 24); speedNarrative = `The message reached Level ${last[0]} within ${d} day${d > 1 ? "s" : ""}.`; }
+      const diffHours = Math.round((new Date(last[1].minted_at).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
+      let timePart: string;
+      if (diffHours < 1) timePart = "under an hour";
+      else if (diffHours < 24) timePart = `just ${diffHours} hours`;
+      else { const d = Math.round(diffHours / 24); timePart = `${d} day${d > 1 ? "s" : ""}`; }
+      speedNarrative = `Fastest share: From the first card drop shared to the first Level ${last[0]} share took ${timePart}.`;
+
+      // Geographic origin/destination
+      let originCity: string | null = null;
+      let destCity: string | null = null;
+      try {
+        // Origin: first L1 token → first view event with city
+        const firstL1 = speedEntries.find(([lvl]) => lvl === 1);
+        if (firstL1) {
+          const l1Token = firstL1[1];
+          const originEvents = await fetchWithRetry(
+            () => supabase.from("url_events")
+              .select("city, region")
+              .eq("token", l1Token.token)
+              .not("city", "is", null)
+              .order("occurred_at", { ascending: true })
+              .limit(1),
+            "speed origin city"
+          );
+          if (originEvents && Array.isArray(originEvents) && originEvents.length > 0) {
+            const oe = originEvents[0];
+            originCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
+          }
+          // Destination: first max-level token on same l00_instance
+          if (l1Token.l00_instance && last[0] > 1) {
+            const destTokens = await fetchWithRetry(
+              () => supabase.from("tokens")
+                .select("token")
+                .eq("utm_campaign", campaignCode)
+                .eq("level", last[0])
+                .eq("l00_instance", l1Token.l00_instance)
+                .eq("is_simulated", false)
+                .is("deleted_at", null)
+                .order("minted_at", { ascending: true })
+                .limit(1),
+              "speed dest token"
+            );
+            if (destTokens && Array.isArray(destTokens) && destTokens.length > 0) {
+              const destEvents = await fetchWithRetry(
+                () => supabase.from("url_events")
+                  .select("city, region")
+                  .eq("token", destTokens[0].token)
+                  .not("city", "is", null)
+                  .order("occurred_at", { ascending: true })
+                  .limit(1),
+                "speed dest city"
+              );
+              if (destEvents && Array.isArray(destEvents) && destEvents.length > 0) {
+                const de = destEvents[0];
+                destCity = de.region ? `${de.city}, ${de.region}` : de.city;
+              }
+            }
+          }
+        }
+        if (originCity && destCity) {
+          speedNarrative = speedNarrative.slice(0, -1) + `; ${originCity} to ${destCity}.`;
+        }
+      } catch (e) {
+        console.warn("[render-stats-snapshot] Speed geo lookup failed:", e);
+      }
     }
 
     // Geographic narrative
@@ -355,15 +433,21 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     const closingIndex = (seedCount + spawnsNum) % closings.length;
 
     const storyLines: string[] = [];
-    storyLines.push(`Campaign: ${campaignInfo.title || campaignCode}`);
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
-    storyLines.push(`Date of this report: ${dateStr} ${timeStr} UTC`);
+    storyLines.push(`__TITLE__Campaign: ${campaignInfo.title || campaignCode}__TITLE__`);
+    const storyNow = new Date();
+    const dateStr = storyNow.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timeStr = storyNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
+    storyLines.push(`Date of this report: ${dateStr} ${timeStr}`);
     const startDate = new Date(campaignInfo.created_at || Date.now());
     const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     storyLines.push(`Started ${startFormatted}`);
     storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
+    if (lastShareAt) {
+      const lastShare = new Date(lastShareAt);
+      const lastShareDateStr = lastShare.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const lastShareTimeStr = lastShare.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" });
+      storyLines.push(`Last share: ${lastShareDateStr} ${lastShareTimeStr}`);
+    }
     storyLines.push("");
     let seedLine = `🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`;
     if (seedCount > 0 && spawnsNum > 0) {
@@ -491,6 +575,29 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Helper: word-wrap a line to fit within maxChars
+    function wordWrap(text: string, maxChars: number): string[] {
+      if (text.length <= maxChars) return [text];
+      const words = text.split(" ");
+      const result: string[] = [];
+      let current = "";
+      for (const word of words) {
+        if (current.length === 0) {
+          current = word;
+        } else if (current.length + 1 + word.length <= maxChars) {
+          current += " " + word;
+        } else {
+          result.push(current);
+          current = word;
+        }
+      }
+      if (current) result.push(current);
+      return result;
+    }
+
+    // Emoji regex for detecting emoji-prefixed lines
+    const emojiPrefixRe = /^([\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2702}-\u{27B0}]\uFE0F?\s?)/u;
+
     // Build SVG with embedded background image and text hotspots
     const hotspotSvgElements = textHotspots.map((hotspot: any) => {
       // Resolve metric value
@@ -522,12 +629,90 @@ Deno.serve(async (req) => {
       const bgColor = style.backgroundColor || "transparent";
       const textAlign = style.textAlign || "center";
 
+      let svgParts = "";
+      // Background rect
+      if (bgColor && bgColor !== "transparent") {
+        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
+      }
+
+      // === Special rendering for campaign_story ===
+      if (hotspot.metricKey === "campaign_story") {
+        const storyFontSize = Math.round(scaledFontSize * 0.85);
+        const titleFontSize = Math.round(storyFontSize * 1.25);
+        const lineHeight = storyFontSize * 1.35;
+        const paragraphGap = lineHeight * 0.5;
+        const emojiIndent = storyFontSize * 1.8;
+        const padding = 12;
+        const maxCharsPerLine = Math.floor((hsWidth - padding * 2) / (storyFontSize * 0.52));
+        const maxCharsIndented = Math.floor((hsWidth - padding * 2 - emojiIndent) / (storyFontSize * 0.52));
+
+        const rawLines = metricValue.split("\n");
+        let cursorY = y + padding + storyFontSize;
+
+        // Clip to hotspot bounds
+        const clipId = `clip-story-${Math.random().toString(36).slice(2, 8)}`;
+        svgParts += `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs>`;
+        svgParts += `<g clip-path="url(#${clipId})">`;
+
+        for (const rawLine of rawLines) {
+          if (cursorY > y + hsHeight) break;
+
+          // Blank line → paragraph gap
+          if (rawLine.trim() === "") {
+            cursorY += paragraphGap;
+            continue;
+          }
+
+          // Title line (__TITLE__...__TITLE__)
+          if (rawLine.startsWith("__TITLE__") && rawLine.endsWith("__TITLE__")) {
+            const titleText = rawLine.replace(/__TITLE__/g, "");
+            const titleWrapped = wordWrap(titleText, Math.floor(maxCharsPerLine * (storyFontSize / titleFontSize)));
+            for (const tl of titleWrapped) {
+              if (cursorY > y + hsHeight) break;
+              svgParts += `<text x="${x + padding}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${titleFontSize}" font-weight="bold" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(tl)}</text>`;
+              cursorY += titleFontSize * 1.35;
+            }
+            cursorY += paragraphGap * 0.3;
+            continue;
+          }
+
+          // Emoji-prefixed line → hanging indent
+          const emojiMatch = rawLine.match(emojiPrefixRe);
+          if (emojiMatch) {
+            const emoji = emojiMatch[1];
+            const rest = rawLine.slice(emoji.length);
+            // Render emoji
+            svgParts += `<text x="${x + padding}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${storyFontSize}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(emoji.trim())}</text>`;
+            // Word-wrap the rest with indent
+            const wrappedRest = wordWrap(rest, maxCharsIndented);
+            for (const wl of wrappedRest) {
+              if (cursorY > y + hsHeight) break;
+              svgParts += `<text x="${x + padding + emojiIndent}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${storyFontSize}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(wl)}</text>`;
+              cursorY += lineHeight;
+            }
+            continue;
+          }
+
+          // Regular line — word-wrap
+          const wrapped = wordWrap(rawLine, maxCharsPerLine);
+          for (const wl of wrapped) {
+            if (cursorY > y + hsHeight) break;
+            svgParts += `<text x="${x + padding}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${storyFontSize}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(wl)}</text>`;
+            cursorY += lineHeight;
+          }
+        }
+
+        svgParts += `</g>`;
+        return svgParts;
+      }
+
+      // === Standard hotspot rendering ===
       // Map textAlign to SVG text-anchor and x position
       let textAnchor = "middle";
       let textX = x + hsWidth / 2;
       if (textAlign === "left") {
         textAnchor = "start";
-        textX = x + 4; // small padding
+        textX = x + 4;
       } else if (textAlign === "right") {
         textAnchor = "end";
         textX = x + hsWidth - 4;
@@ -536,11 +721,6 @@ Deno.serve(async (req) => {
       // Vertical center
       const textY = y + hsHeight / 2 + scaledFontSize * 0.35;
 
-      let svgParts = "";
-      // Background rect
-      if (bgColor && bgColor !== "transparent") {
-        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
-      }
       // Text - support line breaks (\n) with multiple tspan elements
       const lines = metricValue.split("\n");
       if (lines.length <= 1) {
