@@ -12,11 +12,12 @@ export interface NarrativeData {
   propagationSpeed: { level: number; first_mint: string }[];
   maxLevel: number;
   shareMediums: { medium: string; count: number }[];
+  lastShareAt: string | null;
 }
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
   // Run queries in parallel
-  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes] = await Promise.all([
+  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes, lastShareRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
     supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
     supabase.from("tokens")
@@ -63,6 +64,14 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .eq("event_type", "view"),
+    supabase.from("url_events")
+      .select("occurred_at, tokens!inner(utm_campaign)")
+      .eq("tokens.utm_campaign", campaignCode)
+      .eq("event_type", "share")
+      .eq("is_simulated", false)
+      .is("deleted_at", null)
+      .order("occurred_at", { ascending: false })
+      .limit(1),
   ]);
 
   const stats = (tokensRes.data as any)?.[0];
@@ -111,6 +120,8 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     .map(([medium, count]) => ({ medium, count }))
     .sort((a, b) => b.count - a.count);
 
+  const lastShareAt = (lastShareRes.data as any)?.[0]?.occurred_at || null;
+
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
     campaignCreatedAt: campaignRes.data?.created_at || new Date().toISOString(),
@@ -123,6 +134,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     propagationSpeed,
     maxLevel,
     shareMediums,
+    lastShareAt,
   };
 }
 
@@ -208,6 +220,7 @@ function generateFullStory(data: NarrativeData): string {
     propagationSpeed,
     maxLevel,
     shareMediums,
+    lastShareAt,
   } = data;
 
   const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
@@ -276,6 +289,12 @@ function generateFullStory(data: NarrativeData): string {
   const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   lines.push(`Started ${startFormatted}`);
   lines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
+  if (lastShareAt) {
+    const lastShare = new Date(lastShareAt);
+    const lastShareDateStr = lastShare.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const lastShareTimeStr = lastShare.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" });
+    lines.push(`Last share: ${lastShareDateStr} ${lastShareTimeStr}`);
+  }
   lines.push("");
 
   // Seeds & sprouts
