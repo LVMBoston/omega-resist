@@ -64,13 +64,13 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .eq("is_simulated", false)
       .is("deleted_at", null)
       .eq("event_type", "view"),
-    supabase.from("url_events")
-      .select("occurred_at, tokens!inner(utm_campaign)")
-      .eq("tokens.utm_campaign", campaignCode)
-      .eq("event_type", "share")
+    supabase.from("tokens")
+      .select("minted_at")
+      .eq("utm_campaign", campaignCode)
+      .gt("level", 0)
       .eq("is_simulated", false)
       .is("deleted_at", null)
-      .order("occurred_at", { ascending: false })
+      .order("minted_at", { ascending: false })
       .limit(1),
   ]);
 
@@ -120,7 +120,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     .map(([medium, count]) => ({ medium, count }))
     .sort((a, b) => b.count - a.count);
 
-  const lastShareAt = (lastShareRes.data as any)?.[0]?.occurred_at || null;
+  const lastShareAt = (lastShareRes.data as any)?.[0]?.minted_at || null;
 
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
