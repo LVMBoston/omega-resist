@@ -12,6 +12,7 @@ export interface NarrativeData {
   propagationSpeed: { level: number; first_mint: string }[];
   maxLevel: number;
   shareMediums: { medium: string; count: number }[];
+  lastShareAt: string | null;
 }
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
