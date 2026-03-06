@@ -1922,6 +1922,7 @@ export default function CampaignEoaManager() {
         fullUrl={selectedTokenForDisplay?.url || ""}
         shortUrl={selectedTokenForDisplay?.shortUrl}
         eoaTitle={selectedTokenForDisplay?.eoaTitle || ""}
+        campaignName={campaign?.title}
       />
 
       <QrDefaultsDialog
