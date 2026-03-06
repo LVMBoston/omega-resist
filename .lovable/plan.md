@@ -1,7 +1,17 @@
 
-# Fix: Resolve City/Region from zip_codes Table When Reverse-Geocode Returns Null
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-04
+# Add Assigned Deck to EoA Dropdowns
 
-Adds a fallback in the `reverse-geocode` edge function to populate city/region from the local `zip_codes` table when Nominatim returns null. Also backfilled existing `url_events` rows. See `docs/decisions/geocoding/2026-03-04_zip-fallback-city-region_feature-doc_lovable.md` for full details.
+## Problem
+EoAs with the same title and mobilize_code but different assigned decks are indistinguishable in the Select dropdowns on both tabs.
+
+## Change
+
+**File:** `src/pages/RepointQrTool.tsx`
+
+1. **Re-point QR tab dropdown (line 568):** Change label from `{e.title} ({e.mobilize_code ?? "no code"})` to `{e.title} ({e.mobilize_code ?? "no code"}) — {e.assigned_deck_slug ?? "no deck"}`
+
+2. **Re-Mint EoA tab dropdown (line 715):** Same change — append `— {e.assigned_deck_slug ?? "no deck"}` to the label.
+
+Both `filteredEoas` and `rmFilteredEoas` already come from the `eoas` state which queries `events_actions` including `assigned_deck_slug`, so no data-fetching changes are needed.
+
