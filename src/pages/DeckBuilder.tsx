@@ -389,7 +389,7 @@ export default function DeckBuilder() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="zip" className="w-full">
+            <Tabs defaultValue="images" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="images">
                   <Images className="h-4 w-4 mr-2" />
