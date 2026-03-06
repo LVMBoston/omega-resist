@@ -15,6 +15,7 @@ interface TokenDisplayProps {
   fullUrl: string;
   shortUrl?: string;
   eoaTitle: string;
+  campaignName?: string;
 }
 
 export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
