@@ -20,11 +20,17 @@ const zipFormSchema = z.object({
   file: z.instanceof(FileList).refine(files => files.length > 0, "ZIP file is required"),
   compress: z.boolean().default(true)
 });
+const imagesFormSchema = z.object({
+  slug: z.string().min(1, "Deck slug is required").max(60, "Slug must be less than 60 characters").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
+  files: z.instanceof(FileList).refine(files => files.length > 0, "At least one image is required"),
+  compress: z.boolean().default(true)
+});
 const googleSlidesFormSchema = z.object({
   slug: z.string().min(1, "Deck slug is required").max(60, "Slug must be less than 60 characters").regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and dashes allowed"),
   slidesUrl: z.string().min(1, "Google Slides URL is required")
 });
 type ZipFormValues = z.infer<typeof zipFormSchema>;
+type ImagesFormValues = z.infer<typeof imagesFormSchema>;
 type GoogleSlidesFormValues = z.infer<typeof googleSlidesFormSchema>;
 export default function DeckBuilder() {
   const navigate = useNavigate();
