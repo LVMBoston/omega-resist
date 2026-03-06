@@ -565,7 +565,7 @@ export default function RepointQrTool() {
                     <SelectContent>
                       {filteredEoas.map((e) => (
                         <SelectItem key={e.id} value={e.id}>
-                          {e.title} ({e.mobilize_code ?? "no code"})
+                          {e.title} ({e.mobilize_code ?? "no code"}) — {e.assigned_deck_slug ?? "no deck"}
                         </SelectItem>
                       ))}
                     </SelectContent>
