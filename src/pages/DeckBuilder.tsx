@@ -377,7 +377,7 @@ export default function DeckBuilder() {
         <div>
           <h1 className="text-4xl font-bold mb-2">Deck Builder</h1>
           <p className="text-muted-foreground">
-            Import slides from ZIP files or Google Slides
+            Import slides from ZIP files, image files, or Google Slides
           </p>
         </div>
 
