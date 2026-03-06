@@ -253,12 +253,102 @@ export default function DeckBuilder() {
     if (error) throw error;
     setProgress(`Successfully imported ${data.slidesCount} slides`);
   };
+  const handleImagesUpload = async (fileList: FileList, slug: string, compress: boolean) => {
+    const validExtensions = /\.(png|jpg|jpeg|gif|webp)$/i;
+    const imageFiles: { name: string; file: File }[] = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      if (validExtensions.test(file.name)) {
+        imageFiles.push({ name: file.name, file });
+      }
+    }
+
+    if (imageFiles.length === 0) {
+      throw new Error("No valid image files selected (PNG, JPG, GIF, or WebP)");
+    }
+
+    // Sort files by name using natural numeric sorting
+    imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+    setProgress(`Found ${imageFiles.length} images. Creating deck...`);
+
+    // Check if deck exists and delete it if so
+    const { data: existingDeck } = await supabase.from("decks").select("slug").eq("slug", slug).single();
+    if (existingDeck) {
+      setProgress("Deleting existing deck...");
+      const { data: existingSlides } = await supabase.from("slide_items").select("content_url").eq("deck_slug", slug);
+      if (existingSlides && existingSlides.length > 0) {
+        const filePaths = existingSlides.map(slide => {
+          const url = new URL(slide.content_url);
+          return url.pathname.split('/slides/')[1];
+        }).filter(path => path);
+        if (filePaths.length > 0) {
+          await supabase.storage.from("slides").remove(filePaths);
+        }
+      }
+      await supabase.from("decks").delete().eq("slug", slug);
+    }
+
+    const { error: deckError } = await supabase.from("decks").insert({ slug });
+    if (deckError) throw new Error(`Failed to create deck: ${deckError.message}`);
+
+    for (let i = 0; i < imageFiles.length; i++) {
+      const { name, file } = imageFiles[i];
+      setProgress(`Uploading slide ${i + 1} of ${imageFiles.length}...`);
+
+      let uploadBlob: Blob = file;
+      let isCompressed = false;
+      const isGif = /\.gif$/i.test(name);
+      const mimeType = file.type || getMimeType(name);
+
+      if (compress && !isGif && /\.(png|jpg|jpeg|webp)$/i.test(name)) {
+        setProgress(`Compressing slide ${i + 1}...`);
+        uploadBlob = await compressImage(file);
+        isCompressed = true;
+      }
+
+      if (isGif) isCompressed = false;
+
+      const fileName = `${slug}/${i.toString().padStart(3, "0")}-${name}`;
+      const { error: uploadError } = await supabase.storage.from("slides").upload(fileName, uploadBlob, {
+        contentType: mimeType,
+        upsert: true
+      });
+      if (uploadError) throw new Error(`Failed to upload ${name}: ${uploadError.message}`);
+
+      const { data: urlData } = supabase.storage.from("slides").getPublicUrl(fileName);
+      await supabase.from("slide_items").insert({
+        deck_slug: slug,
+        position: i + 1,
+        type: "image",
+        content_url: urlData.publicUrl,
+        is_compressed: isCompressed
+      });
+    }
+  };
+
   const onZipSubmit = async (values: ZipFormValues) => {
     setUploading(true);
     try {
       const file = values.file[0];
       await handleZipUpload(file, values.slug, values.compress);
       toast.success("Deck created successfully!");
+      navigate("/deck-management");
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error(error.message || "Failed to create deck");
+    } finally {
+      setUploading(false);
+      setProgress("");
+    }
+  };
+
+  const onImagesSubmit = async (values: ImagesFormValues) => {
+    setUploading(true);
+    try {
+      await handleImagesUpload(values.files, values.slug, values.compress);
+      toast.success(`Deck created with ${values.files.length} slides!`);
       navigate("/deck-management");
     } catch (error: any) {
       console.error("Upload error:", error);
