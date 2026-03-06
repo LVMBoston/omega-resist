@@ -15,9 +15,10 @@ interface TokenDisplayProps {
   fullUrl: string;
   shortUrl?: string;
   eoaTitle: string;
+  campaignName?: string;
 }
 
-export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
+export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle, campaignName }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(true);
   const { getSetting, isLoading } = useSettings();
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -294,7 +295,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>L00 Token Generated</DialogTitle>
+          <DialogTitle>{campaignName || "L00 Token Generated"}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
