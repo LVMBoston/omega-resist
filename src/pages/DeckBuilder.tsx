@@ -43,6 +43,13 @@ export default function DeckBuilder() {
       compress: true
     }
   });
+  const imagesForm = useForm<ImagesFormValues>({
+    resolver: zodResolver(imagesFormSchema),
+    defaultValues: {
+      slug: "",
+      compress: true
+    }
+  });
   const googleSlidesForm = useForm<GoogleSlidesFormValues>({
     resolver: zodResolver(googleSlidesFormSchema),
     defaultValues: {
