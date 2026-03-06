@@ -405,6 +405,61 @@ export default function DeckBuilder() {
                 </TabsTrigger>
               </TabsList>
 
+              <TabsContent value="images" className="space-y-4 mt-6">
+                <Form {...imagesForm}>
+                  <form onSubmit={imagesForm.handleSubmit(onImagesSubmit)} className="space-y-6">
+                    <FormField control={imagesForm.control} name="files" render={({
+                      field: { onChange, value, ...field }
+                    }) => <FormItem>
+                            <FormLabel>Select Image Files</FormLabel>
+                            <FormControl>
+                              <Input type="file" accept=".png,.jpg,.jpeg,.gif,.webp" multiple onChange={e => onChange(e.target.files)} disabled={uploading} {...field} />
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              Select one or more PNG, JPG, GIF, or WebP images. Use Ctrl/Cmd+A to select all files in a folder.
+                            </p>
+                            <FormMessage />
+                          </FormItem>} />
+
+                    <FormField control={imagesForm.control} name="slug" render={({
+                      field
+                    }) => <FormItem>
+                            <FormLabel className="text-lg font-semibold">Step 2: Enter Deck Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="my-deck-2024" {...field} disabled={uploading} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>} />
+
+                    <FormField control={imagesForm.control} name="compress" render={({
+                      field
+                    }) => <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={uploading} />
+                            </FormControl>
+                            <FormLabel className="!mt-0 cursor-pointer">
+                              Compress images for faster loading
+                            </FormLabel>
+                          </FormItem>} />
+
+                    {progress && <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {progress}
+                      </div>}
+
+                    <Button type="submit" disabled={uploading} className="w-full">
+                      {uploading ? <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Deck...
+                        </> : <>
+                          <Images className="mr-2 h-4 w-4" />
+                          Create Deck
+                        </>}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+
               <TabsContent value="zip" className="space-y-4 mt-6">
                 <Form {...zipForm}>
                   <form onSubmit={zipForm.handleSubmit(onZipSubmit)} className="space-y-6">
