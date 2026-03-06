@@ -390,7 +390,11 @@ export default function DeckBuilder() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="zip" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="images">
+                  <Images className="h-4 w-4 mr-2" />
+                  Image Files
+                </TabsTrigger>
                 <TabsTrigger value="zip">
                   <Upload className="h-4 w-4 mr-2" />
                   ZIP File
