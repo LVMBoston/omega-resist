@@ -18,7 +18,7 @@ interface TokenDisplayProps {
   campaignName?: string;
 }
 
-export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle }: TokenDisplayProps) {
+export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoaTitle, campaignName }: TokenDisplayProps) {
   const [showQRDialog, setShowQRDialog] = useState(true);
   const { getSetting, isLoading } = useSettings();
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
