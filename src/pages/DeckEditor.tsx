@@ -211,6 +211,8 @@ export default function DeckEditor() {
   const [vimeoUrl, setVimeoUrl] = useState('');
   const [vimeoPosterFile, setVimeoPosterFile] = useState<File | null>(null);
   const [vimeoPosterPreview, setVimeoPosterPreview] = useState<string | null>(null);
+  const [initialHotspots, setInitialHotspots] = useState<any[]>([]);
+  const [loadingHotspots, setLoadingHotspots] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -615,11 +617,81 @@ export default function DeckEditor() {
     }
   };
 
+  // Classification helpers for auto-detect
+  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'vimeo']);
+  const DATA_TYPES = new Set(['live_number', 'chart', 'map']);
+
+  const classifyHotspots = (hotspots: any[]): { slideType: string; templateType: string } => {
+    if (!hotspots || hotspots.length === 0) return { slideType: 'image', templateType: 'display_only' };
+    const hasAction = hotspots.some((h: any) => ACTION_TYPES.has(h.type));
+    const hasData = hotspots.some((h: any) => DATA_TYPES.has(h.type));
+    if (hasAction && hasData) return { slideType: 'spread-word', templateType: 'hybrid' };
+    if (hasData) return { slideType: 'spread-word', templateType: 'stats_page' };
+    return { slideType: 'spread-word', templateType: 'interactive_share' };
+  };
+
+  const loadHotspotsForSlide = async (slide: Slide) => {
+    // Priority 1: staged changes
+    if (hotspotChanges[slide.id]) {
+      setInitialHotspots(hotspotChanges[slide.id]);
+      return;
+    }
+    
+    setLoadingHotspots(true);
+    try {
+      // Priority 2: per-slide config
+      const { data: perSlideConfig } = await supabase
+        .from('viral_slide_configs')
+        .select('hotspots')
+        .eq('slide_id', slide.id)
+        .maybeSingle();
+      
+      if (perSlideConfig?.hotspots && Array.isArray(perSlideConfig.hotspots) && perSlideConfig.hotspots.length > 0) {
+        setInitialHotspots(perSlideConfig.hotspots);
+        return;
+      }
+
+      // Priority 3: shared template
+      if (slide.template_id) {
+        const { data: templateConfig } = await supabase
+          .from('viral_slide_configs')
+          .select('hotspots')
+          .eq('id', slide.template_id)
+          .maybeSingle();
+        
+        if (templateConfig?.hotspots && Array.isArray(templateConfig.hotspots)) {
+          setInitialHotspots(templateConfig.hotspots);
+          return;
+        }
+      }
+
+      setInitialHotspots([]);
+    } catch (error) {
+      console.error('Error loading hotspots:', error);
+      setInitialHotspots([]);
+    } finally {
+      setLoadingHotspots(false);
+    }
+  };
+
+  const handleOpenHotspotEditor = async (slide: Slide) => {
+    setSelectedSlide(slide);
+    await loadHotspotsForSlide(slide);
+    setHotspotEditorOpen(true);
+  };
+
   const handleSaveHotspots = (hotspots: any[]) => {
     if (!selectedSlide) return;
 
     // Store hotspot changes for later
     setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: hotspots });
+    
+    // Auto-classify and update draft slide type
+    const { slideType } = classifyHotspots(hotspots);
+    setSlides(prev => prev.map(s => 
+      s.id === selectedSlide.id ? { ...s, type: slideType } : s
+    ));
+    
     setHasChanges(true);
     setHotspotEditorOpen(false);
     toast.success('Hotspot changes staged');
@@ -969,7 +1041,7 @@ export default function DeckEditor() {
         }
       }
 
-      // 4. Handle hotspot changes (including temp slides that now have real IDs)
+      // 4. Handle hotspot changes with auto-classification
       for (const [slideId, hotspots] of Object.entries(hotspotChanges)) {
         // Map temp ID to real ID if applicable
         const realSlideId = slideId.startsWith('temp-') ? tempSlideIdMap[slideId] : slideId;
@@ -979,36 +1051,76 @@ export default function DeckEditor() {
           continue;
         }
 
+        const { slideType, templateType } = classifyHotspots(hotspots as any[]);
+
+        // Auto-demote: empty hotspots → revert to image
+        if (slideType === 'image') {
+          // Delete per-slide config (never shared templates)
+          await supabase
+            .from('viral_slide_configs')
+            .delete()
+            .eq('slide_id', realSlideId)
+            .not('slide_id', 'is', null);
+          
+          // Revert slide to image
+          await supabase
+            .from('slide_items')
+            .update({ type: 'image', template_id: null })
+            .eq('id', realSlideId);
+          
+          continue;
+        }
+
+        // Promote or update: has hotspots → spread-word
+        await supabase
+          .from('slide_items')
+          .update({ type: 'spread-word' })
+          .eq('id', realSlideId);
+
         const { data: existingConfig } = await supabase
           .from('viral_slide_configs')
           .select('id')
           .eq('slide_id', realSlideId)
-          .single();
+          .maybeSingle();
 
         if (existingConfig) {
           await supabase
             .from('viral_slide_configs')
-            .update({ hotspots })
+            .update({ hotspots, template_type: templateType })
             .eq('id', existingConfig.id);
         } else {
-          // Get the slide to find its content URL
+          // Create per-slide config
           const { data: slideData } = await supabase
             .from('slide_items')
-            .select('position, content_url')
+            .select('position, content_url, template_id')
             .eq('id', realSlideId)
             .single();
 
           if (slideData) {
-            await supabase
+            // If slide had a shared template, use its image_url as fallback
+            let imageUrl = slideData.content_url;
+            
+            const { data: newConfig } = await supabase
               .from('viral_slide_configs')
               .insert({
                 slide_id: realSlideId,
                 deck_slug: slug,
                 name: `Slide ${slideData.position}`,
-                slug: `${slug}-slide-${slideData.position}`,
-                image_url: slideData.content_url,
+                slug: `${slug}-slide-${slideData.position}-${Date.now()}`,
+                image_url: imageUrl,
                 hotspots,
-              } as any);
+                template_type: templateType,
+              } as any)
+              .select('id')
+              .single();
+            
+            // Link the new per-slide config to the slide
+            if (newConfig) {
+              await supabase
+                .from('slide_items')
+                .update({ template_id: newConfig.id })
+                .eq('id', realSlideId);
+            }
           }
         }
       }
@@ -1401,6 +1513,26 @@ Add Slide(s)
                     <div className="text-muted-foreground">Deck</div>
                     <div className="font-medium break-all">{selectedSlide.deck_slug}</div>
                   </div>
+                  
+                  {/* Edit Hotspots — available for any slide type */}
+                  {selectedSlide.type !== 'vimeo' && (
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={loadingHotspots}
+                        onClick={() => handleOpenHotspotEditor(selectedSlide)}
+                      >
+                        {loadingHotspots ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-2" />
+                        )}
+                        Edit Hotspots
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
@@ -1481,6 +1613,7 @@ Add Slide(s)
             </DialogHeader>
             <FullResolutionHotspotEditor
               imageUrl={selectedSlide.content_url}
+              initialHotspots={initialHotspots}
               onSave={handleSaveHotspots}
             />
           </DialogContent>
