@@ -192,6 +192,9 @@ export function DataTemplateEditor({
   useEffect(() => {
     if (campaignId.trim()) {
       resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
+    } else {
+      // Clear display values when campaign is deselected
+      setDisplayValues({});
     }
   }, [campaignId, mobilizeId, resolveMetrics]);
 
