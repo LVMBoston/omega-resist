@@ -768,12 +768,13 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
               {deck.first_slide_url.startsWith('solid:') ? (
                 <div className="w-full h-full" style={{ backgroundColor: deck.first_slide_url.replace('solid:', '') }} />
               ) : (
-              <img 
-                src={deck.first_slide_url} 
-                alt="First slide preview" 
-                className="w-full h-full object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
+                <img 
+                  src={deck.first_slide_url} 
+                  alt="First slide preview" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
             </div>
           )}
         </div>
