@@ -357,6 +357,7 @@ export function DraggableHotspotOverlay({
               top: `${hotspot.y}%`,
               width: `${hotspot.width}%`,
               height: `${hotspot.height}%`,
+              display: "flex",
               fontSize: `${scaledFontSize}px`,
               fontWeight: style.fontWeight || "700",
               color: style.color || "#1a1a1a",
