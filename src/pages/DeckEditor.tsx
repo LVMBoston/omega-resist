@@ -617,11 +617,81 @@ export default function DeckEditor() {
     }
   };
 
+  // Classification helpers for auto-detect
+  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'vimeo']);
+  const DATA_TYPES = new Set(['live_number', 'chart', 'map']);
+
+  const classifyHotspots = (hotspots: any[]): { slideType: string; templateType: string } => {
+    if (!hotspots || hotspots.length === 0) return { slideType: 'image', templateType: 'display_only' };
+    const hasAction = hotspots.some((h: any) => ACTION_TYPES.has(h.type));
+    const hasData = hotspots.some((h: any) => DATA_TYPES.has(h.type));
+    if (hasAction && hasData) return { slideType: 'spread-word', templateType: 'hybrid' };
+    if (hasData) return { slideType: 'spread-word', templateType: 'stats_page' };
+    return { slideType: 'spread-word', templateType: 'interactive_share' };
+  };
+
+  const loadHotspotsForSlide = async (slide: Slide) => {
+    // Priority 1: staged changes
+    if (hotspotChanges[slide.id]) {
+      setInitialHotspots(hotspotChanges[slide.id]);
+      return;
+    }
+    
+    setLoadingHotspots(true);
+    try {
+      // Priority 2: per-slide config
+      const { data: perSlideConfig } = await supabase
+        .from('viral_slide_configs')
+        .select('hotspots')
+        .eq('slide_id', slide.id)
+        .maybeSingle();
+      
+      if (perSlideConfig?.hotspots && Array.isArray(perSlideConfig.hotspots) && perSlideConfig.hotspots.length > 0) {
+        setInitialHotspots(perSlideConfig.hotspots);
+        return;
+      }
+
+      // Priority 3: shared template
+      if (slide.template_id) {
+        const { data: templateConfig } = await supabase
+          .from('viral_slide_configs')
+          .select('hotspots')
+          .eq('id', slide.template_id)
+          .maybeSingle();
+        
+        if (templateConfig?.hotspots && Array.isArray(templateConfig.hotspots)) {
+          setInitialHotspots(templateConfig.hotspots);
+          return;
+        }
+      }
+
+      setInitialHotspots([]);
+    } catch (error) {
+      console.error('Error loading hotspots:', error);
+      setInitialHotspots([]);
+    } finally {
+      setLoadingHotspots(false);
+    }
+  };
+
+  const handleOpenHotspotEditor = async (slide: Slide) => {
+    setSelectedSlide(slide);
+    await loadHotspotsForSlide(slide);
+    setHotspotEditorOpen(true);
+  };
+
   const handleSaveHotspots = (hotspots: any[]) => {
     if (!selectedSlide) return;
 
     // Store hotspot changes for later
     setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: hotspots });
+    
+    // Auto-classify and update draft slide type
+    const { slideType } = classifyHotspots(hotspots);
+    setSlides(prev => prev.map(s => 
+      s.id === selectedSlide.id ? { ...s, type: slideType } : s
+    ));
+    
     setHasChanges(true);
     setHotspotEditorOpen(false);
     toast.success('Hotspot changes staged');
