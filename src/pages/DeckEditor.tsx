@@ -691,6 +691,59 @@ export default function DeckEditor() {
     setHotspotEditorOpen(true);
   };
 
+  const handleCaptureThumbnail = async (slide: Slide) => {
+    if (!slide.template_id && slide.type !== 'spread-word') {
+      toast.error('Only interactive slides can have thumbnails captured');
+      return;
+    }
+
+    // Need to find the template_id — either from the slide or from a per-slide config
+    let configId = slide.template_id;
+    if (!configId) {
+      const { data } = await supabase
+        .from('viral_slide_configs')
+        .select('id')
+        .eq('slide_id', slide.id)
+        .maybeSingle();
+      configId = data?.id;
+    }
+    if (!configId) {
+      toast.error('No template config found for this slide');
+      return;
+    }
+
+    // Find the preview image element's parent container
+    const previewContainer = document.querySelector('[data-slide-preview]') as HTMLElement;
+    if (!previewContainer) {
+      toast.error('Preview element not found');
+      return;
+    }
+
+    setCapturingThumbnail(true);
+    try {
+      const thumbnailUrl = await captureSlideThumbnail(
+        configId,
+        previewContainer,
+        slide.content_url.startsWith('solid:') ? slide.content_url.replace('solid:', '') : undefined
+      );
+      
+      // Update the slide in local state
+      setSlides(prev => prev.map(s => 
+        s.id === slide.id ? { ...s, thumbnail_url: thumbnailUrl } : s
+      ));
+      if (selectedSlide?.id === slide.id) {
+        setSelectedSlide(prev => prev ? { ...prev, thumbnail_url: thumbnailUrl } : prev);
+      }
+      
+      toast.success('Thumbnail captured successfully');
+    } catch (error: any) {
+      console.error('Thumbnail capture error:', error);
+      toast.error(`Failed to capture thumbnail: ${error.message}`);
+    } finally {
+      setCapturingThumbnail(false);
+    }
+  };
+
   const handleSaveHotspots = (hotspots: any[]) => {
     if (!selectedSlide) return;
 
