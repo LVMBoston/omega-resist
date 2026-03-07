@@ -1041,7 +1041,7 @@ export default function DeckEditor() {
         }
       }
 
-      // 4. Handle hotspot changes (including temp slides that now have real IDs)
+      // 4. Handle hotspot changes with auto-classification
       for (const [slideId, hotspots] of Object.entries(hotspotChanges)) {
         // Map temp ID to real ID if applicable
         const realSlideId = slideId.startsWith('temp-') ? tempSlideIdMap[slideId] : slideId;
@@ -1051,36 +1051,76 @@ export default function DeckEditor() {
           continue;
         }
 
+        const { slideType, templateType } = classifyHotspots(hotspots as any[]);
+
+        // Auto-demote: empty hotspots → revert to image
+        if (slideType === 'image') {
+          // Delete per-slide config (never shared templates)
+          await supabase
+            .from('viral_slide_configs')
+            .delete()
+            .eq('slide_id', realSlideId)
+            .not('slide_id', 'is', null);
+          
+          // Revert slide to image
+          await supabase
+            .from('slide_items')
+            .update({ type: 'image', template_id: null })
+            .eq('id', realSlideId);
+          
+          continue;
+        }
+
+        // Promote or update: has hotspots → spread-word
+        await supabase
+          .from('slide_items')
+          .update({ type: 'spread-word' })
+          .eq('id', realSlideId);
+
         const { data: existingConfig } = await supabase
           .from('viral_slide_configs')
           .select('id')
           .eq('slide_id', realSlideId)
-          .single();
+          .maybeSingle();
 
         if (existingConfig) {
           await supabase
             .from('viral_slide_configs')
-            .update({ hotspots })
+            .update({ hotspots, template_type: templateType })
             .eq('id', existingConfig.id);
         } else {
-          // Get the slide to find its content URL
+          // Create per-slide config
           const { data: slideData } = await supabase
             .from('slide_items')
-            .select('position, content_url')
+            .select('position, content_url, template_id')
             .eq('id', realSlideId)
             .single();
 
           if (slideData) {
-            await supabase
+            // If slide had a shared template, use its image_url as fallback
+            let imageUrl = slideData.content_url;
+            
+            const { data: newConfig } = await supabase
               .from('viral_slide_configs')
               .insert({
                 slide_id: realSlideId,
                 deck_slug: slug,
                 name: `Slide ${slideData.position}`,
-                slug: `${slug}-slide-${slideData.position}`,
-                image_url: slideData.content_url,
+                slug: `${slug}-slide-${slideData.position}-${Date.now()}`,
+                image_url: imageUrl,
                 hotspots,
-              } as any);
+                template_type: templateType,
+              } as any)
+              .select('id')
+              .single();
+            
+            // Link the new per-slide config to the slide
+            if (newConfig) {
+              await supabase
+                .from('slide_items')
+                .update({ template_id: newConfig.id })
+                .eq('id', realSlideId);
+            }
           }
         }
       }
