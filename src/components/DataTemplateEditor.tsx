@@ -201,6 +201,7 @@ export function DataTemplateEditor({
   // Update display values when metrics are resolved
   useEffect(() => {
     console.log("[DataTemplateEditor] metricsMap updated:", Object.keys(metricsMap).length, "keys", metricsMap);
+    if (!campaignId) return; // Don't populate display values when no campaign is selected
     if (Object.keys(metricsMap).length > 0) {
       setDisplayValues((prev) => {
         const updated = { ...prev };
