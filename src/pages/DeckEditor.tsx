@@ -1613,6 +1613,7 @@ Add Slide(s)
             </DialogHeader>
             <FullResolutionHotspotEditor
               imageUrl={selectedSlide.content_url}
+              initialHotspots={initialHotspots}
               onSave={handleSaveHotspots}
             />
           </DialogContent>
