@@ -319,10 +319,12 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       metricResults.push({ key: "current_time", label: METRIC_LABELS.current_time, value: formatInTimeZone(now, viewerTz, "h:mm a zzz"), source: "current" });
 
       // last_updated (combined date + time for "Data as of:" hotspots)
+      const lastUpdatedDate = formatInTimeZone(now, viewerTz, "MMM d, yyyy");
+      const lastUpdatedTime = formatInTimeZone(now, viewerTz, "h:mm a zzz");
       metricResults.push({
         key: "last_updated",
         label: METRIC_LABELS.last_updated,
-        value: formatInTimeZone(now, viewerTz, "h:mm a zzz"),
+        value: `${lastUpdatedDate}\n${lastUpdatedTime}`,
         source: "current",
       });
 
