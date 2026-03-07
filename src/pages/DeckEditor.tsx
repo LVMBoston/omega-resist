@@ -19,6 +19,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 import { DeploymentConfirmDialog } from "@/components/DeploymentConfirmDialog";
+import { SlidePreviewOverlay } from "@/components/SlidePreviewOverlay";
+import type { Hotspot } from "@/types/viralTemplates";
 import { mintL00 } from "@/lib/virality/mint";
 import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
