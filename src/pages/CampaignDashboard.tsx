@@ -698,8 +698,8 @@ export default function CampaignDashboard({
     const mobilizeCodes = new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean));
     const qrViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'qr').length;
     const smsViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'sms').length;
-    const emailViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'email').length;
-    const unknownViewsCount = eventsV2Data.filter((e: any) => !['qr','sms','email'].includes(e.tokens?.utm_medium || '')).length;
+    const emailViewsCount = eventsV2Data.filter((e: any) => ['email', 'mail', 'em'].includes(e.tokens?.utm_medium)).length;
+    const unknownViewsCount = eventsV2Data.filter((e: any) => !['qr','sms','email','mail','em'].includes(e.tokens?.utm_medium || '')).length;
     const gpsLocationCount = eventsV2Data.filter((e: any) => e.location_source === 'gps').length;
     const cellTowerLocationCount = eventsV2Data.filter((e: any) => e.location_source !== 'gps').length;
     return {
