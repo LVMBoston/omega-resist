@@ -144,6 +144,7 @@ export function DataTemplateEditor({
 
   // Live metrics preview state
   const [campaignId, setCampaignId] = useState("");
+  const userClearedCampaign = useRef(false);
   const [mobilizeId, setMobilizeId] = useState("");
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
 
