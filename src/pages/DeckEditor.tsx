@@ -84,7 +84,7 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
         className="cursor-pointer"
         onClick={onSelect}
       >
-        <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
+        <img src={slide.thumbnail_url || slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
       </div>
       
       {/* Checkbox + Position badge — placed above drag handle z-index */}
