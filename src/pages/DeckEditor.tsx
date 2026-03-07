@@ -224,6 +224,7 @@ export default function DeckEditor() {
   const [initialHotspots, setInitialHotspots] = useState<any[]>([]);
   const [loadingHotspots, setLoadingHotspots] = useState(false);
   const [capturingThumbnail, setCapturingThumbnail] = useState(false);
+  const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
