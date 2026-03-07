@@ -1,25 +1,31 @@
 
-# Phase 1 — Unified Slide Architecture: Editor UX
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+# Decision: Bug-Fix Timing During Test Plan Execution
 
-Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
+## Options
 
----
+### Option A — Fix bugs as found (inline)
+- a. At each step, if a bug is observed, pause testing, fix it, re-verify that step, then continue.
+- b. Pro: Each subsequent step runs against corrected code, so later tests aren't polluted by earlier failures.
+- c. Con: Longer wall-clock time per round; context-switching between testing and coding.
 
-# Phase 1b — Slide Thumbnail Capture
+### Option B — Full pass first, then batch fix
+- a. Run all 5 locations, screenshot and log every issue, then fix everything in one batch.
+- b. Pro: Faster initial pass; full picture of all issues before touching code.
+- c. Con: Bugs may cascade — a missing thumbnail in Step 2 could cause false failures in Steps 3–4 if they share the same data path.
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+## Recommendation: Option A — Fix inline
 
-Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
+For this codebase, most thumbnail bugs share resolution logic (`thumbnail_url → cached_snapshot_path → content_url`). A bug in one location usually means the same bug exists everywhere, so fixing it early prevents redundant screenshots of the same failure repeated 4 more times.
 
----
+## Updated Workflow Protocol
 
-# Phase 1c — Interactive Slide Preview in DeckEditor
+At each numbered step:
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+1. I ask you to navigate to the required route and say "OK."
+2. I run browser tools (screenshot, observe, console logs).
+3. **If a bug is found:** I fix it immediately, ask you to confirm the preview has reloaded, then re-verify that step before moving on.
+4. If clean, I report findings and move to the next step.
 
-Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
+This keeps each step self-contained and verified before proceeding.
+
