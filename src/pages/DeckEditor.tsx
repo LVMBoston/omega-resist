@@ -1534,7 +1534,7 @@ Add Slide(s)
             <CardContent className="p-6 overflow-y-auto h-full">
               {selectedSlide ? (
                 <div className="space-y-4">
-                  <div className="relative">
+                  <div className="relative" data-slide-preview>
                     <img
                       src={selectedSlide.thumbnail_url || selectedSlide.content_url}
                       alt={`Slide ${selectedSlide.position}`}
