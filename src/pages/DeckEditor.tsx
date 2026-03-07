@@ -241,6 +241,48 @@ export default function DeckEditor() {
     }
   }, [slug]);
 
+  // Load preview hotspots when selected slide changes
+  useEffect(() => {
+    if (!selectedSlide || selectedSlide.type !== 'spread-word') {
+      setPreviewHotspots([]);
+      return;
+    }
+    // Priority 1: staged changes
+    if (hotspotChanges[selectedSlide.id]) {
+      setPreviewHotspots(hotspotChanges[selectedSlide.id] as Hotspot[]);
+      return;
+    }
+    // Priority 2: fetch from DB
+    const fetchPreviewHotspots = async () => {
+      try {
+        const { data: perSlideConfig } = await supabase
+          .from('viral_slide_configs')
+          .select('hotspots')
+          .eq('slide_id', selectedSlide.id)
+          .maybeSingle();
+        if (perSlideConfig?.hotspots && Array.isArray(perSlideConfig.hotspots)) {
+          setPreviewHotspots(perSlideConfig.hotspots as Hotspot[]);
+          return;
+        }
+        if (selectedSlide.template_id) {
+          const { data: templateConfig } = await supabase
+            .from('viral_slide_configs')
+            .select('hotspots')
+            .eq('id', selectedSlide.template_id)
+            .maybeSingle();
+          if (templateConfig?.hotspots && Array.isArray(templateConfig.hotspots)) {
+            setPreviewHotspots(templateConfig.hotspots as Hotspot[]);
+            return;
+          }
+        }
+        setPreviewHotspots([]);
+      } catch {
+        setPreviewHotspots([]);
+      }
+    };
+    fetchPreviewHotspots();
+  }, [selectedSlide?.id, selectedSlide?.type, hotspotChanges]);
+
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
