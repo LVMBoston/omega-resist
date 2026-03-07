@@ -1481,7 +1481,7 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative">
                     <img
-                      src={selectedSlide.content_url}
+                      src={selectedSlide.thumbnail_url || selectedSlide.content_url}
                       alt={`Slide ${selectedSlide.position}`}
                       className="w-full rounded-lg border"
                     />
