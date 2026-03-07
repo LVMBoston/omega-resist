@@ -689,7 +689,7 @@ export function DataTemplateEditor({
                     variant="ghost"
                     size="sm"
                     className="h-9 px-2"
-                    onClick={() => setCampaignId("")}
+                    onClick={() => { userClearedCampaign.current = true; setCampaignId(""); }}
                     title="Clear campaign selection"
                   >
                     <X className="w-4 h-4" />
