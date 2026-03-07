@@ -261,7 +261,7 @@ export default function DeckEditor() {
           .eq('slide_id', selectedSlide.id)
           .maybeSingle();
         if (perSlideConfig?.hotspots && Array.isArray(perSlideConfig.hotspots)) {
-          setPreviewHotspots(perSlideConfig.hotspots as Hotspot[]);
+          setPreviewHotspots(perSlideConfig.hotspots as unknown as Hotspot[]);
           return;
         }
         if (selectedSlide.template_id) {
