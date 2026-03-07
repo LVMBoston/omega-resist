@@ -753,7 +753,7 @@ export default function DeckEditor() {
     }
   };
 
-  const handleSaveHotspots = (hotspots: any[]) => {
+  const handleSaveHotspots = async (hotspots: any[]) => {
     if (!selectedSlide) return;
 
     // Store hotspot changes for later
@@ -765,9 +765,20 @@ export default function DeckEditor() {
       s.id === selectedSlide.id ? { ...s, type: slideType } : s
     ));
     
+    // Update preview hotspots immediately
+    setPreviewHotspots(hotspots as Hotspot[]);
+    
     setHasChanges(true);
     setHotspotEditorOpen(false);
     toast.success('Hotspot changes staged');
+
+    // Auto-capture thumbnail after overlay renders
+    if (slideType === 'spread-word' && hotspots.length > 0) {
+      const slideForCapture = { ...selectedSlide, type: slideType };
+      setTimeout(() => {
+        handleCaptureThumbnail(slideForCapture);
+      }, 600);
+    }
   };
 
   const handleAddInteractiveSlide = async (template: Template) => {
