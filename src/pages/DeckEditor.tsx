@@ -1541,11 +1541,13 @@ Add Slide(s)
               {selectedSlide ? (
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
-                    <img
-                      src={selectedSlide.thumbnail_url || selectedSlide.content_url}
-                      alt={`Slide ${selectedSlide.position}`}
-                      className="w-full rounded-lg border"
-                    />
+                    {(() => {
+                      const previewUrl = selectedSlide.thumbnail_url || selectedSlide.content_url;
+                      if (previewUrl?.startsWith('solid:')) {
+                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: previewUrl.replace('solid:', '') }} />;
+                      }
+                      return <img src={previewUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+                    })()}
                     {selectedSlide.content_url.toLowerCase().endsWith('.gif') && (
                       <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
                         GIF
