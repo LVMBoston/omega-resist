@@ -122,10 +122,16 @@ export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {
 
           // For manual_entry with custom styling, show as the user would see it
           if (metricKey === "manual_entry" && hotspot.liveNumberStyle) {
+            // Scale fontSize proportionally — preview is ~1/3 of actual slide
+            const scaledStyle = { ...liveStyle };
+            if (scaledStyle.fontSize) {
+              const rawPx = parseInt(String(scaledStyle.fontSize)) || 56;
+              scaledStyle.fontSize = `${Math.max(8, Math.round(rawPx * 0.33))}px`;
+            }
             return (
               <div
                 key={hotspot.id}
-                style={{ ...style, ...liveStyle, display: "flex", alignItems: hotspot.liveNumberStyle?.verticalAlign === "bottom" ? "flex-end" : hotspot.liveNumberStyle?.verticalAlign === "center" ? "center" : "flex-start" }}
+                style={{ ...style, ...scaledStyle, display: "flex", alignItems: hotspot.liveNumberStyle?.verticalAlign === "bottom" ? "flex-end" : hotspot.liveNumberStyle?.verticalAlign === "center" ? "center" : "flex-start" }}
                 className="overflow-hidden"
               >
                 <span className="w-full truncate">{hotspot.manualLabel || "Text"}</span>
@@ -139,8 +145,8 @@ export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {
               style={{ ...style, ...liveStyle, display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
               className="rounded border border-dashed border-amber-400/60 bg-amber-500/10 overflow-hidden"
             >
-              <Icon className="h-3 w-3 text-amber-400/80 flex-shrink-0" />
-              <span className="text-[10px] text-amber-300/90 truncate">{displayText}</span>
+              <Icon className="h-3 w-3 flex-shrink-0" style={{ color: "hsl(30, 60%, 30%)" }} />
+              <span className="text-[10px] font-semibold truncate" style={{ color: "hsl(30, 60%, 25%)" }}>{displayText}</span>
             </div>
           );
         }
