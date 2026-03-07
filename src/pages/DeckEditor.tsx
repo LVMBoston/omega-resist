@@ -215,6 +215,8 @@ export default function DeckEditor() {
   const [vimeoPosterPreview, setVimeoPosterPreview] = useState<string | null>(null);
   const [initialHotspots, setInitialHotspots] = useState<any[]>([]);
   const [loadingHotspots, setLoadingHotspots] = useState(false);
+  const [capturingThumbnail, setCapturingThumbnail] = useState(false);
+  const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
