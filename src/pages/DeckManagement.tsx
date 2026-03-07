@@ -169,15 +169,18 @@ const Index = () => {
           ).values()
         );
         
-        // Get first slide for preview
+        // Get first slide for preview (prefer thumbnail_url for interactive slides)
         const { data: firstSlide } = await supabase
           .from("slide_items")
-          .select("content_url")
+          .select("content_url, type, viral_slide_configs!slide_items_template_id_fkey(thumbnail_url)")
           .eq("deck_slug", deck.slug)
-          .eq("type", "image")
           .order("position")
           .limit(1)
           .single();
+        
+        const firstSlideUrl = firstSlide
+          ? ((firstSlide as any).viral_slide_configs?.thumbnail_url || firstSlide.content_url)
+          : undefined;
         
         return {
           slug: deck.slug,
@@ -188,7 +191,7 @@ const Index = () => {
           interactive_count: interactiveCount || 0,
           mobilize_org_count: uniqueMobilizeCodes.size,
           campaigns: uniqueCampaigns,
-          first_slide_url: firstSlide?.content_url
+          first_slide_url: firstSlideUrl,
         };
       }));
       setDecks(decksWithCounts);
