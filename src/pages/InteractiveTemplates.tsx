@@ -333,7 +333,7 @@ export default function InteractiveTemplates() {
       resetForm();
       toast({
         title: "Success",
-        description: "Template updated - changes will cascade to all decks using this template",
+        description: "Template saved successfully",
       });
     },
     onError: (error: Error) => {
