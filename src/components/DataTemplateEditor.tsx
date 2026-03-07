@@ -212,9 +212,9 @@ export function DataTemplateEditor({
     }
   }, [metricsMap, hotspots]);
 
-  // Auto-populate campaign from templateCampaigns if not already selected
+  // Auto-populate campaign from templateCampaigns if not already selected (and user hasn't manually cleared)
   useEffect(() => {
-    if (!campaignId && templateCampaigns.length > 0) {
+    if (!campaignId && !userClearedCampaign.current && templateCampaigns.length > 0) {
       const firstCampaign = templateCampaigns[0];
       console.log("[DataTemplateEditor] Auto-selecting campaign from template:", firstCampaign.code);
       setCampaignId(firstCampaign.code);
