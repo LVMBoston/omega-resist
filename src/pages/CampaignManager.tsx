@@ -777,13 +777,20 @@ export default function CampaignManager() {
         // Fetch slides for the deck
         const { data: slidesData, error: slidesError } = await supabase
           .from("slide_items")
-          .select("*")
+          .select("*, viral_slide_configs!slide_items_template_id_fkey(thumbnail_url, cached_snapshot_path)")
           .eq("deck_slug", targetSlug)
           .order("position", { ascending: true });
 
         if (slidesError) throw slidesError;
 
-        setDeckSlides(slidesData || []);
+        // Map thumbnail preference onto slides
+        const mappedSlides = (slidesData || []).map((s: any) => ({
+          ...s,
+          _display_url: s.viral_slide_configs?.thumbnail_url 
+            || s.viral_slide_configs?.cached_snapshot_path 
+            || s.content_url,
+        }));
+        setDeckSlides(mappedSlides);
       } catch (error) {
         console.error("Error loading deck:", error);
         toast({
@@ -1002,7 +1009,7 @@ export default function CampaignManager() {
                   <div key={slide.id} className="relative group">
                     <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
                       <img
-                        src={slide.content_url}
+                        src={slide._display_url || slide.content_url}
                         alt={`Slide ${index + 1}`}
                         className="w-full h-full object-contain"
                       />

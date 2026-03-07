@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera } from "lucide-react";
+import { captureSlideThumbnail } from "@/lib/snapshotCapture";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -33,6 +34,7 @@ interface Slide {
   deck_slug: string;
   skip_deploy: boolean;
   media_url?: string;
+  thumbnail_url?: string; // Captured thumbnail showing hotspot overlays
 }
 
 interface Template {
@@ -82,7 +84,7 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
         className="cursor-pointer"
         onClick={onSelect}
       >
-        <img src={slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
+        <img src={slide.thumbnail_url || slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
       </div>
       
       {/* Checkbox + Position badge — placed above drag handle z-index */}
@@ -213,6 +215,8 @@ export default function DeckEditor() {
   const [vimeoPosterPreview, setVimeoPosterPreview] = useState<string | null>(null);
   const [initialHotspots, setInitialHotspots] = useState<any[]>([]);
   const [loadingHotspots, setLoadingHotspots] = useState(false);
+  const [capturingThumbnail, setCapturingThumbnail] = useState(false);
+  const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -253,22 +257,29 @@ export default function DeckEditor() {
     try {
       const { data, error } = await supabase
         .from('slide_items')
-        .select('*')
+        .select('*, viral_slide_configs!slide_items_template_id_fkey(thumbnail_url)')
         .eq('deck_slug', slug)
         .order('position');
 
       if (error) throw error;
 
-      setOriginalSlides(data || []);
-      setSlides(data || []);
-      if (data && data.length > 0) {
-        setSelectedSlide(data[0]);
+      // Map thumbnail_url from joined config onto the slide
+      const slidesWithThumbnails = (data || []).map((s: any) => ({
+        ...s,
+        thumbnail_url: s.viral_slide_configs?.thumbnail_url || null,
+        viral_slide_configs: undefined, // Clean up joined data
+      }));
+
+      setOriginalSlides(slidesWithThumbnails);
+      setSlides(slidesWithThumbnails);
+      if (slidesWithThumbnails.length > 0) {
+        setSelectedSlide(slidesWithThumbnails[0]);
         // Get reference dimensions from first slide
         const img = new Image();
         img.onload = () => {
           setReferenceDimensions({ width: img.width, height: img.height });
         };
-        img.src = data[0].content_url;
+        img.src = slidesWithThumbnails[0].content_url;
       }
     } catch (error: any) {
       console.error('Error fetching slides:', error);
@@ -678,6 +689,59 @@ export default function DeckEditor() {
     setSelectedSlide(slide);
     await loadHotspotsForSlide(slide);
     setHotspotEditorOpen(true);
+  };
+
+  const handleCaptureThumbnail = async (slide: Slide) => {
+    if (!slide.template_id && slide.type !== 'spread-word') {
+      toast.error('Only interactive slides can have thumbnails captured');
+      return;
+    }
+
+    // Need to find the template_id — either from the slide or from a per-slide config
+    let configId = slide.template_id;
+    if (!configId) {
+      const { data } = await supabase
+        .from('viral_slide_configs')
+        .select('id')
+        .eq('slide_id', slide.id)
+        .maybeSingle();
+      configId = data?.id;
+    }
+    if (!configId) {
+      toast.error('No template config found for this slide');
+      return;
+    }
+
+    // Find the preview image element's parent container
+    const previewContainer = document.querySelector('[data-slide-preview]') as HTMLElement;
+    if (!previewContainer) {
+      toast.error('Preview element not found');
+      return;
+    }
+
+    setCapturingThumbnail(true);
+    try {
+      const thumbnailUrl = await captureSlideThumbnail(
+        configId,
+        previewContainer,
+        slide.content_url.startsWith('solid:') ? slide.content_url.replace('solid:', '') : undefined
+      );
+      
+      // Update the slide in local state
+      setSlides(prev => prev.map(s => 
+        s.id === slide.id ? { ...s, thumbnail_url: thumbnailUrl } : s
+      ));
+      if (selectedSlide?.id === slide.id) {
+        setSelectedSlide(prev => prev ? { ...prev, thumbnail_url: thumbnailUrl } : prev);
+      }
+      
+      toast.success('Thumbnail captured successfully');
+    } catch (error: any) {
+      console.error('Thumbnail capture error:', error);
+      toast.error(`Failed to capture thumbnail: ${error.message}`);
+    } finally {
+      setCapturingThumbnail(false);
+    }
   };
 
   const handleSaveHotspots = (hotspots: any[]) => {
@@ -1470,9 +1534,9 @@ Add Slide(s)
             <CardContent className="p-6 overflow-y-auto h-full">
               {selectedSlide ? (
                 <div className="space-y-4">
-                  <div className="relative">
+                  <div className="relative" data-slide-preview>
                     <img
-                      src={selectedSlide.content_url}
+                      src={selectedSlide.thumbnail_url || selectedSlide.content_url}
                       alt={`Slide ${selectedSlide.position}`}
                       className="w-full rounded-lg border"
                     />
@@ -1530,6 +1594,26 @@ Add Slide(s)
                           <Plus className="h-4 w-4 mr-2" />
                         )}
                         Edit Hotspots
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Capture Thumbnail — available for spread-word slides */}
+                  {selectedSlide.type === 'spread-word' && !selectedSlide.id.startsWith('temp-') && (
+                    <div className="pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={capturingThumbnail}
+                        onClick={() => handleCaptureThumbnail(selectedSlide)}
+                      >
+                        {capturingThumbnail ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Camera className="h-4 w-4 mr-2" />
+                        )}
+                        Capture Thumbnail
                       </Button>
                     </div>
                   )}
