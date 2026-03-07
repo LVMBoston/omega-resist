@@ -1008,11 +1008,13 @@ export default function CampaignManager() {
                 {deckSlides.map((slide, index) => (
                   <div key={slide.id} className="relative group">
                     <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
-                      <img
-                        src={slide._display_url || slide.content_url}
-                        alt={`Slide ${index + 1}`}
-                        className="w-full h-full object-contain"
-                      />
+                      {(() => {
+                        const displayUrl = slide._display_url || slide.content_url;
+                        if (displayUrl?.startsWith('solid:')) {
+                          return <div className="w-full h-full" style={{ backgroundColor: displayUrl.replace('solid:', '') }} />;
+                        }
+                        return <img src={displayUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+                      })()}
                     </div>
                     <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs">
                       {index + 1}

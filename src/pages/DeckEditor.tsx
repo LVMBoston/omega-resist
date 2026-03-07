@@ -84,7 +84,13 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
         className="cursor-pointer"
         onClick={onSelect}
       >
-        <img src={slide.thumbnail_url || slide.content_url} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" />
+        {(() => {
+          const displayUrl = slide.thumbnail_url || slide.content_url;
+          if (displayUrl?.startsWith('solid:')) {
+            return <div className="w-full aspect-video" style={{ backgroundColor: displayUrl.replace('solid:', '') }} />;
+          }
+          return <img src={displayUrl} alt={`Slide ${slide.position}`} className="w-full aspect-video object-contain bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+        })()}
       </div>
       
       {/* Checkbox + Position badge — placed above drag handle z-index */}
