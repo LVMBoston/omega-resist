@@ -1,73 +1,25 @@
 
+# Phase 1 — Unified Slide Architecture: Editor UX
 
-# Render Interactive Slide Preview in DeckEditor
-
+**Status:** Approved & Implemented
 **Date:** 2026-03-07
 
----
-
-## 1. Problem
-
-The "Capture Thumbnail" button in the DeckEditor captures `[data-slide-preview]`, which only contains the raw background image (or solid color). No hotspot overlays are rendered in the center preview, so the capture is just a blank background — useless as a thumbnail.
-
-For data templates (`stats_page`/`hybrid`), the hotspots need a campaign code to show live values, but no campaign is selected in the DeckEditor context.
+Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
 
 ---
 
-## 2. Solution
+# Phase 1b — Slide Thumbnail Capture
 
-Render the slide's hotspot overlays in the DeckEditor center preview as a **static visual layout** — no live data, just positioned placeholders showing hotspot type/label. Then the existing `captureSlideThumbnail` captures a meaningful thumbnail.
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
 
-### 2a. Build a `SlidePreviewOverlay` component
-
-A new lightweight component that renders hotspots as positioned boxes over the background image, using the same percentage-based positioning as `DraggableHotspotOverlay` but read-only and non-interactive:
-
-- a. `live_number` hotspots → show `metricKey` label or `manualLabel` text (e.g., "seeds", "campaign_name") in a styled box.
-- b. `chart` hotspots → show a "Chart" placeholder with a bar-chart icon.
-- c. `map` hotspots → show a "Map" placeholder with a map icon.
-- d. Action hotspots (`sms`, `email`, `social`, `external_link`, `email_links`, `vimeo`) → show the action icon and label.
-
-### 2b. Render the overlay in DeckEditor center preview
-
-For `spread-word` slides with a `template_id`, fetch the hotspots from `viral_slide_configs` (or `hotspotChanges` if staged) and render `SlidePreviewOverlay` on top of the background image inside `[data-slide-preview]`.
-
-### 2c. Auto-capture after saving hotspots
-
-After `handleSaveHotspots` stages changes, auto-trigger `handleCaptureThumbnail` with a short delay (to let the overlay render). This ensures the thumbnail is always current after editing.
+Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
 
 ---
 
-## 3. Files Changed
+# Phase 1c — Interactive Slide Preview in DeckEditor
 
-| # | File | Change |
-|---|------|--------|
-| 3a | `src/components/SlidePreviewOverlay.tsx` | New component — renders positioned hotspot placeholders over a background |
-| 3b | `src/pages/DeckEditor.tsx` | Import and render `SlidePreviewOverlay` in center preview for `spread-word` slides; fetch hotspots for preview; auto-capture after hotspot save |
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
 
----
-
-## 4. Files NOT Changed
-
-- `snapshotCapture.ts` (capture logic unchanged)
-- `FullResolutionHotspotEditor` (editing unchanged)
-- `DraggableHotspotOverlay` (DataTemplateEditor editing unchanged)
-- All rendering components (`InteractiveSlideOverlay`, `StatsPageSlide`, etc.)
-
----
-
-## 5. Implementation Sequence
-
-- a. Create `SlidePreviewOverlay` — static positioned hotspot boxes.
-- b. In DeckEditor, for `spread-word` slides, load hotspots (from `hotspotChanges` or `viral_slide_configs`) and render `SlidePreviewOverlay` atop the background.
-- c. After `handleSaveHotspots`, wait 500ms for render, then auto-call `handleCaptureThumbnail`.
-
----
-
-## 6. Risk Register
-
-| # | Risk | Severity | Mitigation |
-|---|------|----------|------------|
-| 6a | Hotspots not loaded for preview on first select | Low | Fetch on slide selection when `type === 'spread-word'` |
-| 6b | Auto-capture fires before overlay paints | Low | 500ms delay + the 2s stabilization in `captureSlideThumbnail` |
-| 6c | html2canvas doesn't capture icon images | Low | Use CSS backgrounds or inline SVGs for placeholder icons |
-
+Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.

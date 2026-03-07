@@ -19,6 +19,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 import { DeploymentConfirmDialog } from "@/components/DeploymentConfirmDialog";
+import { SlidePreviewOverlay } from "@/components/SlidePreviewOverlay";
+import type { Hotspot } from "@/types/viralTemplates";
 import { mintL00 } from "@/lib/virality/mint";
 import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
@@ -222,6 +224,7 @@ export default function DeckEditor() {
   const [initialHotspots, setInitialHotspots] = useState<any[]>([]);
   const [loadingHotspots, setLoadingHotspots] = useState(false);
   const [capturingThumbnail, setCapturingThumbnail] = useState(false);
+  const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -237,6 +240,48 @@ export default function DeckEditor() {
       fetchDeckUsage();
     }
   }, [slug]);
+
+  // Load preview hotspots when selected slide changes
+  useEffect(() => {
+    if (!selectedSlide || selectedSlide.type !== 'spread-word') {
+      setPreviewHotspots([]);
+      return;
+    }
+    // Priority 1: staged changes
+    if (hotspotChanges[selectedSlide.id]) {
+      setPreviewHotspots(hotspotChanges[selectedSlide.id] as Hotspot[]);
+      return;
+    }
+    // Priority 2: fetch from DB
+    const fetchPreviewHotspots = async () => {
+      try {
+        const { data: perSlideConfig } = await supabase
+          .from('viral_slide_configs')
+          .select('hotspots')
+          .eq('slide_id', selectedSlide.id)
+          .maybeSingle();
+        if (perSlideConfig?.hotspots && Array.isArray(perSlideConfig.hotspots)) {
+          setPreviewHotspots(perSlideConfig.hotspots as unknown as Hotspot[]);
+          return;
+        }
+        if (selectedSlide.template_id) {
+          const { data: templateConfig } = await supabase
+            .from('viral_slide_configs')
+            .select('hotspots')
+            .eq('id', selectedSlide.template_id)
+            .maybeSingle();
+          if (templateConfig?.hotspots && Array.isArray(templateConfig.hotspots)) {
+            setPreviewHotspots(templateConfig.hotspots as unknown as Hotspot[]);
+            return;
+          }
+        }
+        setPreviewHotspots([]);
+      } catch {
+        setPreviewHotspots([]);
+      }
+    };
+    fetchPreviewHotspots();
+  }, [selectedSlide?.id, selectedSlide?.type, hotspotChanges]);
 
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
@@ -750,7 +795,7 @@ export default function DeckEditor() {
     }
   };
 
-  const handleSaveHotspots = (hotspots: any[]) => {
+  const handleSaveHotspots = async (hotspots: any[]) => {
     if (!selectedSlide) return;
 
     // Store hotspot changes for later
@@ -762,9 +807,20 @@ export default function DeckEditor() {
       s.id === selectedSlide.id ? { ...s, type: slideType } : s
     ));
     
+    // Update preview hotspots immediately
+    setPreviewHotspots(hotspots as Hotspot[]);
+    
     setHasChanges(true);
     setHotspotEditorOpen(false);
     toast.success('Hotspot changes staged');
+
+    // Auto-capture thumbnail after overlay renders
+    if (slideType === 'spread-word' && hotspots.length > 0) {
+      const slideForCapture = { ...selectedSlide, type: slideType };
+      setTimeout(() => {
+        handleCaptureThumbnail(slideForCapture);
+      }, 600);
+    }
   };
 
   const handleAddInteractiveSlide = async (template: Template) => {
@@ -1542,12 +1598,17 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
                     {(() => {
-                      const previewUrl = selectedSlide.thumbnail_url || selectedSlide.content_url;
-                      if (previewUrl?.startsWith('solid:')) {
-                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: previewUrl.replace('solid:', '') }} />;
+                      // Center preview always shows raw content_url (not thumbnail) so overlay is visible
+                      const contentUrl = selectedSlide.content_url;
+                      if (contentUrl?.startsWith('solid:')) {
+                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
                       }
-                      return <img src={previewUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+                      return <img src={contentUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
                     })()}
+                    {/* Hotspot preview overlay for interactive slides */}
+                    {selectedSlide.type === 'spread-word' && previewHotspots.length > 0 && (
+                      <SlidePreviewOverlay hotspots={previewHotspots} />
+                    )}
                     {selectedSlide.content_url.toLowerCase().endsWith('.gif') && (
                       <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
                         GIF
