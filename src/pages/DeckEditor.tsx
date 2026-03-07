@@ -1597,6 +1597,26 @@ Add Slide(s)
                       </Button>
                     </div>
                   )}
+                  
+                  {/* Capture Thumbnail — available for spread-word slides */}
+                  {selectedSlide.type === 'spread-word' && !selectedSlide.id.startsWith('temp-') && (
+                    <div className="pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={capturingThumbnail}
+                        onClick={() => handleCaptureThumbnail(selectedSlide)}
+                      >
+                        {capturingThumbnail ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Camera className="h-4 w-4 mr-2" />
+                        )}
+                        Capture Thumbnail
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
