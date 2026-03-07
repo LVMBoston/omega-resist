@@ -34,6 +34,7 @@ interface Slide {
   deck_slug: string;
   skip_deploy: boolean;
   media_url?: string;
+  thumbnail_url?: string; // Captured thumbnail showing hotspot overlays
 }
 
 interface Template {
