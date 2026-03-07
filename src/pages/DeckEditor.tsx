@@ -1598,12 +1598,17 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
                     {(() => {
-                      const previewUrl = selectedSlide.thumbnail_url || selectedSlide.content_url;
-                      if (previewUrl?.startsWith('solid:')) {
-                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: previewUrl.replace('solid:', '') }} />;
+                      // Center preview always shows raw content_url (not thumbnail) so overlay is visible
+                      const contentUrl = selectedSlide.content_url;
+                      if (contentUrl?.startsWith('solid:')) {
+                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
                       }
-                      return <img src={previewUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+                      return <img src={contentUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
                     })()}
+                    {/* Hotspot preview overlay for interactive slides */}
+                    {selectedSlide.type === 'spread-word' && previewHotspots.length > 0 && (
+                      <SlidePreviewOverlay hotspots={previewHotspots} />
+                    )}
                     {selectedSlide.content_url.toLowerCase().endsWith('.gif') && (
                       <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
                         GIF
