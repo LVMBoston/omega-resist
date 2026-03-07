@@ -1598,12 +1598,20 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
                     {(() => {
-                      // Center preview always shows raw content_url (not thumbnail) so overlay is visible
+                      // Center preview prefers raw content_url so overlay is visible; falls back to thumbnail_url
                       const contentUrl = selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
                         return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
                       }
-                      return <img src={contentUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />;
+                      const fallbackUrl = selectedSlide.thumbnail_url;
+                      return <img src={contentUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (fallbackUrl && img.src !== fallbackUrl) {
+                          img.src = fallbackUrl;
+                        } else {
+                          img.style.display = 'none';
+                        }
+                      }} />;
                     })()}
                     {/* Hotspot preview overlay for interactive slides */}
                     {selectedSlide.type === 'spread-word' && previewHotspots.length > 0 && (
