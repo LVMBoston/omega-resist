@@ -1009,7 +1009,7 @@ export default function CampaignManager() {
                   <div key={slide.id} className="relative group">
                     <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
                       <img
-                        src={slide.content_url}
+                        src={slide._display_url || slide.content_url}
                         alt={`Slide ${index + 1}`}
                         className="w-full h-full object-contain"
                       />
