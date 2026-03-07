@@ -255,22 +255,29 @@ export default function DeckEditor() {
     try {
       const { data, error } = await supabase
         .from('slide_items')
-        .select('*')
+        .select('*, viral_slide_configs!slide_items_template_id_fkey(thumbnail_url)')
         .eq('deck_slug', slug)
         .order('position');
 
       if (error) throw error;
 
-      setOriginalSlides(data || []);
-      setSlides(data || []);
-      if (data && data.length > 0) {
-        setSelectedSlide(data[0]);
+      // Map thumbnail_url from joined config onto the slide
+      const slidesWithThumbnails = (data || []).map((s: any) => ({
+        ...s,
+        thumbnail_url: s.viral_slide_configs?.thumbnail_url || null,
+        viral_slide_configs: undefined, // Clean up joined data
+      }));
+
+      setOriginalSlides(slidesWithThumbnails);
+      setSlides(slidesWithThumbnails);
+      if (slidesWithThumbnails.length > 0) {
+        setSelectedSlide(slidesWithThumbnails[0]);
         // Get reference dimensions from first slide
         const img = new Image();
         img.onload = () => {
           setReferenceDimensions({ width: img.width, height: img.height });
         };
-        img.src = data[0].content_url;
+        img.src = slidesWithThumbnails[0].content_url;
       }
     } catch (error: any) {
       console.error('Error fetching slides:', error);
