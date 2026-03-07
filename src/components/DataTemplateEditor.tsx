@@ -144,6 +144,7 @@ export function DataTemplateEditor({
 
   // Live metrics preview state
   const [campaignId, setCampaignId] = useState("");
+  const userClearedCampaign = useRef(false);
   const [mobilizeId, setMobilizeId] = useState("");
   const { metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
 
@@ -191,12 +192,16 @@ export function DataTemplateEditor({
   useEffect(() => {
     if (campaignId.trim()) {
       resolveMetrics(campaignId.trim(), mobilizeId.trim() || undefined);
+    } else {
+      // Clear display values when campaign is deselected
+      setDisplayValues({});
     }
   }, [campaignId, mobilizeId, resolveMetrics]);
 
   // Update display values when metrics are resolved
   useEffect(() => {
     console.log("[DataTemplateEditor] metricsMap updated:", Object.keys(metricsMap).length, "keys", metricsMap);
+    if (!campaignId) return; // Don't populate display values when no campaign is selected
     if (Object.keys(metricsMap).length > 0) {
       setDisplayValues((prev) => {
         const updated = { ...prev };
@@ -211,9 +216,9 @@ export function DataTemplateEditor({
     }
   }, [metricsMap, hotspots]);
 
-  // Auto-populate campaign from templateCampaigns if not already selected
+  // Auto-populate campaign from templateCampaigns if not already selected (and user hasn't manually cleared)
   useEffect(() => {
-    if (!campaignId && templateCampaigns.length > 0) {
+    if (!campaignId && !userClearedCampaign.current && templateCampaigns.length > 0) {
       const firstCampaign = templateCampaigns[0];
       console.log("[DataTemplateEditor] Auto-selecting campaign from template:", firstCampaign.code);
       setCampaignId(firstCampaign.code);
@@ -671,7 +676,7 @@ export function DataTemplateEditor({
                 <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
               </Label>
               <div className="flex gap-2">
-                <Select value={campaignId || undefined} onValueChange={setCampaignId}>
+                <Select key={campaignId || '__empty__'} value={campaignId || undefined} onValueChange={setCampaignId}>
                   <SelectTrigger className="h-9 bg-background flex-1">
                     <SelectValue placeholder="Select a campaign..." />
                   </SelectTrigger>
@@ -688,7 +693,7 @@ export function DataTemplateEditor({
                     variant="ghost"
                     size="sm"
                     className="h-9 px-2"
-                    onClick={() => setCampaignId("")}
+                    onClick={() => { userClearedCampaign.current = true; setCampaignId(""); }}
                     title="Clear campaign selection"
                   >
                     <X className="w-4 h-4" />

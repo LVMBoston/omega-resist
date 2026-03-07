@@ -7,14 +7,20 @@
 
 ## 1. Root Cause
 
-Radix UI `Select` ignores empty string values. Setting `campaignId` to `""` doesn't reset the displayed trigger text — it keeps showing the previously selected campaign.
+Three issues combined to make "clear selection" non-functional:
 
-## 2. Fix
+- a. Radix UI `Select` ignores empty string values — the `__clear__` `SelectItem` hack didn't reset the trigger text.
+- b. Setting `value={undefined}` made the Select uncontrolled, caching the old display.
+- c. An auto-populate `useEffect` re-selected the campaign immediately after clearing.
+- d. Stale `metricsMap` data repopulated `displayValues` even after clearing.
 
-Replaced the `__clear__` `SelectItem` hack with an explicit clear button next to the Select trigger. When clicked, it sets `campaignId` to `""` and Radix shows the placeholder.
+## 2. Fix (4 changes in `src/components/DataTemplateEditor.tsx`)
 
-### Changes in `src/components/DataTemplateEditor.tsx`
+- a. Replaced the `__clear__` `SelectItem` with an explicit X `Button variant="ghost"` next to the Select trigger.
+- b. Added `key={campaignId || '__empty__'}` on the `Select` to force remount when clearing.
+- c. Added a `userClearedCampaign` ref — set to `true` on X click — to prevent the auto-populate `useEffect` from re-selecting.
+- d. Added `setDisplayValues({})` when `campaignId` becomes empty, and guarded the `metricsMap` effect with `if (!campaignId) return`.
 
-- a. Removed the `__clear__` `SelectItem` from inside `SelectContent`.
-- b. Added a small "X" `Button variant="ghost"` next to the Select trigger (visible only when `campaignId` is set) that calls `setCampaignId("")`.
-- c. Changed `Select value` to use `campaignId || undefined` so Radix shows the placeholder when cleared.
+## 3. Browser-verified
+
+Select campaign → click X → dropdown resets to placeholder, preview clears all metric values, map reverts to "Select Campaign".
