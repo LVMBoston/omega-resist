@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -671,16 +671,11 @@ export function DataTemplateEditor({
                 <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
               </Label>
               <div className="flex gap-2">
-                <Select value={campaignId} onValueChange={(val) => setCampaignId(val === "__clear__" ? "" : val)}>
+                <Select value={campaignId || undefined} onValueChange={setCampaignId}>
                   <SelectTrigger className="h-9 bg-background flex-1">
                     <SelectValue placeholder="Select a campaign..." />
                   </SelectTrigger>
                   <SelectContent className="bg-popover z-50">
-                    {campaignId && (
-                      <SelectItem value="__clear__" className="text-muted-foreground italic">
-                        ✕ Clear selection
-                      </SelectItem>
-                    )}
                     {campaigns.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.code}>
                         {campaign.title} ({campaign.code})
@@ -688,6 +683,17 @@ export function DataTemplateEditor({
                     ))}
                   </SelectContent>
                 </Select>
+                {campaignId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-2"
+                    onClick={() => setCampaignId("")}
+                    title="Clear campaign selection"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
