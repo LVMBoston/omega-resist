@@ -1,7 +1,7 @@
 
-# Fix: Resolve City/Region from zip_codes Table When Reverse-Geocode Returns Null
+# Phase 1 — Unified Slide Architecture: Editor UX
 
 **Status:** Approved & Implemented
-**Date:** 2026-03-04
+**Date:** 2026-03-07
 
-Adds a fallback in the `reverse-geocode` edge function to populate city/region from the local `zip_codes` table when Nominatim returns null. Also backfilled existing `url_events` rows. See `docs/decisions/geocoding/2026-03-04_zip-fallback-city-region_feature-doc_lovable.md` for full details.
+Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
