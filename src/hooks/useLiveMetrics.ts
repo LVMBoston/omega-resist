@@ -293,7 +293,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       const viewEvents = events.filter((e) => e.event_type === "view");
       const opensQR = viewEvents.filter((e) => (e.utm_snapshot as any)?.utm_medium === "qr").length;
       const opensText = viewEvents.filter((e) => ["sms", "text"].includes((e.utm_snapshot as any)?.utm_medium)).length;
-      const opensMail = viewEvents.filter((e) => ["email", "mail"].includes((e.utm_snapshot as any)?.utm_medium)).length;
+      const opensMail = viewEvents.filter((e) => ["email", "mail", "em"].includes((e.utm_snapshot as any)?.utm_medium)).length;
       metricResults.push({ key: "opens_qr", label: METRIC_LABELS.opens_qr, value: opensQR, source: "url_events" });
       metricResults.push({ key: "opens_text", label: METRIC_LABELS.opens_text, value: opensText, source: "url_events" });
       metricResults.push({ key: "opens_mail", label: METRIC_LABELS.opens_mail, value: opensMail, source: "url_events" });
