@@ -1513,6 +1513,26 @@ Add Slide(s)
                     <div className="text-muted-foreground">Deck</div>
                     <div className="font-medium break-all">{selectedSlide.deck_slug}</div>
                   </div>
+                  
+                  {/* Edit Hotspots — available for any slide type */}
+                  {selectedSlide.type !== 'vimeo' && (
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={loadingHotspots}
+                        onClick={() => handleOpenHotspotEditor(selectedSlide)}
+                      >
+                        {loadingHotspots ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-2" />
+                        )}
+                        Edit Hotspots
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
