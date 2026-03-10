@@ -1,49 +1,25 @@
 
+# Phase 1 — Unified Slide Architecture: Editor UX
 
-## Feature Summary Sections for Landing Page
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
 
-### Proposed Categories (5)
+Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
 
-Consolidating all end-user and organizer features into audience-neutral groups:
+---
 
-1. **Reach Without Risk** — Zero-friction QR access, no apps/accounts, anonymity by design, IP purging, trust-based spreading
-2. **Rich Interactive Content** — Multimedia decks (video, GIF, images), interactive hotspots (download files, send SMS, compose email, open links), content updatable after QR codes are printed; *forthcoming: anonymous feedback forms, calendar reminders*
-3. **Campaign Architecture** — Campaigns organized by chapters (Mobilize codes or zip codes), chapters initiate actions via QR/email/SMS, customizable messaging per chapter (subject lines, email & text body)
-4. **Intelligence & Reporting** — Geographic reach on live maps, viral coefficient & chain depth analytics, AI-generated narrative reports for stakeholders, shareable public dashboards
-5. **Safe Testing & Deployment** — Simulate campaigns without polluting the database, one-click QR generation, short URLs for easy distribution
+# Phase 1b — Slide Thumbnail Capture
 
-### Campaign Structure Graphic
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
 
-An inline SVG/CSS diagram showing the hierarchy:
+Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
 
-```text
-┌─────────────────────────────────────┐
-│            CAMPAIGN                 │
-│  ┌───────────┐  ┌───────────┐      │
-│  │ Chapter A │  │ Chapter B │ ...  │
-│  │ (zip/code)│  │ (zip/code)│      │
-│  └─────┬─────┘  └─────┬─────┘      │
-│    ┌───┴───┐      ┌───┴───┐        │
-│    │Action │      │Action │        │
-│    │QR/SMS │      │QR/SMS │        │
-│    │Email  │      │Email  │        │
-│    └───────┘      └───────┘        │
-└─────────────────────────────────────┘
-         ▼ Custom messaging per chapter
-         ▼ Test mode (no data pollution)
-         ▼ AI progress narratives
-```
+---
 
-Built as nested `div` elements with Tailwind borders/colors — no external dependency. Styled to match the dark theme with amber/emerald accents.
+# Phase 1c — Interactive Slide Preview in DeckEditor
 
-### Page Placement
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
 
-Insert two new sections between "Built for Anonymity" and "The Impact":
-
-1. **"What You Can Do"** — The 5-category feature grid, each with a Lucide icon, title, and 2-line description
-2. **"How Campaigns Are Organized"** — The campaign structure diagram with brief annotations
-
-### Files Modified
-
-1. **`src/pages/LandingPage.tsx`** — Add the two new sections, import additional Lucide icons (e.g. `RefreshCw`, `MessageSquare`, `BarChart3`, `FlaskConical`, `Layers`)
-
+Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
