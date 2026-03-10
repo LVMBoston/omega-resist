@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
+import LandingPage from "./pages/LandingPage";
 import DeckManagement from "./pages/DeckManagement";
 import DeckBuilder from "./pages/DeckBuilder";
 import Auth from "./pages/Auth";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/s/:code" element={<ShortUrlRedirect />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
             <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
+            <Route path="/landing" element={<LandingPage />} />
             
             {/* Routes with sidebar */}
             <Route path="/" element={<LayoutWithSidebar><Navigate to="/campaign-config" replace /></LayoutWithSidebar>} />
