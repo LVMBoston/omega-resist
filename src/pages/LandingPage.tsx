@@ -159,6 +159,12 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ── FEATURE GRID ── */}
+      <FeatureGrid />
+
+      {/* ── CAMPAIGN STRUCTURE DIAGRAM ── */}
+      <CampaignStructureDiagram />
+
       {/* ── THE IMPACT ── */}
       <section className="py-24 md:py-32 px-6">
         <div className="max-w-3xl mx-auto space-y-8">
