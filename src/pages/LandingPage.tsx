@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Shield, Eye, EyeOff, QrCode, Share2, MapPin, ChevronDown, Lock, Trash2, Users } from "lucide-react";
 import omegaLogo from "@/assets/omega-logo.png";
+import FeatureGrid from "@/components/landing/FeatureGrid";
+import CampaignStructureDiagram from "@/components/landing/CampaignStructureDiagram";
 
 const LandingPage = () => {
   useEffect(() => {
