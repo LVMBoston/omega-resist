@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
+import LandingPage from "./pages/LandingPage";
 import DeckManagement from "./pages/DeckManagement";
 import DeckBuilder from "./pages/DeckBuilder";
 import Auth from "./pages/Auth";
