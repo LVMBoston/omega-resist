@@ -1,25 +1,58 @@
 
-# Phase 1 — Unified Slide Architecture: Editor UX
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+## Public Landing Page — Samizdat Narrative
 
-Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
+### Concept
 
----
+Replace the current minimal `Index.tsx` (logo + "Admin Dashboard" button) with a compelling, scroll-based public landing page that tells the Omega story through the samizdat lens. The page will be dark-themed (consistent with the existing black background), use no jargon, and guide visitors through a narrative arc.
 
-# Phase 1b — Slide Thumbnail Capture
+### Page Structure
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+```text
+┌─────────────────────────────────────┐
+│  HERO                               │
+│  Logo + tagline + "Learn More" ↓    │
+├─────────────────────────────────────┤
+│  SECTION 1: The Problem             │
+│  "They control the platforms..."     │
+├─────────────────────────────────────┤
+│  SECTION 2: The Samizdat Way         │
+│  Physical cards → digital chains     │
+├─────────────────────────────────────┤
+│  SECTION 3: How It Works             │
+│  3-step visual (Card → Scan → Share) │
+├─────────────────────────────────────┤
+│  SECTION 4: Built for Anonymity      │
+│  No logins, no tracking, IP purged   │
+├─────────────────────────────────────┤
+│  SECTION 5: The Impact               │
+│  Metrics language (reach, chains)    │
+├─────────────────────────────────────┤
+│  FOOTER / CTA                        │
+│  "Get Involved" + Admin link         │
+└─────────────────────────────────────┘
+```
 
-Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
+### Narrative Content (Draft)
 
----
+1. **Hero**: "OMEGA — Underground infrastructure for campaigns of resistance"
+2. **The Problem**: Information is controlled. Platforms silence. Surveillance chills organizing. Traditional digital outreach leaves footprints.
+3. **The Samizdat Way**: In the Soviet Union, samizdat was hand-copied literature passed person to person. Omega brings this model into the digital age — physical cards and posters carry QR codes that unlock content and create invisible trust chains.
+4. **How It Works**: (1) Someone finds a card. (2) They scan and see your message. (3) They share it forward — each share extends the chain anonymously.
+5. **Built for Anonymity**: No accounts required. No personal data collected. IP addresses automatically purged. Content spreads through trust, not tracking.
+6. **The Impact**: Organizers see how far their message travels — across cities, states, and borders — without ever knowing who carried it.
 
-# Phase 1c — Interactive Slide Preview in DeckEditor
+### Technical Approach
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+- **Single file change**: Rewrite `src/pages/Index.tsx` as a multi-section scroll page
+- **No new dependencies**: Use existing Tailwind classes, Lucide icons, and the omega-logo asset
+- **Route unchanged**: Stays at the `/` path but the current redirect to `/campaign-config` needs adjustment — add a new `/about` or `/landing` route for this page, OR keep it at `/` and move the redirect logic
+- **Routing plan**: Add a `/landing` route (no sidebar, no auth) in `App.tsx` alongside the other public routes. Update the current Index to be the landing page. The existing `/` redirect to `/campaign-config` remains for authenticated users.
+- **Responsive**: Full-width sections, max-w-3xl content, works on mobile
+- **Admin access preserved**: Small "Organizer Login" link in footer
 
-Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
+### Files Modified
+
+1. **`src/pages/Index.tsx`** — Complete rewrite as the narrative landing page
+2. **`src/App.tsx`** — Add `/landing` as a public route (no sidebar), link Index there
+
