@@ -29,7 +29,7 @@ const CampaignStructureDiagram = () => (
       </h2>
 
       {/* Diagram */}
-      <div className="border border-zinc-800 rounded-2xl p-8 md:p-10 bg-black/40 space-y-6">
+      <div className="border border-zinc-800 rounded-2xl p-8 md:p-10 bg-black/40 space-y-6 campaign-diagram">
         {/* Campaign label */}
         <div className="text-center">
           <span className="inline-block border border-zinc-600 rounded-lg px-6 py-2 text-lg font-bold tracking-wide">
