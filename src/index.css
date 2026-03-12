@@ -117,3 +117,105 @@ All colors MUST be HSL.
 .capture-mode .capture-hide {
   display: none !important;
 }
+
+/* Print styles for /landing page */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Force dark backgrounds to print */
+  .landing-print section,
+  .landing-print footer {
+    break-inside: avoid;
+  }
+
+  .landing-print {
+    background: white !important;
+    color: hsl(0 0% 15%) !important;
+  }
+
+  .landing-print section {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+    min-height: auto !important;
+    background: white !important;
+  }
+
+  /* Hero: shrink, no full-screen */
+  .landing-print .landing-hero {
+    min-height: auto !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+
+  .landing-print .landing-hero img {
+    width: 120px !important;
+  }
+
+  .landing-print .landing-hero h1 {
+    font-size: 28pt !important;
+  }
+
+  /* Hide scroll-down bounce arrow */
+  .landing-print .landing-hero button {
+    display: none !important;
+  }
+
+  /* Text colors for print */
+  .landing-print h2 {
+    color: hsl(0 0% 10%) !important;
+    font-size: 18pt !important;
+  }
+
+  .landing-print h3 {
+    color: hsl(0 0% 15%) !important;
+  }
+
+  .landing-print p,
+  .landing-print span {
+    color: hsl(0 0% 25%) !important;
+  }
+
+  /* Feature grid: 2 columns on print */
+  .landing-print .feature-grid-container {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .landing-print .feature-grid-container > div {
+    border-color: hsl(0 0% 80%) !important;
+    background: white !important;
+  }
+
+  /* Campaign diagram */
+  .landing-print .campaign-diagram {
+    border-color: hsl(0 0% 80%) !important;
+    background: white !important;
+  }
+
+  /* Colored icons/text: keep them visible with darker shades */
+  .landing-print .text-emerald-400 { color: hsl(160 60% 35%) !important; }
+  .landing-print .text-amber-400 { color: hsl(38 70% 40%) !important; }
+  .landing-print .text-sky-400 { color: hsl(198 70% 35%) !important; }
+  .landing-print .text-violet-400 { color: hsl(263 60% 40%) !important; }
+  .landing-print .text-rose-400 { color: hsl(350 65% 40%) !important; }
+  .landing-print .text-red-500 { color: hsl(0 70% 40%) !important; }
+
+  /* Footer */
+  .landing-print footer {
+    border-color: hsl(0 0% 80%) !important;
+    background: white !important;
+  }
+
+  .landing-print footer a {
+    color: hsl(0 0% 30%) !important;
+  }
+}

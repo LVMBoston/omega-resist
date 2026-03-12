@@ -15,9 +15,9 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white landing-print">
       {/* ── HERO ── */}
-      <section className="min-h-screen flex flex-col items-center justify-center p-8 relative">
+      <section className="min-h-screen flex flex-col items-center justify-center p-8 relative landing-hero">
         <img src={omegaLogo} alt="Omega" className="w-64 md:w-80 mb-8" />
         <h1 className="text-5xl md:text-7xl font-black tracking-tight text-center mb-4">
           OMEGA
