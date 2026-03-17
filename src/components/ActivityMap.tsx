@@ -191,7 +191,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       if (event.latitude && event.longitude) {
         const level = event.tokens?.level || 0;
         
-        const iconColor = level === 0 ? '#3b82f6' : level === 1 ? '#10b981' : '#f59e0b';
+        const iconColor = level === 0 ? '#1e293b' : level === 1 ? '#22c55e' : level === 2 ? '#a855f7' : '#ef4444';
         const iconHtml = `
           <div style="
             background-color: ${iconColor};
