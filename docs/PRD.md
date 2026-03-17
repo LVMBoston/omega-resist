@@ -474,13 +474,33 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 | `fetch-mobilize-event` | Mobilize API integration |
 | `import-zip-codes` | Bulk zip code data import |
 
+### Edge Functions
+
+| Function | Purpose |
+|----------|---------|
+| `geoip` | IP-based geolocation lookup (via ipapi) |
+| `reverse-geocode` | lat/lon → nearest zip code |
+| `render-stats-snapshot` | SSR: generates SVG/PNG snapshots of stats slides |
+| `refresh-all-snapshots` | Batch re-renders all campaign snapshots |
+| `deploy-template-snapshots` | Deploy snapshots for specific templates |
+| `get-mapbox-token` | (Legacy) Secure Mapbox token retrieval |
+| `import-google-slides` | Google Slides import |
+| `fetch-mobilize-event` | Mobilize API integration |
+| `import-zip-codes` | Bulk zip code data import |
+| `generate-campaign-pdf` | Export campaign data as PDF |
+
 ### Key Architectural Decisions
 
-1. **Leaflet over Mapbox**: Migrated due to iOS Safari WebGL 2 incompatibility (AD-2025-001)
+1. **Leaflet over Mapbox**: Migrated due to iOS Safari WebGL 2 incompatibility
 2. **CartoDB Positron tiles**: Clean, minimal base map for data visualization
 3. **Token hierarchy**: 4-level max (L00-L03) prevents infinite chains
 4. **SECURITY DEFINER functions**: Event logging bypasses RLS for append-only writes
 5. **Daily aggregates**: Materialized rollups for performant analytics queries
+6. **IP privacy**: IPs auto-cleared from `url_events` once zip code is populated
+7. **L00 instantiation**: Base L00 tokens are templates; each scan creates a unique instance
+8. **Unified slide architecture**: Auto-detect slide type from hotspot content on save
+9. **Static marker encoding**: No animations on map markers — must be snapshot-safe
+10. **Chapter-scoped messaging**: Cascading template resolution (chapter → campaign → global)
 
 ---
 
