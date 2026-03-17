@@ -1,8 +1,8 @@
 # Product Requirements Document (PRD) — December 3, 2025
 # Democracy Forge
 
-**Version**: 1.0  
-**Last Updated**: December 3, 2025  
+**Version**: 2.0  
+**Last Updated**: March 17, 2026  
 **Document Owner**: [TBD]
 
 ---
@@ -186,33 +186,47 @@ Empower civic organizations to understand and amplify how their message spreads 
 
 ### 5.2 Interactive Slide Templates
 
-**Description**: Configurable viral slides with interactive hotspots.
+**Description**: Configurable viral slides with interactive hotspots. The unified slide architecture auto-classifies slides by hotspot content on save.
 
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Upload background image | ✅ Implemented | Full resolution support |
-| Define hotspot regions | ✅ Implemented | Visual editor |
-| Configure hotspot actions | ✅ Implemented | Share SMS, Email, Link copy |
+| Define hotspot regions | ✅ Implemented | Visual editor with drag-drop |
+| Configure hotspot actions | ✅ Implemented | SMS, Email, Link copy, Vimeo, App download, External link, Email links |
 | Template library | ✅ Implemented | `viral_slide_configs` table |
 | Preview templates | ✅ Implemented | |
+| Auto-classify slide type | ✅ Implemented | Action → `interactive_share`, Data → `stats_page`, Both → `hybrid` |
+| Auto-promote/demote slides | ✅ Implemented | Adding hotspots promotes image → spread-word; removing demotes back |
+| Vimeo embed slides | ✅ Implemented | Inline player with mute toggle and swipe passthrough |
+| Chart hotspots | ✅ Implemented | Stacked bar charts rendered in hotspot regions |
+| Map hotspots | ✅ Implemented | Leaflet maps rendered in hotspot regions |
+| Live number hotspots | ✅ Implemented | Real-time campaign metrics embedded in slides |
+| Server-side snapshot rendering | ✅ Implemented | SVG/PNG via `render-stats-snapshot` edge function |
 
-**Routes**: `/interactive-templates`
+**Template Types**: `interactive_share`, `stats_page`, `hybrid`, `display_only`
+
+**Routes**: `/interactive-templates`, `/template-editor/:id`
 
 ---
 
 ### 5.3 Token-Based Viral Tracking
 
-**Description**: Hierarchical token system for tracking content sharing chains.
+**Description**: Hierarchical token system for tracking content sharing chains across QR, email, and SMS distribution channels.
 
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Mint L00 tokens | ✅ Implemented | `mint_l00()` function |
-| Mint share tokens (L01-L03) | ✅ Implemented | `mint_share()` function |
-| Log events (scan/view/share) | ✅ Implemented | `log_event()` function |
+| L00 per-scan instantiation | ✅ Implemented | `instantiate_l00_token()` — unique instance per scan |
+| L00 re-instantiation by zip | ✅ Implemented | `maybe_reinstantiate_l00()` — dedup for Actions, always new for Events |
+| Mint share tokens (L01-L03) | ✅ Implemented | `mint_share()` function, capped at L03 |
+| Log events (scan/view/share) | ✅ Implemented | `log_event()` SECURITY DEFINER function |
 | Track parent/root chain | ✅ Implemented | `parent_token`, `root_token` fields |
-| UTM parameter tracking | ✅ Implemented | Full UTM snapshot stored |
-| Geolocation (IP-based) | ✅ Implemented | Via `geoip` edge function |
-| Geolocation (GPS) | ⚠️ Partial | Location source tracked, GPS abandoned |
+| UTM parameter tracking | ✅ Implemented | Full UTM snapshot stored per event |
+| Geolocation (IP-based) | ✅ Implemented | Via `geoip` edge function (ipapi) |
+| Geolocation (GPS fallback) | ⚠️ Partial | Location source tracked; GPS often denied on mobile |
+| Reverse geocode to zip | ✅ Implemented | `reverse-geocode` edge function + `get_nearest_zip_code()` |
+| IP privacy auto-clear | ✅ Implemented | Trigger clears IP once zip code is populated |
+| Multi-channel L00 distribution | ✅ Implemented | QR, email blast, SMS blast all produce L00 tokens |
 
 **Token Hierarchy**:
 ```
@@ -247,7 +261,7 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 | Dashboard | Features | Route |
 |-----------|----------|-------|
 | **Campaign Analytics** | Funnel charts, viral coefficient trends | `/campaign-analytics` |
-| **Campaign Dashboard** | Events table, map view, filters | `/campaign-dashboard` |
+| **Campaign Dashboard** | Events table, map view, virality analytics | `/campaign-dashboard` |
 | **Virality Dashboard** | Engagement by level, content performance | `/virality-dashboard` |
 | **Activity Monitor** | Real-time event stream, map | `/activity-monitor` |
 
@@ -258,6 +272,41 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 - Token level (L00-L03)
 - Date range
 - Geographic (city, state, zip)
+- Share medium (QR, SMS, Email)
+
+---
+
+### 5.8 Share Flow Visualization (Samizdat Map)
+
+**Description**: Geographic visualization of content spread using a 3-dimensional marker encoding system on Leaflet maps. No connecting arcs — geographic spread is shown organically through the appearance of new markers at recipient locations.
+
+| Dimension | What It Encodes | Values |
+|-----------|----------------|--------|
+| **Shape** | Distribution channel | ● Circle (QR), ◻ Square (Email), △ Triangle (SMS) |
+| **Fill color** | Viral level (hops from org) | ⬛ Dark `#1e293b` (L00), 🟢 Green `#22c55e` (L01), 🟣 Purple `#a855f7` (L02), 🔴 Red `#ef4444` (L03) |
+| **Border color** | Engagement state | White `#ffffff` (opened), Amber `#f59e0b` (share intent), Cyan `#06b6d4` (share completed) |
+
+**Engagement state lifecycle**:
+1. Person opens link → marker appears with **white** border
+2. Person taps Share → border changes to **amber** (child token minted)
+3. Recipient opens shared link → sharer's border changes to **cyan**
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Multi-shape markers (QR/Email/SMS) | ✅ Implemented | Shape determined by `utm_medium` |
+| Level-based fill colors | ✅ Implemented | Contrast-verified palette |
+| 3-state engagement borders | ✅ Implemented | Retroactive — works with all existing data |
+| Marker clustering | ✅ Implemented | Via leaflet.markercluster |
+| Timeline playback | ✅ Implemented | Scrub through events over time |
+| Chain mode | ✅ Implemented | Trace individual token chains |
+| Viewport activity report | ✅ Implemented | Summary stats for visible markers |
+| Fullscreen mode | ✅ Implemented | |
+| Event story panel | ✅ Implemented | Narrative view of single event |
+| Conversion rate in viewport report | ⬚ Planned | Completed shares / share intents |
+
+**Design constraint**: All visual states are static (no animations) for compatibility with server-side snapshot rendering.
+
+**Reference**: `docs/PRD_Share_Flow_Visualization.md`
 
 ---
 
@@ -425,13 +474,33 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 | `fetch-mobilize-event` | Mobilize API integration |
 | `import-zip-codes` | Bulk zip code data import |
 
+### Edge Functions
+
+| Function | Purpose |
+|----------|---------|
+| `geoip` | IP-based geolocation lookup (via ipapi) |
+| `reverse-geocode` | lat/lon → nearest zip code |
+| `render-stats-snapshot` | SSR: generates SVG/PNG snapshots of stats slides |
+| `refresh-all-snapshots` | Batch re-renders all campaign snapshots |
+| `deploy-template-snapshots` | Deploy snapshots for specific templates |
+| `get-mapbox-token` | (Legacy) Secure Mapbox token retrieval |
+| `import-google-slides` | Google Slides import |
+| `fetch-mobilize-event` | Mobilize API integration |
+| `import-zip-codes` | Bulk zip code data import |
+| `generate-campaign-pdf` | Export campaign data as PDF |
+
 ### Key Architectural Decisions
 
-1. **Leaflet over Mapbox**: Migrated due to iOS Safari WebGL 2 incompatibility (AD-2025-001)
+1. **Leaflet over Mapbox**: Migrated due to iOS Safari WebGL 2 incompatibility
 2. **CartoDB Positron tiles**: Clean, minimal base map for data visualization
 3. **Token hierarchy**: 4-level max (L00-L03) prevents infinite chains
 4. **SECURITY DEFINER functions**: Event logging bypasses RLS for append-only writes
 5. **Daily aggregates**: Materialized rollups for performant analytics queries
+6. **IP privacy**: IPs auto-cleared from `url_events` once zip code is populated
+7. **L00 instantiation**: Base L00 tokens are templates; each scan creates a unique instance
+8. **Unified slide architecture**: Auto-detect slide type from hotspot content on save
+9. **Static marker encoding**: No animations on map markers — must be snapshot-safe
+10. **Chapter-scoped messaging**: Cascading template resolution (chapter → campaign → global)
 
 ---
 
@@ -509,21 +578,33 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 
 ## 11. Future Roadmap
 
-### Near-Term (Q1 2026)
+### Recently Completed (Q1 2026)
 
+- [x] Server-side snapshot rendering for stats slides
+- [x] Campaign narrative generation (AI-driven text summaries)
+- [x] Vimeo slide type with inline player
+- [x] Chapter-scoped messaging overrides
+- [x] 3-state engagement border model on map markers
+- [x] Multi-channel L00 distribution (QR/email/SMS blasts)
+- [x] Unified slide architecture (auto-classify on save)
+- [x] Contrast-verified marker palette
+- [x] PDF campaign export
+
+### Near-Term (Q2 2026)
+
+- [ ] Conversion rate in viewport activity report
 - [ ] Scheduled cron for `refresh_daily_aggregates()`
-- [ ] Export functionality (CSV, PDF reports)
 - [ ] Enhanced date range presets (last 7d, 30d, custom)
 - [ ] Bulk EoA import from CSV
 
-### Mid-Term (Q2-Q3 2026)
+### Mid-Term (Q3-Q4 2026)
 
-- [ ] Real-time dashboard updates (WebSocket)
+- [ ] Real-time dashboard updates (WebSocket/Realtime)
 - [ ] A/B testing for slide templates
-- [ ] Push notifications for campaign milestones
 - [ ] Advanced geographic filtering (draw polygon)
+- [ ] Push notifications for campaign milestones
 
-### Long-Term (Q4 2026+)
+### Long-Term (2027+)
 
 - [ ] Machine learning for optimal distribution timing
 - [ ] Integration with additional CRMs
@@ -587,4 +668,4 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 
 ---
 
-*Document generated from codebase analysis. Last updated: December 3, 2025*
+*Document generated from codebase analysis. Last updated: March 17, 2026*
