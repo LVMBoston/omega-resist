@@ -216,13 +216,13 @@ This metric can be added to the Viewport Activity Report.
 
 ## Implementation Checklist
 
-- [ ] Update `LEVEL_COLORS` in SamizdatMap.tsx (L00 → `#1e293b`, L02 → `#a855f7`)
-- [ ] Add `engagementState` field to `EventPoint` interface
-- [ ] Query child token existence + view events in `fetchEventData()`
-- [ ] Replace `hasSpawns: boolean` with `engagementState` in `getShapeSVG()`
-- [ ] Update border colors: white/amber/cyan
-- [ ] Update legend to show border color meanings
-- [ ] Update tooltip to show engagement state
+- [x] Update `LEVEL_COLORS` in SamizdatMap.tsx (L00 → `#1e293b`, L02 → `#a855f7`)
+- [x] Add `engagementState` field to `EventPoint` interface
+- [x] Query child token existence + view events in `fetchEventData()`
+- [x] Replace `hasSpawns: boolean` with `engagementState` in `getShapeSVG()`
+- [x] Update border colors: white/amber/cyan
+- [x] Update legend to show border color meanings
+- [x] Update tooltip to show engagement state
 - [ ] Add conversion rate to Viewport Activity Report (future)
 
 ## Dependencies
