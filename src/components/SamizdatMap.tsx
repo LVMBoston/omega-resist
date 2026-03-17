@@ -55,6 +55,21 @@ interface SamizdatMapProps {
   dataSource?: "real" | "simulated" | "both";
 }
 
+// 3-state engagement model (PRD_Share_Flow_Visualization.md)
+type EngagementState = "none" | "intent" | "completed";
+
+const ENGAGEMENT_BORDER_COLORS: Record<EngagementState, string> = {
+  none: "#ffffff",      // white — opened, no share
+  intent: "#f59e0b",    // amber — share button tapped
+  completed: "#06b6d4", // cyan — recipient opened
+};
+
+const ENGAGEMENT_LABELS: Record<EngagementState, string> = {
+  none: "Opened",
+  intent: "Share Intent",
+  completed: "Share Completed",
+};
+
 interface EventPoint {
   eventId: string;
   eoaId: string;
@@ -77,6 +92,8 @@ interface EventPoint {
   city?: string | null;
   // Spawn data for L00 markers
   spawnCount?: number;
+  // Engagement state for border color
+  engagementState: EngagementState;
 }
 
 interface ZipAggregate {
@@ -159,11 +176,11 @@ const SHARE_MEDIUM_LABELS: Record<EoaShape, string> = {
 };
 
 // Generate SVG for marker shape
-// hasSpawns param controls stroke color: green (#22c55e) if true, white if false
-const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, hasSpawns: boolean = false): string => {
+// engagementState controls border color: white (none), amber (intent), cyan (completed)
+const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, engagementState: EngagementState = "none"): string => {
   const strokeWidth = 2;
   const halfStroke = strokeWidth / 2;
-  const strokeColor = hasSpawns ? "#22c55e" : "white";
+  const strokeColor = ENGAGEMENT_BORDER_COLORS[engagementState];
   
   switch (shape) {
     case "square":
@@ -597,38 +614,46 @@ const SamizdatMap = ({
         return;
       }
 
-      // Step 3b: Fetch spawn counts for L00 instance tokens
-      // Count only L01 children that have at least one view event (engaged spawns)
-      const l00InstanceTokens = tokens.filter(t => t.level === 0 && t.l00_instance).map(t => t.token);
+      // Step 3b: Fetch spawn counts AND engagement state for all tokens
+      // For each token, determine: none (no children), intent (has child), completed (child has view)
+      const allTokenStrings = tokens.map(t => t.token);
       const spawnCounts: Record<string, number> = {};
+      const engagementStates: Record<string, EngagementState> = {};
+
+      // Get all child tokens (tokens whose parent_token is in our set)
+      const { data: childTokens } = await supabase
+        .from("tokens")
+        .select("token, parent_token, l00_instance")
+        .in("parent_token", allTokenStrings)
+        .is("deleted_at", null);
       
-      if (l00InstanceTokens.length > 0) {
-        // Get L01 tokens that are direct children of L00 instance tokens
-        const { data: spawnData } = await supabase
-          .from("tokens")
-          .select("token, l00_instance")
-          .in("parent_token", l00InstanceTokens)
-          .eq("level", 1)
-          .is("deleted_at", null)
-          .eq("is_simulated", false);
+      if (childTokens && childTokens.length > 0) {
+        // Mark all parents as "intent" (they have at least one child)
+        const parentTokensWithChildren = new Set(childTokens.map(t => t.parent_token).filter(Boolean));
+        parentTokensWithChildren.forEach(pt => {
+          engagementStates[pt!] = "intent";
+        });
+
+        // Check which child tokens have view events (completion)
+        const childTokenStrings = childTokens.map(t => t.token);
+        const { data: childViewEvents } = await supabase
+          .from("url_events")
+          .select("token")
+          .in("token", childTokenStrings)
+          .eq("event_type", "view");
         
-        if (spawnData && spawnData.length > 0) {
-          // Check which of these L01 tokens have view events (engagement gate)
-          const spawnTokens = spawnData.map(t => t.token);
-          const { data: viewEvents } = await supabase
-            .from("url_events")
-            .select("token")
-            .in("token", spawnTokens)
-            .eq("event_type", "view");
-          
-          const engagedTokens = new Set(viewEvents?.map(e => e.token) || []);
-          
-          spawnData.forEach((t) => {
-            if (t.l00_instance && engagedTokens.has(t.token)) {
-              spawnCounts[t.l00_instance] = (spawnCounts[t.l00_instance] || 0) + 1;
-            }
-          });
-        }
+        const childrenWithViews = new Set(childViewEvents?.map(e => e.token) || []);
+        
+        // For each child with a view, mark its parent as "completed"
+        childTokens.forEach(child => {
+          if (childrenWithViews.has(child.token) && child.parent_token) {
+            engagementStates[child.parent_token] = "completed";
+          }
+          // Also count engaged spawns for L00 instance filtering
+          if (child.l00_instance && childrenWithViews.has(child.token)) {
+            spawnCounts[child.l00_instance] = (spawnCounts[child.l00_instance] || 0) + 1;
+          }
+        });
       }
 
       // Step 4: Calculate first view per mobilize_code group
@@ -744,6 +769,11 @@ const SamizdatMap = ({
         // Get spawn count for this token's l00_instance (only meaningful for L00 events)
         const tokenSpawnCount = td.l00Instance ? (spawnCounts[td.l00Instance] || 0) : 0;
         
+        // Determine engagement state: L03 tokens can't share, always "none"
+        const tokenEngagement: EngagementState = event.token in engagementStates
+          ? engagementStates[event.token]
+          : "none";
+        
         points.push({
           eventId: event.id,
           eoaId: td.eoaId,
@@ -763,6 +793,7 @@ const SamizdatMap = ({
           countryCode: event.country_code || null,
           city: event.city || null,
           spawnCount: tokenSpawnCount,
+          engagementState: tokenEngagement,
         });
       });
 
@@ -866,9 +897,8 @@ const SamizdatMap = ({
       const fillColor = getLevelColor(event.level);
       const shape = getShareMediumShape(event.utmMedium);
       const size = 16;
-      // L00 QR markers get green outline if they have spawns
-      const hasSpawns = event.level === 0 && event.utmMedium === "qr" && (event.spawnCount || 0) > 0;
-      const shapeSVG = getShapeSVG(shape, fillColor, size, hasSpawns);
+      // Border color reflects engagement state (white→amber→cyan)
+      const shapeSVG = getShapeSVG(shape, fillColor, size, event.engagementState);
       const levelLabel = `L${String(event.level).padStart(2, '0')}`;
       
       // In chain mode, show sequence numbers
@@ -936,12 +966,14 @@ const SamizdatMap = ({
         hour12: true
       });
       
-      // Show spawn info for L00 QR events
-      const spawnInfo = event.level === 0 && event.utmMedium === "qr" && event.spawnCount !== undefined
-        ? `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #e2e8f0;color:${event.spawnCount > 0 ? '#22c55e' : '#94a3b8'};">
-            ${event.spawnCount > 0 ? `✓ ${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''}` : 'No spawns yet'}
-           </div>`
-        : '';
+      // Show engagement state info
+      const engagementColor = ENGAGEMENT_BORDER_COLORS[event.engagementState];
+      const engagementLabel = ENGAGEMENT_LABELS[event.engagementState];
+      const engagementInfo = `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #e2e8f0;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${engagementColor};border:1px solid #cbd5e1;margin-right:4px;vertical-align:middle;"></span>
+          <span style="color:${event.engagementState === 'none' ? '#94a3b8' : engagementColor};">${engagementLabel}</span>
+          ${event.spawnCount && event.spawnCount > 0 ? ` <span style="color:#64748b;">(${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''})</span>` : ''}
+         </div>`;
       
       const instanceLabel = event.l00Instance
         ? `<div style="color:#64748b;font-family:monospace;font-size:10px;word-break:break-all;">${event.l00Instance}</div>`
@@ -953,7 +985,7 @@ const SamizdatMap = ({
           <div style="color:#64748b;">${locationLabel}</div>
           <div style="color:#64748b;">${timestamp}</div>
           ${instanceLabel}
-          ${spawnInfo}
+          ${engagementInfo}
         </div>
       `;
     };
@@ -1386,6 +1418,25 @@ const SamizdatMap = ({
                           dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 12) }}
                         />
                         <span>{SHARE_MEDIUM_LABELS[shape]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Engagement border colors */}
+                <div className="border-t border-border pt-2">
+                  <div className="text-xs font-medium mb-1.5">Engagement</div>
+                  <div className="flex gap-3">
+                    {(["none", "intent", "completed"] as EngagementState[]).map((state) => (
+                      <div key={state} className="flex items-center gap-1 text-xs">
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full border-2"
+                          style={{ 
+                            backgroundColor: "#64748b",
+                            borderColor: ENGAGEMENT_BORDER_COLORS[state],
+                          }}
+                        />
+                        <span>{ENGAGEMENT_LABELS[state]}</span>
                       </div>
                     ))}
                   </div>
