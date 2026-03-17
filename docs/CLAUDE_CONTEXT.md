@@ -1,6 +1,6 @@
 # Claude Context — Democracy Forge (omega-resist)
 
-> **Last updated**: 2026-03-05  
+> **Last updated**: 2026-03-17  
 > **Purpose**: Drop this file into Claude's context at the start of each working session.
 
 ---
@@ -26,6 +26,7 @@
 | **Mobilize Code** | 6-char identifier linking an EoA to its QR/distribution context |
 | **Chapter** | Group of EoAs sharing the same `mobilize_code` within a campaign |
 | **Samizdat** | Internal name for the viral distribution mechanism |
+| **Engagement State** | Border color encoding on map markers: opened (white), share intent (amber), share completed (cyan) |
 
 ---
 
@@ -215,6 +216,8 @@ Per-campaign or per-chapter messaging template overrides. Fields: `campaign_id`,
 
 6. **IP privacy**: IP addresses are cleared from `url_events` once zip code is populated (via trigger `clear_ip_when_zip_populated`).
 
+7. **Map marker visual encoding**: 3 orthogonal dimensions encode channel, depth, and engagement on a single marker. Shape = channel (● QR, ◻ Email, △ SMS). Fill = level (L00 dark `#1e293b`, L01 green `#22c55e`, L02 purple `#a855f7`, L03 red `#ef4444`). Border = engagement state (white = opened, amber `#f59e0b` = share intent, cyan `#06b6d4` = share completed). No animations — all state must be snapshot-safe. See `docs/PRD_Share_Flow_Visualization.md`.
+
 ---
 
 ## 6. Current State (as of 2026-03-05)
@@ -249,6 +252,9 @@ Per-campaign or per-chapter messaging template overrides. Fields: `campaign_id`,
 - External link label handling improvements
 - Chapter-scoped messaging system
 - Bulk slide selection in deck editor
+- Contrast-verified map marker palette (dark L00, purple L02, cyan completed border)
+- 3-state border engagement model (white → amber → cyan) for share flow visualization
+- Multi-channel L00 distribution model (QR/email/SMS blasts all produce L00 markers)
 
 ---
 

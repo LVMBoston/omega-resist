@@ -1,35 +1,25 @@
 
+# Phase 1 — Unified Slide Architecture: Editor UX
 
-## Update CLAUDE_CONTEXT.md
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
 
-The context doc is stale (dated 2026-03-05). Based on the recent map visualization work and palette decisions, I'd add the following to the existing sections:
-
-### 1. Section 5 (Architecture Decisions) — new item #7
-
-Add the **Map Marker Visual Encoding** decision:
-- **3 orthogonal dimensions**: Shape = channel (●QR, ◻Email, △SMS), Fill = level, Border = engagement state
-- **Level fill palette** (contrast-verified): L00 dark `#1e293b`, L01 green `#22c55e`, L02 purple `#a855f7`, L03 red `#ef4444`
-- **Border engagement states**: White (opened), Amber `#f59e0b` (share intent), Cyan `#06b6d4` (share completed)
-- **No animations** — all state must be snapshot-safe (Mapbox Static/Leaflet server render captures a single frame)
-- Reference: `docs/PRD_Share_Flow_Visualization.md`
-
-### 2. Section 6 (Current State → Recent Work)
-
-Add to the recent work list:
-- Contrast-verified map marker palette (dark L00, purple L02, cyan completed border)
-- 3-state border engagement model (white → amber → cyan) for share flow visualization
-- Multi-channel L00 distribution model (QR/email/SMS blasts all produce L00 markers)
-
-### 3. Section 1 (Key Terminology table)
-
-Add row:
-- **Engagement State** — Border color encoding on map markers: opened (white), share intent (amber), share completed (cyan)
-
-### 4. Update date
-
-Bump "Last updated" from 2026-03-05 to 2026-03-17.
+Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
 
 ---
 
-**Files modified:** `docs/CLAUDE_CONTEXT.md` only — four targeted edits, no structural changes.
+# Phase 1b — Slide Thumbnail Capture
 
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
+
+Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
+
+---
+
+# Phase 1c — Interactive Slide Preview in DeckEditor
+
+**Status:** Approved & Implemented
+**Date:** 2026-03-07
+
+Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
