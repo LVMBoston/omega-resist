@@ -55,6 +55,21 @@ interface SamizdatMapProps {
   dataSource?: "real" | "simulated" | "both";
 }
 
+// 3-state engagement model (PRD_Share_Flow_Visualization.md)
+type EngagementState = "none" | "intent" | "completed";
+
+const ENGAGEMENT_BORDER_COLORS: Record<EngagementState, string> = {
+  none: "#ffffff",      // white — opened, no share
+  intent: "#f59e0b",    // amber — share button tapped
+  completed: "#06b6d4", // cyan — recipient opened
+};
+
+const ENGAGEMENT_LABELS: Record<EngagementState, string> = {
+  none: "Opened",
+  intent: "Share Intent",
+  completed: "Share Completed",
+};
+
 interface EventPoint {
   eventId: string;
   eoaId: string;
@@ -77,6 +92,8 @@ interface EventPoint {
   city?: string | null;
   // Spawn data for L00 markers
   spawnCount?: number;
+  // Engagement state for border color
+  engagementState: EngagementState;
 }
 
 interface ZipAggregate {
