@@ -1,320 +1,168 @@
 # Share Flow Visualization Feature Specification
 
+## Status: Approved & Implemented (Border Model) — 2026-03-17
+
 ## Overview
 
-This document describes a map visualization feature that displays the geographic relationship between **share intents** (when a user clicks share) and **share completions** (when a recipient opens the shared link). The feature renders visual arcs connecting origin and destination locations, showing how content spreads virally across geography.
+This document describes how the Samizdat Map visualizes share engagement state using a **3-state border color model** on existing markers. Geographic spread is shown organically through the appearance of new markers at recipient locations — no connecting arcs are drawn.
 
 ## Terminology
 
-| Term                     | Definition                                           | Data Source                                      |
-| ------------------------ | ---------------------------------------------------- | ------------------------------------------------ |
-| **Share Intent**         | User clicks share button, opening SMS/email composer | `url_events.event_type = 'share'`                |
-| **Share Completion**     | Recipient opens the shared link                      | `url_events.event_type = 'view'` for L01+ tokens |
-| **Origin Location**      | Geographic location where share intent occurred      | Geolocation of the `share` event                 |
-| **Destination Location** | Geographic location where share was opened           | Geolocation of the L01+ `view` event             |
-| **Share Chain**          | Parent token → child token relationship              | `tokens.parent_token` linkage                    |
+| Term                 | Definition                                                        | Data Source                                         |
+| -------------------- | ----------------------------------------------------------------- | --------------------------------------------------- |
+| **Opened**           | User scans a QR code, creating an L00 instance and logging a view | `url_events.event_type = 'view'` for L00 instance   |
+| **Share Intent**     | User taps share button, minting a child token                     | `tokens` row with `parent_token` pointing to sharer |
+| **Share Completion** | Recipient opens the shared link                                   | `url_events.event_type = 'view'` for L01+ token     |
+| **Share Chain**      | Parent token → child token relationship                           | `tokens.parent_token` linkage                       |
 
-## Data Model
+## Corrected Lifecycle
 
-### Linking Share Intent to Completion
+There is no "seeded but unopened" state. A QR code does not exist on the map until someone scans it.
 
 ```
-L00 Token (root)
-    ↓ user clicks share
-Share Event logged (intent) → L01 Token minted (parent_token = L00)
-    ↓ recipient opens link
-View Event logged for L01 (completion)
+1. QR Scan (L00 view event)
+   → Green circle appears at scanner's location
+   → White border (opened, no share attempted)
+   → Unique L00 instance created (e.g., "l00-908742-nkd25:abcdef")
+
+2. Scanner taps Share button (mint_share called)
+   → L01 child token created with parent_token = scanner's instance
+   → Scanner's marker border changes: white → amber
+   → Note: The share may be abandoned (user closes SMS/email without sending)
+
+3. Recipient opens shared link (L01 view event)
+   → New marker appears at recipient's location (L01, different color)
+   → Scanner's marker border changes: amber → green (share completed)
 ```
 
-**Key relationships:**
+## 3-State Border Color Model
 
-- `tokens.parent_token` links child to parent
-- `url_events.token` links events to tokens
-- Share intent location: geolocation from `share` event
-- Completion location: geolocation from `view` event for L01+ token
+All marker shapes (circle/QR, square/email, triangle/SMS) use the same border state logic:
 
-### Query Pattern
+| State         | Border Color         | Trigger                                         | Meaning                                    |
+| ------------- | -------------------- | ----------------------------------------------- | ------------------------------------------ |
+| **Opened**    | White (`#ffffff`)    | L00 instance exists with a `view` event         | Person scanned/opened, hasn't shared       |
+| **Intent**    | Amber (`#f59e0b`)   | Child token exists (`parent_token` → this token) | Share button tapped; may or may not be sent |
+| **Completed** | Green (`#22c55e`)   | Child token has a `view` event in `url_events`  | Recipient opened the shared link           |
+
+### Key Design Decisions
+
+1. **No arcs.** Geographic spread is visible through the organic appearance of child markers at recipient locations. Arcs were rejected as too cluttered.
+
+2. **Shape = channel, border = engagement.** The marker shape (circle, square, triangle) communicates *how* the content arrived. The border color communicates *what happened next*.
+
+3. **Intent includes abandoned shares.** When `mint_share()` fires on button tap, the child token is created before the user confirms sending. Some amber borders represent shares that were never actually sent. This ambiguity is acceptable — willingness to share is itself a meaningful signal.
+
+4. **Applies to all levels.** While the primary use case is L00 instances, the border model applies to any token that could spawn children (L00, L01, L02). L03 tokens cannot spawn children (level cap) so they always have white borders.
+
+## Data Requirements
+
+### Engagement State Query
+
+To determine border state for each marker, the map needs:
 
 ```sql
--- Get share intent → completion pairs with locations
+-- For each displayed token, determine engagement state
+-- 1. Check if any child token exists (intent)
+-- 2. Check if that child has a view event (completed)
+
 SELECT
-  intent.id as intent_event_id,
-  intent.latitude as origin_lat,
-  intent.longitude as origin_lng,
-  intent.zip_code as origin_zip,
-  intent.occurred_at as intent_time,
-  completion.id as completion_event_id,
-  completion.latitude as dest_lat,
-  completion.longitude as dest_lng,
-  completion.zip_code as dest_zip,
-  completion.occurred_at as completion_time,
-  child_token.token as child_token,
-  child_token.parent_token,
-  child_token.level
-FROM url_events intent
-JOIN tokens child_token ON intent.token = child_token.parent_token
-JOIN url_events completion ON completion.token = child_token.token
-WHERE intent.event_type = 'share'
-  AND completion.event_type = 'view'
-  AND child_token.level > 0
-  AND intent.latitude IS NOT NULL
-  AND completion.latitude IS NOT NULL;
+  parent.token AS parent_token,
+  CASE
+    WHEN EXISTS (
+      SELECT 1 FROM url_events ve
+      WHERE ve.token = child.token AND ve.event_type = 'view'
+    ) THEN 'completed'
+    WHEN child.token IS NOT NULL THEN 'intent'
+    ELSE 'none'
+  END AS engagement_state
+FROM tokens parent
+LEFT JOIN tokens child ON child.parent_token = parent.token
+WHERE parent.token = ANY($displayed_tokens);
 ```
 
-## Feature Modes
+This can be integrated into the existing `fetchEventData()` call in SamizdatMap.
 
-### Mode 1: Static Arcs (Production - Samizdat Map)
+### Implementation in `getShapeSVG()`
 
-**Use case:** Real data visualization on campaign dashboard
-
-**Behavior:**
-
-- Curved arcs drawn from share intent location to completion location(s)
-- Arc color matches EoA color coding (consistent with existing point markers)
-- Arcs are static (not animated)
-- Hover interaction highlights specific share chain
-- Click on arc shows popup with share details
-
-**Visual Design:**
-
-- Arc curvature: Bezier curve with apex proportional to distance
-- Arc opacity: 0.6 base, 1.0 on hover
-- Arc stroke width: 2px base, 3px on hover
-- Multiple completions from same intent: multiple arcs radiating from single origin
-
-**Toggle Control:**
-
-- Button: "Show Share Flow" (default: OFF)
-- When enabled, arcs overlay existing point markers
-- Independent of "Show ZIP counts" toggle
-
-**Performance Constraints:**
-
-- Maximum 500 arcs rendered simultaneously
-- Arcs outside viewport are culled
-- Consider clustering origins with >5 completions
-
-### Mode 2: Animated Flow (Simulator Only)
-
-**Use case:** Dramatic visualization for demos, internal testing, presentations
-
-**Behavior:**
-
-- Animated particles flow from origin to destination
-- Particles follow curved path (same Bezier as static arcs)
-- Animation speed proportional to time elapsed (compressed timeline)
-- Supports "replay" mode with time controls
-
-**Visual Design:**
-
-- Particle: Small glowing dot (4px radius)
-- Particle trail: Fading gradient tail (20px length)
-- Particle color: Matches EoA color
-- Particle speed: 2-3 second travel time per arc
-- Staggered start times based on actual `occurred_at` timestamps
-
-**Time Controls:**
-
-- Play / Pause button
-- Speed selector: 1x, 2x, 5x, 10x
-- Timeline scrubber showing elapsed time since go-live
-- "Jump to" presets: First share, Peak activity, Latest
-
-**Why Simulator Only:**
-
-- Animation is CPU-intensive
-- Not suitable for production with large datasets
-- Accessibility concerns (motion sensitivity)
-- Battery drain on mobile devices
-- Simulator has controlled data volume
-
-### Mode 3: Aggregate Heatmap (Future)
-
-**Use case:** High-volume campaigns where individual arcs would be overwhelming
-
-**Behavior:**
-
-- Heatmap overlay showing share completion density
-- Separate layer for share intent density
-- No individual arcs, just geographic intensity
-
-**Not in initial scope.**
-
-## User Interface
-
-### Samizdat Map Controls (Mode 1)
-
-```
-┌─────────────────────────────────────────────┐
-│ [Show ZIP counts] [Show Share Flow]         │
-│                                             │
-│              MAP CANVAS                     │
-│                                             │
-│   ○ ────────────────────> ●                 │
-│   │                       │                 │
-│   origin                  destination       │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-### Simulator Controls (Mode 2)
-
-```
-┌─────────────────────────────────────────────┐
-│ ▶ Pause   Speed: [1x ▼]   ━━━━●━━━━━━ 2:34  │
-├─────────────────────────────────────────────┤
-│                                             │
-│              MAP CANVAS                     │
-│                                             │
-│   ○ ~~particle~~> ●                         │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-## Arc Rendering Technical Approach
-
-### Bezier Curve Calculation
+Replace the current `hasSpawns: boolean` parameter with a 3-state enum:
 
 ```typescript
-interface ShareArc {
-  origin: { lat: number; lng: number };
-  destination: { lat: number; lng: number };
-  intentEventId: string;
-  completionEventId: string;
-  childToken: string;
-  eoaId: string;
-  eoaColor: string;
-}
+type EngagementState = "none" | "intent" | "completed";
 
-function calculateArcPath(arc: ShareArc): string {
-  const { origin, destination } = arc;
+const ENGAGEMENT_BORDER_COLORS: Record<EngagementState, string> = {
+  none: "#ffffff",      // white — opened, no share
+  intent: "#f59e0b",    // amber — share button tapped
+  completed: "#22c55e", // green — recipient opened
+};
 
-  // Calculate midpoint
-  const midLat = (origin.lat + destination.lat) / 2;
-  const midLng = (origin.lng + destination.lng) / 2;
-
-  // Calculate distance for curvature
-  const distance = Math.sqrt(
-    Math.pow(destination.lat - origin.lat, 2) +
-    Math.pow(destination.lng - origin.lng, 2)
-  );
-
-  // Control point offset (perpendicular to line, proportional to distance)
-  const curvature = distance * 0.3;
-  const angle = Math.atan2(destination.lat - origin.lat, destination.lng - origin.lng);
-  const controlLat = midLat + curvature * Math.cos(angle + Math.PI / 2);
-  const controlLng = midLng + curvature * Math.sin(angle + Math.PI / 2);
-
-  return `M ${origin.lng} ${origin.lat} Q ${controlLng} ${controlLat} ${destination.lng} ${destination.lat}`;
-}
-```
-
-### Leaflet SVG Overlay
-
-For static arcs on Leaflet (current Samizdat implementation):
-
-```typescript
-// Create SVG overlay for arcs
-const svgOverlay = L.svg({ interactive: true }).addTo(map);
-const svg = d3.select(map.getPanes().overlayPane).select('svg');
-const g = svg.append('g').attr('class', 'share-arcs');
-
-// Render arcs
-arcs.forEach(arc => {
-  const path = g.append('path')
-    .attr('d', calculateArcPath(arc))
-    .attr('stroke', arc.eoaColor)
-    .attr('stroke-width', 2)
-    .attr('fill', 'none')
-    .attr('opacity', 0.6)
-    .on('mouseenter', () => highlightChain(arc))
-    .on('mouseleave', () => unhighlightChain(arc));
-});
+const getShapeSVG = (
+  shape: EoaShape,
+  fillColor: string,
+  size: number = 14,
+  engagementState: EngagementState = "none"
+): string => {
+  const strokeColor = ENGAGEMENT_BORDER_COLORS[engagementState];
+  // ... rest of shape rendering
+};
 ```
 
 ## Edge Cases
 
-### Single Share, Multiple Completions
+### Abandoned Shares (Intent Without Completion)
 
-One share intent can result in multiple completions if:
+User taps share, `mint_share()` fires, but they close the SMS/email app without sending.
 
-- User added multiple recipients to SMS/email (group message)
-- Same link was forwarded by recipient
+**Handling:** Marker stays amber indefinitely. This is by design — we cannot distinguish abandoned from pending.
 
-**Handling:** Render multiple arcs from same origin point, each to different destination.
+### Multiple Share Attempts
+
+User taps share multiple times (e.g., SMS to one person, then email to another).
+
+**Handling:** Any child token triggers amber. Any child with a view triggers green. The "highest" engagement state wins.
 
 ### Completion Without Intent Location
 
-Share event may lack geolocation data.
+The child token's view event has geolocation but the parent's share moment doesn't.
 
-**Handling:** Skip arc rendering, but still count in metrics. Consider fallback to token's root location.
+**Handling:** The parent marker still transitions to green. The recipient's marker appears at their location independently.
 
 ### Same Location (Local Share)
 
 Origin and destination in same ZIP code.
 
-**Handling:** Render small circular arc or highlight the point differently.
+**Handling:** Both markers appear at the same location with jitter (existing SamizdatMap behavior).
 
-### Cross-Border Shares
+## Metrics
 
-Shares that cross international boundaries.
+### Conversion Rate
 
-**Handling:** Arcs work regardless of distance. Consider Great Circle path for very long distances.
+```
+Conversion = Completed shares / Share intents
+           = (child tokens with view events) / (child tokens that exist)
+```
 
-## Metrics & Reporting
+This metric can be added to the Viewport Activity Report.
 
-### Share Flow Statistics (potential addition to Viewport Activity Report)
+## Implementation Checklist
 
-| Metric                      | Definition                                |
-| --------------------------- | ----------------------------------------- |
-| Share Intents (Visible)     | Share events within current viewport      |
-| Share Completions (Visible) | L01+ views within current viewport        |
-| Conversion Rate             | Completions / Intents                     |
-| Avg Distance                | Average geographic distance of share arcs |
-| Furthest Share              | Maximum distance single share traveled    |
-
-## Implementation Phases
-
-### Phase 1: Static Arcs (MVP)
-
-- [ ] Query share intent → completion pairs
-- [ ] Render Bezier arcs on Samizdat map
-- [ ] Add "Show Share Flow" toggle
-- [ ] Hover interaction for arc highlighting
-- [ ] Respect existing EoA and time filters
-
-### Phase 2: Arc Interactions
-
-- [ ] Click popup with share details
-- [ ] Highlight full share chain (L00 → L01 → L02 → L03)
-- [ ] Filter arcs by channel (SMS vs Email)
-
-### Phase 3: Animated Flow (Simulator)
-
-- [ ] Particle animation system
-- [ ] Time-based replay controls
-- [ ] Speed adjustment
-- [ ] Timeline scrubber
-
-### Phase 4: Analytics Integration
-
-- [ ] Share flow metrics in Viewport Activity Report
-- [ ] Export share flow data
-- [ ] Share distance histogram
+- [ ] Add `engagementState` field to `EventPoint` interface
+- [ ] Query child token existence + view events in `fetchEventData()`
+- [ ] Replace `hasSpawns: boolean` with `engagementState` in `getShapeSVG()`
+- [ ] Update legend to show border color meanings
+- [ ] Update tooltip to show engagement state
+- [ ] Add conversion rate to Viewport Activity Report (future)
 
 ## Dependencies
 
-- Existing: Leaflet map, EoA color coding, time filters, viewport tracking
-- New: D3.js or SVG overlay for arc rendering (Leaflet-compatible)
-
-## Open Questions
-
-1. Should arcs be bidirectional if someone shares back to original region?
-2. How to handle L02/L03 chains — show full chain or just immediate parent→child?
-3. Should arc thickness indicate multiple completions from same intent?
-4. Performance threshold: at what point do we switch to aggregate heatmap?
+- Existing: Leaflet map, marker shapes, `tokens.parent_token`, `url_events`
+- No new libraries required (D3.js/SVG overlay no longer needed)
 
 ---
 
-_Document created: December 16,2024_
-_Status: Specification — Not Yet Implemented_
+_Document created: December 16, 2024_
+_Status: Specification — Arc model_
+
+## Update — 2026-03-17
+
+Replaced the arc-based visualization model with a 3-state border color model (white → amber → green) on existing markers. Removed all arc rendering modes (static, animated, heatmap), Bezier curve calculations, D3.js dependency, and simulator animation controls. The corrected lifecycle eliminates the false "seeded" state — markers only appear upon QR scan (which is inherently an open/view event).
