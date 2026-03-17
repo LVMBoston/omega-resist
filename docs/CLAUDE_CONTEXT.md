@@ -252,6 +252,9 @@ Per-campaign or per-chapter messaging template overrides. Fields: `campaign_id`,
 - External link label handling improvements
 - Chapter-scoped messaging system
 - Bulk slide selection in deck editor
+- Contrast-verified map marker palette (dark L00, purple L02, cyan completed border)
+- 3-state border engagement model (white → amber → cyan) for share flow visualization
+- Multi-channel L00 distribution model (QR/email/SMS blasts all produce L00 markers)
 
 ---
 
