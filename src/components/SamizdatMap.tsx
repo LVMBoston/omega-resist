@@ -769,6 +769,11 @@ const SamizdatMap = ({
         // Get spawn count for this token's l00_instance (only meaningful for L00 events)
         const tokenSpawnCount = td.l00Instance ? (spawnCounts[td.l00Instance] || 0) : 0;
         
+        // Determine engagement state: L03 tokens can't share, always "none"
+        const tokenEngagement: EngagementState = event.token in engagementStates
+          ? engagementStates[event.token]
+          : "none";
+        
         points.push({
           eventId: event.id,
           eoaId: td.eoaId,
@@ -788,6 +793,7 @@ const SamizdatMap = ({
           countryCode: event.country_code || null,
           city: event.city || null,
           spawnCount: tokenSpawnCount,
+          engagementState: tokenEngagement,
         });
       });
 
