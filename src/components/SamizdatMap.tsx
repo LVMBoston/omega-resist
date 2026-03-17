@@ -966,12 +966,14 @@ const SamizdatMap = ({
         hour12: true
       });
       
-      // Show spawn info for L00 QR events
-      const spawnInfo = event.level === 0 && event.utmMedium === "qr" && event.spawnCount !== undefined
-        ? `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #e2e8f0;color:${event.spawnCount > 0 ? '#22c55e' : '#94a3b8'};">
-            ${event.spawnCount > 0 ? `✓ ${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''}` : 'No spawns yet'}
-           </div>`
-        : '';
+      // Show engagement state info
+      const engagementColor = ENGAGEMENT_BORDER_COLORS[event.engagementState];
+      const engagementLabel = ENGAGEMENT_LABELS[event.engagementState];
+      const engagementInfo = `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #e2e8f0;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${engagementColor};border:1px solid #cbd5e1;margin-right:4px;vertical-align:middle;"></span>
+          <span style="color:${event.engagementState === 'none' ? '#94a3b8' : engagementColor};">${engagementLabel}</span>
+          ${event.spawnCount && event.spawnCount > 0 ? ` <span style="color:#64748b;">(${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''})</span>` : ''}
+         </div>`;
       
       const instanceLabel = event.l00Instance
         ? `<div style="color:#64748b;font-family:monospace;font-size:10px;word-break:break-all;">${event.l00Instance}</div>`
