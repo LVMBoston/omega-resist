@@ -261,7 +261,7 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 | Dashboard | Features | Route |
 |-----------|----------|-------|
 | **Campaign Analytics** | Funnel charts, viral coefficient trends | `/campaign-analytics` |
-| **Campaign Dashboard** | Events table, map view, filters | `/campaign-dashboard` |
+| **Campaign Dashboard** | Events table, map view, virality analytics | `/campaign-dashboard` |
 | **Virality Dashboard** | Engagement by level, content performance | `/virality-dashboard` |
 | **Activity Monitor** | Real-time event stream, map | `/activity-monitor` |
 
@@ -272,6 +272,41 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 - Token level (L00-L03)
 - Date range
 - Geographic (city, state, zip)
+- Share medium (QR, SMS, Email)
+
+---
+
+### 5.8 Share Flow Visualization (Samizdat Map)
+
+**Description**: Geographic visualization of content spread using a 3-dimensional marker encoding system on Leaflet maps. No connecting arcs — geographic spread is shown organically through the appearance of new markers at recipient locations.
+
+| Dimension | What It Encodes | Values |
+|-----------|----------------|--------|
+| **Shape** | Distribution channel | ● Circle (QR), ◻ Square (Email), △ Triangle (SMS) |
+| **Fill color** | Viral level (hops from org) | ⬛ Dark `#1e293b` (L00), 🟢 Green `#22c55e` (L01), 🟣 Purple `#a855f7` (L02), 🔴 Red `#ef4444` (L03) |
+| **Border color** | Engagement state | White `#ffffff` (opened), Amber `#f59e0b` (share intent), Cyan `#06b6d4` (share completed) |
+
+**Engagement state lifecycle**:
+1. Person opens link → marker appears with **white** border
+2. Person taps Share → border changes to **amber** (child token minted)
+3. Recipient opens shared link → sharer's border changes to **cyan**
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Multi-shape markers (QR/Email/SMS) | ✅ Implemented | Shape determined by `utm_medium` |
+| Level-based fill colors | ✅ Implemented | Contrast-verified palette |
+| 3-state engagement borders | ✅ Implemented | Retroactive — works with all existing data |
+| Marker clustering | ✅ Implemented | Via leaflet.markercluster |
+| Timeline playback | ✅ Implemented | Scrub through events over time |
+| Chain mode | ✅ Implemented | Trace individual token chains |
+| Viewport activity report | ✅ Implemented | Summary stats for visible markers |
+| Fullscreen mode | ✅ Implemented | |
+| Event story panel | ✅ Implemented | Narrative view of single event |
+| Conversion rate in viewport report | ⬚ Planned | Completed shares / share intents |
+
+**Design constraint**: All visual states are static (no animations) for compatibility with server-side snapshot rendering.
+
+**Reference**: `docs/PRD_Share_Flow_Visualization.md`
 
 ---
 
