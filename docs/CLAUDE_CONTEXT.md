@@ -26,6 +26,7 @@
 | **Mobilize Code** | 6-char identifier linking an EoA to its QR/distribution context |
 | **Chapter** | Group of EoAs sharing the same `mobilize_code` within a campaign |
 | **Samizdat** | Internal name for the viral distribution mechanism |
+| **Engagement State** | Border color encoding on map markers: opened (white), share intent (amber), share completed (cyan) |
 
 ---
 
