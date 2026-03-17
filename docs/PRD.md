@@ -211,17 +211,22 @@ Empower civic organizations to understand and amplify how their message spreads 
 
 ### 5.3 Token-Based Viral Tracking
 
-**Description**: Hierarchical token system for tracking content sharing chains.
+**Description**: Hierarchical token system for tracking content sharing chains across QR, email, and SMS distribution channels.
 
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Mint L00 tokens | ✅ Implemented | `mint_l00()` function |
-| Mint share tokens (L01-L03) | ✅ Implemented | `mint_share()` function |
-| Log events (scan/view/share) | ✅ Implemented | `log_event()` function |
+| L00 per-scan instantiation | ✅ Implemented | `instantiate_l00_token()` — unique instance per scan |
+| L00 re-instantiation by zip | ✅ Implemented | `maybe_reinstantiate_l00()` — dedup for Actions, always new for Events |
+| Mint share tokens (L01-L03) | ✅ Implemented | `mint_share()` function, capped at L03 |
+| Log events (scan/view/share) | ✅ Implemented | `log_event()` SECURITY DEFINER function |
 | Track parent/root chain | ✅ Implemented | `parent_token`, `root_token` fields |
-| UTM parameter tracking | ✅ Implemented | Full UTM snapshot stored |
-| Geolocation (IP-based) | ✅ Implemented | Via `geoip` edge function |
-| Geolocation (GPS) | ⚠️ Partial | Location source tracked, GPS abandoned |
+| UTM parameter tracking | ✅ Implemented | Full UTM snapshot stored per event |
+| Geolocation (IP-based) | ✅ Implemented | Via `geoip` edge function (ipapi) |
+| Geolocation (GPS fallback) | ⚠️ Partial | Location source tracked; GPS often denied on mobile |
+| Reverse geocode to zip | ✅ Implemented | `reverse-geocode` edge function + `get_nearest_zip_code()` |
+| IP privacy auto-clear | ✅ Implemented | Trigger clears IP once zip code is populated |
+| Multi-channel L00 distribution | ✅ Implemented | QR, email blast, SMS blast all produce L00 tokens |
 
 **Token Hierarchy**:
 ```
