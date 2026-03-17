@@ -1,8 +1,8 @@
 # Product Requirements Document (PRD) — December 3, 2025
 # Democracy Forge
 
-**Version**: 1.0  
-**Last Updated**: December 3, 2025  
+**Version**: 2.0  
+**Last Updated**: March 17, 2026  
 **Document Owner**: [TBD]
 
 ---
