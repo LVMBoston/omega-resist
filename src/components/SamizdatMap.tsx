@@ -1422,6 +1422,25 @@ const SamizdatMap = ({
                     ))}
                   </div>
                 </div>
+
+                {/* Engagement border colors */}
+                <div className="border-t border-border pt-2">
+                  <div className="text-xs font-medium mb-1.5">Engagement</div>
+                  <div className="flex gap-3">
+                    {(["none", "intent", "completed"] as EngagementState[]).map((state) => (
+                      <div key={state} className="flex items-center gap-1 text-xs">
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full border-2"
+                          style={{ 
+                            backgroundColor: "#64748b",
+                            borderColor: ENGAGEMENT_BORDER_COLORS[state],
+                          }}
+                        />
+                        <span>{ENGAGEMENT_LABELS[state]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
