@@ -191,7 +191,7 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       if (event.latitude && event.longitude) {
         const level = event.tokens?.level || 0;
         
-        const iconColor = level === 0 ? '#3b82f6' : level === 1 ? '#10b981' : '#f59e0b';
+        const iconColor = level === 0 ? '#1e293b' : level === 1 ? '#22c55e' : level === 2 ? '#a855f7' : '#ef4444';
         const iconHtml = `
           <div style="
             background-color: ${iconColor};
@@ -266,16 +266,20 @@ export default function ActivityMap({ eventTypeFilter }: ActivityMapProps) {
       <div className="absolute bottom-4 left-4 z-[1000] bg-background/90 p-3 rounded-md shadow space-y-2">
         <div className="text-sm font-semibold">Event Levels</div>
         <div className="flex items-center gap-2 text-xs">
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3b82f6', border: '2px solid white' }}></div>
-          <span>Level 0</span>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#1e293b', border: '2px solid white' }}></div>
+          <span>L00 (Origin)</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981', border: '2px solid white' }}></div>
-          <span>Level 1+</span>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#22c55e', border: '2px solid white' }}></div>
+          <span>L01</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f59e0b', border: '2px solid white' }}></div>
-          <span>Level 2+</span>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#a855f7', border: '2px solid white' }}></div>
+          <span>L02</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444', border: '2px solid white' }}></div>
+          <span>L03</span>
         </div>
       </div>
     </Card>

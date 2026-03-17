@@ -125,12 +125,12 @@ const MEDIUM_LABELS: Record<string, string> = {
   bs: "BlueSky",
 };
 
-// Colors by level
+// Colors by level (contrast-verified against border colors white/amber/cyan)
 const LEVEL_COLORS: Record<number, string> = {
-  0: "#3b82f6", // L00 - blue
-  1: "#22c55e", // L01 - green
-  2: "#f97316", // L02 - orange
-  3: "#ef4444", // L03+ - red
+  0: "#1e293b", // L00 - dark (organization origin, max border contrast)
+  1: "#22c55e", // L01 - green (first viral hop)
+  2: "#a855f7", // L02 - purple (second viral hop)
+  3: "#ef4444", // L03+ - red (level cap)
 };
 
 // Get level color (L03 and above use same color)
