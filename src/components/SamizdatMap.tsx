@@ -176,11 +176,11 @@ const SHARE_MEDIUM_LABELS: Record<EoaShape, string> = {
 };
 
 // Generate SVG for marker shape
-// hasSpawns param controls stroke color: green (#22c55e) if true, white if false
-const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, hasSpawns: boolean = false): string => {
+// engagementState controls border color: white (none), amber (intent), cyan (completed)
+const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, engagementState: EngagementState = "none"): string => {
   const strokeWidth = 2;
   const halfStroke = strokeWidth / 2;
-  const strokeColor = hasSpawns ? "#22c55e" : "white";
+  const strokeColor = ENGAGEMENT_BORDER_COLORS[engagementState];
   
   switch (shape) {
     case "square":
