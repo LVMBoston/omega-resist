@@ -614,38 +614,46 @@ const SamizdatMap = ({
         return;
       }
 
-      // Step 3b: Fetch spawn counts for L00 instance tokens
-      // Count only L01 children that have at least one view event (engaged spawns)
-      const l00InstanceTokens = tokens.filter(t => t.level === 0 && t.l00_instance).map(t => t.token);
+      // Step 3b: Fetch spawn counts AND engagement state for all tokens
+      // For each token, determine: none (no children), intent (has child), completed (child has view)
+      const allTokenStrings = tokens.map(t => t.token);
       const spawnCounts: Record<string, number> = {};
+      const engagementStates: Record<string, EngagementState> = {};
+
+      // Get all child tokens (tokens whose parent_token is in our set)
+      const { data: childTokens } = await supabase
+        .from("tokens")
+        .select("token, parent_token, l00_instance")
+        .in("parent_token", allTokenStrings)
+        .is("deleted_at", null);
       
-      if (l00InstanceTokens.length > 0) {
-        // Get L01 tokens that are direct children of L00 instance tokens
-        const { data: spawnData } = await supabase
-          .from("tokens")
-          .select("token, l00_instance")
-          .in("parent_token", l00InstanceTokens)
-          .eq("level", 1)
-          .is("deleted_at", null)
-          .eq("is_simulated", false);
+      if (childTokens && childTokens.length > 0) {
+        // Mark all parents as "intent" (they have at least one child)
+        const parentTokensWithChildren = new Set(childTokens.map(t => t.parent_token).filter(Boolean));
+        parentTokensWithChildren.forEach(pt => {
+          engagementStates[pt!] = "intent";
+        });
+
+        // Check which child tokens have view events (completion)
+        const childTokenStrings = childTokens.map(t => t.token);
+        const { data: childViewEvents } = await supabase
+          .from("url_events")
+          .select("token")
+          .in("token", childTokenStrings)
+          .eq("event_type", "view");
         
-        if (spawnData && spawnData.length > 0) {
-          // Check which of these L01 tokens have view events (engagement gate)
-          const spawnTokens = spawnData.map(t => t.token);
-          const { data: viewEvents } = await supabase
-            .from("url_events")
-            .select("token")
-            .in("token", spawnTokens)
-            .eq("event_type", "view");
-          
-          const engagedTokens = new Set(viewEvents?.map(e => e.token) || []);
-          
-          spawnData.forEach((t) => {
-            if (t.l00_instance && engagedTokens.has(t.token)) {
-              spawnCounts[t.l00_instance] = (spawnCounts[t.l00_instance] || 0) + 1;
-            }
-          });
-        }
+        const childrenWithViews = new Set(childViewEvents?.map(e => e.token) || []);
+        
+        // For each child with a view, mark its parent as "completed"
+        childTokens.forEach(child => {
+          if (childrenWithViews.has(child.token) && child.parent_token) {
+            engagementStates[child.parent_token] = "completed";
+          }
+          // Also count engaged spawns for L00 instance filtering
+          if (child.l00_instance && childrenWithViews.has(child.token)) {
+            spawnCounts[child.l00_instance] = (spawnCounts[child.l00_instance] || 0) + 1;
+          }
+        });
       }
 
       // Step 4: Calculate first view per mobilize_code group
