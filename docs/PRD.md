@@ -578,21 +578,33 @@ L00 (Root) ─┬─ L01 (Share) ─┬─ L02 (Share) ── L03 (Share)
 
 ## 11. Future Roadmap
 
-### Near-Term (Q1 2026)
+### Recently Completed (Q1 2026)
 
+- [x] Server-side snapshot rendering for stats slides
+- [x] Campaign narrative generation (AI-driven text summaries)
+- [x] Vimeo slide type with inline player
+- [x] Chapter-scoped messaging overrides
+- [x] 3-state engagement border model on map markers
+- [x] Multi-channel L00 distribution (QR/email/SMS blasts)
+- [x] Unified slide architecture (auto-classify on save)
+- [x] Contrast-verified marker palette
+- [x] PDF campaign export
+
+### Near-Term (Q2 2026)
+
+- [ ] Conversion rate in viewport activity report
 - [ ] Scheduled cron for `refresh_daily_aggregates()`
-- [ ] Export functionality (CSV, PDF reports)
 - [ ] Enhanced date range presets (last 7d, 30d, custom)
 - [ ] Bulk EoA import from CSV
 
-### Mid-Term (Q2-Q3 2026)
+### Mid-Term (Q3-Q4 2026)
 
-- [ ] Real-time dashboard updates (WebSocket)
+- [ ] Real-time dashboard updates (WebSocket/Realtime)
 - [ ] A/B testing for slide templates
-- [ ] Push notifications for campaign milestones
 - [ ] Advanced geographic filtering (draw polygon)
+- [ ] Push notifications for campaign milestones
 
-### Long-Term (Q4 2026+)
+### Long-Term (2027+)
 
 - [ ] Machine learning for optimal distribution timing
 - [ ] Integration with additional CRMs
