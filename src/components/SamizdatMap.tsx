@@ -897,9 +897,8 @@ const SamizdatMap = ({
       const fillColor = getLevelColor(event.level);
       const shape = getShareMediumShape(event.utmMedium);
       const size = 16;
-      // L00 QR markers get green outline if they have spawns
-      const hasSpawns = event.level === 0 && event.utmMedium === "qr" && (event.spawnCount || 0) > 0;
-      const shapeSVG = getShapeSVG(shape, fillColor, size, hasSpawns);
+      // Border color reflects engagement state (white→amber→cyan)
+      const shapeSVG = getShapeSVG(shape, fillColor, size, event.engagementState);
       const levelLabel = `L${String(event.level).padStart(2, '0')}`;
       
       // In chain mode, show sequence numbers
