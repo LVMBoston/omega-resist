@@ -1,6 +1,6 @@
 # Claude Context — Democracy Forge (omega-resist)
 
-> **Last updated**: 2026-03-05  
+> **Last updated**: 2026-03-17  
 > **Purpose**: Drop this file into Claude's context at the start of each working session.
 
 ---
