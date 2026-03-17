@@ -985,7 +985,7 @@ const SamizdatMap = ({
           <div style="color:#64748b;">${locationLabel}</div>
           <div style="color:#64748b;">${timestamp}</div>
           ${instanceLabel}
-          ${spawnInfo}
+          ${engagementInfo}
         </div>
       `;
     };
