@@ -186,17 +186,26 @@ Empower civic organizations to understand and amplify how their message spreads 
 
 ### 5.2 Interactive Slide Templates
 
-**Description**: Configurable viral slides with interactive hotspots.
+**Description**: Configurable viral slides with interactive hotspots. The unified slide architecture auto-classifies slides by hotspot content on save.
 
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Upload background image | ✅ Implemented | Full resolution support |
-| Define hotspot regions | ✅ Implemented | Visual editor |
-| Configure hotspot actions | ✅ Implemented | Share SMS, Email, Link copy |
+| Define hotspot regions | ✅ Implemented | Visual editor with drag-drop |
+| Configure hotspot actions | ✅ Implemented | SMS, Email, Link copy, Vimeo, App download, External link, Email links |
 | Template library | ✅ Implemented | `viral_slide_configs` table |
 | Preview templates | ✅ Implemented | |
+| Auto-classify slide type | ✅ Implemented | Action → `interactive_share`, Data → `stats_page`, Both → `hybrid` |
+| Auto-promote/demote slides | ✅ Implemented | Adding hotspots promotes image → spread-word; removing demotes back |
+| Vimeo embed slides | ✅ Implemented | Inline player with mute toggle and swipe passthrough |
+| Chart hotspots | ✅ Implemented | Stacked bar charts rendered in hotspot regions |
+| Map hotspots | ✅ Implemented | Leaflet maps rendered in hotspot regions |
+| Live number hotspots | ✅ Implemented | Real-time campaign metrics embedded in slides |
+| Server-side snapshot rendering | ✅ Implemented | SVG/PNG via `render-stats-snapshot` edge function |
 
-**Routes**: `/interactive-templates`
+**Template Types**: `interactive_share`, `stats_page`, `hybrid`, `display_only`
+
+**Routes**: `/interactive-templates`, `/template-editor/:id`
 
 ---
 
