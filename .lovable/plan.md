@@ -1,25 +1,49 @@
 
-# Phase 1 — Unified Slide Architecture: Editor UX
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+## What's Missing
 
-Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
+The `.lovable/plan.md` file contains only Phases 1/1b/1c (Unified Slide Architecture). The entire Anonymous Feedback System plan — including the feedback form configuration via Settings — was discussed and approved in conversation but never committed to either:
+- `.lovable/plan.md` (master plan)
+- `docs/decisions/forms/2026-03-18_anonymous-feedback-system_feature-doc_lovable.md` (feature doc)
 
+## What I'll Do
+
+**Two files to create/update:**
+
+### 1. `.lovable/plan.md` — Append new section
+
+Add a new entry after Phase 1c:
+
+```
 ---
 
-# Phase 1b — Slide Thumbnail Capture
+# Anonymous Feedback System
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+**Status:** Implementation Pending
+**Date:** 2026-03-18
 
-Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
+Anonymous feedback collection via `form_trigger` hotspots. 3-step form (category → message → confirmation)
+with silent token/campaign context capture. Admin reporting tab + campaign card badges. Categories and tags
+are configurable via Settings page "Feedback" tab (global defaults in `settings` table, future cascade
+via `campaign_message_overrides`). See `docs/decisions/forms/2026-03-18_anonymous-feedback-system_feature-doc_lovable.md`.
+```
 
----
+### 2. `docs/decisions/forms/2026-03-18_anonymous-feedback-system_feature-doc_lovable.md` — Create
 
-# Phase 1c — Interactive Slide Preview in DeckEditor
+Full feature doc covering all 8 sections:
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+1. **Database migration** — `feedback_submissions` table, `submit_feedback` RPC, `get_feedback_counts` RPC, RLS, seed 2 `settings` rows (feedback categories + tags)
+2. **Snapshot renderer fix** — add `form_trigger` to `ACTION_TYPES` exclusion set
+3. **FeedbackFormPopover component** — 3-step overlay, silent context resolution from `viralToken`, `react-hook-form` + `zod`
+4. **InteractiveSlideOverlay wiring** — `form_trigger` opens popover, disables carousel swiping
+5. **Admin reporting** — `CampaignFeedback.tsx` (filterable table, CSV export), new tab in `CampaignDetail.tsx`, badge in `CampaignManager.tsx`
+6. **Settings page — Feedback tab** — chip-style list editors for global category/tag arrays, uses `useSettings("feedback")` hook
+7. **Implementation order** (migration → snapshot fix → popover + wiring → admin UI → settings tab)
+8. **Test plan** (automated RPC/RLS checks + guided tour + admin UI verification)
 
-Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
+Section 6 explicitly covers the configurable form options:
+- Global defaults seeded in migration as `settings` rows
+- New "Feedback" tab in Settings page with chip-style add/remove editors
+- `FeedbackFormPopover` reads from `useSettings("feedback")` with hardcoded fallback
+- Future cascade path via `campaign_message_overrides` noted but not built in v1
+
