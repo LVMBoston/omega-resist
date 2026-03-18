@@ -1,37 +1,13 @@
 
-# Phase 1 — Unified Slide Architecture: Editor UX
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+## Update Global SMS L00 Default — Option 3 (Universal Opener)
 
-Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
+### Final template
 
----
+> I came across a QR code. What I found was eye-opening and motivating — and it reminded me of samizdat, the underground literature dissidents used to share when speaking the truth could put them in jail. Think Solzhenitsyn's "The Gulag Archipelago." Mass surveillance, attacks on the press, protesters tagged as domestic terrorists — sound familiar? I'm sending this to those I trust. I hope you'll do the same. {{link}}
 
-# Phase 1b — Slide Thumbnail Capture
+### Implementation
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+- **Single data update** on `settings` row `369b35b4-8615-4f00-9097-d65f9badb756` (category `sms`, key `l00_template`): set `value->'body'` to the message above.
+- No code or schema changes — the app resolves this dynamically via `resolve_message_template` and `useSettings`.
 
-Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
-
----
-
-# Phase 1c — Interactive Slide Preview in DeckEditor
-
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
-
-Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
-
----
-
-# Anonymous Feedback System
-
-**Status:** Implementation Pending
-**Date:** 2026-03-18
-
-Anonymous feedback collection via `form_trigger` hotspots. 3-step form (category → message → confirmation)
-with silent token/campaign context capture. Admin reporting tab + campaign card badges. Categories and tags
-are configurable via Settings page "Feedback" tab (global defaults in `settings` table, future cascade
-via `campaign_message_overrides`). See `docs/decisions/forms/2026-03-18_anonymous-feedback-system_feature-doc_lovable.md`.
