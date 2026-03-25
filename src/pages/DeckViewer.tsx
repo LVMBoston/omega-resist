@@ -466,6 +466,7 @@ export default function DeckViewer() {
           .from("slide_items")
           .select("*")
           .eq("deck_slug", slug)
+          .eq("skip_deploy", false)
           .order("position", { ascending: true });
 
         setSlides(slideData || []);
