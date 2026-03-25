@@ -221,6 +221,7 @@ export default function DeckViewer() {
           .from("slide_items")
           .select("*")
           .eq("deck_slug", slug)
+          .eq("skip_deploy", false)
           .order("position", { ascending: true })
           .abortSignal(AbortSignal.timeout(10000)); // Force fresh data
 
@@ -465,6 +466,7 @@ export default function DeckViewer() {
           .from("slide_items")
           .select("*")
           .eq("deck_slug", slug)
+          .eq("skip_deploy", false)
           .order("position", { ascending: true });
 
         setSlides(slideData || []);
