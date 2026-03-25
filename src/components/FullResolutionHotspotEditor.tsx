@@ -857,6 +857,8 @@ export const generateThumbnail = async (
       
       // Draw each hotspot icon and label
       for (const hotspot of hotspots) {
+        // Skip transparent hotspots — they have no visible icon
+        if (hotspot.isTransparent) continue;
         const iconPreset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
         if (!iconPreset?.imageUrl) continue;
         
