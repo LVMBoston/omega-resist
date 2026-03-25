@@ -980,10 +980,10 @@ const InteractiveSlideOverlay = ({
                   padding: 0,
                 }}
               >
-                {getHotspotIcon(videoIconId, buttonWidth, buttonHeight)}
-              </button>
-            );
-          }
+              {!hotspot.isTransparent && getHotspotIcon(videoIconId, buttonWidth, buttonHeight)}
+            </button>
+          );
+        }
           
           // For non-Vimeo external links, use anchor tag
           return (
@@ -994,15 +994,7 @@ const InteractiveSlideOverlay = ({
               rel="noopener noreferrer"
               className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
               style={{
-                left: `${left}px`,
-                top: `${top}px`,
-                width: `${buttonWidth}px`,
-                height: `${buttonHeight}px`,
-                WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation',
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
+                ...transparentStyle,
                 textDecoration: 'none',
               }}
               onClick={(e) => {
@@ -1010,7 +1002,7 @@ const InteractiveSlideOverlay = ({
                 console.log(`📱 External link clicked: ${hotspot.url}`);
               }}
             >
-              {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+              {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
             </a>
           );
         }
