@@ -1,4 +1,4 @@
-import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark } from "lucide-react";
+import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark, EyeOff } from "lucide-react";
 import type { Hotspot } from "@/types/viralTemplates";
 
 interface SlidePreviewOverlayProps {
@@ -152,6 +152,17 @@ export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {
         }
 
         // Action hotspots (sms, email, social, external_link, etc.)
+        if (hotspot.isTransparent) {
+          return (
+            <div
+              key={hotspot.id}
+              style={style}
+              className="flex items-center justify-center rounded border border-dashed border-muted-foreground/30 bg-transparent"
+            >
+              <EyeOff className="h-3 w-3 text-muted-foreground/40" />
+            </div>
+          );
+        }
         const ActionIcon = ACTION_ICONS[hotspot.type] || ExternalLink;
         return (
           <div

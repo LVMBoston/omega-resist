@@ -7,7 +7,7 @@ import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown } from "lucide-react";
+import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
@@ -47,6 +47,7 @@ interface Hotspot {
   fallbackUrl?: string;
   emailLinksSubject?: string;
   emailLinksShowLabels?: boolean;
+  isTransparent?: boolean;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
@@ -486,7 +487,11 @@ export const FullResolutionHotspotEditor = ({
                           if (!isDragging) setSelectedHotspot(hotspot.id);
                         }}
                       >
-                        {hotspotImageUrl ? (
+                        {hotspot.isTransparent ? (
+                          <div className="w-full h-full border-2 border-dashed border-muted-foreground/40 rounded flex items-center justify-center">
+                            <EyeOff className="w-1/3 h-1/3 text-muted-foreground/40" />
+                          </div>
+                        ) : hotspotImageUrl ? (
                           <img src={hotspotImageUrl} alt={hotspot.label} className="w-full h-full object-contain drop-shadow-lg" />
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full drop-shadow-lg" />
@@ -647,6 +652,20 @@ export const FullResolutionHotspotEditor = ({
                       </div>
 
                       <h4 className="font-semibold text-sm">Resize</h4>
+
+                      {/* Transparent overlay toggle */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div>
+                          <Label className="text-sm">Transparent overlay</Label>
+                          <p className="text-xs text-muted-foreground">Hide icon — use when slide image already has a visual element.</p>
+                        </div>
+                        <Switch
+                          checked={selectedHotspotData.isTransparent || false}
+                          onCheckedChange={(checked) =>
+                            updateHotspot(selectedHotspotData.id, { isTransparent: checked } as any)
+                          }
+                        />
+                      </div>
 
                       <div>
                         <Label>Icon Size</Label>
@@ -838,6 +857,8 @@ export const generateThumbnail = async (
       
       // Draw each hotspot icon and label
       for (const hotspot of hotspots) {
+        // Skip transparent hotspots — they have no visible icon
+        if (hotspot.isTransparent) continue;
         const iconPreset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
         if (!iconPreset?.imageUrl) continue;
         
