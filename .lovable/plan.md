@@ -1,37 +1,38 @@
 
-# Phase 1 — Unified Slide Architecture: Editor UX
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+## Transparent Hotspot Toggle
 
-Implemented the image-first, auto-detect unified slide model in `DeckEditor.tsx`. Any slide can now receive hotspots via an "Edit Hotspots" button; the system auto-classifies the slide type on save and auto-demotes when hotspots are removed. See `docs/decisions/architecture/2026-03-07_unified-slide-editor-phase1_feature-doc_lovable.md` for full details.
+### Problem
+Current hotspot icons are brittle — custom PNGs fail on iOS Safari, icons take up visual space, and the icon-rendering pipeline (FallbackImg, per-platform branching) is complex. The user already places visual elements (buttons, logos) directly on their slide images and just needs invisible tap targets over them.
 
----
+### Solution
+Add a per-hotspot `isTransparent` boolean toggle. When enabled:
+- **Runtime** (`InteractiveSlideOverlay`): render the hotspot as a fully transparent clickable area — no icon, no image, just a positioned `<button>`/`<a>` with the same tap target. The action (SMS, email, share, external link, vimeo, email_links) fires identically.
+- **Editor** (`FullResolutionHotspotEditor`, `DraggableHotspotOverlay`): show a subtle dashed border so the author can see and position the hotspot, but mark it as "transparent" with a visual indicator.
+- **Preview** (`SlidePreviewOverlay`): show a faint dashed outline with a small label so the template card remains informative.
 
-# Phase 1b — Slide Thumbnail Capture
+### Data model change
+Add `isTransparent?: boolean` to the `Hotspot` interface in `src/types/viralTemplates.ts`. No database migration needed — hotspots are stored as JSONB, and the new field defaults to `false`/undefined.
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+### Files to change
 
-Added client-side `html2canvas` thumbnail capture for interactive slides. A "Capture Thumbnail" button in DeckEditor captures the slide preview DOM (background + hotspot overlays) and uploads it to storage as `viral_slide_configs.thumbnail_url`. All thumbnail views (DeckEditor sidebar/preview, CampaignManager deck dialog, DeckManagement first-slide preview) now prefer `thumbnail_url` over raw `content_url`. See `docs/decisions/architecture/2026-03-07_slide-thumbnail-capture_feature-doc_lovable.md`.
+1. **`src/types/viralTemplates.ts`** — Add `isTransparent?: boolean` to `Hotspot` interface.
 
----
+2. **`src/components/InteractiveSlideOverlay.tsx`** — In the render section (~lines 935-1075), when `hotspot.isTransparent` is true, skip `getHotspotIcon()` and render the button/anchor with no children (transparent tap target). Keep all action handlers identical.
 
-# Phase 1c — Interactive Slide Preview in DeckEditor
+3. **`src/components/FullResolutionHotspotEditor.tsx`** — Add a "Transparent" checkbox/switch in the per-hotspot property panel. When checked, the editor overlay shows a dashed border + eye-off icon instead of the icon image.
 
-**Status:** Approved & Implemented
-**Date:** 2026-03-07
+4. **`src/components/SlidePreviewOverlay.tsx`** — For action hotspots with `isTransparent`, render a faint dashed outline with a small type label instead of the colored icon box.
 
-Added `SlidePreviewOverlay` component to render static hotspot placeholders (type icons + labels) in the DeckEditor center preview for `spread-word` slides. Hotspots are loaded from staged changes or DB on slide selection. Auto-capture triggers after saving hotspots to keep thumbnails current. See `docs/decisions/architecture/2026-03-07_slide-preview-overlay_feature-doc_lovable.md`.
+5. **`src/components/DraggableHotspotOverlay.tsx`** — For action hotspots with `isTransparent` in the data template editor, show the dashed-border style so they remain visible during editing.
 
----
+### What stays the same
+- All hotspot actions (SMS, email, social, external_link, vimeo, email_links, app_download) work identically.
+- Non-transparent hotspots render exactly as today.
+- Live number, chart, and map hotspots are unaffected (they have their own rendering paths).
+- No database migration required.
 
-# Anonymous Feedback System
+### Editor UX
+- Each action hotspot's property panel gets a `Switch` labeled "Transparent overlay" with helper text: "Hide icon — use when the slide image already has a visual element."
+- Toggle is only shown for action-type hotspots (sms, email, social, external_link, email_links, vimeo, app_download).
 
-**Status:** Implementation Pending
-**Date:** 2026-03-18
-
-Anonymous feedback collection via `form_trigger` hotspots. 3-step form (category → message → confirmation)
-with silent token/campaign context capture. Admin reporting tab + campaign card badges. Categories and tags
-are configurable via Settings page "Feedback" tab (global defaults in `settings` table, future cascade
-via `campaign_message_overrides`). See `docs/decisions/forms/2026-03-18_anonymous-feedback-system_feature-doc_lovable.md`.
