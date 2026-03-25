@@ -47,6 +47,7 @@ interface Hotspot {
   fallbackUrl?: string;
   emailLinksSubject?: string;
   emailLinksShowLabels?: boolean;
+  isTransparent?: boolean;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
