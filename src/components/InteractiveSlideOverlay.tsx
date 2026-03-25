@@ -1033,20 +1033,10 @@ const InteractiveSlideOverlay = ({
             onClick={handleClick}
             onTouchStart={handleTouchStart}
             className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
-            style={{
-              left: `${left}px`,
-              top: `${top}px`,
-              width: `${buttonWidth}px`,
-              height: `${buttonHeight}px`,
-              WebkitTapHighlightColor: 'transparent',
-              touchAction: 'manipulation',
-              background: 'transparent',
-              border: 'none',
-              padding: 0,
-            }}
+            style={transparentStyle}
           >
-            {getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
-            {hotspot.type === 'email_links' && hotspot.emailLinksShowLabels && hotspot.label && (
+            {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            {!hotspot.isTransparent && hotspot.type === 'email_links' && hotspot.emailLinksShowLabels && hotspot.label && (
               <span
                 style={{
                   position: 'absolute',

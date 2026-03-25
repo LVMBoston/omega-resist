@@ -130,6 +130,7 @@ export interface Hotspot {
   // Email links hotspot properties
   emailLinksSubject?: string;      // Subject line for mailto
   emailLinksShowLabels?: boolean;  // Show label text on overlay at runtime
+  isTransparent?: boolean;         // Hide icon — transparent tap target over slide image
 }
 
 // Live number style configuration

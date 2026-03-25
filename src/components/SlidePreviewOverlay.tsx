@@ -152,6 +152,17 @@ export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {
         }
 
         // Action hotspots (sms, email, social, external_link, etc.)
+        if (hotspot.isTransparent) {
+          return (
+            <div
+              key={hotspot.id}
+              style={style}
+              className="flex items-center justify-center rounded border border-dashed border-muted-foreground/30 bg-transparent"
+            >
+              <EyeOff className="h-3 w-3 text-muted-foreground/40" />
+            </div>
+          );
+        }
         const ActionIcon = ACTION_ICONS[hotspot.type] || ExternalLink;
         return (
           <div
