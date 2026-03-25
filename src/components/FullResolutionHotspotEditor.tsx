@@ -487,7 +487,11 @@ export const FullResolutionHotspotEditor = ({
                           if (!isDragging) setSelectedHotspot(hotspot.id);
                         }}
                       >
-                        {hotspotImageUrl ? (
+                        {hotspot.isTransparent ? (
+                          <div className="w-full h-full border-2 border-dashed border-muted-foreground/40 rounded flex items-center justify-center">
+                            <EyeOff className="w-1/3 h-1/3 text-muted-foreground/40" />
+                          </div>
+                        ) : hotspotImageUrl ? (
                           <img src={hotspotImageUrl} alt={hotspot.label} className="w-full h-full object-contain drop-shadow-lg" />
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full drop-shadow-lg" />
