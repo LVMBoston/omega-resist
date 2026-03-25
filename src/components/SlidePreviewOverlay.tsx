@@ -1,4 +1,4 @@
-import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark } from "lucide-react";
+import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark, EyeOff } from "lucide-react";
 import type { Hotspot } from "@/types/viralTemplates";
 
 interface SlidePreviewOverlayProps {
