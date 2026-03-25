@@ -653,6 +653,20 @@ export const FullResolutionHotspotEditor = ({
 
                       <h4 className="font-semibold text-sm">Resize</h4>
 
+                      {/* Transparent overlay toggle */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div>
+                          <Label className="text-sm">Transparent overlay</Label>
+                          <p className="text-xs text-muted-foreground">Hide icon — use when slide image already has a visual element.</p>
+                        </div>
+                        <Switch
+                          checked={selectedHotspotData.isTransparent || false}
+                          onCheckedChange={(checked) =>
+                            updateHotspot(selectedHotspotData.id, { isTransparent: checked } as any)
+                          }
+                        />
+                      </div>
+
                       <div>
                         <Label>Icon Size</Label>
                         <div className="flex items-center gap-2 pt-2">
