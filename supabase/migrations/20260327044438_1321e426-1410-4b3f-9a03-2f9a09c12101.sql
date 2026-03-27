@@ -1,0 +1,1 @@
+UPDATE settings SET description = 'Email template for an L00 sender to be opened by a L01 recipient' WHERE id = '05fe11b2-1c21-4fb1-bad8-e3117896d6b7';
