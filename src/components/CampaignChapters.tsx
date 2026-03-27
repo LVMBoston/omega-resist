@@ -323,7 +323,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                 <Button size="sm" onClick={handleSaveCampaignOverrides} disabled={!hasCampaignChanges || savingCampaign}>
                   {savingCampaign ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleResetCampaignOverrides} disabled={!hasAnyOverride(campaignOverridesOriginal) || savingCampaign}>
+                <Button size="sm" variant="outline" onClick={handleResetCampaignOverrides} disabled={(!hasAnyOverride(campaignOverridesOriginal) && !hasAnyOverride(campaignOverrides)) || savingCampaign}>
                   <RotateCcw className="mr-2 h-3 w-3" /> Reset to Default
                 </Button>
               </div>
