@@ -318,7 +318,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           <CollapsibleContent>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">These override global defaults for all chapters in this campaign unless a chapter has its own override.</p>
-              {renderOverrideFields(campaignOverrides, (field, value) => setCampaignOverrides({ ...campaignOverrides, [field]: value }), (field) => getPlaceholder(field))}
+              {renderOverrideFields(campaignOverrides, (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })), (field) => getPlaceholder(field))}
               <div className="flex gap-2 pt-2">
                 <Button size="sm" onClick={handleSaveCampaignOverrides} disabled={!hasCampaignChanges || savingCampaign}>
                   {savingCampaign ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
