@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,9 +36,13 @@ interface ChapterGroup {
 interface OverrideValues {
   emailL00: string;
   emailL01: string;
+  emailL00Subject: string;
+  emailL01Subject: string;
   smsL00: string;
   smsL01: string;
 }
+
+const EMPTY_OVERRIDES: OverrideValues = { emailL00: "", emailL01: "", emailL00Subject: "", emailL01Subject: "", smsL00: "", smsL01: "" };
 
 export default function CampaignChapters({ campaignId }: CampaignChaptersProps) {
   const { toast } = useToast();
@@ -46,8 +51,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [addChapterOpen, setAddChapterOpen] = useState(false);
 
   // Campaign-level overrides
-  const [campaignOverrides, setCampaignOverrides] = useState<OverrideValues>({ emailL00: "", emailL01: "", smsL00: "", smsL01: "" });
-  const [campaignOverridesOriginal, setCampaignOverridesOriginal] = useState<OverrideValues>({ emailL00: "", emailL01: "", smsL00: "", smsL01: "" });
+  const [campaignOverrides, setCampaignOverrides] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
+  const [campaignOverridesOriginal, setCampaignOverridesOriginal] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
   const [campaignOverridesOpen, setCampaignOverridesOpen] = useState(false);
   const [savingCampaign, setSavingCampaign] = useState(false);
 
@@ -58,7 +63,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [savingChapter, setSavingChapter] = useState<string | null>(null);
 
   // Global defaults for placeholders
-  const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ emailL00: "", emailL01: "", smsL00: "", smsL01: "" });
+  const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
 
   useEffect(() => {
     fetchData();
@@ -104,15 +109,16 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       .select("mobilize_code, category, key, value")
       .eq("campaign_id", campaignId);
 
-    const campaignOvr: OverrideValues = { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
+    const campaignOvr: OverrideValues = { ...EMPTY_OVERRIDES };
     const chapterOvr: Record<string, OverrideValues> = {};
 
     if (data) {
       for (const row of data) {
         const body = (row.value as any)?.body || "";
-        const target = row.mobilize_code === null ? campaignOvr : (chapterOvr[row.mobilize_code] ??= { emailL00: "", emailL01: "", smsL00: "", smsL01: "" });
-        if (row.category === "email" && row.key === "l00_template") target.emailL00 = body;
-        if (row.category === "email" && row.key === "l01_template") target.emailL01 = body;
+        const subject = (row.value as any)?.subject || "";
+        const target = row.mobilize_code === null ? campaignOvr : (chapterOvr[row.mobilize_code] ??= { ...EMPTY_OVERRIDES });
+        if (row.category === "email" && row.key === "l00_template") { target.emailL00 = body; target.emailL00Subject = subject; }
+        if (row.category === "email" && row.key === "l01_template") { target.emailL01 = body; target.emailL01Subject = subject; }
         if (row.category === "sms" && row.key === "l00_template") target.smsL00 = body;
         if (row.category === "sms" && row.key === "l01_template") target.smsL01 = body;
       }
@@ -132,11 +138,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       .in("key", ["l00_template", "l01_template"]);
 
     if (data) {
-      const defaults: OverrideValues = { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
+      const defaults: OverrideValues = { ...EMPTY_OVERRIDES };
       for (const row of data) {
         const body = (row.value as any)?.body || "";
-        if (row.category === "email" && row.key === "l00_template") defaults.emailL00 = body;
-        if (row.category === "email" && row.key === "l01_template") defaults.emailL01 = body;
+        const subject = (row.value as any)?.subject || "";
+        if (row.category === "email" && row.key === "l00_template") { defaults.emailL00 = body; defaults.emailL00Subject = subject; }
+        if (row.category === "email" && row.key === "l01_template") { defaults.emailL01 = body; defaults.emailL01Subject = subject; }
         if (row.category === "sms" && row.key === "l00_template") defaults.smsL00 = body;
         if (row.category === "sms" && row.key === "l01_template") defaults.smsL01 = body;
       }
@@ -151,15 +158,18 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     const slots = [
       { field: "smsL00" as const, category: "sms", key: "l00_template" },
       { field: "smsL01" as const, category: "sms", key: "l01_template" },
-      { field: "emailL00" as const, category: "email", key: "l00_template" },
-      { field: "emailL01" as const, category: "email", key: "l01_template" },
+      { field: "emailL00" as const, subjectField: "emailL00Subject" as const, category: "email", key: "l00_template" },
+      { field: "emailL01" as const, subjectField: "emailL01Subject" as const, category: "email", key: "l01_template" },
     ];
 
     for (const slot of slots) {
-      if (values[slot.field].trim()) {
+      const bodyValue = values[slot.field].trim();
+      const subjectValue = "subjectField" in slot ? values[slot.subjectField!].trim() : "";
+      
+      if (bodyValue || subjectValue) {
         const valueObj = slot.category === "email"
-          ? { subject: "", body: values[slot.field] }
-          : { body: values[slot.field] };
+          ? { subject: subjectValue, body: bodyValue }
+          : { body: bodyValue };
         rows.push({
           campaign_id: campaignId,
           mobilize_code,
@@ -190,9 +200,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
 
     // Upsert non-empty ones
     if (rows.length > 0) {
-      // We need to do individual upserts because the unique index uses COALESCE
       for (const row of rows) {
-        // Delete first, then insert (to handle the COALESCE index)
         let delQuery = supabase
           .from("campaign_message_overrides")
           .delete()
@@ -228,7 +236,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const handleResetCampaignOverrides = async () => {
     setSavingCampaign(true);
     try {
-      const empty: OverrideValues = { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
+      const empty: OverrideValues = { ...EMPTY_OVERRIDES };
       await saveOverrides(null, empty);
       setCampaignOverrides(empty);
       setCampaignOverridesOriginal(empty);
@@ -243,7 +251,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const handleSaveChapterOverrides = async (mobilize_code: string) => {
     setSavingChapter(mobilize_code);
     try {
-      const values = chapterOverrides[mobilize_code] || { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
+      const values = chapterOverrides[mobilize_code] || { ...EMPTY_OVERRIDES };
       await saveOverrides(mobilize_code, values);
       setChapterOverridesOriginal((prev) => ({ ...prev, [mobilize_code]: { ...values } }));
       toast({ title: "Saved", description: `Messaging overrides saved for ${mobilize_code}` });
@@ -257,7 +265,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const handleResetChapterOverrides = async (mobilize_code: string) => {
     setSavingChapter(mobilize_code);
     try {
-      const empty: OverrideValues = { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
+      const empty: OverrideValues = { ...EMPTY_OVERRIDES };
       await saveOverrides(mobilize_code, empty);
       setChapterOverrides((prev) => ({ ...prev, [mobilize_code]: empty }));
       setChapterOverridesOriginal((prev) => ({ ...prev, [mobilize_code]: { ...empty } }));
@@ -279,7 +287,6 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   };
 
   const getPlaceholder = (field: keyof OverrideValues, mobilize_code?: string) => {
-    // For chapter fields, show campaign override if set, else global
     if (mobilize_code) {
       return campaignOverrides[field] || globalDefaults[field] || "Inherited from global";
     }
@@ -287,7 +294,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   };
 
   const hasCampaignChanges = JSON.stringify(campaignOverrides) !== JSON.stringify(campaignOverridesOriginal);
-  const hasAnyOverride = (v: OverrideValues) => v.emailL00 || v.emailL01 || v.smsL00 || v.smsL01;
+  const hasAnyOverride = (v: OverrideValues) => v.emailL00 || v.emailL01 || v.emailL00Subject || v.emailL01Subject || v.smsL00 || v.smsL01;
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -343,8 +350,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
         <div className="space-y-3">
           {chapters.map((chapter) => {
             const isExpanded = expandedChapters.has(chapter.mobilize_code);
-            const ovr = chapterOverrides[chapter.mobilize_code] || { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
-            const ovrOrig = chapterOverridesOriginal[chapter.mobilize_code] || { emailL00: "", emailL01: "", smsL00: "", smsL01: "" };
+            const ovr = chapterOverrides[chapter.mobilize_code] || { ...EMPTY_OVERRIDES };
+            const ovrOrig = chapterOverridesOriginal[chapter.mobilize_code] || { ...EMPTY_OVERRIDES };
             const hasChanges = JSON.stringify(ovr) !== JSON.stringify(ovrOrig);
             const locationParts = [chapter.city, chapter.state].filter(Boolean).join(", ");
 
@@ -369,7 +376,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                       ovr,
                       (field, value) => setChapterOverrides((prev) => ({
                         ...prev,
-                        [chapter.mobilize_code]: { ...(prev[chapter.mobilize_code] || { emailL00: "", emailL01: "", smsL00: "", smsL01: "" }), [field]: value },
+                        [chapter.mobilize_code]: { ...(prev[chapter.mobilize_code] || { ...EMPTY_OVERRIDES }), [field]: value },
                       })),
                       (field) => getPlaceholder(field, chapter.mobilize_code)
                     )}
@@ -416,9 +423,9 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
 }
 
 function renderOverrideFields(
-  values: { emailL00: string; emailL01: string; smsL00: string; smsL01: string },
-  onChange: (field: string, value: string) => void,
-  getPlaceholder: (field: "emailL00" | "emailL01" | "smsL00" | "smsL01") => string
+  values: OverrideValues,
+  onChange: (field: keyof OverrideValues, value: string) => void,
+  getPlaceholder: (field: keyof OverrideValues) => string
 ) {
   return (
     <>
@@ -431,8 +438,16 @@ function renderOverrideFields(
         <Textarea value={values.smsL01} onChange={(e) => onChange("smsL01", e.target.value)} placeholder={getPlaceholder("smsL01")} rows={2} />
       </div>
       <div>
+        <Label className="text-xs">Email L00 Subject</Label>
+        <Input value={values.emailL00Subject} onChange={(e) => onChange("emailL00Subject", e.target.value)} placeholder={getPlaceholder("emailL00Subject")} />
+      </div>
+      <div>
         <Label className="text-xs">Email L00 Body</Label>
         <Textarea value={values.emailL00} onChange={(e) => onChange("emailL00", e.target.value)} placeholder={getPlaceholder("emailL00")} rows={2} />
+      </div>
+      <div>
+        <Label className="text-xs">Email L01 Subject</Label>
+        <Input value={values.emailL01Subject} onChange={(e) => onChange("emailL01Subject", e.target.value)} placeholder={getPlaceholder("emailL01Subject")} />
       </div>
       <div>
         <Label className="text-xs">Email L01 Body</Label>
