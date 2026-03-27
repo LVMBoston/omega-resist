@@ -35,6 +35,8 @@ interface ChapterGroup {
 interface OverrideValues {
   emailL00: string;
   emailL01: string;
+  emailL00Subject: string;
+  emailL01Subject: string;
   smsL00: string;
   smsL01: string;
 }
