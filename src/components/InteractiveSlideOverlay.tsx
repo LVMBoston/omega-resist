@@ -856,8 +856,8 @@ const InteractiveSlideOverlay = ({
         </div>
       )}
 
-      <div className="absolute inset-0 pointer-events-none z-50">
-      {imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
+      <div className="absolute inset-0 pointer-events-none z-50" style={{ display: isVideoOpen ? 'none' : undefined }}>
+      {!isVideoOpen && imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
         // Calculate hotspot position relative to rendered image
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
