@@ -37,6 +37,7 @@ export default function DeckViewer() {
   const [deckRedirectChecked, setDeckRedirectChecked] = useState(false);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
   // Track active slide index via Embla API for Vimeo pause-on-swipe
   useEffect(() => {
