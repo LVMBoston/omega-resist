@@ -825,7 +825,8 @@ const InteractiveSlideOverlay = ({
           {/* Video container */}
           <div 
             ref={videoContainerRef}
-            className="w-full h-full bg-black"
+            className="absolute inset-0 w-full h-full bg-black"
+            style={{ zIndex: 1 }}
           />
 
           {/* Feedback icon overlay */}
