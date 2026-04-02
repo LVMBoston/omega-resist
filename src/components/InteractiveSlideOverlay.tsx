@@ -538,7 +538,7 @@ const InteractiveSlideOverlay = ({
       const match = url.match(pattern);
       if (match && match[1]) {
         const videoId = match[1];
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
       }
     }
     return url;
