@@ -549,7 +549,7 @@ export default function DeckViewer() {
                   <Card className="h-full w-full border-0 rounded-none bg-black">
                     <CardContent className="p-0 h-full w-full flex items-center justify-center">
                       {/* Portrait slide (9:16): fill height on landscape viewports (letterbox), fill width on portrait viewports */}
-                      <div className="relative bg-black flex items-center justify-center deck-slide-container">
+                      <div className={`relative bg-black flex items-center justify-center ${orientation === 'landscape' ? 'deck-slide-landscape' : 'deck-slide-container'}`}>
                         {slide.type === "spread-word" ? (
                           <ViralSlide 
                             key={`viral-${slide.id}`}
