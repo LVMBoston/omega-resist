@@ -664,18 +664,24 @@ const InteractiveSlideOverlay = ({
     }
   }, [isActive]);
 
+  // Keep ref in sync with state for use in IntersectionObserver callback
+  useEffect(() => {
+    vimeoPlayerStateRef.current = vimeoPlayerState;
+  }, [vimeoPlayerState]);
+
   // Also pause/resume when overlay scrolls out of view via IntersectionObserver
   useEffect(() => {
     if (!isVideoOpen || !imageRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!vimeoPlayerRef.current) return;
+        const currentState = vimeoPlayerStateRef.current;
         if (!entry.isIntersecting) {
-          vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
+          vimeoWasUnmutedRef.current = currentState === "playing-unmuted";
           vimeoPlayerRef.current.pause().catch(() => {});
           vimeoPlayerRef.current.setVolume(0).catch(() => {});
           setVimeoPlayerState("paused");
-        } else if (vimeoPlayerState === "paused") {
+        } else if (currentState === "paused") {
           vimeoPlayerRef.current.play().catch(() => {});
           if (vimeoWasUnmutedRef.current) {
             vimeoPlayerRef.current.setVolume(1).catch(() => {});
@@ -689,7 +695,7 @@ const InteractiveSlideOverlay = ({
     );
     observer.observe(imageRef.current);
     return () => observer.disconnect();
-  }, [isVideoOpen, vimeoPlayerState]);
+  }, [isVideoOpen]);
 
   const handleVimeoCenterTap = useCallback(() => {
     const player = vimeoPlayerRef.current;
