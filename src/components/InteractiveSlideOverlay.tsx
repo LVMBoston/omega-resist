@@ -821,7 +821,7 @@ const InteractiveSlideOverlay = ({
           <button
             onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleVimeoCenterTap(); }}
             onClick={(e) => { e.stopPropagation(); handleVimeoCenterTap(); }}
-            className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer"
+            className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer pointer-events-auto"
             style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label="Toggle sound or pause"
           />
