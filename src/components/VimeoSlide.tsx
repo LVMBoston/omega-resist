@@ -70,6 +70,8 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     videoContainerRef.current.appendChild(iframe);
 
     const player = new Player(iframe, { muted: true, autoplay: true });
+    // Re-apply in case Vimeo SDK overrides pointer-events
+    iframe.style.pointerEvents = 'none';
     playerRef.current = player;
 
     player.on("ended", () => {
