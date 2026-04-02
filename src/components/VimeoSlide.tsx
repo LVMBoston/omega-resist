@@ -184,7 +184,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
           <button
             onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCenterTap(); }}
             onClick={(e) => { e.stopPropagation(); handleCenterTap(); }}
-            className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer"
+            className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer pointer-events-auto"
             style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label="Toggle sound or pause"
           />
