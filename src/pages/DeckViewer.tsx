@@ -358,7 +358,7 @@ export default function DeckViewer() {
     const handleOrientationChange = () => {
       // Gentle reflow: read offsetHeight to force layout recalculation
       setTimeout(() => {
-        document.querySelectorAll('.deck-slide-container').forEach((el) => {
+        document.querySelectorAll('.deck-slide-container, .deck-slide-landscape').forEach((el) => {
           void (el as HTMLElement).offsetHeight;
         });
       }, 100);
