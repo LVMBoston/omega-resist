@@ -339,9 +339,22 @@ export default function DeckViewer() {
     logViewEvent();
   }, [activeToken, searchParams, loading, eventLogged, instanceTokenProcessed]);
 
+  // Auto-detect deck orientation from first image slide
+  useEffect(() => {
+    if (slides.length === 0) return;
+    const firstImage = slides.find(s => s.type === 'image');
+    if (!firstImage) return;
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth > img.naturalHeight) {
+        setOrientation('landscape');
+      }
+    };
+    img.src = firstImage.content_url;
+  }, [slides]);
+
   // Removed auto-fullscreen on load - must be triggered by user gesture
   // Users can press 'f' key to toggle fullscreen manually
-
 
   // Track fullscreen state
   useEffect(() => {
