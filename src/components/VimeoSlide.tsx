@@ -18,7 +18,7 @@ const getVimeoEmbedUrl = (url: string): string => {
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match?.[1]) {
-      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=1&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0`;
+      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0`;
     }
   }
   return url;
@@ -176,24 +176,25 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
       {isShowingVideo && (
         <div className="relative w-full h-full">
           {/* Left swipe-passthrough zone */}
-          <div className="absolute inset-y-0 left-0 w-[15%] z-10 pointer-events-none" />
+          <div className="absolute inset-y-0 left-0 w-[15%] z-30 pointer-events-none" />
 
           {/* Center tap zone — use onTouchEnd for iOS Safari compatibility */}
           <button
             onTouchEnd={(e) => { e.preventDefault(); handleCenterTap(); }}
             onClick={handleCenterTap}
-            className="absolute inset-y-0 left-[15%] w-[70%] z-10 bg-transparent border-none cursor-pointer"
+            className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer"
             style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label="Toggle sound or pause"
           />
 
           {/* Right swipe-passthrough zone */}
-          <div className="absolute inset-y-0 right-0 w-[15%] z-10 pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-[15%] z-30 pointer-events-none" />
 
           {/* Vimeo iframe container */}
           <div
             ref={videoContainerRef}
-            className="w-full h-full bg-black"
+            className="absolute inset-0 w-full h-full bg-black"
+            style={{ zIndex: 1 }}
           />
 
           {/* Feedback icon overlay */}

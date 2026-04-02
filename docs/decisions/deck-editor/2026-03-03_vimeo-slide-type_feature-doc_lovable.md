@@ -90,6 +90,18 @@ Replaced the full-viewport `fixed inset-0` Vimeo overlay with an **inline player
 - `InteractiveSlideOverlay.tsx` — Vimeo hotspot uses same inline pattern (absolute, not fixed)
 - Embed URL changed to `muted=1` for browser autoplay compliance
 
+## Update — 2026-04-02
+
+### 8. Fix: Disable Vimeo native controls, fix tap-zone z-index
+
+Vimeo's native player controls (`controls=1`) were visible but unclickable because the iframe has `pointer-events: none`. Additionally, the custom tap-zone button could be obscured by the iframe's stacking context.
+
+**Fixes applied to both `VimeoSlide.tsx` and `InteractiveSlideOverlay.tsx`:**
+
+a. Changed embed URL from `controls=1` to `controls=0` — removes Vimeo's native pause/scrub/volume UI since the custom tap-zone handles all interaction.
+b. Elevated tap-zone and swipe-passthrough zone z-index above the iframe container (z-30 in VimeoSlide, z-[10000] in InteractiveSlideOverlay).
+c. Made the video container `absolute inset-0` with explicit low `z-index: 1` to prevent stacking conflicts.
+
 ## Out of scope
 
 - MP4 direct upload, GIF restart logic, link slide type.
