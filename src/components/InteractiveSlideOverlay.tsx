@@ -690,6 +690,7 @@ const InteractiveSlideOverlay = ({
 
   const handleVimeoCenterTap = useCallback(() => {
     const player = vimeoPlayerRef.current;
+    console.log("[InteractiveSlideOverlay] handleVimeoCenterTap called, player:", !!player, "state:", vimeoPlayerState);
     if (!player) return;
     switch (vimeoPlayerState) {
       case "playing-muted":
