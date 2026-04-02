@@ -116,6 +116,25 @@ a. Hide the hotspot container (`display: none`) when `isVideoOpen` is true, prev
 b. Added `e.stopPropagation()` to center tap zone `onClick` and `onTouchEnd` handlers in both `InteractiveSlideOverlay.tsx` and `VimeoSlide.tsx` to prevent event bubbling to the carousel.
 c. Added diagnostic `console.log` calls to `handleVimeoCenterTap` to aid future debugging.
 
+## Update — 2026-04-02 (c)
+
+### 10. Fix: Pointer-events blocking tap zone + IntersectionObserver re-triggering pause
+
+Two root causes prevented the tap-to-toggle state machine from working:
+
+**a. Pointer-events interception**: The Vimeo iframe container div (`videoContainerRef`) lacked `pointer-events: none`, allowing it to intercept clicks meant for the tap-zone button above it. The Vimeo Player SDK could also reset `pointer-events` on the iframe after initialization.
+
+**b. IntersectionObserver auto-resume**: The IntersectionObserver effect included `vimeoPlayerState` in its dependency array. When the user tapped to pause (state → `"paused"`), the effect re-ran, creating a new observer whose callback immediately fired with `isIntersecting: true`, saw `"paused"`, and resumed the player back to `"playing-muted"` — undoing the pause.
+
+**Fixes applied:**
+
+a. Added `pointer-events-none` to video container div in both `VimeoSlide.tsx` and `InteractiveSlideOverlay.tsx`.
+b. Added `pointer-events-auto` to center tap-zone button in both files.
+c. Re-applied `iframe.style.pointerEvents = 'none'` after `new Player(iframe)` to guard against SDK overrides.
+d. Replaced direct `vimeoPlayerState` usage in the IntersectionObserver callback with a `vimeoPlayerStateRef` ref, and removed `vimeoPlayerState` from the effect's dependency array.
+
+**Browser-verified**: Full unmute → pause (frame frozen 3+ seconds) → resume cycle confirmed on `/deck/no-kings-falmouth`.
+
 ## Out of scope
 
 - MP4 direct upload, GIF restart logic, link slide type.

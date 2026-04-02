@@ -70,6 +70,8 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     videoContainerRef.current.appendChild(iframe);
 
     const player = new Player(iframe, { muted: true, autoplay: true });
+    // Re-apply in case Vimeo SDK overrides pointer-events
+    iframe.style.pointerEvents = 'none';
     playerRef.current = player;
 
     player.on("ended", () => {
@@ -182,7 +184,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
           <button
             onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCenterTap(); }}
             onClick={(e) => { e.stopPropagation(); handleCenterTap(); }}
-            className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer"
+            className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer pointer-events-auto"
             style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label="Toggle sound or pause"
           />
@@ -193,7 +195,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
           {/* Vimeo iframe container */}
           <div
             ref={videoContainerRef}
-            className="absolute inset-0 w-full h-full bg-black"
+            className="absolute inset-0 w-full h-full bg-black pointer-events-none"
             style={{ zIndex: 1 }}
           />
 
