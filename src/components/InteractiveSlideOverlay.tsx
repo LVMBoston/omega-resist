@@ -606,6 +606,8 @@ const InteractiveSlideOverlay = ({
         muted: true,
         autoplay: true,
       });
+      // Re-apply in case Vimeo SDK overrides pointer-events
+      iframe.style.pointerEvents = 'none';
       
       vimeoPlayerRef.current = player;
       setVimeoPlayerState("playing-muted");
