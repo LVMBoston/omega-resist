@@ -66,6 +66,7 @@ const InteractiveSlideOverlay = ({
   const [vimeoPlayerState, setVimeoPlayerState] = useState<"idle" | "playing-muted" | "playing-unmuted" | "paused">("idle");
   const [vimeoFeedbackIcon, setVimeoFeedbackIcon] = useState<React.ReactNode | null>(null);
   const vimeoWasUnmutedRef = useRef(false);
+  const vimeoPlayerStateRef = useRef(vimeoPlayerState);
   const vimeoFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const vimeoPlayerRef = useRef<Player | null>(null);
