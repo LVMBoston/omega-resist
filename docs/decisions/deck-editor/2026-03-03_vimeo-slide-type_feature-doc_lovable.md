@@ -104,4 +104,18 @@ c. Made the video container `absolute inset-0` with explicit low `z-index: 1` to
 
 ## Out of scope
 
+## Update — 2026-04-02 (b)
+
+### 9. Fix: Hotspot buttons intercepting Vimeo center-tap clicks
+
+After opening the inline Vimeo player via a vimeo hotspot, the hotspot buttons (with `pointer-events-auto`) remained rendered underneath the video overlay. Despite the overlay being at z-[9999] and center tap zone at z-[10000], the hotspot buttons could still intercept click events in certain stacking contexts, preventing the center tap handler from firing on subsequent taps (unmute worked once, but pause/resume did not).
+
+**Fixes applied to `InteractiveSlideOverlay.tsx`:**
+
+a. Hide the hotspot container (`display: none`) when `isVideoOpen` is true, preventing any hotspot button from capturing clicks meant for the video controls.
+b. Added `e.stopPropagation()` to center tap zone `onClick` and `onTouchEnd` handlers in both `InteractiveSlideOverlay.tsx` and `VimeoSlide.tsx` to prevent event bubbling to the carousel.
+c. Added diagnostic `console.log` calls to `handleVimeoCenterTap` to aid future debugging.
+
+## Out of scope
+
 - MP4 direct upload, GIF restart logic, link slide type.

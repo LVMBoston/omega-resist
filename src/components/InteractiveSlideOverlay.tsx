@@ -690,22 +690,28 @@ const InteractiveSlideOverlay = ({
 
   const handleVimeoCenterTap = useCallback(() => {
     const player = vimeoPlayerRef.current;
-    
-    if (!player) return;
+    console.log("[VimeoCenterTap] called, playerState:", vimeoPlayerState, "player exists:", !!player);
+    if (!player) {
+      console.warn("[VimeoCenterTap] No player ref — bailing out");
+      return;
+    }
     switch (vimeoPlayerState) {
       case "playing-muted":
-        player.setVolume(1).catch(() => {});
+        console.log("[VimeoCenterTap] unmuting");
+        player.setVolume(1).catch((e: any) => console.error("[VimeoCenterTap] setVolume failed:", e));
         setVimeoPlayerState("playing-unmuted");
         showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
         break;
       case "playing-unmuted":
-        player.pause().catch(() => {});
+        console.log("[VimeoCenterTap] pausing");
+        player.pause().catch((e: any) => console.error("[VimeoCenterTap] pause failed:", e));
         setVimeoPlayerState("paused");
         showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
         break;
       case "paused":
-        player.play().catch(() => {});
-        player.setVolume(1).catch(() => {});
+        console.log("[VimeoCenterTap] resuming");
+        player.play().catch((e: any) => console.error("[VimeoCenterTap] play failed:", e));
+        player.setVolume(1).catch((e: any) => console.error("[VimeoCenterTap] setVolume failed:", e));
         setVimeoPlayerState("playing-unmuted");
         showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
         break;
@@ -813,8 +819,8 @@ const InteractiveSlideOverlay = ({
 
           {/* Center tap zone — use onTouchEnd for iOS Safari compatibility */}
           <button
-            onTouchEnd={(e) => { e.preventDefault(); handleVimeoCenterTap(); }}
-            onClick={handleVimeoCenterTap}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleVimeoCenterTap(); }}
+            onClick={(e) => { e.stopPropagation(); handleVimeoCenterTap(); }}
             className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer"
             style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label="Toggle sound or pause"
@@ -850,8 +856,8 @@ const InteractiveSlideOverlay = ({
         </div>
       )}
 
-      <div className="absolute inset-0 pointer-events-none z-50">
-      {imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
+      <div className="absolute inset-0 pointer-events-none z-50" style={{ display: isVideoOpen ? 'none' : undefined }}>
+      {!isVideoOpen && imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
         // Calculate hotspot position relative to rendered image
         const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
         const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
