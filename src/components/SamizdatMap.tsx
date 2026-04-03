@@ -258,11 +258,11 @@ const SamizdatMap = ({
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(showNoSpawns);
 
-  // Tick every 60s so the staleness filter re-evaluates over time
+  // Tick every 2s so the staleness filter re-evaluates smoothly during animation
   const [stalenessTick, setStalenessTick] = useState(0);
   useEffect(() => {
     if (showNoSpawnsLocal) return; // filter is active only when toggle is OFF
-    const id = setInterval(() => setStalenessTick(t => t + 1), 60_000);
+    const id = setInterval(() => setStalenessTick(t => t + 1), 2_000);
     return () => clearInterval(id);
   }, [showNoSpawnsLocal]);
   
