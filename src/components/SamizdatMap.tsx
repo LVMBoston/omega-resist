@@ -7,7 +7,7 @@ import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { parseNaiveDate, formatElapsedTime } from "@/lib/dateUtils";
+import { formatElapsedTime } from "@/lib/dateUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -94,6 +94,8 @@ interface EventPoint {
   spawnCount?: number;
   // Engagement state for border color
   engagementState: EngagementState;
+  // Scan-location timezone (IANA, from zip_codes table)
+  timezone?: string | null;
 }
 
 interface ZipAggregate {
@@ -328,7 +330,7 @@ const SamizdatMap = ({
         // Only filter events with no engagement (opened but never shared)
         if (e.engagementState !== "none") return true;
         // Check if older than 2 days
-        const eventTime = parseNaiveDate(e.occurredAt).getTime();
+        const eventTime = new Date(e.occurredAt).getTime();
         return (now - eventTime) < TWO_DAYS_MS;
       });
     }
@@ -341,14 +343,14 @@ const SamizdatMap = ({
     // Filter by timeline position (cumulative from go-live)
     if (timelinePosition < 1.0) {
       // Compute go-live time (earliest EoA start date)
-      const startDates = Object.values(eoaStartDates).map(d => parseNaiveDate(d).getTime()).filter(t => t > 0);
+      const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
       const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
       // Compute latest event time
-      const latestEvent = filtered.reduce((max, e) => Math.max(max, parseNaiveDate(e.occurredAt).getTime()), 0);
+      const latestEvent = filtered.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
       const totalDuration = latestEvent - goLive;
       if (totalDuration > 0 && goLive > 0) {
         const cutoff = goLive + totalDuration * timelinePosition;
-        filtered = filtered.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+        filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= cutoff);
       }
     }
 
@@ -417,9 +419,9 @@ const SamizdatMap = ({
 
   // Timeline-derived computed values
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
-    const startDates = Object.values(eoaStartDates).map(d => parseNaiveDate(d).getTime()).filter(t => t > 0);
+    const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
     const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-    const latest = eventPoints.reduce((max, e) => Math.max(max, parseNaiveDate(e.occurredAt).getTime()), 0);
+    const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
     return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
   }, [eoaStartDates, eventPoints]);
 
@@ -456,7 +458,7 @@ const SamizdatMap = ({
     if (timelinePosition >= 1.0) return filteredEventPoints;
     if (totalDurationMs <= 0 || goLiveTime === 0) return filteredEventPoints;
     const cutoff = goLiveTime + totalDurationMs * timelinePosition;
-    return filteredEventPoints.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+    return filteredEventPoints.filter(e => new Date(e.occurredAt).getTime() <= cutoff);
   }, [filteredEventPoints, timelinePosition, goLiveTime, totalDurationMs]);
 
   // Calculate viewport stats using time-filtered events (by share medium)
@@ -623,6 +625,21 @@ const SamizdatMap = ({
         setEventPoints([]);
         setLoading(false);
         return;
+      }
+
+      // Step 3a: Batch-fetch IANA timezones from zip_codes for all unique zip codes
+      const tzZips = [...new Set(events.map(e => e.zip_code).filter(Boolean))] as string[];
+      const zipTimezoneMap: Record<string, string> = {};
+      if (tzZips.length > 0) {
+        const { data: zipTzData } = await supabase
+          .from("zip_codes")
+          .select("zip_code, timezone")
+          .in("zip_code", tzZips);
+        if (zipTzData) {
+          zipTzData.forEach(z => {
+            if (z.timezone) zipTimezoneMap[z.zip_code] = z.timezone;
+          });
+        }
       }
 
       // Step 3b: Fetch spawn counts AND engagement state for all tokens
@@ -805,6 +822,7 @@ const SamizdatMap = ({
           city: event.city || null,
           spawnCount: tokenSpawnCount,
           engagementState: tokenEngagement,
+          timezone: event.zip_code ? (zipTimezoneMap[event.zip_code] || null) : null,
         });
       });
 
@@ -969,13 +987,33 @@ const SamizdatMap = ({
         ? `🌍 ${event.city || ''} ${event.country || 'International'}`.trim()
         : event.zipCode ? `ZIP ${event.zipCode}` : 'Unknown';
       
-      const timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+      let timestamp: string;
+      let timeLabel: string;
+      if (event.timezone) {
+        try {
+          const dt = new Date(event.occurredAt);
+          timestamp = dt.toLocaleString('en-US', {
+            timeZone: event.timezone,
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          });
+          const tzAbbr = dt.toLocaleString('en-US', { timeZone: event.timezone, timeZoneName: 'short' }).split(' ').pop() || '';
+          timeLabel = `${tzAbbr} local time`;
+        } catch {
+          timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          timeLabel = 'browser time';
+        }
+      } else {
+        timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+        });
+        timeLabel = 'browser time';
+      }
       
       // Show engagement state info
       const engagementColor = ENGAGEMENT_BORDER_COLORS[event.engagementState];
@@ -994,7 +1032,7 @@ const SamizdatMap = ({
         <div style="font-family:system-ui;font-size:12px;line-height:1.4;min-width:140px;">
           <div style="font-weight:600;margin-bottom:4px;">${levelLabel} • ${mediumLabel}</div>
           <div style="color:#64748b;">${locationLabel}</div>
-          <div style="color:#64748b;">${timestamp}</div>
+          <div style="color:#64748b;">${timestamp} <span style="font-size:10px;opacity:0.7;">${timeLabel}</span></div>
           ${instanceLabel}
           ${engagementInfo}
         </div>
@@ -1391,6 +1429,7 @@ const SamizdatMap = ({
                     <div className="text-xs font-medium mb-1">Timeline</div>
                     <div className="text-sm font-semibold tabular-nums">{month} {day}, {year}</div>
                     <div className="text-sm tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
+                    <div className="text-[9px] text-muted-foreground">browser time</div>
                   </div>
                 );
               })()}
