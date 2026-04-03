@@ -1134,9 +1134,9 @@ const SamizdatMap = ({
         locationGroups[key].push(event);
       });
 
-      // Sort events so L00 markers are added last (appear on top)
-      // Higher levels render first, L00 renders last
-      const sortedEvents = [...displayEvents].sort((a, b) => b.level - a.level);
+      // Sort events so higher-level markers are added last (appear on top)
+      // L00 renders first, higher levels render last
+      const sortedEvents = [...displayEvents].sort((a, b) => a.level - b.level);
 
       sortedEvents.forEach((event) => {
         const seqNum = chainSequenceNumbers.get(event.eventId);
