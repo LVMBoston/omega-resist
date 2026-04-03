@@ -254,6 +254,7 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(showNoSpawns);
   
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
