@@ -96,12 +96,13 @@ interface MapMagnifierProps {
 
 export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEvents }: MapMagnifierProps) {
   const [magnification, setMagnification] = useState(2);
+  const [sizeBumps, setSizeBumps] = useState(0);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const loupeMapRef = useRef<L.Map | null>(null);
   const loupeContainerRef = useRef<HTMLDivElement>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
-  const { size } = MAGNIFICATION_PRESETS[magnification];
+  const size = BASE_SIZES[magnification] + sizeBumps * SIZE_BUMP;
 
   // Build sequence numbers (chronological order)
   const sequenceNumbers = useMemo(() => {
