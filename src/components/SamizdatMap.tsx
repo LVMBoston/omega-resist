@@ -1236,71 +1236,7 @@ const SamizdatMap = ({
   return (
     <div className="space-y-4">
       {/* Collapsible Controls */}
-      <Accordion type="multiple" defaultValue={["time-filter"]} className="space-y-2">
-        {/* Time since go-live filter */}
-        <AccordionItem value="time-filter" className="rounded-lg border border-border bg-card px-4">
-          <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
-            Time since go-live
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-3 pb-3">
-              {/* Control row */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => { setIsPlaying(false); setTimelinePosition(0); }}
-                  title="Reset"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={isPlaying ? "default" : "outline"}
-                  size="sm"
-                  className="h-8 px-3"
-                  onClick={() => {
-                    if (timelinePosition >= 1) setTimelinePosition(0);
-                    setIsPlaying(prev => !prev);
-                  }}
-                >
-                  {isPlaying ? <Pause className="h-3.5 w-3.5 mr-1" /> : <Play className="h-3.5 w-3.5 mr-1" />}
-                  {isPlaying ? "Pause" : "Play"}
-                </Button>
-                <div className="flex items-center gap-1 ml-auto">
-                  <span className="text-xs text-muted-foreground mr-1">Speed:</span>
-                  {[1, 2, 5, 10].map(s => (
-                    <Button
-                      key={s}
-                      variant={playbackSpeed === s ? "default" : "ghost"}
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => setPlaybackSpeed(s)}
-                    >
-                      {s}x
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              {/* Slider */}
-              <div className="space-y-1">
-                <Slider
-                  value={[timelinePosition]}
-                  onValueChange={([v]) => { setIsPlaying(false); setTimelinePosition(v); }}
-                  min={0}
-                  max={1}
-                  step={0.001}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{totalDurationMs > 0 ? formatElapsedTime(totalDurationMs * timelinePosition) : "—"}</span>
-                  <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
-                </div>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
+      <Accordion type="multiple" defaultValue={[]} className="space-y-2">
         {/* Viewport Activity Report - by share medium with filter checkboxes (hidden in chain view) */}
         {viewportStats.length > 0 && viewMode !== "chain" && (
           <AccordionItem value="viewport-report" className="rounded-lg border border-border bg-card">
@@ -1490,6 +1426,60 @@ const SamizdatMap = ({
               )}
             </Button>
             
+          </div>
+
+          {/* Timeline playback controls - bottom right of map */}
+          <div className="absolute bottom-3 right-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border" style={{ maxWidth: '320px', minWidth: '260px' }}>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => { setIsPlaying(false); setTimelinePosition(0); }}
+                  title="Reset"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant={isPlaying ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    if (timelinePosition >= 1) setTimelinePosition(0);
+                    setIsPlaying(prev => !prev);
+                  }}
+                >
+                  {isPlaying ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
+                  <span className="text-xs">{isPlaying ? "Pause" : "Play"}</span>
+                </Button>
+                <div className="flex items-center gap-0.5 ml-auto">
+                  {[1, 2, 5, 10].map(s => (
+                    <Button
+                      key={s}
+                      variant={playbackSpeed === s ? "default" : "ghost"}
+                      size="sm"
+                      className="h-6 px-1.5 text-[10px]"
+                      onClick={() => setPlaybackSpeed(s)}
+                    >
+                      {s}x
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <Slider
+                value={[timelinePosition]}
+                onValueChange={([v]) => { setIsPlaying(false); setTimelinePosition(v); }}
+                min={0}
+                max={1}
+                step={0.001}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>{totalDurationMs > 0 ? formatElapsedTime(totalDurationMs * timelinePosition) : "—"}</span>
+                <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
+              </div>
+            </div>
           </div>
 
           {loading && (
