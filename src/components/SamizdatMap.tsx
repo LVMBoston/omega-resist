@@ -363,7 +363,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
+  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, stalenessTick]);
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
