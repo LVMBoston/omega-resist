@@ -627,6 +627,21 @@ const SamizdatMap = ({
         return;
       }
 
+      // Step 3a: Batch-fetch IANA timezones from zip_codes for all unique zip codes
+      const uniqueZips = [...new Set(events.map(e => e.zip_code).filter(Boolean))] as string[];
+      const zipTimezoneMap: Record<string, string> = {};
+      if (uniqueZips.length > 0) {
+        const { data: zipTzData } = await supabase
+          .from("zip_codes")
+          .select("zip_code, timezone")
+          .in("zip_code", uniqueZips);
+        if (zipTzData) {
+          zipTzData.forEach(z => {
+            if (z.timezone) zipTimezoneMap[z.zip_code] = z.timezone;
+          });
+        }
+      }
+
       // Step 3b: Fetch spawn counts AND engagement state for all tokens
       // For each token, determine: none (no children), intent (has child), completed (child has view)
       const allTokenStrings = tokens.map(t => t.token);
