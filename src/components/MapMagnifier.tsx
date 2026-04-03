@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -9,7 +9,9 @@ const MAGNIFICATION_PRESETS: Record<number, { size: number }> = {
 };
 
 // Engagement border colors (mirrors SamizdatMap)
-const ENGAGEMENT_BORDERS: Record<string, string> = {
+type EngagementState = "none" | "intent" | "completed";
+
+const ENGAGEMENT_BORDER_COLORS: Record<EngagementState, string> = {
   none: "#ffffff",
   intent: "#f59e0b",
   completed: "#06b6d4",
@@ -28,6 +30,50 @@ const getLevelColor = (level: number): string => {
   return LEVEL_COLORS[level] || LEVEL_COLORS[0];
 };
 
+type EoaShape = "circle" | "square" | "triangle";
+
+const getShareMediumShape = (utmMedium: string): EoaShape => {
+  if (!utmMedium) return "circle";
+  const medium = utmMedium.toLowerCase();
+  if (medium === "qr") return "circle";
+  if (medium === "em") return "square";
+  if (medium === "sms") return "triangle";
+  return "circle";
+};
+
+const getShapeSVG = (shape: EoaShape, fillColor: string, size: number, engagementState: EngagementState = "none"): string => {
+  const strokeWidth = 2;
+  const halfStroke = strokeWidth / 2;
+  const strokeColor = ENGAGEMENT_BORDER_COLORS[engagementState];
+
+  switch (shape) {
+    case "square":
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <rect x="${halfStroke}" y="${halfStroke}" width="${size - strokeWidth}" height="${size - strokeWidth}" 
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" rx="2"/>
+      </svg>`;
+    case "triangle": {
+      const cx = size / 2;
+      const topY = halfStroke;
+      const bottomY = size - halfStroke;
+      const leftX = halfStroke;
+      const rightX = size - halfStroke;
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="${cx},${topY} ${rightX},${bottomY} ${leftX},${bottomY}" 
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+      </svg>`;
+    }
+    case "circle":
+    default: {
+      const r = (size / 2) - halfStroke;
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${r}" 
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
+      </svg>`;
+    }
+  }
+};
+
 export interface LoupeEventPoint {
   eventId: string;
   latitude: number;
@@ -35,6 +81,7 @@ export interface LoupeEventPoint {
   level: number;
   engagementState: string;
   utmMedium: string;
+  occurredAt?: string;
 }
 
 interface MapMagnifierProps {
@@ -52,6 +99,21 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
   const { size } = MAGNIFICATION_PRESETS[magnification];
+
+  // Build sequence numbers (chronological order)
+  const sequenceNumbers = useMemo(() => {
+    if (!displayEvents.length) return new Map<string, number>();
+    const sorted = [...displayEvents].sort((a, b) => {
+      const tA = a.occurredAt ? new Date(a.occurredAt).getTime() : 0;
+      const tB = b.occurredAt ? new Date(b.occurredAt).getTime() : 0;
+      return tA - tB;
+    });
+    const seqMap = new Map<string, number>();
+    sorted.forEach((event, index) => {
+      seqMap.set(event.eventId, index + 1);
+    });
+    return seqMap;
+  }, [displayEvents]);
 
   // Create the loupe Leaflet map instance once
   useEffect(() => {
@@ -91,7 +153,6 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
 
     const syncZoom = () => {
       const parentZoom = parentMap.getZoom();
-      // Key 2/3/4 adds that many extra zoom levels for aggressive zoom-in
       map.setZoom(parentZoom + magnification, { animate: false });
     };
 
@@ -100,19 +161,18 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
     return () => { parentMap.off("zoom", syncZoom); };
   }, [parentMap, magnification]);
 
-  // Sync event markers to the loupe map
+  // Sync event markers to the loupe map using full SVG shapes
   useEffect(() => {
     const map = loupeMapRef.current;
     if (!map) return;
 
-    // Remove old markers
     if (markersLayerRef.current) {
       map.removeLayer(markersLayerRef.current);
     }
 
     const layerGroup = L.layerGroup();
 
-    // Group events by location for jitter (same logic as parent)
+    // Group events by location for jitter
     const locationGroups: Record<string, LoupeEventPoint[]> = {};
     displayEvents.forEach((event) => {
       const key = `${event.latitude.toFixed(4)}_${event.longitude.toFixed(4)}`;
@@ -125,21 +185,56 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
 
     sorted.forEach((event) => {
       const fillColor = getLevelColor(event.level);
-      const borderColor = ENGAGEMENT_BORDERS[event.engagementState] || "#ffffff";
-      const markerSize = 14;
+      const shape = getShareMediumShape(event.utmMedium);
+      const engagement = (event.engagementState || "none") as EngagementState;
+      const markerSize = 16;
+      const shapeSVG = getShapeSVG(shape, fillColor, markerSize, engagement);
+      const levelLabel = `L${String(event.level).padStart(2, '0')}`;
+      const seqNum = sequenceNumbers.get(event.eventId);
 
-      // Simple circle marker via divIcon (matches visual feel without full SVG shapes)
       const icon = L.divIcon({
-        html: `<div style="
-          width:${markerSize}px;height:${markerSize}px;
-          border-radius:50%;
-          background:${fillColor};
-          border:2px solid ${borderColor};
-          box-shadow:0 1px 3px rgba(0,0,0,0.3);
-        "></div>`,
-        className: "",
-        iconSize: L.point(markerSize, markerSize),
-        iconAnchor: L.point(markerSize / 2, markerSize / 2),
+        html: `
+          <div style="position:relative;">
+            <div style="
+              width: ${markerSize}px;
+              height: ${markerSize}px;
+              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            ">${shapeSVG}</div>
+            ${seqNum ? `
+            <div style="
+              position: absolute;
+              top: -10px;
+              left: 12px;
+              background: #1e293b;
+              color: white;
+              font-size: 9px;
+              font-weight: 600;
+              min-width: 16px;
+              height: 16px;
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0 3px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+              font-family: system-ui;
+            ">${seqNum}</div>
+            ` : ''}
+            <div style="
+              position: absolute;
+              top: ${markerSize}px;
+              left: -3px;
+              font-size: 8px;
+              color: ${fillColor};
+              font-weight: 700;
+              font-family: system-ui;
+              text-shadow: 0 0 2px white, 0 0 2px white;
+            ">${levelLabel}</div>
+          </div>
+        `,
+        className: "samizdat-event-icon",
+        iconSize: L.point(seqNum ? 32 : 16, 28),
+        iconAnchor: L.point(8, 8),
       });
 
       // Apply jitter for overlapping locations
@@ -167,7 +262,7 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
 
     markersLayerRef.current = layerGroup;
     map.addLayer(layerGroup);
-  }, [displayEvents]);
+  }, [displayEvents, sequenceNumbers]);
 
   // Invalidate map size when the loupe size changes
   useEffect(() => {
@@ -192,7 +287,6 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
 
     setCursorPos({ x: e.clientX, y: e.clientY });
 
-    // Convert screen pixel → lat/lng → loupe center
     const containerPoint = parentMap.containerPointToLayerPoint([x, y]);
     const latlng = parentMap.layerPointToLatLng(containerPoint);
     loupeMapRef.current?.setView(latlng, loupeMapRef.current.getZoom(), { animate: false });
@@ -247,7 +341,6 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
         pointerEvents: "none",
       }}
     >
-      {/* Actual Leaflet map container fills the circle */}
       <div
         ref={loupeContainerRef}
         style={{
