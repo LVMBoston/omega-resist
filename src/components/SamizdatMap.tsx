@@ -987,13 +987,33 @@ const SamizdatMap = ({
         ? `🌍 ${event.city || ''} ${event.country || 'International'}`.trim()
         : event.zipCode ? `ZIP ${event.zipCode}` : 'Unknown';
       
-      const timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+      let timestamp: string;
+      let timeLabel: string;
+      if (event.timezone) {
+        try {
+          const dt = new Date(event.occurredAt);
+          timestamp = dt.toLocaleString('en-US', {
+            timeZone: event.timezone,
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          });
+          const tzAbbr = dt.toLocaleString('en-US', { timeZone: event.timezone, timeZoneName: 'short' }).split(' ').pop() || '';
+          timeLabel = `${tzAbbr} local time`;
+        } catch {
+          timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          timeLabel = 'browser time';
+        }
+      } else {
+        timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+        });
+        timeLabel = 'browser time';
+      }
       
       // Show engagement state info
       const engagementColor = ENGAGEMENT_BORDER_COLORS[event.engagementState];
