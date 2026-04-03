@@ -634,7 +634,7 @@ const SamizdatMap = ({
         const { data: zipTzData } = await supabase
           .from("zip_codes")
           .select("zip_code, timezone")
-          .in("zip_code", uniqueZips);
+          .in("zip_code", tzZips);
         if (zipTzData) {
           zipTzData.forEach(z => {
             if (z.timezone) zipTimezoneMap[z.zip_code] = z.timezone;
