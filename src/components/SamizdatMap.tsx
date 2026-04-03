@@ -1482,7 +1482,7 @@ const SamizdatMap = ({
                 className="scale-75"
               />
               <Label htmlFor="no-spawns-toggle" className="text-[10px] font-medium cursor-pointer whitespace-nowrap">
-                No Spawns
+                Hide stale opens
               </Label>
             </div>
 
