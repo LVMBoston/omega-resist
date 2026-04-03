@@ -254,6 +254,7 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(showNoSpawns);
   
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
@@ -318,7 +319,7 @@ const SamizdatMap = ({
     let filtered = eventPoints;
 
     // Apply spawn filter: hide L00 events with no engaged spawns
-    if (!showNoSpawns) {
+    if (!showNoSpawnsLocal) {
       filtered = filtered.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
     }
 
@@ -342,7 +343,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, showNoSpawns, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
+  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
@@ -1410,8 +1411,22 @@ const SamizdatMap = ({
             
           </div>
 
+          {/* No-spawns toggle - to the left of playback controls */}
+          <div className="absolute bottom-3 z-[1000] flex items-end gap-2" style={{ right: '12px' }}>
+            <div className="bg-background/95 backdrop-blur-sm rounded-md px-2.5 py-2 shadow-md border border-border flex items-center gap-2">
+              <Switch
+                id="no-spawns-toggle"
+                checked={showNoSpawnsLocal}
+                onCheckedChange={setShowNoSpawnsLocal}
+                className="scale-75"
+              />
+              <Label htmlFor="no-spawns-toggle" className="text-[10px] font-medium cursor-pointer whitespace-nowrap">
+                No Spawns
+              </Label>
+            </div>
+
           {/* Timeline playback controls - bottom right of map */}
-          <div className="absolute bottom-3 right-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border" style={{ maxWidth: '320px', minWidth: '260px' }}>
+          <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border" style={{ maxWidth: '320px', minWidth: '260px' }}>
             <div className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
@@ -1462,6 +1477,7 @@ const SamizdatMap = ({
                 <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
               </div>
             </div>
+          </div>
           </div>
 
           {loading && (
