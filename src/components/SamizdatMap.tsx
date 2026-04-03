@@ -328,38 +328,36 @@ const SamizdatMap = ({
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
-    // Apply spawn filter: hide events with engagement "none" older than 2 days
-    // When toggle is OFF, remove stale "opened-only" markers (no intent/completed)
-    // If they later gain intent/completed engagement, they reappear automatically
-    if (!showNoSpawnsLocal) {
-      const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
-      const now = Date.now();
-      filtered = filtered.filter(e => {
-        // Only filter events with no engagement (opened but never shared)
-        if (e.engagementState !== "none") return true;
-        // Check if older than 2 days
-        const eventTime = new Date(e.occurredAt).getTime();
-        return (now - eventTime) < TWO_DAYS_MS;
-      });
-    }
-
     // Filter by enabled share mediums (skip in chain mode - show all)
     if (viewMode !== "chain") {
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
-    // Filter by timeline position (cumulative from go-live)
+    // Compute timeline cutoff (used for both timeline filter and staleness)
+    let timelineCutoff: number | null = null;
     if (timelinePosition < 1.0) {
-      // Compute go-live time (earliest EoA start date)
       const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
       const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-      // Compute latest event time
       const latestEvent = filtered.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
       const totalDuration = latestEvent - goLive;
       if (totalDuration > 0 && goLive > 0) {
-        const cutoff = goLive + totalDuration * timelinePosition;
-        filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= cutoff);
+        timelineCutoff = goLive + totalDuration * timelinePosition;
+        filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= timelineCutoff!);
       }
+    }
+
+    // Apply spawn filter: hide events with engagement "none" older than 2 days
+    // When toggle is OFF, remove stale "opened-only" markers (no intent/completed)
+    // If they later gain intent/completed engagement, they reappear automatically
+    // Uses timeline cursor time during playback, wall-clock time otherwise
+    if (!showNoSpawnsLocal) {
+      const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+      const referenceTime = timelineCutoff ?? Date.now();
+      filtered = filtered.filter(e => {
+        if (e.engagementState !== "none") return true;
+        const eventTime = new Date(e.occurredAt).getTime();
+        return (referenceTime - eventTime) < TWO_DAYS_MS;
+      });
     }
 
     return filtered;
