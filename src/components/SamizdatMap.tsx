@@ -319,7 +319,7 @@ const SamizdatMap = ({
     let filtered = eventPoints;
 
     // Apply spawn filter: hide L00 events with no engaged spawns
-    if (!showNoSpawns) {
+    if (!showNoSpawnsLocal) {
       filtered = filtered.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
     }
 
