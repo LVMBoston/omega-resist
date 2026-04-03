@@ -1561,6 +1561,13 @@ const SamizdatMap = ({
             </div>
           )}
           <div ref={mapContainerRef} className="w-full h-full" />
+          {loupeActive && mapRef.current && mapWrapperRef.current && (
+            <MapMagnifier
+              parentMap={mapRef.current}
+              containerRef={mapWrapperRef}
+              onDeactivate={() => setLoupeActive(false)}
+            />
+          )}
           {!loading && filteredEventPoints.length === 0 && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
               <p className="text-muted-foreground">
