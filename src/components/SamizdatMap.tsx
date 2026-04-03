@@ -5,7 +5,8 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw, Search } from "lucide-react";
+import { MapMagnifier } from "@/components/MapMagnifier";
 import { Slider } from "@/components/ui/slider";
 import { formatElapsedTime } from "@/lib/dateUtils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -256,6 +257,8 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [loupeActive, setLoupeActive] = useState(false);
+  const mapWrapperRef = useRef<HTMLDivElement>(null);
   // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
   const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(!showNoSpawns);
 
@@ -1358,7 +1361,7 @@ const SamizdatMap = ({
         style={isFullscreen ? { height: '100vh' } : { height: 'calc(100vh - 280px)', minHeight: '500px', maxHeight: '900px' }}
       >
         {/* Map container - shrinks when panel is open */}
-        <div className="relative flex-1 min-w-0">
+        <div ref={mapWrapperRef} className="relative flex-1 min-w-0">
           {/* Chain mode indicator and back button */}
           {viewMode === "chain" && (
             <div className="absolute top-3 left-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
@@ -1469,6 +1472,17 @@ const SamizdatMap = ({
                 </>
               )}
             </Button>
+            {/* Magnifier loupe toggle */}
+            <Button
+              variant={loupeActive ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLoupeActive(!loupeActive)}
+              className="h-7 px-2 justify-start"
+              title="Magnifier (press 2/3/4 for zoom level, Esc to exit)"
+            >
+              <Search className="w-4 h-4 mr-1" />
+              {loupeActive ? "Loupe ON" : "Loupe"}
+            </Button>
             
           </div>
 
@@ -1547,6 +1561,13 @@ const SamizdatMap = ({
             </div>
           )}
           <div ref={mapContainerRef} className="w-full h-full" />
+          {loupeActive && mapRef.current && mapWrapperRef.current && (
+            <MapMagnifier
+              parentMap={mapRef.current}
+              containerRef={mapWrapperRef}
+              onDeactivate={() => setLoupeActive(false)}
+            />
+          )}
           {!loading && filteredEventPoints.length === 0 && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
               <p className="text-muted-foreground">

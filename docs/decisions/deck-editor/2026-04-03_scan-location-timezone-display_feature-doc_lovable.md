@@ -53,3 +53,13 @@ Map marker tooltips now display the event time in the **scan location's timezone
 
 ### 9. Renamed toggle label
 - Map switch label changed from "No Spawns" to "Hide stale opens" to clarify that enabling it hides markers with no engagement older than 48 hours.
+
+## Update — 2026-04-03 (Map Magnifier Loupe)
+
+### 10. Map magnifier loupe
+- Added a **Loupe** toggle button in the top-right map controls (next to Fullscreen).
+- When active, a circular magnified view follows the cursor over the map, showing zoomed-in tiles without changing the map's viewport.
+- Press **2**, **3**, or **4** to switch between 2×, 3×, and 4× magnification (loupe sizes 180px, 260px, 340px respectively). Default: 2×.
+- Press **Escape** or click the toggle again to exit loupe mode.
+- Implementation: a second Leaflet map instance inside a `border-radius: 50%` container, synced to the cursor's lat/lng at `parentZoom + log2(magnification)`.
+- Files: new `src/components/MapMagnifier.tsx`, modified `src/components/SamizdatMap.tsx`.
