@@ -1325,7 +1325,7 @@ const SamizdatMap = ({
                 <div className="flex items-center gap-3 divide-x divide-border">
                   {/* Level colors */}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-medium text-muted-foreground">Level</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Level</span>
                     {[
                       { label: "L00", color: LEVEL_COLORS[0] },
                       { label: "L01", color: LEVEL_COLORS[1] },
