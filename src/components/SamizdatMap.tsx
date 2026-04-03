@@ -1384,64 +1384,87 @@ const SamizdatMap = ({
 
           {/* Legend - Level colors and EoA shapes */}
           {displayEvents.length > 0 && (
-            <div className="absolute bottom-3 left-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
-              <div className="space-y-2">
-                {/* Level colors */}
-                <div>
-                  <div className="text-xs font-medium mb-1.5">Level</div>
-                  <div className="flex gap-3">
-                    {[
-                      { label: "L00", color: LEVEL_COLORS[0] },
-                      { label: "L01", color: LEVEL_COLORS[1] },
-                      { label: "L02", color: LEVEL_COLORS[2] },
-                      { label: "L03+", color: LEVEL_COLORS[3] },
-                    ].map(({ label, color }) => (
-                      <div key={label} className="flex items-center gap-1 text-xs">
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full" 
-                          style={{ backgroundColor: color }}
-                        />
-                        <span>{label}</span>
-                      </div>
-                    ))}
+            <div className="absolute bottom-3 left-3 z-[1000] flex items-end gap-2">
+              <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
+                <div className="space-y-2">
+                  {/* Level colors */}
+                  <div>
+                    <div className="text-xs font-medium mb-1.5">Level</div>
+                    <div className="flex gap-3">
+                      {[
+                        { label: "L00", color: LEVEL_COLORS[0] },
+                        { label: "L01", color: LEVEL_COLORS[1] },
+                        { label: "L02", color: LEVEL_COLORS[2] },
+                        { label: "L03+", color: LEVEL_COLORS[3] },
+                      ].map(({ label, color }) => (
+                        <div key={label} className="flex items-center gap-1 text-xs">
+                          <span 
+                            className="w-2.5 h-2.5 rounded-full" 
+                            style={{ backgroundColor: color }}
+                          />
+                          <span>{label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                
-                {/* Share medium shapes */}
-                <div className="border-t border-border pt-2">
-                  <div className="text-xs font-medium mb-1.5">Share Medium</div>
-                  <div className="flex gap-3">
-                    {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
-                      <div key={shape} className="flex items-center gap-1 text-xs">
-                        <div 
-                          className="w-3 h-3"
-                          dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 12) }}
-                        />
-                        <span>{SHARE_MEDIUM_LABELS[shape]}</span>
-                      </div>
-                    ))}
+                  
+                  {/* Share medium shapes */}
+                  <div className="border-t border-border pt-2">
+                    <div className="text-xs font-medium mb-1.5">Share Medium</div>
+                    <div className="flex gap-3">
+                      {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
+                        <div key={shape} className="flex items-center gap-1 text-xs">
+                          <div 
+                            className="w-3 h-3"
+                            dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 12) }}
+                          />
+                          <span>{SHARE_MEDIUM_LABELS[shape]}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Engagement border colors */}
-                <div className="border-t border-border pt-2">
-                  <div className="text-xs font-medium mb-1.5">Engagement</div>
-                  <div className="flex gap-3">
-                    {(["none", "intent", "completed"] as EngagementState[]).map((state) => (
-                      <div key={state} className="flex items-center gap-1 text-xs">
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full border-2"
-                          style={{ 
-                            backgroundColor: "#64748b",
-                            borderColor: ENGAGEMENT_BORDER_COLORS[state],
-                          }}
-                        />
-                        <span>{ENGAGEMENT_LABELS[state]}</span>
-                      </div>
-                    ))}
+                  {/* Engagement border colors */}
+                  <div className="border-t border-border pt-2">
+                    <div className="text-xs font-medium mb-1.5">Engagement</div>
+                    <div className="flex gap-3">
+                      {(["none", "intent", "completed"] as EngagementState[]).map((state) => (
+                        <div key={state} className="flex items-center gap-1 text-xs">
+                          <span 
+                            className="w-2.5 h-2.5 rounded-full border-2"
+                            style={{ 
+                              backgroundColor: "#64748b",
+                              borderColor: ENGAGEMENT_BORDER_COLORS[state],
+                            }}
+                          />
+                          <span>{ENGAGEMENT_LABELS[state]}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Timeline date/time box - shown during playback or when position < 1 */}
+              {totalDurationMs > 0 && timelinePosition < 1 && goLiveTime > 0 && (() => {
+                const currentMs = goLiveTime + totalDurationMs * timelinePosition;
+                const currentDate = new Date(currentMs);
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const month = monthNames[currentDate.getMonth()];
+                const day = currentDate.getDate();
+                const year = currentDate.getFullYear();
+                const h = currentDate.getHours();
+                const ampm = h >= 12 ? "PM" : "AM";
+                const h12 = h % 12 || 12;
+                const min = String(currentDate.getMinutes()).padStart(2, "0");
+                return (
+                  <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
+                    <div className="text-xs font-medium mb-1">Timeline</div>
+                    <div className="text-sm font-semibold tabular-nums">{month} {day}, {year}</div>
+                    <div className="text-sm tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
