@@ -318,9 +318,19 @@ const SamizdatMap = ({
   const filteredEventPoints = useMemo(() => {
     let filtered = eventPoints;
 
-    // Apply spawn filter: hide L00 events with no engaged spawns
+    // Apply spawn filter: hide events with engagement "none" older than 2 days
+    // When toggle is OFF, remove stale "opened-only" markers (no intent/completed)
+    // If they later gain intent/completed engagement, they reappear automatically
     if (!showNoSpawnsLocal) {
-      filtered = filtered.filter(e => e.level !== 0 || (e.spawnCount || 0) > 0);
+      const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      filtered = filtered.filter(e => {
+        // Only filter events with no engagement (opened but never shared)
+        if (e.engagementState !== "none") return true;
+        // Check if older than 2 days
+        const eventTime = parseNaiveDate(e.occurredAt).getTime();
+        return (now - eventTime) < TWO_DAYS_MS;
+      });
     }
 
     // Filter by enabled share mediums (skip in chain mode - show all)
