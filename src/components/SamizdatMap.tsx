@@ -1006,13 +1006,13 @@ const SamizdatMap = ({
           timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
             month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
           });
-          timeLabel = 'browser time';
+          timeLabel = Intl.DateTimeFormat().resolvedOptions().timeZone;
         }
       } else {
         timestamp = new Date(event.occurredAt).toLocaleString('en-US', {
           month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
         });
-        timeLabel = 'browser time';
+        timeLabel = Intl.DateTimeFormat().resolvedOptions().timeZone;
       }
       
       // Show engagement state info
@@ -1429,7 +1429,7 @@ const SamizdatMap = ({
                     <div className="text-xs font-medium mb-1">Timeline</div>
                     <div className="text-sm font-semibold tabular-nums">{month} {day}, {year}</div>
                     <div className="text-sm tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
-                    <div className="text-[9px] text-muted-foreground">browser time</div>
+                    <div className="text-[9px] text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
                   </div>
                 );
               })()}
