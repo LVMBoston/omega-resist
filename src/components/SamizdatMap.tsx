@@ -341,13 +341,24 @@ const SamizdatMap = ({
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
-    // Compute timeline cutoff using the same epoch as the display memo
-    // (goLiveTime / totalDurationMs are computed from ALL eventPoints in the memo below)
+    // Compute timeline cutoff — scoped to chain events when in chain mode
     let timelineCutoff: number | null = null;
     if (timelinePosition < 1.0) {
-      const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
-      const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-      const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+      let goLive: number;
+      let latest: number;
+
+      if (viewMode === "chain" && selectedL00Instance) {
+        // Use chain's own time range
+        const chainEvents = filtered.filter(e => e.l00Instance === selectedL00Instance);
+        const chainTimes = chainEvents.map(e => new Date(e.occurredAt).getTime());
+        goLive = chainTimes.length > 0 ? Math.min(...chainTimes) : 0;
+        latest = chainTimes.length > 0 ? Math.max(...chainTimes) : 0;
+      } else {
+        const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
+        goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
+        latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+      }
+
       const totalDuration = latest - goLive;
       if (totalDuration > 0 && goLive > 0) {
         timelineCutoff = goLive + totalDuration * timelinePosition;
@@ -370,7 +381,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, stalenessTick]);
+  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, selectedL00Instance, stalenessTick]);
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
@@ -432,13 +443,20 @@ const SamizdatMap = ({
     return filtered;
   }, [filteredEventPoints, viewMode, selectedL00Instance]);
 
-  // Timeline-derived computed values
+  // Timeline-derived computed values — scoped to chain events when in chain mode
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
+    if (viewMode === "chain" && displayEvents.length > 0) {
+      // Use the chain's own first/last event times
+      const times = displayEvents.map(e => new Date(e.occurredAt).getTime());
+      const goLive = Math.min(...times);
+      const latest = Math.max(...times);
+      return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
+    }
     const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
     const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
     const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
     return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
-  }, [eoaStartDates, eventPoints]);
+  }, [eoaStartDates, eventPoints, viewMode, displayEvents]);
 
   // Playback animation loop
   useEffect(() => {
@@ -902,6 +920,8 @@ const SamizdatMap = ({
     setSelectedChainToken(null);
     setSelectedEventId(null);
     setSelectedL00Instance(null);
+    setIsPlaying(false);
+    setTimelinePosition(1.0);
   }, []);
 
   // Handle marker click - traces lineage and filters to chain
@@ -918,6 +938,10 @@ const SamizdatMap = ({
     setSelectedChainToken(event.token);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
+
+    // Auto-start chain playback from the beginning
+    setTimelinePosition(0);
+    setIsPlaying(true);
   }, []);
 
   // Update markers based on view mode
