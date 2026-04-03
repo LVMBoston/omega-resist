@@ -1566,6 +1566,7 @@ const SamizdatMap = ({
               parentMap={mapRef.current}
               containerRef={mapWrapperRef}
               onDeactivate={() => setLoupeActive(false)}
+              displayEvents={displayEvents}
             />
           )}
           {!loading && filteredEventPoints.length === 0 && (
