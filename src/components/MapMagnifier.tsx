@@ -91,8 +91,8 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
 
     const syncZoom = () => {
       const parentZoom = parentMap.getZoom();
-      const extra = Math.log2(magnification);
-      map.setZoom(parentZoom + extra, { animate: false });
+      // Key 2/3/4 adds that many extra zoom levels for aggressive zoom-in
+      map.setZoom(parentZoom + magnification, { animate: false });
     };
 
     syncZoom();
