@@ -925,6 +925,10 @@ const SamizdatMap = ({
     setSelectedChainToken(event.token);
     setViewMode("chain");
     setSelectedEventId(event.eventId);
+
+    // Auto-start chain playback from the beginning
+    setTimelinePosition(0);
+    setIsPlaying(true);
   }, []);
 
   // Update markers based on view mode
