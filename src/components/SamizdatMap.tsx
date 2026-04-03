@@ -7,7 +7,7 @@ import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { parseNaiveDate, formatElapsedTime } from "@/lib/dateUtils";
+import { formatElapsedTime } from "@/lib/dateUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
