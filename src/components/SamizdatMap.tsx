@@ -94,6 +94,8 @@ interface EventPoint {
   spawnCount?: number;
   // Engagement state for border color
   engagementState: EngagementState;
+  // Scan-location timezone (IANA, from zip_codes table)
+  timezone?: string | null;
 }
 
 interface ZipAggregate {
