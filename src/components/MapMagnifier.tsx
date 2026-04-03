@@ -2,11 +2,14 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const MAGNIFICATION_PRESETS: Record<number, { size: number }> = {
-  2: { size: 180 },
-  3: { size: 260 },
-  4: { size: 340 },
+const BASE_SIZES: Record<number, number> = {
+  2: 180,
+  3: 260,
+  4: 340,
 };
+
+const SIZE_BUMP = 80; // pixels added per Enter press
+const MAX_EXTRA_BUMPS = 4;
 
 // Engagement border colors (mirrors SamizdatMap)
 type EngagementState = "none" | "intent" | "completed";
