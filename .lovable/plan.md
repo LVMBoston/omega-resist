@@ -1,40 +1,23 @@
 
 
-# Plan: Scan-Location Timezone in Tooltip + Browser Time Label on Timeline
+# Plan: Spawn Count on Intent/Completed Only + Keep Timeline at End
 
-## What Changes
+## Changes
 
-1. **Tooltip shows time in the scan location's timezone** with "local time" suffix
-2. **Timeline control** gets a "browser time" label beneath the time display
-3. **Fix `parseNaiveDate` misuse** — `occurred_at` is `timestamptz`, not naive
+### 1. Show spawn count only on intent/completed markers (line 1024)
+a. Wrap the spawn count display with an engagement state check: only render when `event.engagementState !== 'none'`.
+b. Current: always shows spawn count if > 0.
+c. New: only shows on amber (intent) or cyan (completed) markers.
 
-## Implementation
+### 2. Keep Timeline control visible when animation completes (line 1416)
+a. Current condition: `timelinePosition < 1` hides the timeline box when playback reaches the end.
+b. Change to: remove the `timelinePosition < 1` guard so the box stays visible whenever `totalDurationMs > 0 && goLiveTime > 0`.
+c. When `timelinePosition === 1`, the box will show the final timestamp, allowing the user to see events that haven't passed the 2-day threshold.
 
-### 1. Add `timezone` field to `EventPoint` (line 73)
-a. Add `timezone?: string | null` to the interface.
-
-### 2. Batch-fetch timezones from `zip_codes` during data load (~line 620)
-a. After combining events, collect unique non-null `zip_code` values.
-b. Query `zip_codes` table: `SELECT zip_code, timezone FROM zip_codes WHERE zip_code IN (...)`.
-c. Build a `Record<string, string>` lookup map (zip → IANA timezone).
-
-### 3. Attach timezone when constructing `EventPoint` (~line 800)
-a. Set `timezone: zipTimezoneMap[event.zip_code] || null` on each point.
-
-### 4. Update tooltip to use scan-location timezone (line 965)
-a. If `event.timezone` exists, format with `toLocaleString('en-US', { timeZone: event.timezone, ... })` and append the timezone abbreviation + "local time".
-b. Fallback (no zip / international): use browser timezone, label "browser time".
-
-### 5. Add "browser time" label to timeline box (line 1393)
-a. Add `<div className="text-[9px] text-muted-foreground">browser time</div>` after the time line.
-
-### 6. Replace all `parseNaiveDate(e.occurredAt)` with `new Date(e.occurredAt)` 
-a. Lines 331, 344, 347, 351, 420, 422, 459 — these are all `timestamptz` values that should use native `Date` parsing, not naive digit extraction.
-
-### 7. Archive decision document
-a. New file: `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md`
+### 3. Update decision document
+a. Append an `## Update — 2026-04-03` section to `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` documenting both changes.
 
 ## Files Modified
-- `src/components/SamizdatMap.tsx` (steps 1–6)
-- `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` (step 7, new)
+- `src/components/SamizdatMap.tsx` (steps 1-2)
+- `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` (step 3)
 
