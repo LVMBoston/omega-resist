@@ -2,11 +2,14 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-const MAGNIFICATION_PRESETS: Record<number, { size: number }> = {
-  2: { size: 180 },
-  3: { size: 260 },
-  4: { size: 340 },
+const BASE_SIZES: Record<number, number> = {
+  2: 180,
+  3: 260,
+  4: 340,
 };
+
+const SIZE_BUMP = 80; // pixels added per Enter press
+const MAX_EXTRA_BUMPS = 4;
 
 // Engagement border colors (mirrors SamizdatMap)
 type EngagementState = "none" | "intent" | "completed";
@@ -93,12 +96,13 @@ interface MapMagnifierProps {
 
 export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEvents }: MapMagnifierProps) {
   const [magnification, setMagnification] = useState(2);
+  const [sizeBumps, setSizeBumps] = useState(0);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const loupeMapRef = useRef<L.Map | null>(null);
   const loupeContainerRef = useRef<HTMLDivElement>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
-  const { size } = MAGNIFICATION_PRESETS[magnification];
+  const size = BASE_SIZES[magnification] + sizeBumps * SIZE_BUMP;
 
   // Build sequence numbers (chronological order)
   const sequenceNumbers = useMemo(() => {
@@ -307,16 +311,22 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
     };
   }, [containerRef, handleMouseMove, handleMouseLeave]);
 
-  // Keyboard: 2/3/4 to switch magnification, Escape to exit
+  // Keyboard: 2/3/4 to switch magnification, Enter to grow loupe, Escape to exit
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onDeactivate();
         return;
       }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setSizeBumps(prev => Math.min(prev + 1, MAX_EXTRA_BUMPS));
+        return;
+      }
       const num = parseInt(e.key, 10);
       if (num >= 2 && num <= 4) {
         setMagnification(num);
+        setSizeBumps(0); // reset size when changing zoom level
       }
     };
     window.addEventListener("keydown", handleKey);
