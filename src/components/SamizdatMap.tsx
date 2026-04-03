@@ -458,7 +458,7 @@ const SamizdatMap = ({
     if (timelinePosition >= 1.0) return filteredEventPoints;
     if (totalDurationMs <= 0 || goLiveTime === 0) return filteredEventPoints;
     const cutoff = goLiveTime + totalDurationMs * timelinePosition;
-    return filteredEventPoints.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+    return filteredEventPoints.filter(e => new Date(e.occurredAt).getTime() <= cutoff);
   }, [filteredEventPoints, timelinePosition, goLiveTime, totalDurationMs]);
 
   // Calculate viewport stats using time-filtered events (by share medium)
