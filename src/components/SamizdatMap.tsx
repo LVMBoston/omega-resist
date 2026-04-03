@@ -1472,6 +1472,17 @@ const SamizdatMap = ({
                 </>
               )}
             </Button>
+            {/* Magnifier loupe toggle */}
+            <Button
+              variant={loupeActive ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setLoupeActive(!loupeActive)}
+              className="h-7 px-2 justify-start"
+              title="Magnifier (press 2/3/4 for zoom level, Esc to exit)"
+            >
+              <Search className="w-4 h-4 mr-1" />
+              {loupeActive ? "Loupe ON" : "Loupe"}
+            </Button>
             
           </div>
 
