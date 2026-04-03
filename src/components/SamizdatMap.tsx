@@ -1021,7 +1021,7 @@ const SamizdatMap = ({
       const engagementInfo = `<div style="margin-top:4px;padding-top:4px;border-top:1px solid #e2e8f0;">
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${engagementColor};border:1px solid #cbd5e1;margin-right:4px;vertical-align:middle;"></span>
           <span style="color:${event.engagementState === 'none' ? '#94a3b8' : engagementColor};">${engagementLabel}</span>
-          ${event.spawnCount && event.spawnCount > 0 ? ` <span style="color:#64748b;">(${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''})</span>` : ''}
+          ${event.engagementState !== 'none' && event.spawnCount && event.spawnCount > 0 ? ` <span style="color:#64748b;">(${event.spawnCount} spawn${event.spawnCount !== 1 ? 's' : ''})</span>` : ''}
          </div>`;
       
       const instanceLabel = event.l00Instance
