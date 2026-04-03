@@ -63,3 +63,12 @@ Map marker tooltips now display the event time in the **scan location's timezone
 - Press **Escape** or click the toggle again to exit loupe mode.
 - Implementation: a second Leaflet map instance inside a `border-radius: 50%` container, synced to the cursor's lat/lng at `parentZoom + log2(magnification)`.
 - Files: new `src/components/MapMagnifier.tsx`, modified `src/components/SamizdatMap.tsx`.
+- Press **Enter** to increase loupe diameter (+80px per press, up to 4 bumps). Switching magnification (2/3/4) resets diameter to base size.
+
+## Update — 2026-04-03 (Chain-Scoped Timeline Animation)
+
+### 11. Chain-scoped timeline playback
+- When a marker is clicked and a chain is selected, the timeline **automatically starts playing** from the beginning.
+- The timeline epoch is **scoped to the chain's own time range** (first event → last event in the chain), not the campaign-wide range. This means playback spans just the chain's lifespan.
+- Returning to "Show All Events" stops playback and resets the timeline to 100%.
+- Files: modified `src/components/SamizdatMap.tsx`.
