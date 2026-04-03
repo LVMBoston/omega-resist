@@ -1161,8 +1161,8 @@ const SamizdatMap = ({
           lng += jitterRadius * Math.cos(angle);
         }
         
-        // L00 markers get higher z-index to appear on top
-        const zIndexOffset = event.level === 0 ? 1000 : (100 - event.level * 10);
+        // Higher-level markers get higher z-index to appear on top
+        const zIndexOffset = event.level * 100;
         
         const marker = L.marker([lat, lng], { 
           icon: markerIcon,
