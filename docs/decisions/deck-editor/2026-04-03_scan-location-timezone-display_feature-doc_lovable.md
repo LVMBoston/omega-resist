@@ -28,3 +28,13 @@ Map marker tooltips now display the event time in the **scan location's timezone
 ## Files Modified
 - `src/components/SamizdatMap.tsx` — all changes
 - `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` — this document (new)
+
+## Update — 2026-04-03
+
+### 5. Spawn count shown only on intent/completed markers
+- The tooltip spawn count (e.g., "1 spawn") is now hidden on white-bordered ("opened") markers where `engagementState === 'none'`.
+- Only markers with amber (intent) or cyan (completed) borders display the spawn count, where it is contextually meaningful.
+
+### 6. Timeline control persists after animation completes
+- Removed the `timelinePosition < 1` guard from the timeline date/time box rendering condition.
+- The timeline control now remains visible when playback reaches the end, allowing users to see events that haven't passed the 2-day staleness threshold.
