@@ -1413,7 +1413,7 @@ const SamizdatMap = ({
               </div>
 
               {/* Timeline date/time box - shown during playback or when position < 1 */}
-              {totalDurationMs > 0 && timelinePosition < 1 && goLiveTime > 0 && (() => {
+              {totalDurationMs > 0 && goLiveTime > 0 && (() => {
                 const currentMs = goLiveTime + totalDurationMs * timelinePosition;
                 const currentDate = new Date(currentMs);
                 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
