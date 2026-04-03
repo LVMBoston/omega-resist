@@ -256,16 +256,17 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
-  const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(showNoSpawns);
+  // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
+  const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(!showNoSpawns);
 
   useEffect(() => {
-    setShowNoSpawnsLocal(showNoSpawns);
+    setShowNoSpawnsLocal(!showNoSpawns);
   }, [showNoSpawns]);
 
   // Tick every 2s so the staleness filter re-evaluates smoothly during animation
   const [stalenessTick, setStalenessTick] = useState(0);
   useEffect(() => {
-    if (showNoSpawnsLocal) return; // filter is active only when toggle is OFF
+    if (!showNoSpawnsLocal) return; // filter is active only when toggle is ON
     const id = setInterval(() => setStalenessTick(t => t + 1), 2_000);
     return () => clearInterval(id);
   }, [showNoSpawnsLocal]);
@@ -337,13 +338,14 @@ const SamizdatMap = ({
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
-    // Compute timeline cutoff (used for both timeline filter and staleness)
+    // Compute timeline cutoff using the same epoch as the display memo
+    // (goLiveTime / totalDurationMs are computed from ALL eventPoints in the memo below)
     let timelineCutoff: number | null = null;
     if (timelinePosition < 1.0) {
       const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
       const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-      const latestEvent = filtered.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
-      const totalDuration = latestEvent - goLive;
+      const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+      const totalDuration = latest - goLive;
       if (totalDuration > 0 && goLive > 0) {
         timelineCutoff = goLive + totalDuration * timelinePosition;
         filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= timelineCutoff!);
@@ -351,10 +353,10 @@ const SamizdatMap = ({
     }
 
     // Apply spawn filter: hide events with engagement "none" older than 2 days
-    // When toggle is OFF, remove stale "opened-only" markers (no intent/completed)
+    // When toggle is ON ("Hide stale opens"), remove stale "opened-only" markers
     // If they later gain intent/completed engagement, they reappear automatically
     // Uses timeline cursor time during playback, wall-clock time otherwise
-    if (!showNoSpawnsLocal) {
+    if (showNoSpawnsLocal) {
       const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
       const referenceTime = timelineCutoff ?? Date.now();
       filtered = filtered.filter(e => {
@@ -1480,7 +1482,7 @@ const SamizdatMap = ({
                 className="scale-75"
               />
               <Label htmlFor="no-spawns-toggle" className="text-[10px] font-medium cursor-pointer whitespace-nowrap">
-                No Spawns
+                Hide stale opens
               </Label>
             </div>
 

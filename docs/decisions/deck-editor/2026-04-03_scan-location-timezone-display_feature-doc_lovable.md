@@ -38,3 +38,18 @@ Map marker tooltips now display the event time in the **scan location's timezone
 ### 6. Timeline control persists after animation completes
 - Removed the `timelinePosition < 1` guard from the timeline date/time box rendering condition.
 - The timeline control now remains visible when playback reaches the end, allowing users to see events that haven't passed the 2-day staleness threshold.
+
+## Update — 2026-04-03 (Staleness Toggle Fix)
+
+### 7. Fixed inverted "No Spawns" toggle semantics
+- The map's "No Spawns" switch (now renamed **"Hide stale opens"**) had inverted logic: when ON, it skipped the 48-hour staleness filter instead of activating it.
+- Root cause: the parent dashboard checkbox "Show events having no spawns" uses `checked=true` to mean "show all" (filter OFF). The map synced this value directly into `showNoSpawnsLocal`, but the filter guard `if (!showNoSpawnsLocal)` treated `false` as "activate filter" — meaning the filter only ran when the parent said "show all."
+- Fix: invert the sync point (`setShowNoSpawnsLocal(!showNoSpawns)`) so parent-checked (show all) → map-unchecked (don't hide) and parent-unchecked (hide) → map-checked (hide). The filter guard now reads `if (showNoSpawnsLocal)` — ON means active.
+- The staleness tick interval guard was similarly inverted and corrected.
+
+### 8. Unified timeline epoch computation
+- The staleness filter previously computed `goLive` and `latestEvent` from channel-filtered events, while the display date/time box computed from all `eventPoints`. This caused the displayed date to diverge from the actual staleness reference time.
+- Fix: the filter now computes its epoch from all `eventPoints` (matching the display), ensuring the displayed timestamp and the staleness cutoff are always consistent.
+
+### 9. Renamed toggle label
+- Map switch label changed from "No Spawns" to "Hide stale opens" to clarify that enabling it hides markers with no engagement older than 48 hours.
