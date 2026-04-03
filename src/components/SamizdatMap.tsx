@@ -1426,7 +1426,7 @@ const SamizdatMap = ({
                 const min = String(currentDate.getMinutes()).padStart(2, "0");
                 return (
                   <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
-                    <div className="text-xs font-medium mb-1">Timeline</div>
+                    
                     <div className="text-sm font-semibold tabular-nums">{month} {day}, {year}</div>
                     <div className="text-sm tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
                     <div className="text-[9px] text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
