@@ -630,7 +630,7 @@ const SamizdatMap = ({
       // Step 3a: Batch-fetch IANA timezones from zip_codes for all unique zip codes
       const tzZips = [...new Set(events.map(e => e.zip_code).filter(Boolean))] as string[];
       const zipTimezoneMap: Record<string, string> = {};
-      if (uniqueZips.length > 0) {
+      if (tzZips.length > 0) {
         const { data: zipTzData } = await supabase
           .from("zip_codes")
           .select("zip_code, timezone")
