@@ -1032,7 +1032,7 @@ const SamizdatMap = ({
         <div style="font-family:system-ui;font-size:12px;line-height:1.4;min-width:140px;">
           <div style="font-weight:600;margin-bottom:4px;">${levelLabel} • ${mediumLabel}</div>
           <div style="color:#64748b;">${locationLabel}</div>
-          <div style="color:#64748b;">${timestamp}</div>
+          <div style="color:#64748b;">${timestamp} <span style="font-size:10px;opacity:0.7;">${timeLabel}</span></div>
           ${instanceLabel}
           ${engagementInfo}
         </div>
