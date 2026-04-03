@@ -419,9 +419,9 @@ const SamizdatMap = ({
 
   // Timeline-derived computed values
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
-    const startDates = Object.values(eoaStartDates).map(d => parseNaiveDate(d).getTime()).filter(t => t > 0);
+    const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
     const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-    const latest = eventPoints.reduce((max, e) => Math.max(max, parseNaiveDate(e.occurredAt).getTime()), 0);
+    const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
     return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
   }, [eoaStartDates, eventPoints]);
 
