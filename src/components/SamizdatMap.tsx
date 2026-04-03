@@ -256,10 +256,11 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
-  const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(showNoSpawns);
+  // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
+  const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(!showNoSpawns);
 
   useEffect(() => {
-    setShowNoSpawnsLocal(showNoSpawns);
+    setShowNoSpawnsLocal(!showNoSpawns);
   }, [showNoSpawns]);
 
   // Tick every 2s so the staleness filter re-evaluates smoothly during animation
