@@ -266,7 +266,7 @@ const SamizdatMap = ({
   // Tick every 2s so the staleness filter re-evaluates smoothly during animation
   const [stalenessTick, setStalenessTick] = useState(0);
   useEffect(() => {
-    if (showNoSpawnsLocal) return; // filter is active only when toggle is OFF
+    if (!showNoSpawnsLocal) return; // filter is active only when toggle is ON
     const id = setInterval(() => setStalenessTick(t => t + 1), 2_000);
     return () => clearInterval(id);
   }, [showNoSpawnsLocal]);
