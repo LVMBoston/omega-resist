@@ -1361,7 +1361,7 @@ const SamizdatMap = ({
         style={isFullscreen ? { height: '100vh' } : { height: 'calc(100vh - 280px)', minHeight: '500px', maxHeight: '900px' }}
       >
         {/* Map container - shrinks when panel is open */}
-        <div className="relative flex-1 min-w-0">
+        <div ref={mapWrapperRef} className="relative flex-1 min-w-0">
           {/* Chain mode indicator and back button */}
           {viewMode === "chain" && (
             <div className="absolute top-3 left-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
