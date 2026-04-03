@@ -1429,6 +1429,7 @@ const SamizdatMap = ({
                     <div className="text-xs font-medium mb-1">Timeline</div>
                     <div className="text-sm font-semibold tabular-nums">{month} {day}, {year}</div>
                     <div className="text-sm tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
+                    <div className="text-[9px] text-muted-foreground">browser time</div>
                   </div>
                 );
               })()}
