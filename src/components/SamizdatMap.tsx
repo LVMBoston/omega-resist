@@ -343,14 +343,14 @@ const SamizdatMap = ({
     // Filter by timeline position (cumulative from go-live)
     if (timelinePosition < 1.0) {
       // Compute go-live time (earliest EoA start date)
-      const startDates = Object.values(eoaStartDates).map(d => parseNaiveDate(d).getTime()).filter(t => t > 0);
+      const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
       const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
       // Compute latest event time
-      const latestEvent = filtered.reduce((max, e) => Math.max(max, parseNaiveDate(e.occurredAt).getTime()), 0);
+      const latestEvent = filtered.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
       const totalDuration = latestEvent - goLive;
       if (totalDuration > 0 && goLive > 0) {
         const cutoff = goLive + totalDuration * timelinePosition;
-        filtered = filtered.filter(e => parseNaiveDate(e.occurredAt).getTime() <= cutoff);
+        filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= cutoff);
       }
     }
 
