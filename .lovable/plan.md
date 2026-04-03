@@ -1,71 +1,40 @@
 
 
-# Fix: Vimeo Tap-to-Pause Not Working
+# Plan: Scan-Location Timezone in Tooltip + Browser Time Label on Timeline
 
-## Problem
+## What Changes
 
-Clicking/tapping the video area does not pause, unmute, or otherwise control the Vimeo player. The custom tap-zone button appears to not receive events, or `handleCenterTap` / `handleVimeoCenterTap` fires but with stale state.
+1. **Tooltip shows time in the scan location's timezone** with "local time" suffix
+2. **Timeline control** gets a "browser time" label beneath the time display
+3. **Fix `parseNaiveDate` misuse** — `occurred_at` is `timestamptz`, not naive
 
-## Root Cause Analysis
+## Implementation
 
-There are two likely causes, and both should be fixed:
+### 1. Add `timezone` field to `EventPoint` (line 73)
+a. Add `timezone?: string | null` to the interface.
 
-1. **The Vimeo iframe container (`videoContainerRef`) does NOT have `pointer-events: none`**, only the iframe element inside it does (set via JS). The container div sits at `z-index: 1` and covers the full area (`absolute inset-0`). While the tap button is at z-30 (or z-[10000]), the container div itself can still intercept mouse/touch events before they reach the button — the iframe's `pointer-events: none` only prevents the iframe from getting events, not its parent div.
+### 2. Batch-fetch timezones from `zip_codes` during data load (~line 620)
+a. After combining events, collect unique non-null `zip_code` values.
+b. Query `zip_codes` table: `SELECT zip_code, timezone FROM zip_codes WHERE zip_code IN (...)`.
+c. Build a `Record<string, string>` lookup map (zip → IANA timezone).
 
-2. **The Vimeo Player SDK may reset `pointer-events` on the iframe** after initialization. The `pointer-events: none` is set once via JS before `new Player(iframe)` is called, but the SDK could override iframe styles during setup.
+### 3. Attach timezone when constructing `EventPoint` (~line 800)
+a. Set `timezone: zipTimezoneMap[event.zip_code] || null` on each point.
 
-## Plan
+### 4. Update tooltip to use scan-location timezone (line 965)
+a. If `event.timezone` exists, format with `toLocaleString('en-US', { timeZone: event.timezone, ... })` and append the timezone abbreviation + "local time".
+b. Fallback (no zip / international): use browser timezone, label "browser time".
 
-### 1. Add `pointer-events: none` to the video container div
+### 5. Add "browser time" label to timeline box (line 1393)
+a. Add `<div className="text-[9px] text-muted-foreground">browser time</div>` after the time line.
 
-In **both** `VimeoSlide.tsx` (line 194-198) and `InteractiveSlideOverlay.tsx` (line 833-837):
+### 6. Replace all `parseNaiveDate(e.occurredAt)` with `new Date(e.occurredAt)` 
+a. Lines 331, 344, 347, 351, 420, 422, 459 — these are all `timestamptz` values that should use native `Date` parsing, not naive digit extraction.
 
-Change the video container from:
-```jsx
-<div ref={videoContainerRef} className="absolute inset-0 w-full h-full bg-black" style={{ zIndex: 1 }} />
-```
-to:
-```jsx
-<div ref={videoContainerRef} className="absolute inset-0 w-full h-full bg-black pointer-events-none" style={{ zIndex: 1 }} />
-```
+### 7. Archive decision document
+a. New file: `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md`
 
-This ensures neither the container nor the iframe inside it can intercept clicks meant for the tap button.
-
-### 2. Add explicit `pointer-events: auto` to the tap button
-
-In **both** files, add `pointer-events-auto` to the center tap button's className to be explicit:
-```jsx
-<button
-  ...
-  className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer pointer-events-auto"
-  ...
-/>
-```
-
-### 3. Re-apply `pointer-events: none` on iframe after Player init
-
-In `createPlayer()` (VimeoSlide) and the init `useEffect` (InteractiveSlideOverlay), after `new Player(iframe, ...)`, re-assert the style:
-```js
-const player = new Player(iframe, { muted: true, autoplay: true });
-// Re-apply in case SDK overrides it
-iframe.style.pointerEvents = 'none';
-```
-
-### 4. Browser verification (required by project rules)
-
-After implementing, navigate to `/deck/no-kings-falmouth`, swipe to slide 2, tap the vimeo hotspot to open the video, then:
-- a. Tap center → should unmute (Volume icon feedback)
-- b. Tap center → should pause (Pause icon feedback)
-- c. Tap center → should resume (Play icon feedback)
-- d. Screenshot + console logs as evidence
-
-### 5. Update decision doc
-
-Append a new `## Update — 2026-04-02 (c)` section to `docs/decisions/deck-editor/2026-03-03_vimeo-slide-type_feature-doc_lovable.md` documenting the pointer-events fix.
-
-## Files Changed
-
-- `src/components/VimeoSlide.tsx` — steps 1, 2, 3
-- `src/components/InteractiveSlideOverlay.tsx` — steps 1, 2, 3
-- `docs/decisions/deck-editor/2026-03-03_vimeo-slide-type_feature-doc_lovable.md` — step 5
+## Files Modified
+- `src/components/SamizdatMap.tsx` (steps 1–6)
+- `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` (step 7, new)
 
