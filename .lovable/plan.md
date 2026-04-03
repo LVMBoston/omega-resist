@@ -1,44 +1,43 @@
+# Plan: Map Magnifier Loupe
 
+## Overview
+Add a magnifying glass ("loupe") overlay to the Real-time Map that shows a zoomed-in circular view of the area under the cursor, without changing the map's actual viewport.
 
-# Plan: Fix Inverted "No Spawns" Toggle + Staleness Filter During Playback
+## Behavior
 
-## Diagnosis
+1. **Activation**: A toggle button (🔍 icon) in the bottom-right controls overlay enters/exits loupe mode.
+2. **Zoom levels**: While in loupe mode, pressing **2**, **3**, or **4** on the keyboard sets the magnification to 2×, 3×, or 4× respectively. Default: 2×.
+3. **Loupe appearance**: A circular overlay (150px at 2×, 250px at 3×, 350px at 4×) follows the cursor, showing the magnified map tiles + markers beneath.
+4. **Implementation**: Uses a second hidden Leaflet map instance synced to the cursor position at higher zoom, rendered inside a circular clipped `div` that tracks `mousemove`.
+5. **Exit**: Click the toggle button again, or press **Escape**.
 
-The 48-hour staleness filter never activates because the toggle semantics are inverted:
+## Files
 
-1. **Parent dashboard** has checkbox "Show events having no spawns" — `checked=true` means "show all" (skip filter). Default: `searchParams.get("showNoSpawns") !== "false"` → defaults to `true` → filter OFF.
-2. **Map switch** labeled "No Spawns" syncs from parent via `showNoSpawnsLocal`. When `showNoSpawnsLocal === true`, the filter on line 357 (`if (!showNoSpawnsLocal)`) is **skipped**.
-3. **User expectation**: When the "No Spawns" toggle is ON, they expect stale no-spawn markers to be hidden. But the code does the opposite — ON means "show everything including no-spawn markers."
+| # | File | Change |
+|---|------|--------|
+| 1 | `src/components/MapMagnifier.tsx` | **New** — loupe component: hidden Leaflet map, circular clip, mouse tracking, key listeners |
+| 2 | `src/components/SamizdatMap.tsx` | Add magnifier toggle button to controls overlay; render `<MapMagnifier>` when active; pass map ref + container ref |
+| 3 | `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` | Append `## Update — 2026-04-03 (Map Magnifier Loupe)` section |
 
-Both events at ZIP 98848 have `engagementState === "none"` (zero children confirmed in DB). The filter would correctly remove them after 48h **if it ran**, but the inverted toggle prevents it from ever executing.
+## Technical Approach
 
-## Changes
+### a. `MapMagnifier.tsx`
+- Props: `parentMap: L.Map`, `containerRef: RefObject<HTMLDivElement>`, `magnification: number`, `loupeSize: number`
+- Creates a second Leaflet `L.map` in a hidden container, same tile layer, zoom = parentMap.zoom + log2(magnification)
+- On `mousemove` over the parent container, positions the loupe circle at cursor and sets the hidden map's center to the lat/lng under the cursor
+- The loupe div uses `overflow: hidden; border-radius: 50%; pointer-events: none;` and clips the hidden map
+- Renders a subtle border ring and crosshair
 
-### 1. Fix the map toggle to match user intent
-   a. In the staleness filter (line 357), change `if (!showNoSpawnsLocal)` to `if (showNoSpawnsLocal)` — when the "No Spawns" toggle is ON, the 48-hour filter should be ACTIVE.
-   b. In the `stalenessTick` interval (line 268), change `if (showNoSpawnsLocal) return;` to `if (!showNoSpawnsLocal) return;` — only tick when filter is active.
-   c. Update the map switch label from "No Spawns" to "Hide stale opens" for clarity.
+### b. Key listener
+- `useEffect` in `SamizdatMap` listens for keydown `2`/`3`/`4` when loupe is active, updating `magnification` state
+- Small badge on the loupe shows current level (e.g., "3×")
 
-### 2. Fix the parent dashboard checkbox to match
-   a. In `CampaignDashboard.tsx` (line 189), review whether the default should change. Currently `showNoSpawns !== "false"` defaults to `true` (show all). This is correct as a default — users see everything until they opt in to filtering.
-   b. Ensure the prop passed to `SamizdatMap` (`showNoSpawns={showNoSpawns}`) has consistent semantics with the map's internal toggle after the fix in step 1.
-   c. Since the parent checkbox says "Show events having no spawns" (checked=show, unchecked=hide), and the map toggle is being renamed "Hide stale opens" (checked=hide, unchecked=show), the inversion should happen at the sync point: `setShowNoSpawnsLocal(!showNoSpawns)` on the `useEffect`, so that parent-checked (show all) → map-unchecked (don't hide) and parent-unchecked (hide) → map-checked (hide).
-
-### 3. Unify the two timeline epoch computations
-   a. The filter (line 343-345) computes `goLive` and `latestEvent` from channel-filtered events.
-   b. The display (line 431-434) computes from all `eventPoints`.
-   c. Change the filter to use the same `goLiveTime` and `totalDurationMs` from the display memo, ensuring the displayed date matches the actual cutoff used for staleness. This prevents a scenario where the displayed date says "Mar 30" but the filter reference time is actually "Mar 28."
-
-### 4. Update decision document
-   a. Append `## Update — 2026-04-03 (Staleness Toggle Fix)` section to `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md`.
-
-## Files Modified
-- `src/components/SamizdatMap.tsx` (steps 1, 3)
-- `src/pages/CampaignDashboard.tsx` (step 2)
-- `docs/decisions/deck-editor/2026-04-03_scan-location-timezone-display_feature-doc_lovable.md` (step 4)
+### c. Toggle button
+- Added next to existing controls (e.g., near the fullscreen button area)
+- Uses `Search` or `ZoomIn` icon from lucide-react with active state styling
 
 ## Verification
-- a. Browser test: toggle "Hide stale opens" ON, play timeline past Mar 29 4:33 AM, confirm ZIP 98848 marker disappears.
-- b. Browser test: toggle OFF, confirm marker persists through entire playback.
-- c. Confirm parent dashboard checkbox and map toggle stay in sync.
-
+- Browser test: click loupe toggle, move mouse over map, confirm magnified circle follows cursor
+- Press 2/3/4 and confirm size + zoom changes
+- Press Escape or click toggle to exit
+- Confirm underlying map doesn't pan/zoom during loupe use
