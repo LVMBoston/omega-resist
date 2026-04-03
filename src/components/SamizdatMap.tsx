@@ -1341,7 +1341,7 @@ const SamizdatMap = ({
                   
                   {/* Share medium shapes */}
                   <div className="flex items-center gap-1.5 pl-3">
-                    <span className="text-[10px] font-medium text-muted-foreground">Medium</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Medium</span>
                     {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
                       <div key={shape} className="flex items-center gap-0.5 text-[10px]">
                         <div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 10) }} />
