@@ -1428,7 +1428,59 @@ const SamizdatMap = ({
             
           </div>
 
-          {loading && (
+          {/* Timeline playback controls - bottom right of map */}
+          <div className="absolute bottom-3 right-3 z-[1000] bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border" style={{ maxWidth: '320px', minWidth: '260px' }}>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => { setIsPlaying(false); setTimelinePosition(0); }}
+                  title="Reset"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant={isPlaying ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    if (timelinePosition >= 1) setTimelinePosition(0);
+                    setIsPlaying(prev => !prev);
+                  }}
+                >
+                  {isPlaying ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
+                  <span className="text-xs">{isPlaying ? "Pause" : "Play"}</span>
+                </Button>
+                <div className="flex items-center gap-0.5 ml-auto">
+                  {[1, 2, 5, 10].map(s => (
+                    <Button
+                      key={s}
+                      variant={playbackSpeed === s ? "default" : "ghost"}
+                      size="sm"
+                      className="h-6 px-1.5 text-[10px]"
+                      onClick={() => setPlaybackSpeed(s)}
+                    >
+                      {s}x
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <Slider
+                value={[timelinePosition]}
+                onValueChange={([v]) => { setIsPlaying(false); setTimelinePosition(v); }}
+                min={0}
+                max={1}
+                step={0.001}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>{totalDurationMs > 0 ? formatElapsedTime(totalDurationMs * timelinePosition) : "—"}</span>
+                <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
+              </div>
+            </div>
+          </div>
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
