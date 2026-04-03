@@ -320,17 +320,20 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
       }
       if (e.key === "Enter") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         setSizeBumps(prev => Math.min(prev + 1, MAX_EXTRA_BUMPS));
         return;
       }
       const num = parseInt(e.key, 10);
       if (num >= 2 && num <= 4) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         setMagnification(num);
-        setSizeBumps(0); // reset size when changing zoom level
+        setSizeBumps(0);
       }
     };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    window.addEventListener("keydown", handleKey, true);
+    return () => window.removeEventListener("keydown", handleKey, true);
   }, [onDeactivate]);
 
   const showLoupe = cursorPos !== null;
