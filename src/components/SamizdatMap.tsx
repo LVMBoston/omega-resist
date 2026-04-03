@@ -341,13 +341,24 @@ const SamizdatMap = ({
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
-    // Compute timeline cutoff using the same epoch as the display memo
-    // (goLiveTime / totalDurationMs are computed from ALL eventPoints in the memo below)
+    // Compute timeline cutoff — scoped to chain events when in chain mode
     let timelineCutoff: number | null = null;
     if (timelinePosition < 1.0) {
-      const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
-      const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-      const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+      let goLive: number;
+      let latest: number;
+
+      if (viewMode === "chain" && selectedL00Instance) {
+        // Use chain's own time range
+        const chainEvents = filtered.filter(e => e.l00Instance === selectedL00Instance);
+        const chainTimes = chainEvents.map(e => new Date(e.occurredAt).getTime());
+        goLive = chainTimes.length > 0 ? Math.min(...chainTimes) : 0;
+        latest = chainTimes.length > 0 ? Math.max(...chainTimes) : 0;
+      } else {
+        const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
+        goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
+        latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+      }
+
       const totalDuration = latest - goLive;
       if (totalDuration > 0 && goLive > 0) {
         timelineCutoff = goLive + totalDuration * timelinePosition;
