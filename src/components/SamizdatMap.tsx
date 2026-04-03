@@ -330,7 +330,7 @@ const SamizdatMap = ({
         // Only filter events with no engagement (opened but never shared)
         if (e.engagementState !== "none") return true;
         // Check if older than 2 days
-        const eventTime = parseNaiveDate(e.occurredAt).getTime();
+        const eventTime = new Date(e.occurredAt).getTime();
         return (now - eventTime) < TWO_DAYS_MS;
       });
     }
