@@ -257,6 +257,8 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [loupeActive, setLoupeActive] = useState(false);
+  const mapWrapperRef = useRef<HTMLDivElement>(null);
   // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
   const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(!showNoSpawns);
 
