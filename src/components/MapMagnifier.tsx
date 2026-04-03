@@ -311,16 +311,22 @@ export function MapMagnifier({ parentMap, containerRef, onDeactivate, displayEve
     };
   }, [containerRef, handleMouseMove, handleMouseLeave]);
 
-  // Keyboard: 2/3/4 to switch magnification, Escape to exit
+  // Keyboard: 2/3/4 to switch magnification, Enter to grow loupe, Escape to exit
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onDeactivate();
         return;
       }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setSizeBumps(prev => Math.min(prev + 1, MAX_EXTRA_BUMPS));
+        return;
+      }
       const num = parseInt(e.key, 10);
       if (num >= 2 && num <= 4) {
         setMagnification(num);
+        setSizeBumps(0); // reset size when changing zoom level
       }
     };
     window.addEventListener("keydown", handleKey);
