@@ -920,6 +920,8 @@ const SamizdatMap = ({
     setSelectedChainToken(null);
     setSelectedEventId(null);
     setSelectedL00Instance(null);
+    setIsPlaying(false);
+    setTimelinePosition(1.0);
   }, []);
 
   // Handle marker click - traces lineage and filters to chain
