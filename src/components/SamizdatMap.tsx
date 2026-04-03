@@ -432,13 +432,20 @@ const SamizdatMap = ({
     return filtered;
   }, [filteredEventPoints, viewMode, selectedL00Instance]);
 
-  // Timeline-derived computed values
+  // Timeline-derived computed values — scoped to chain events when in chain mode
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
+    if (viewMode === "chain" && displayEvents.length > 0) {
+      // Use the chain's own first/last event times
+      const times = displayEvents.map(e => new Date(e.occurredAt).getTime());
+      const goLive = Math.min(...times);
+      const latest = Math.max(...times);
+      return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
+    }
     const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
     const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
     const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
     return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
-  }, [eoaStartDates, eventPoints]);
+  }, [eoaStartDates, eventPoints, viewMode, displayEvents]);
 
   // Playback animation loop
   useEffect(() => {
