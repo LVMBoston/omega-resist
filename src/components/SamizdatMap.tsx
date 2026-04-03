@@ -1428,7 +1428,7 @@ const SamizdatMap = ({
                   <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border">
                     
                     <div className="text-sm font-semibold tabular-nums">{month} {day}, {year}</div>
-                    <div className="text-sm tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
+                    <div className="text-sm font-bold tabular-nums text-muted-foreground">{h12}:{min} {ampm}</div>
                     <div className="text-[9px] text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
                   </div>
                 );
