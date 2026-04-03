@@ -822,6 +822,7 @@ const SamizdatMap = ({
           city: event.city || null,
           spawnCount: tokenSpawnCount,
           engagementState: tokenEngagement,
+          timezone: event.zip_code ? (zipTimezoneMap[event.zip_code] || null) : null,
         });
       });
 
