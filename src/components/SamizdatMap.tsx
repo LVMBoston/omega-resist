@@ -257,6 +257,14 @@ const SamizdatMap = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(showNoSpawns);
+
+  // Tick every 60s so the staleness filter re-evaluates over time
+  const [stalenessTick, setStalenessTick] = useState(0);
+  useEffect(() => {
+    if (showNoSpawnsLocal) return; // filter is active only when toggle is OFF
+    const id = setInterval(() => setStalenessTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, [showNoSpawnsLocal]);
   
   // View mode: use external state if provided, otherwise use internal state
   const [internalViewMode, setInternalViewMode] = useState<ViewMode>("all");
@@ -355,7 +363,7 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode]);
+  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, stalenessTick]);
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
