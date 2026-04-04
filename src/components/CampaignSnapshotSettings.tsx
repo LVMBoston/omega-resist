@@ -432,7 +432,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
                     <div className="space-y-1">
                       <p className="font-medium text-sm">{template.name || template.slug}</p>
                       <SnapshotStatusBadge
-                        renderedAt={template.snapshot_rendered_at}
+                        renderedAt={snapshotAges?.[template.id] ?? null}
                         intervalMinutes={intervalMinutes}
                       />
                     </div>
