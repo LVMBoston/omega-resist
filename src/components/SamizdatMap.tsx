@@ -446,6 +446,14 @@ const SamizdatMap = ({
     return filtered;
   }, [filteredEventPoints, viewMode, selectedL00Instance]);
 
+  // Chain events sorted chronologically for arrow-key stepping
+  const chainEventsOrdered = useMemo((): EventPoint[] => {
+    if (viewMode !== "chain" || displayEvents.length === 0) return [];
+    return [...displayEvents].sort((a, b) =>
+      new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+    );
+  }, [viewMode, displayEvents]);
+
   // Timeline-derived computed values — scoped to chain events when in chain mode
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
     if (viewMode === "chain" && displayEvents.length > 0) {
