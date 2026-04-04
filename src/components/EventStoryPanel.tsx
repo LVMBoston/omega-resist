@@ -90,6 +90,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
   const [originTimeDelta, setOriginTimeDelta] = useState<number | null>(null);
   const [isFirstEventForToken, setIsFirstEventForToken] = useState<boolean>(true);
+  const [returnVisitCount, setReturnVisitCount] = useState<number>(0);
+  const [returnVisitSpan, setReturnVisitSpan] = useState<string | null>(null);
 
   useEffect(() => {
     if (!eventId) {
