@@ -943,9 +943,9 @@ const SamizdatMap = ({
     setViewMode("chain");
     setSelectedEventId(event.eventId);
 
-    // Auto-start chain playback from the beginning
-    setTimelinePosition(0);
-    setIsPlaying(true);
+    // Show all chain events immediately and highlight the first one
+    setTimelinePosition(1.0);
+    setHighlightedEventIndex(0);
   }, []);
 
   // Update markers based on view mode
