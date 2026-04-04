@@ -567,7 +567,7 @@ const SamizdatMap = ({
       // Step 1: Get EoA data including mobilize_code for grouping
       const { data: eoas, error: eoasError } = await supabase
         .from("events_actions")
-        .select("id, title, utm_id, mobilize_code")
+        .select("id, title, utm_id, mobilize_code, type")
         .in("id", eoaIds);
 
       if (eoasError || !eoas?.length) {
