@@ -1545,8 +1545,15 @@ const SamizdatMap = ({
                   Show All Events
                 </Button>
                 <div className="text-xs text-muted-foreground">
-                  Viewing chain: {displayEvents.length} events
+                  {highlightedEventIndex !== null && chainEventsOrdered.length > 0
+                    ? `Event ${highlightedEventIndex + 1} of ${chainEventsOrdered.length}`
+                    : `Viewing chain: ${displayEvents.length} events`}
                 </div>
+                {chainEventsOrdered.length > 0 && (
+                  <div className="text-[10px] text-muted-foreground/70">
+                    ← → to step
+                  </div>
+                )}
               </div>
             </div>
           )}
