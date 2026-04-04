@@ -833,7 +833,7 @@ const SamizdatMap = ({
       // Step 6: Build event points with chain info
       // Note: No filtering by start_date here since first view IS the start
       const points: EventPoint[] = [];
-      events.forEach((event) => {
+      deduplicatedEvents.forEach((event) => {
         const td = tokenData[event.token];
         if (!td) return;
         
