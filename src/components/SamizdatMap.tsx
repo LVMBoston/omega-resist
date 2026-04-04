@@ -567,7 +567,7 @@ const SamizdatMap = ({
       // Step 1: Get EoA data including mobilize_code for grouping
       const { data: eoas, error: eoasError } = await supabase
         .from("events_actions")
-        .select("id, title, utm_id, mobilize_code")
+        .select("id, title, utm_id, mobilize_code, type")
         .in("id", eoaIds);
 
       if (eoasError || !eoas?.length) {
@@ -580,10 +580,12 @@ const SamizdatMap = ({
       const names: Record<string, string> = {};
       const utmIds: Record<string, string> = {};
       const eoaMobilizeCodes: Record<string, string | null> = {};
+      const eoaTypes: Record<string, string> = {};
       eoas.forEach((eoa) => {
         names[eoa.id] = eoa.title || eoa.id.slice(0, 8);
         utmIds[eoa.id] = eoa.utm_id || "";
         eoaMobilizeCodes[eoa.id] = eoa.mobilize_code || null;
+        eoaTypes[eoa.id] = eoa.type || "Event";
       });
       setEoaNames(names);
 
@@ -792,8 +794,23 @@ const SamizdatMap = ({
 
       setEoaStartDates(startDates);
 
+      // Step 4b: Deduplicate return visits for Action-type EoAs
+      // For Action-type EoAs, keep only the first view event per token
+      const firstViewByToken: Record<string, boolean> = {};
+      const deduplicatedEvents = sortedEvents.filter((event) => {
+        const td = tokenData[event.token];
+        if (!td) return true;
+        const eoaType = eoaTypes[td.eoaId];
+        if (eoaType !== "Action") return true; // Event-type: keep all (each scan = unique person)
+        if (!firstViewByToken[event.token]) {
+          firstViewByToken[event.token] = true;
+          return true; // Keep first view
+        }
+        return false; // Drop subsequent return visits
+      });
+
       // Step 5: Get unique ZIP codes for coordinate lookup
-      const uniqueZips = [...new Set(events.map((e) => e.zip_code).filter(Boolean))] as string[];
+      const uniqueZips = [...new Set(deduplicatedEvents.map((e) => e.zip_code).filter(Boolean))] as string[];
 
       let zipData: { zip_code: string; latitude: number; longitude: number }[] | null = null;
       if (uniqueZips.length > 0) {
@@ -816,7 +833,7 @@ const SamizdatMap = ({
       // Step 6: Build event points with chain info
       // Note: No filtering by start_date here since first view IS the start
       const points: EventPoint[] = [];
-      events.forEach((event) => {
+      deduplicatedEvents.forEach((event) => {
         const td = tokenData[event.token];
         if (!td) return;
         

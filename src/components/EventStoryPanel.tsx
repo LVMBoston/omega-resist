@@ -90,6 +90,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
   const [timeDelta, setTimeDelta] = useState<number | null>(null);
   const [originTimeDelta, setOriginTimeDelta] = useState<number | null>(null);
   const [isFirstEventForToken, setIsFirstEventForToken] = useState<boolean>(true);
+  const [returnVisitCount, setReturnVisitCount] = useState<number>(0);
+  const [returnVisitSpan, setReturnVisitSpan] = useState<string | null>(null);
 
   useEffect(() => {
     if (!eventId) {
@@ -102,6 +104,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       setTimeDelta(null);
       setOriginTimeDelta(null);
       setIsFirstEventForToken(true);
+      setReturnVisitCount(0);
+      setReturnVisitSpan(null);
       return;
     }
 
@@ -173,8 +177,28 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
             .maybeSingle();
           
           setIsFirstEventForToken(firstEventForToken?.id === eventId);
-        }
 
+          // For Action-type EoAs, fetch return visit stats
+          if (eoa && eoa.type === "Action") {
+            const { data: allViews } = await supabase
+              .from("url_events")
+              .select("id, occurred_at")
+              .eq("token", token.token)
+              .eq("event_type", "view")
+              .eq("is_simulated", false)
+              .order("occurred_at", { ascending: true });
+            
+            if (allViews && allViews.length > 1) {
+              setReturnVisitCount(allViews.length - 1);
+              const firstTime = new Date(allViews[0].occurred_at).getTime();
+              const lastTime = new Date(allViews[allViews.length - 1].occurred_at).getTime();
+              setReturnVisitSpan(formatTimeDelta(lastTime - firstTime));
+            } else {
+              setReturnVisitCount(0);
+              setReturnVisitSpan(null);
+            }
+          }
+        }
         // If L01+, walk the parent chain back to L00 (viral journey) and fetch children
         if (token.level > 0) {
           await fetchViralChain(token.parent_token, token.level, event.occurred_at, eoa);
@@ -449,7 +473,14 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
       
       if (isFirstEventForToken) {
-        return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+        let narrative = `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+        
+        // Add return visit info for Action-type EoAs
+        if (returnVisitCount > 0 && returnVisitSpan && eoaDetails?.type === "Action") {
+          narrative += ` The recipient opened this message ${returnVisitCount + 1} times over ${returnVisitSpan}, indicating they held onto it.`;
+        }
+        
+        return narrative;
       } else {
         return `This is a return visit to instance ${instanceCode} for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
       }
