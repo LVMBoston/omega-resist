@@ -1819,6 +1819,22 @@ const SamizdatMap = ({
               background-color: #475569 !important;
               color: white !important;
             }
+            /* Chain step pulse highlight */
+            .chain-pulse-icon {
+              background: transparent !important;
+              border: none !important;
+            }
+            .chain-pulse-ring {
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              border: 3px solid #f59e0b;
+              animation: chain-pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes chain-pulse {
+              0%, 100% { transform: scale(0.8); opacity: 1; }
+              50% { transform: scale(1.3); opacity: 0.3; }
+            }
           `}</style>
         </div>
 
