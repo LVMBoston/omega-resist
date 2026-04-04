@@ -580,10 +580,12 @@ const SamizdatMap = ({
       const names: Record<string, string> = {};
       const utmIds: Record<string, string> = {};
       const eoaMobilizeCodes: Record<string, string | null> = {};
+      const eoaTypes: Record<string, string> = {};
       eoas.forEach((eoa) => {
         names[eoa.id] = eoa.title || eoa.id.slice(0, 8);
         utmIds[eoa.id] = eoa.utm_id || "";
         eoaMobilizeCodes[eoa.id] = eoa.mobilize_code || null;
+        eoaTypes[eoa.id] = eoa.type || "Event";
       });
       setEoaNames(names);
 
