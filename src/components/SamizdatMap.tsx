@@ -1564,38 +1564,38 @@ const SamizdatMap = ({
               <div className="bg-background/95 backdrop-blur-sm rounded-md px-2.5 py-1.5 shadow-md border border-border">
                 <div className="flex items-center gap-3 divide-x divide-border">
                   {/* Level colors */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Level</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Level</span>
                     {[
                       { label: "L00", color: LEVEL_COLORS[0] },
                       { label: "L01", color: LEVEL_COLORS[1] },
                       { label: "L02", color: LEVEL_COLORS[2] },
                       { label: "L03+", color: LEVEL_COLORS[3] },
                     ].map(({ label, color }) => (
-                      <div key={label} className="flex items-center gap-0.5 text-[10px]">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                      <div key={label} className="flex items-center gap-1 text-xs">
+                        <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: color }} />
                         <span>{label}</span>
                       </div>
                     ))}
                   </div>
                   
                   {/* Share medium shapes */}
-                  <div className="flex items-center gap-1.5 pl-3">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Medium</span>
+                  <div className="flex items-center gap-2 pl-3">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Medium</span>
                     {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
-                      <div key={shape} className="flex items-center gap-0.5 text-[10px]">
-                        <div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 10) }} />
+                      <div key={shape} className="flex items-center gap-1 text-xs">
+                        <div className="w-[18px] h-[18px]" dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 18) }} />
                         <span>{SHARE_MEDIUM_LABELS[shape]}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Engagement border colors */}
-                  <div className="flex items-center gap-1.5 pl-3">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Engage</span>
+                  <div className="flex items-center gap-2 pl-3">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Engage</span>
                     {(["none", "intent", "completed"] as EngagementState[]).map((state) => (
-                      <div key={state} className="flex items-center gap-0.5 text-[10px]">
-                        <span className="w-2 h-2 rounded-full border" style={{ backgroundColor: "#64748b", borderColor: ENGAGEMENT_BORDER_COLORS[state] }} />
+                      <div key={state} className="flex items-center gap-1 text-xs">
+                        <span className="w-3.5 h-3.5 rounded-full border-2" style={{ backgroundColor: "#64748b", borderColor: ENGAGEMENT_BORDER_COLORS[state] }} />
                         <span>{ENGAGEMENT_LABELS[state]}</span>
                       </div>
                     ))}
