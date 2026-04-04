@@ -312,6 +312,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ["stats-templates-for-campaign"] });
+      queryClient.invalidateQueries({ queryKey: ["snapshot-file-ages"] });
       toast.success("Snapshot rendered successfully");
     },
     onError: (error: Error, templateId) => {
