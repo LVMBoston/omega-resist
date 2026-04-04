@@ -923,6 +923,7 @@ const SamizdatMap = ({
     setSelectedChainToken(null);
     setSelectedEventId(null);
     setSelectedL00Instance(null);
+    setHighlightedEventIndex(null);
     setIsPlaying(false);
     setTimelinePosition(1.0);
   }, []);
