@@ -142,6 +142,28 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
     },
   });
 
+  // Fetch per-campaign snapshot file ages from storage
+  const { data: snapshotAges } = useQuery({
+    queryKey: ["snapshot-file-ages", campaignCode, templates.map(t => t.id)],
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      if (templates.length === 0) return {};
+      const ages: Record<string, string | null> = {};
+      
+      await Promise.all(templates.map(async (template) => {
+        const { data: files } = await supabase.storage
+          .from("slide-snapshots")
+          .list(template.id, { search: `snapshot-${campaignCode}.svg` });
+        
+        const file = files?.find(f => f.name === `snapshot-${campaignCode}.svg`);
+        ages[template.id] = file?.updated_at ?? null;
+      }));
+      
+      return ages;
+    },
+    enabled: templates.length > 0,
+    staleTime: 30000,
+  });
+
   // Fetch per-template campaign context (deck linkage + sample token)
   const { data: templateContexts } = useQuery({
     queryKey: ["template-campaign-context", campaignCode, templates.map(t => t.id)],
