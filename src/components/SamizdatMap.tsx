@@ -956,6 +956,139 @@ const SamizdatMap = ({
     setHighlightedEventIndex(0);
   }, []);
 
+  // Arrow-key handler for chain stepping
+  useEffect(() => {
+    if (viewMode !== "chain" || loupeActive || chainEventsOrdered.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      // If playing, pause
+      if (isPlaying) setIsPlaying(false);
+
+      setHighlightedEventIndex(prev => {
+        if (prev === null) return 0;
+        if (e.key === 'ArrowRight') return Math.min(prev + 1, chainEventsOrdered.length - 1);
+        return Math.max(prev - 1, 0);
+      });
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [viewMode, loupeActive, chainEventsOrdered.length, isPlaying]);
+
+  // Helper: compute jittered position for an event
+  const getJitteredPosition = useCallback((event: EventPoint, allEvents: EventPoint[]) => {
+    const locKey = `${event.latitude.toFixed(4)}_${event.longitude.toFixed(4)}`;
+    const group = allEvents.filter(e =>
+      e.latitude.toFixed(4) === event.latitude.toFixed(4) &&
+      e.longitude.toFixed(4) === event.longitude.toFixed(4)
+    );
+    let lat = event.latitude;
+    let lng = event.longitude;
+    if (group.length > 1) {
+      const idx = group.findIndex(e => e.eventId === event.eventId);
+      const jitterRadius = 0.0003;
+      const angle = (2 * Math.PI * idx) / group.length;
+      lat += jitterRadius * Math.sin(angle);
+      lng += jitterRadius * Math.cos(angle);
+    }
+    return { lat, lng };
+  }, []);
+
+  // Pan map + show pulse highlight + open story panel on step change
+  useEffect(() => {
+    if (highlightedEventIndex === null || !mapRef.current || chainEventsOrdered.length === 0) {
+      if (highlightMarkerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(highlightMarkerRef.current);
+        highlightMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const event = chainEventsOrdered[highlightedEventIndex];
+    if (!event) return;
+
+    const { lat, lng } = getJitteredPosition(event, displayEvents);
+
+    // Pan to the highlighted event
+    mapRef.current.panTo([lat, lng], { animate: true });
+
+    // Open the story panel
+    setSelectedEventId(event.eventId);
+
+    // Add/update highlight pulse marker
+    if (highlightMarkerRef.current) {
+      mapRef.current.removeLayer(highlightMarkerRef.current);
+    }
+
+    const pulseIcon = L.divIcon({
+      html: `<div class="chain-pulse-ring"></div>`,
+      className: "chain-pulse-icon",
+      iconSize: L.point(40, 40),
+      iconAnchor: L.point(20, 20),
+    });
+
+    highlightMarkerRef.current = L.marker([lat, lng], {
+      icon: pulseIcon,
+      zIndexOffset: 10000,
+      interactive: false,
+    }).addTo(mapRef.current);
+  }, [highlightedEventIndex, chainEventsOrdered, displayEvents, getJitteredPosition]);
+
+  // Draw polylines connecting parent→child events in chain mode
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear existing polylines
+    if (polylineLayerRef.current) {
+      mapRef.current.removeLayer(polylineLayerRef.current);
+      polylineLayerRef.current = null;
+    }
+
+    if (viewMode !== "chain" || displayEvents.length < 2) return;
+
+    const layerGroup = L.layerGroup();
+
+    // Build token→jittered position lookup
+    const tokenToPos: Record<string, { lat: number; lng: number }> = {};
+    displayEvents.forEach(event => {
+      const pos = getJitteredPosition(event, displayEvents);
+      tokenToPos[event.token] = pos;
+    });
+
+    // Draw lines from parent→child
+    displayEvents.forEach(event => {
+      if (!event.parentToken) return;
+      const parentPos = tokenToPos[event.parentToken];
+      if (!parentPos) return;
+      const childPos = tokenToPos[event.token];
+      if (!childPos) return;
+
+      const color = getLevelColor(event.level);
+
+      L.polyline(
+        [[parentPos.lat, parentPos.lng], [childPos.lat, childPos.lng]],
+        { color, weight: 2, opacity: 0.5, dashArray: '6, 4' }
+      ).addTo(layerGroup);
+
+      // Small circle at child end to indicate direction
+      L.circleMarker([childPos.lat, childPos.lng], {
+        radius: 3,
+        fillColor: color,
+        fillOpacity: 0.7,
+        color,
+        weight: 1,
+        opacity: 0.7,
+      }).addTo(layerGroup);
+    });
+
+    polylineLayerRef.current = layerGroup;
+    mapRef.current.addLayer(layerGroup);
+  }, [viewMode, displayEvents, getJitteredPosition]);
+
   // Update markers based on view mode
   useEffect(() => {
     if (!mapRef.current) return;
