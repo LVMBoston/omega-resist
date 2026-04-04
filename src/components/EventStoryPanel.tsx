@@ -177,8 +177,28 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
             .maybeSingle();
           
           setIsFirstEventForToken(firstEventForToken?.id === eventId);
-        }
 
+          // For Action-type EoAs, fetch return visit stats
+          if (eoa && eoa.type === "Action") {
+            const { data: allViews } = await supabase
+              .from("url_events")
+              .select("id, occurred_at")
+              .eq("token", token.token)
+              .eq("event_type", "view")
+              .eq("is_simulated", false)
+              .order("occurred_at", { ascending: true });
+            
+            if (allViews && allViews.length > 1) {
+              setReturnVisitCount(allViews.length - 1);
+              const firstTime = new Date(allViews[0].occurred_at).getTime();
+              const lastTime = new Date(allViews[allViews.length - 1].occurred_at).getTime();
+              setReturnVisitSpan(formatTimeDelta(lastTime - firstTime));
+            } else {
+              setReturnVisitCount(0);
+              setReturnVisitSpan(null);
+            }
+          }
+        }
         // If L01+, walk the parent chain back to L00 (viral journey) and fetch children
         if (token.level > 0) {
           await fetchViralChain(token.parent_token, token.level, event.occurred_at, eoa);
