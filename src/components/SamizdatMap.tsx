@@ -257,6 +257,7 @@ const SamizdatMap = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [highlightedEventIndex, setHighlightedEventIndex] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   const [loupeActive, setLoupeActive] = useState(false);
