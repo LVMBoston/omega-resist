@@ -104,6 +104,8 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       setTimeDelta(null);
       setOriginTimeDelta(null);
       setIsFirstEventForToken(true);
+      setReturnVisitCount(0);
+      setReturnVisitSpan(null);
       return;
     }
 
