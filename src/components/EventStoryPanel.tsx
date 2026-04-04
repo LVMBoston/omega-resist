@@ -473,7 +473,14 @@ export function EventStoryPanel({ eventId, onClose }: EventStoryPanelProps) {
       const eventDateTime = formatProseDateTime(eventDetails.occurred_at);
       
       if (isFirstEventForToken) {
-        return `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+        let narrative = `This is a QR scan event (instance ${instanceCode}) for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
+        
+        // Add return visit info for Action-type EoAs
+        if (returnVisitCount > 0 && returnVisitSpan && eoaDetails?.type === "Action") {
+          narrative += ` The recipient opened this message ${returnVisitCount + 1} times over ${returnVisitSpan}, indicating they held onto it.`;
+        }
+        
+        return narrative;
       } else {
         return `This is a return visit to instance ${instanceCode} for the "${tokenDetails.deck_slug}" deck at ${eoaTitle}. The user accessed the content from ${location} ${eventDateTime}${locationNote}.${spawnNote}`;
       }
