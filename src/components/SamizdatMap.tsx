@@ -242,6 +242,8 @@ const SamizdatMap = ({
   const mapRef = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const polylineLayerRef = useRef<L.LayerGroup | null>(null);
+  const highlightMarkerRef = useRef<L.Marker | null>(null);
   const zipMarkersRef = useRef<L.Marker[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
@@ -255,6 +257,7 @@ const SamizdatMap = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [highlightedEventIndex, setHighlightedEventIndex] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
   const [loupeActive, setLoupeActive] = useState(false);
@@ -442,6 +445,14 @@ const SamizdatMap = ({
     console.log("[SamizdatMap] Filtered to", filtered.length, "events");
     return filtered;
   }, [filteredEventPoints, viewMode, selectedL00Instance]);
+
+  // Chain events sorted chronologically for arrow-key stepping
+  const chainEventsOrdered = useMemo((): EventPoint[] => {
+    if (viewMode !== "chain" || displayEvents.length === 0) return [];
+    return [...displayEvents].sort((a, b) =>
+      new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+    );
+  }, [viewMode, displayEvents]);
 
   // Timeline-derived computed values — scoped to chain events when in chain mode
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
@@ -920,6 +931,7 @@ const SamizdatMap = ({
     setSelectedChainToken(null);
     setSelectedEventId(null);
     setSelectedL00Instance(null);
+    setHighlightedEventIndex(null);
     setIsPlaying(false);
     setTimelinePosition(1.0);
   }, []);
@@ -939,10 +951,143 @@ const SamizdatMap = ({
     setViewMode("chain");
     setSelectedEventId(event.eventId);
 
-    // Auto-start chain playback from the beginning
-    setTimelinePosition(0);
-    setIsPlaying(true);
+    // Show all chain events immediately and highlight the first one
+    setTimelinePosition(1.0);
+    setHighlightedEventIndex(0);
   }, []);
+
+  // Arrow-key handler for chain stepping
+  useEffect(() => {
+    if (viewMode !== "chain" || loupeActive || chainEventsOrdered.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      // If playing, pause
+      if (isPlaying) setIsPlaying(false);
+
+      setHighlightedEventIndex(prev => {
+        if (prev === null) return 0;
+        if (e.key === 'ArrowRight') return Math.min(prev + 1, chainEventsOrdered.length - 1);
+        return Math.max(prev - 1, 0);
+      });
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [viewMode, loupeActive, chainEventsOrdered.length, isPlaying]);
+
+  // Helper: compute jittered position for an event
+  const getJitteredPosition = useCallback((event: EventPoint, allEvents: EventPoint[]) => {
+    const locKey = `${event.latitude.toFixed(4)}_${event.longitude.toFixed(4)}`;
+    const group = allEvents.filter(e =>
+      e.latitude.toFixed(4) === event.latitude.toFixed(4) &&
+      e.longitude.toFixed(4) === event.longitude.toFixed(4)
+    );
+    let lat = event.latitude;
+    let lng = event.longitude;
+    if (group.length > 1) {
+      const idx = group.findIndex(e => e.eventId === event.eventId);
+      const jitterRadius = 0.0003;
+      const angle = (2 * Math.PI * idx) / group.length;
+      lat += jitterRadius * Math.sin(angle);
+      lng += jitterRadius * Math.cos(angle);
+    }
+    return { lat, lng };
+  }, []);
+
+  // Pan map + show pulse highlight + open story panel on step change
+  useEffect(() => {
+    if (highlightedEventIndex === null || !mapRef.current || chainEventsOrdered.length === 0) {
+      if (highlightMarkerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(highlightMarkerRef.current);
+        highlightMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const event = chainEventsOrdered[highlightedEventIndex];
+    if (!event) return;
+
+    const { lat, lng } = getJitteredPosition(event, displayEvents);
+
+    // Pan to the highlighted event
+    mapRef.current.panTo([lat, lng], { animate: true });
+
+    // Open the story panel
+    setSelectedEventId(event.eventId);
+
+    // Add/update highlight pulse marker
+    if (highlightMarkerRef.current) {
+      mapRef.current.removeLayer(highlightMarkerRef.current);
+    }
+
+    const pulseIcon = L.divIcon({
+      html: `<div class="chain-pulse-ring"></div>`,
+      className: "chain-pulse-icon",
+      iconSize: L.point(40, 40),
+      iconAnchor: L.point(20, 20),
+    });
+
+    highlightMarkerRef.current = L.marker([lat, lng], {
+      icon: pulseIcon,
+      zIndexOffset: 10000,
+      interactive: false,
+    }).addTo(mapRef.current);
+  }, [highlightedEventIndex, chainEventsOrdered, displayEvents, getJitteredPosition]);
+
+  // Draw polylines connecting parent→child events in chain mode
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear existing polylines
+    if (polylineLayerRef.current) {
+      mapRef.current.removeLayer(polylineLayerRef.current);
+      polylineLayerRef.current = null;
+    }
+
+    if (viewMode !== "chain" || displayEvents.length < 2) return;
+
+    const layerGroup = L.layerGroup();
+
+    // Build token→jittered position lookup
+    const tokenToPos: Record<string, { lat: number; lng: number }> = {};
+    displayEvents.forEach(event => {
+      const pos = getJitteredPosition(event, displayEvents);
+      tokenToPos[event.token] = pos;
+    });
+
+    // Draw lines from parent→child
+    displayEvents.forEach(event => {
+      if (!event.parentToken) return;
+      const parentPos = tokenToPos[event.parentToken];
+      if (!parentPos) return;
+      const childPos = tokenToPos[event.token];
+      if (!childPos) return;
+
+      const color = getLevelColor(event.level);
+
+      L.polyline(
+        [[parentPos.lat, parentPos.lng], [childPos.lat, childPos.lng]],
+        { color, weight: 2, opacity: 0.5, dashArray: '6, 4' }
+      ).addTo(layerGroup);
+
+      // Small circle at child end to indicate direction
+      L.circleMarker([childPos.lat, childPos.lng], {
+        radius: 3,
+        fillColor: color,
+        fillOpacity: 0.7,
+        color,
+        weight: 1,
+        opacity: 0.7,
+      }).addTo(layerGroup);
+    });
+
+    polylineLayerRef.current = layerGroup;
+    mapRef.current.addLayer(layerGroup);
+  }, [viewMode, displayEvents, getJitteredPosition]);
 
   // Update markers based on view mode
   useEffect(() => {
@@ -1400,8 +1545,15 @@ const SamizdatMap = ({
                   Show All Events
                 </Button>
                 <div className="text-xs text-muted-foreground">
-                  Viewing chain: {displayEvents.length} events
+                  {highlightedEventIndex !== null && chainEventsOrdered.length > 0
+                    ? `Event ${highlightedEventIndex + 1} of ${chainEventsOrdered.length}`
+                    : `Viewing chain: ${displayEvents.length} events`}
                 </div>
+                {chainEventsOrdered.length > 0 && (
+                  <div className="text-[10px] text-muted-foreground/70">
+                    ← → to step
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1666,6 +1818,22 @@ const SamizdatMap = ({
             .marker-cluster-large div {
               background-color: #475569 !important;
               color: white !important;
+            }
+            /* Chain step pulse highlight */
+            .chain-pulse-icon {
+              background: transparent !important;
+              border: none !important;
+            }
+            .chain-pulse-ring {
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              border: 3px solid #f59e0b;
+              animation: chain-pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes chain-pulse {
+              0%, 100% { transform: scale(0.8); opacity: 1; }
+              50% { transform: scale(1.3); opacity: 0.3; }
             }
           `}</style>
         </div>
