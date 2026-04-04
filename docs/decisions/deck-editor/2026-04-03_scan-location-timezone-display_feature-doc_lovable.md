@@ -68,7 +68,29 @@ Map marker tooltips now display the event time in the **scan location's timezone
 ## Update — 2026-04-03 (Chain-Scoped Timeline Animation)
 
 ### 11. Chain-scoped timeline playback
-- When a marker is clicked and a chain is selected, the timeline **automatically starts playing** from the beginning.
-- The timeline epoch is **scoped to the chain's own time range** (first event → last event in the chain), not the campaign-wide range. This means playback spans just the chain's lifespan.
+- The timeline epoch is **scoped to the chain's own time range** (first event → last event in the chain), not the campaign-wide range.
 - Returning to "Show All Events" stops playback and resets the timeline to 100%.
+- Files: modified `src/components/SamizdatMap.tsx`.
+
+## Update — 2026-04-04 (Arrow-Key Chain Stepper)
+
+### 12. Arrow-key stepping replaces auto-play
+- Selecting a chain no longer auto-plays the timeline. Instead, all chain events are shown immediately (`timelinePosition = 1.0`) and `highlightedEventIndex` is set to `0`.
+- **Right Arrow** advances to the next event in chronological order; **Left Arrow** goes back. Clamped to chain bounds.
+- The keyboard handler uses capture phase and calls `stopImmediatePropagation` to prevent Leaflet map panning.
+- If the timeline is playing when an arrow key is pressed, playback pauses and the stepper takes over.
+
+### 13. Pulsing highlight on current event
+- A pulsing amber ring (`chain-pulse-ring` CSS animation) overlays the currently highlighted marker at `zIndexOffset: 10000`.
+- The map smoothly pans to center on each highlighted event.
+- The Event Story panel opens for the highlighted event automatically.
+
+### 14. Parent→child polyline connectors
+- When in chain mode, dashed `L.polyline` segments connect each event to its parent (matched via `parentToken` → `token` in the same chain).
+- Line style: 2px weight, 0.5 opacity, dashed (`6, 4`), colored by the child's level color.
+- A small `L.circleMarker` (radius 3) at the child end indicates flow direction.
+- Polylines use jittered positions matching the event markers.
+
+### 15. Updated chain mode indicator
+- The header now shows "Event X of Y" when stepping, with a "← → to step" hint.
 - Files: modified `src/components/SamizdatMap.tsx`.
