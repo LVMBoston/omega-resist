@@ -415,7 +415,7 @@ function generateFullStory(data: NarrativeData): string {
   }
 
   // Views
-  lines.push(`👀 The content was viewed ${viewCount} times — sometimes more than once by the same person.`);
+  lines.push(`👀 The content was viewed ${viewCount} times — including return visits from people who held onto the message.`);
 
   // Geography — only include if we have geo data
   if (geoNarrative) {
