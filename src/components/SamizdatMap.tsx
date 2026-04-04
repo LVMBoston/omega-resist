@@ -794,8 +794,23 @@ const SamizdatMap = ({
 
       setEoaStartDates(startDates);
 
+      // Step 4b: Deduplicate return visits for Action-type EoAs
+      // For Action-type EoAs, keep only the first view event per token
+      const firstViewByToken: Record<string, boolean> = {};
+      const deduplicatedEvents = sortedEvents.filter((event) => {
+        const td = tokenData[event.token];
+        if (!td) return true;
+        const eoaType = eoaTypes[td.eoaId];
+        if (eoaType !== "Action") return true; // Event-type: keep all (each scan = unique person)
+        if (!firstViewByToken[event.token]) {
+          firstViewByToken[event.token] = true;
+          return true; // Keep first view
+        }
+        return false; // Drop subsequent return visits
+      });
+
       // Step 5: Get unique ZIP codes for coordinate lookup
-      const uniqueZips = [...new Set(events.map((e) => e.zip_code).filter(Boolean))] as string[];
+      const uniqueZips = [...new Set(deduplicatedEvents.map((e) => e.zip_code).filter(Boolean))] as string[];
 
       let zipData: { zip_code: string; latitude: number; longitude: number }[] | null = null;
       if (uniqueZips.length > 0) {
