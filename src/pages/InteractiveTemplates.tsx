@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers, ChevronsUpDown } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers, ChevronsUpDown, LayoutGrid } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor, generateAndUploadThumbnail } from "@/components/FullResolutionHotspotEditor";
@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateType, Hotspot } from "@/types/viralTemplates";
 import { detectOverlaps, detectOutOfBounds } from "@/lib/hotspotValidation";
 import { DataTemplateDialog } from "@/components/DataTemplateDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAllTemplateDecks, useAllTemplateCampaignCounts } from "@/hooks/useTemplateDecks";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Template {
@@ -254,6 +256,14 @@ export default function InteractiveTemplates() {
       return campaigns || [];
     },
   });
+
+  // Batch hooks for card indicators
+  const templateIds = templates?.map(t => t.id) || [];
+  const { data: templateDecksMap } = useAllTemplateDecks(templateIds);
+  const { data: campaignCountsMap } = useAllTemplateCampaignCounts(templateIds);
+
+  // Deck popover state
+  const [deckPopoverOpen, setDeckPopoverOpen] = useState<string | null>(null);
 
   // Filter templates based on active tab
   const actionTemplates = templates?.filter(isActionTemplate) || [];
@@ -796,11 +806,45 @@ export default function InteractiveTemplates() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setViewingCampaigns(template.id)}
+              onClick={(e) => { e.stopPropagation(); setViewingCampaigns(template.id); }}
             >
               <FolderKanban className="h-4 w-4 mr-2" />
-              Campaigns
+              Campaigns ({campaignCountsMap?.[template.id] ?? 0})
             </Button>
+            <Popover open={deckPopoverOpen === template.id} onOpenChange={(open) => setDeckPopoverOpen(open ? template.id : null)}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); }}
+                >
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Decks ({templateDecksMap?.[template.id]?.length ?? 0})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72" onClick={(e) => e.stopPropagation()}>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium mb-2">Decks using this template</p>
+                  {(!templateDecksMap?.[template.id] || templateDecksMap[template.id].length === 0) ? (
+                    <p className="text-sm text-muted-foreground">Not used in any decks</p>
+                  ) : (
+                    templateDecksMap[template.id].map((deck) => (
+                      <a
+                        key={deck.slug}
+                        href={`/deck-editor/${deck.slug}`}
+                        className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="font-mono text-xs truncate">{deck.slug}</span>
+                        <Badge variant="secondary" className="ml-2 text-xs shrink-0">
+                          {deck.eoaCount} EoA{deck.eoaCount !== 1 ? 's' : ''}
+                        </Badge>
+                      </a>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               size="sm"
@@ -1243,18 +1287,14 @@ export default function InteractiveTemplates() {
       <Dialog open={!!viewingCampaigns} onOpenChange={(open) => !open && setViewingCampaigns(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Campaigns Using This Template</DialogTitle>
-            <DialogDescription>
-              {templates?.find(t => t.id === viewingCampaigns)?.name || 'Template'}
-            </DialogDescription>
+            <DialogTitle>Campaigns using: {templates?.find(t => t.id === viewingCampaigns)?.name || 'Template'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {!templateCampaigns ? (
               <div className="text-center py-8 text-muted-foreground">Loading campaigns...</div>
             ) : templateCampaigns.length === 0 ? (
-              <div className="text-center py-8">
-                <FolderKanban className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">This template is not currently used in any campaigns</p>
+              <div className="text-center py-6">
+                <p className="text-muted-foreground">Not currently used in any campaigns</p>
               </div>
             ) : (
               <div className="space-y-2">
