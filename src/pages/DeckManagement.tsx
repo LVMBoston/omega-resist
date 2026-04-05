@@ -613,7 +613,6 @@ const Index = () => {
 interface SortableDeckCardProps {
   deck: DeckWithSlides;
   onExportPDF: (slug: string) => void;
-  onRemoveInteractive: (slug: string) => void;
   onDelete: (slug: string) => void;
   onShowInteractiveImage: (slug: string) => void;
   onShowImageSlides: (slug: string) => void;
@@ -621,7 +620,7 @@ interface SortableDeckCardProps {
   formatDate: (date: string) => string;
 }
 
-const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, onShowInteractiveImage, onShowImageSlides, onShowCampaignDetails, formatDate }: SortableDeckCardProps) => {
+const SortableDeckCard = ({ deck, onExportPDF, onDelete, onShowInteractiveImage, onShowImageSlides, onShowCampaignDetails, formatDate }: SortableDeckCardProps) => {
   const {
     attributes,
     listeners,
