@@ -1046,6 +1046,28 @@ const InteractiveSlideOverlay = ({
                 e.stopPropagation();
                 console.log(`📱 Vimeo hotspot tapped for inline playback: ${hotspot.url}`);
                 setVideoUrl(hotspot.url!);
+                setVideoProvider("vimeo");
+                setIsVideoOpen(true);
+              }}
+              className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+              style={transparentStyle}
+            >
+              {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            </button>
+          );
+        }
+
+        // Handle youtube hotspot type — always use inline player
+        if (hotspot.type === 'youtube' && hotspot.url) {
+          return (
+            <button
+              key={hotspot.id}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`📱 YouTube hotspot tapped for inline playback: ${hotspot.url}`);
+                setVideoUrl(hotspot.url!);
+                setVideoProvider("youtube");
                 setIsVideoOpen(true);
               }}
               className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
