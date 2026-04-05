@@ -55,3 +55,22 @@ a. This file — new decision doc.
 - `useTemplateCampaigns.ts` — existing per-template hook remains for the dialog's detailed list
 - Template CRUD logic — no changes
 - RLS policies — all tables already publicly readable
+
+## Update — 2026-04-05: Strip Numeric Suffix from Deck Slug Display
+
+### Rationale
+
+Deck slugs include a timestamp suffix (e.g., `omega-reports-1772812835212`) that adds visual noise in the Decks popover. A production query confirmed no two decks share a base slug, so stripping the suffix loses no information.
+
+### Changes
+
+1. **Display helper in `InteractiveTemplates.tsx`**
+   a. Added utility: `const displaySlug = (slug: string) => slug.replace(/-\d{10,}$/, '')` — strips trailing numeric suffixes of 10+ digits.
+   b. Applied to deck slug labels in the Decks popover.
+   c. Full slug preserved in `href` to `/deck-editor/{slug}`.
+
+### What Does Not Change
+
+- Link targets — full slug preserved in URLs
+- Hook logic in `useTemplateDecks.ts`
+- Database schema
