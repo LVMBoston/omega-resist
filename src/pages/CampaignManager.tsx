@@ -222,6 +222,7 @@ export default function CampaignManager() {
             l0_count: Number(row.l0_count) || 0,
             l1_count: Number(row.l1_count) || 0,
             l2_count: Number(row.l2_count) || 0,
+            l3_count: Number(row.l3_count) || 0,
             l3_plus_count: Number(row.l3_plus_count) || 0
           };
         }
