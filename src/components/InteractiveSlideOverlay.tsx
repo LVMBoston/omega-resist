@@ -902,7 +902,7 @@ const InteractiveSlideOverlay = ({
 
   return (
     <>
-      {/* Inline Vimeo player with swipe-passthrough zones */}
+      {/* Inline video player (Vimeo/YouTube) with swipe-passthrough zones */}
       {isVideoOpen && videoUrl && (
         <div className="absolute inset-0 z-[9999] bg-black">
           {/* Close button */}
