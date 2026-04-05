@@ -24,6 +24,7 @@ interface CampaignStats {
   l0Count: number;
   l1Count: number;
   l2Count: number;
+  l3Count: number;
   l3PlusCount: number;
   earliestActive: string | null;
   latestActive: string | null;
@@ -76,6 +77,7 @@ export default function CampaignDetail() {
         l0Count: row.l0_count,
         l1Count: row.l1_count,
         l2Count: row.l2_count,
+        l3Count: row.l3_count,
         l3PlusCount: row.l3_plus_count,
         earliestActive: row.earliest_active,
         latestActive: row.latest_active,
@@ -150,9 +152,12 @@ export default function CampaignDetail() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3+</p>
+                    <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3</p>
                     <p className="font-semibold text-lg">
-                      {`${stats.l0Count.toLocaleString()} / ${stats.l1Count.toLocaleString()} / ${stats.l2Count.toLocaleString()} / ${stats.l3PlusCount.toLocaleString()}`}
+                      {`${stats.l0Count.toLocaleString()} / ${stats.l1Count.toLocaleString()} / ${stats.l2Count.toLocaleString()} / ${stats.l3Count.toLocaleString()}`}
+                      {stats.l3PlusCount > 0 && (
+                        <span className="text-sm text-muted-foreground ml-2">L4+: {stats.l3PlusCount.toLocaleString()}</span>
+                      )}
                     </p>
                   </div>
                 </div>

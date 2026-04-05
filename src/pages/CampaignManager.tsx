@@ -53,6 +53,7 @@ interface CampaignStats {
   l0Count: number;
   l1Count: number;
   l2Count: number;
+  l3Count: number;
   l3PlusCount: number;
   chaptersCount: number;
 }
@@ -202,6 +203,7 @@ export default function CampaignManager() {
       l0_count: number;
       l1_count: number;
       l2_count: number;
+      l3_count: number;
       l3_plus_count: number;
     }> = {};
     
@@ -220,6 +222,7 @@ export default function CampaignManager() {
             l0_count: Number(row.l0_count) || 0,
             l1_count: Number(row.l1_count) || 0,
             l2_count: Number(row.l2_count) || 0,
+            l3_count: Number(row.l3_count) || 0,
             l3_plus_count: Number(row.l3_plus_count) || 0
           };
         }
@@ -237,6 +240,7 @@ export default function CampaignManager() {
         l0_count: 0,
         l1_count: 0,
         l2_count: 0,
+        l3_count: 0,
         l3_plus_count: 0
       };
       
@@ -253,6 +257,7 @@ export default function CampaignManager() {
         l0Count: db.l0_count,
         l1Count: db.l1_count,
         l2Count: db.l2_count,
+        l3Count: db.l3_count,
         l3PlusCount: db.l3_plus_count,
         chaptersCount: eoaStats?.chaptersCount || 0
       });
@@ -862,9 +867,12 @@ export default function CampaignManager() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3+</p>
+                      <p className="text-sm text-muted-foreground">Viral Depth: L0 / L1 / L2 / L3</p>
                       <p className="font-semibold text-lg">
-                        {`${(stats?.l0Count || 0).toLocaleString()} / ${(stats?.l1Count || 0).toLocaleString()} / ${(stats?.l2Count || 0).toLocaleString()} / ${(stats?.l3PlusCount || 0).toLocaleString()}`}
+                        {`${(stats?.l0Count || 0).toLocaleString()} / ${(stats?.l1Count || 0).toLocaleString()} / ${(stats?.l2Count || 0).toLocaleString()} / ${(stats?.l3Count || 0).toLocaleString()}`}
+                        {(stats?.l3PlusCount || 0) > 0 && (
+                          <span className="text-sm text-muted-foreground ml-2">L4+: {(stats?.l3PlusCount || 0).toLocaleString()}</span>
+                        )}
                       </p>
                     </div>
                     <div>

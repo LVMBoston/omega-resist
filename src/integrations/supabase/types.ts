@@ -838,6 +838,7 @@ export type Database = {
           l0_count: number
           l1_count: number
           l2_count: number
+          l3_count: number
           l3_plus_count: number
           latest_active: string
           real_data_rows: number

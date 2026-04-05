@@ -80,7 +80,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   const l0 = stats?.l0_count || 0;
   const l1 = stats?.l1_count || 0;
   const l2 = stats?.l2_count || 0;
-  const l3 = stats?.l3_plus_count || 0;
+  const l3 = (stats?.l3_count || 0) + (stats?.l3_plus_count || 0);
 
   const levelCounts = [
     { level: 0, count: l0 },
