@@ -510,7 +510,7 @@ export const FullResolutionHotspotEditor = ({
                             ⚠
                           </div>
                         )}
-                        {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && hotspot.type !== 'vimeo' && (
+                        {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && hotspot.type !== 'vimeo' && hotspot.type !== 'youtube' && (
                         <div 
                           className={`absolute left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-bold whitespace-nowrap pointer-events-none rounded-md shadow-lg ${
                             hotspot.labelPosition === "top" ? "-top-8" : "-bottom-8"
