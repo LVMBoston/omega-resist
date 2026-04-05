@@ -188,7 +188,8 @@ export const FullResolutionHotspotEditor = ({
       height: selectedIconPreset.height,
       labelPosition: "bottom",
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
-      
+      ...(selectedIconPreset.type === "vimeo" && { url: "" }),
+      ...(selectedIconPreset.type === "youtube" && { url: "" }),
       ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
     };
 
