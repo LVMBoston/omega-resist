@@ -38,6 +38,8 @@ interface Template {
   config?: any;
 }
 
+const displaySlug = (slug: string) => slug.replace(/-\d{10,}$/, '');
+
 const isValidInteractiveTemplate = (template: Template): boolean => {
   if (!template.image_url) return false;
   if (template.template_type === 'display_only') return true;
