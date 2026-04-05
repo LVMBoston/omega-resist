@@ -79,9 +79,12 @@ const ICON_PRESETS: IconPreset[] = [
 
   // Vimeo video variant
   { id: "vimeo-video", label: "Vimeo Video", type: "vimeo", imageUrl: playButtonIcon, width: 5, height: 4 },
+
+  // YouTube video variant
+  { id: "youtube-video", label: "YouTube Video", type: "youtube", imageUrl: playButtonIcon, width: 5, height: 4 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo" | "youtube";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
