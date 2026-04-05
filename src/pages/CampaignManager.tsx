@@ -1087,7 +1087,7 @@ export default function CampaignManager() {
               onOpenChange={setWizardOpen}
               onSuccess={(campaignId) => {
                 fetchData();
-                navigate(`/campaign/${campaignId}`);
+                window.open(`/campaign/${campaignId}`, '_blank');
               }}
             />
 
