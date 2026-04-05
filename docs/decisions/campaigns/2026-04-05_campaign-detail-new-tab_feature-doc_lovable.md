@@ -29,3 +29,15 @@ Previously, clicking a campaign card navigated within the same tab, which was co
 - Route definitions in `App.tsx`
 - Sidebar navigation
 - Any other navigation patterns in the app
+
+## Update — 2026-04-05
+
+### Campaign Usage dialog on `/interactive-templates`
+
+Extended the new-tab pattern to the "Campaigns using: {name}" dialog on the Interactive Template Repository page.
+
+#### Change (`src/pages/InteractiveTemplates.tsx`)
+
+- Made each campaign `Card` in the Campaign Usage dialog clickable with `onClick={() => window.open(\`/campaign/${campaign.id}\`, '_blank'))`
+- Added `cursor-pointer` and `hover:bg-accent/50` styling for visual affordance.
+- The dialog remains open in TAB-1; the selected campaign's detail page opens in TAB-2.
