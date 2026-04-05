@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Volume2, VolumeX, Pause, Play } from "lucide-react";
-import Player from "@vimeo/player";
 
 type PlayerState = "idle" | "playing-muted" | "playing-unmuted" | "paused";
 
@@ -18,7 +17,7 @@ const getVimeoEmbedUrl = (url: string): string => {
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match?.[1]) {
-      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0`;
+      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
     }
   }
   return url;
@@ -29,7 +28,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
   const [feedbackIcon, setFeedbackIcon] = useState<React.ReactNode | null>(null);
   const wasUnmutedRef = useRef(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<Player | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showFeedback = useCallback((icon: React.ReactNode) => {
@@ -38,12 +37,18 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     feedbackTimerRef.current = setTimeout(() => setFeedbackIcon(null), 1500);
   }, []);
 
+  // Vimeo postMessage helper
+  const vimeoPost = useCallback((method: string, value?: any) => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+    const msg: any = { method };
+    if (value !== undefined) msg.value = value;
+    iframe.contentWindow.postMessage(JSON.stringify(msg), '*');
+  }, []);
+
   const destroyPlayer = useCallback(() => {
     console.log("[VimeoSlide] destroyPlayer called");
-    if (playerRef.current) {
-      playerRef.current.destroy();
-      playerRef.current = null;
-    }
+    iframeRef.current = null;
     if (videoContainerRef.current) {
       videoContainerRef.current.innerHTML = "";
     }
@@ -59,27 +64,32 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     const iframe = document.createElement("iframe");
     iframe.src = getVimeoEmbedUrl(mediaUrl);
     iframe.allow = "autoplay; fullscreen; picture-in-picture";
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "none";
-    iframe.style.backgroundColor = "#000";
-    iframe.style.display = "block";
-    iframe.style.pointerEvents = "none";
+    iframe.style.cssText = "width:100%;height:100%;border:none;background:#000;display:block;pointer-events:none";
     iframe.setAttribute("allowfullscreen", "");
 
     videoContainerRef.current.appendChild(iframe);
+    iframeRef.current = iframe;
 
-    const player = new Player(iframe, { muted: true, autoplay: true });
-    // Re-apply in case Vimeo SDK overrides pointer-events
-    iframe.style.pointerEvents = 'none';
-    playerRef.current = player;
+    const handleMessage = (e: MessageEvent) => {
+      if (!e.origin.includes('vimeo.com')) return;
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data.event === 'ready') {
+          iframe.contentWindow?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'finish' }), '*');
+          iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setVolume', value: 0 }), '*');
+          iframe.contentWindow?.postMessage(JSON.stringify({ method: 'play' }), '*');
+          setPlayerState("playing-muted");
+        }
+        if (data.event === 'finish') {
+          console.log("[VimeoSlide] video ended");
+          destroyPlayer();
+        }
+      } catch {}
+    };
+    window.addEventListener('message', handleMessage);
 
-    player.on("ended", () => {
-      console.log("[VimeoSlide] video ended");
-      destroyPlayer();
-    });
-
-    setPlayerState("playing-muted");
+    // Store cleanup ref
+    (iframe as any)._messageHandler = handleMessage;
   }, [mediaUrl, destroyPlayer]);
 
   // Lifecycle: create player when active, pause/resume on swipe
@@ -88,26 +98,23 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
 
     if (isActive) {
       if (playerState === "idle") {
-        // First time or after destroy — create player (muted autoplay)
         requestAnimationFrame(() => createPlayer());
-      } else if (playerState === "paused" && playerRef.current) {
-        // Returning to slide — resume
+      } else if (playerState === "paused" && iframeRef.current) {
         console.log("[VimeoSlide] resuming playback");
-        playerRef.current.play().catch(() => {});
+        vimeoPost('play');
         if (wasUnmutedRef.current) {
-          playerRef.current.setVolume(1).catch(() => {});
+          vimeoPost('setVolume', 1);
           setPlayerState("playing-unmuted");
         } else {
           setPlayerState("playing-muted");
         }
       }
     } else {
-      // Swiped away — pause and mute
-      if (playerRef.current && (playerState === "playing-muted" || playerState === "playing-unmuted")) {
+      if (iframeRef.current && (playerState === "playing-muted" || playerState === "playing-unmuted")) {
         console.log("[VimeoSlide] pausing (swipe away)");
         wasUnmutedRef.current = playerState === "playing-unmuted";
-        playerRef.current.pause().catch(() => {});
-        playerRef.current.setVolume(0).catch(() => {});
+        vimeoPost('pause');
+        vimeoPost('setVolume', 0);
         setPlayerState("paused");
       }
     }
@@ -115,31 +122,30 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
 
   // Tap-to-toggle handler for center zone
   const handleCenterTap = useCallback(() => {
-    const player = playerRef.current;
-    if (!player) return;
+    if (!iframeRef.current) return;
 
     switch (playerState) {
       case "playing-muted":
         console.log("[VimeoSlide] tap: unmuting");
-        player.setVolume(1).catch(() => {});
+        vimeoPost('setVolume', 1);
         setPlayerState("playing-unmuted");
         showFeedback(<Volume2 className="h-12 w-12 text-white" />);
         break;
       case "playing-unmuted":
         console.log("[VimeoSlide] tap: pausing");
-        player.pause().catch(() => {});
+        vimeoPost('pause');
         setPlayerState("paused");
         showFeedback(<Pause className="h-12 w-12 text-white" />);
         break;
       case "paused":
         console.log("[VimeoSlide] tap: resuming");
-        player.play().catch(() => {});
-        player.setVolume(1).catch(() => {});
+        vimeoPost('play');
+        vimeoPost('setVolume', 1);
         setPlayerState("playing-unmuted");
         showFeedback(<Play className="h-12 w-12 text-white" />);
         break;
     }
-  }, [playerState, showFeedback]);
+  }, [playerState, showFeedback, vimeoPost]);
 
   // Escape key closes video
   useEffect(() => {
@@ -154,9 +160,13 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
+      if (iframeRef.current) {
+        const handler = (iframeRef.current as any)._messageHandler;
+        if (handler) window.removeEventListener('message', handler);
+        iframeRef.current = null;
+      }
+      if (videoContainerRef.current) {
+        videoContainerRef.current.innerHTML = "";
       }
     };
   }, []);
