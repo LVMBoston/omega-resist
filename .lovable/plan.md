@@ -1,31 +1,88 @@
 
+# Plan: Retire DeckManager & Simplify DeckManagement
 
-# Open Campaign Detail in New Browser Tab
+## Context
 
-## Summary
+The unified slide editor (Phase 1) made `DeckEditor` the single place to add/remove hotspots on any slide, with auto-promote/demote. This makes several capabilities in `DeckManager.tsx` and `DeckManagement.tsx` redundant.
 
-When a user clicks a campaign card (e.g., BUGTEST) on the Campaign Orchestration page, the campaign's detail page (`/campaign/{id}`) opens in a **new browser tab** to the right — not the full campaign list. The current tab stays on Campaign Orchestration.
+---
 
-## Changes
+## 1. Delete `DeckManager.tsx` (dead code)
 
-### 1. Card click opens new tab (`src/pages/CampaignManager.tsx`)
+This file has **no route in App.tsx** and **no sidebar link**. It is unreachable. Deleting it removes 285 lines.
 
-a. Line ~812: Change `onClick={() => navigate(\`/campaign/${campaign.id}\`)}` to `onClick={() => window.open(\`/campaign/${campaign.id}\`, '_blank')}`
+**Capabilities removed (all already available elsewhere):**
 
-b. Line ~1090: Change wizard `onSuccess` callback from `navigate(\`/campaign/${campaignId}\`)` to `window.open(\`/campaign/${campaignId}\`, '_blank')` — after creating a campaign, its detail opens in a new tab while the list stays.
+| # | Capability | Where it lives now |
+|---|---|---|
+| 1a | Select a deck from dropdown | DeckManagement grid, DeckEditor URL |
+| 1b | "Apply Template" — append a spread-word slide using a chosen template | DeckEditor → "Edit Hotspots" on any slide, or template picker in properties panel |
+| 1c | Template preview with hotspot overlay | InteractiveTemplates card preview, DeckEditor SlidePreviewOverlay |
+| 1d | Stub checkboxes for "Survey" and "Interactive Analytics" | Never implemented — no functionality behind them |
 
-### 2. Decision document
+---
 
-a. Create `docs/decisions/campaigns/2026-04-05_campaign-detail-new-tab_feature-doc_lovable.md` recording the UX change.
+## 2. Remove "Remove Interactivity" from `DeckManagement.tsx`
 
-## Files Changed
+**Capability removed:**
 
-- `src/pages/CampaignManager.tsx` — two `navigate()` calls → `window.open(..., '_blank')`
-- `docs/decisions/campaigns/2026-04-05_campaign-detail-new-tab_feature-doc_lovable.md` — new
+| # | Capability | Where it lives now |
+|---|---|---|
+| 2a | Bulk-strip all interactive slides from a deck (`handleRemoveInteractive`) | DeckEditor: select interactive slides → delete, or open each → remove hotspots → auto-demote. More precise and less destructive. |
 
-## What Does Not Change
+**What changes:**
+- Remove the `handleRemoveInteractive` function (~35 lines)
+- Remove the "Remove Interactive" button from each deck card
+- Remove the `interactive_count` fetch and display (the "Interactive" badge/count) — this count becomes less meaningful when any slide can be promoted/demoted on the fly
 
-- `CampaignDetail.tsx` — no modifications
-- Route definitions in `App.tsx`
-- Sidebar navigation
+---
 
+## 3. Capabilities that STAY in `DeckManagement.tsx`
+
+These are unique to the deck grid view and not available elsewhere:
+
+| # | Capability | Rationale |
+|---|---|---|
+| 3a | Deck grid with drag-and-drop reordering | Only place to reorder decks globally |
+| 3b | Delete entire deck | Destructive action with proper cascade (viral configs → slides → deck) |
+| 3c | Export deck to PDF | Only available here |
+| 3d | Import from Google Slides | Only available here |
+| 3e | Refresh slide counts | Overview utility |
+| 3f | Campaign badges per deck | Quick reference; links to campaign detail |
+| 3g | Preview interactive/image slides dialogs | Quick visual inspection without opening editor |
+| 3h | "New Deck" navigation to DeckBuilder | Entry point for deck creation |
+| 3i | Navigate to DeckEditor per deck | Primary editing entry point |
+
+---
+
+## 4. Update sidebar label (optional cosmetic)
+
+| # | Change |
+|---|---|
+| 4a | No label change needed — "Deck Management" remains accurate |
+
+---
+
+## 5. Decision document
+
+| # | Action |
+|---|---|
+| 5a | Save as new decision doc: `docs/decisions/decks/2026-04-05_retire-deck-manager-simplify-management_feature-doc_lovable.md` |
+
+---
+
+## Files changed
+
+| File | Action |
+|---|---|
+| `src/pages/DeckManager.tsx` | **Delete** |
+| `src/pages/DeckManagement.tsx` | Remove `handleRemoveInteractive`, remove interactive count fetch, remove "Remove Interactive" button |
+| `docs/decisions/decks/2026-04-05_retire-deck-manager-simplify-management_feature-doc_lovable.md` | **Create** |
+
+## Files NOT changed
+
+- `App.tsx` — no route exists for DeckManager
+- `AppSidebar.tsx` — no link exists for DeckManager
+- `DeckEditor.tsx` — no changes needed
+- `InteractiveTemplates.tsx` — no changes needed
+- Database schema — no migrations

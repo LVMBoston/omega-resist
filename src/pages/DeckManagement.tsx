@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, X, RefreshCw, Calendar, Clock, Building2, GripVertical } from "lucide-react";
+import { Download, Plus, Star, Trash2, UserCog, LogIn, LogOut, FileDown, RefreshCw, Calendar, Clock, Building2, GripVertical } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -235,41 +235,7 @@ const Index = () => {
     }
   };
 
-  const handleRemoveInteractive = async (slug: string) => {
-    if (!confirm(`Remove all interactive pages from deck "${slug}"?`)) {
-      return;
-    }
-    try {
-      // Get all interactive slides for this deck
-      const {
-        data: interactiveSlides,
-        error: fetchError
-      } = await supabase.from("slide_items").select("id").eq("deck_slug", slug).eq("type", "spread-word");
-      if (fetchError) throw fetchError;
-
-      // Delete viral slide configs for these slides
-      if (interactiveSlides && interactiveSlides.length > 0) {
-        const slideIds = interactiveSlides.map(s => s.id);
-        const {
-          error: viralConfigsError
-        } = await supabase.from("viral_slide_configs").delete().in("slide_id", slideIds);
-        if (viralConfigsError) throw viralConfigsError;
-
-        // Delete the interactive slides
-        const {
-          error: slidesError
-        } = await supabase.from("slide_items").delete().eq("deck_slug", slug).eq("type", "spread-word");
-        if (slidesError) throw slidesError;
-        toast.success(`Removed ${interactiveSlides.length} interactive page(s)`);
-      } else {
-        toast.info("No interactive pages to remove");
-      }
-      fetchDecks();
-    } catch (error) {
-      console.error("Error removing interactive pages:", error);
-      toast.error("Failed to remove interactive pages");
-    }
-  };
+  
   const handleDelete = async (slug: string) => {
     if (!confirm(`Delete deck "${slug}"? This will also delete all associated slides.`)) {
       return;
@@ -524,7 +490,6 @@ const Index = () => {
                     key={deck.slug} 
                     deck={deck} 
                     onExportPDF={handleExportPDF} 
-                    onRemoveInteractive={handleRemoveInteractive} 
                     onDelete={handleDelete} 
                     onShowInteractiveImage={handleShowInteractiveImage} 
                     onShowImageSlides={handleShowImageSlides} 
@@ -648,7 +613,6 @@ const Index = () => {
 interface SortableDeckCardProps {
   deck: DeckWithSlides;
   onExportPDF: (slug: string) => void;
-  onRemoveInteractive: (slug: string) => void;
   onDelete: (slug: string) => void;
   onShowInteractiveImage: (slug: string) => void;
   onShowImageSlides: (slug: string) => void;
@@ -656,7 +620,7 @@ interface SortableDeckCardProps {
   formatDate: (date: string) => string;
 }
 
-const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, onShowInteractiveImage, onShowImageSlides, onShowCampaignDetails, formatDate }: SortableDeckCardProps) => {
+const SortableDeckCard = ({ deck, onExportPDF, onDelete, onShowInteractiveImage, onShowImageSlides, onShowCampaignDetails, formatDate }: SortableDeckCardProps) => {
   const {
     attributes,
     listeners,
@@ -790,17 +754,7 @@ const SortableDeckCard = ({ deck, onExportPDF, onRemoveInteractive, onDelete, on
                     Export
                   </Button>
                   <div className="flex gap-2">
-                    {deck.interactive_count > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onRemoveInteractive(deck.slug)}
-                        title="Remove interactive pages"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
+                    <Button
                       variant="outline" 
                       size="sm" 
                       onClick={() => onDelete(deck.slug)}
