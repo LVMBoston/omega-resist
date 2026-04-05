@@ -203,6 +203,7 @@ export default function CampaignManager() {
       l0_count: number;
       l1_count: number;
       l2_count: number;
+      l3_count: number;
       l3_plus_count: number;
     }> = {};
     
