@@ -257,6 +257,7 @@ export default function CampaignManager() {
         l0Count: db.l0_count,
         l1Count: db.l1_count,
         l2Count: db.l2_count,
+        l3Count: db.l3_count,
         l3PlusCount: db.l3_plus_count,
         chaptersCount: eoaStats?.chaptersCount || 0
       });
