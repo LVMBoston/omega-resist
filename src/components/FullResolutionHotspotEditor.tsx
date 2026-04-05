@@ -743,15 +743,15 @@ export const FullResolutionHotspotEditor = ({
                       </div>
                       )}
 
-                      {(selectedHotspotData.type === "external_link" || selectedHotspotData.type === "vimeo") && (
+                      {(selectedHotspotData.type === "external_link" || selectedHotspotData.type === "vimeo" || selectedHotspotData.type === "youtube") && (
                         <div>
-                          <Label>{selectedHotspotData.type === "vimeo" ? "Vimeo URL" : "URL"}</Label>
+                          <Label>{selectedHotspotData.type === "vimeo" ? "Vimeo URL" : selectedHotspotData.type === "youtube" ? "YouTube URL" : "URL"}</Label>
                           <Input
                             value={selectedHotspotData.url || ""}
                             onChange={(e) =>
                               updateHotspot(selectedHotspotData.id, { url: e.target.value })
                             }
-                            placeholder={selectedHotspotData.type === "vimeo" ? "https://vimeo.com/123456789" : "https://example.com"}
+                            placeholder={selectedHotspotData.type === "vimeo" ? "https://vimeo.com/123456789" : selectedHotspotData.type === "youtube" ? "https://www.youtube.com/watch?v=..." : "https://example.com"}
                             type="url"
                           />
                         </div>
