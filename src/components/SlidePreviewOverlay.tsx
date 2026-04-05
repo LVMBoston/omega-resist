@@ -40,6 +40,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   external_link: ExternalLink,
   email_links: Mail,
   vimeo: Video,
+  youtube: Video,
   app_download: ExternalLink,
 };
 

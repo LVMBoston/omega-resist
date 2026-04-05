@@ -14,7 +14,6 @@ import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
 import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
-import Player from "@vimeo/player";
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
@@ -63,13 +62,15 @@ const InteractiveSlideOverlay = ({
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoProvider, setVideoProvider] = useState<"vimeo" | "youtube" | null>(null);
   const [vimeoPlayerState, setVimeoPlayerState] = useState<"idle" | "playing-muted" | "playing-unmuted" | "paused">("idle");
   const [vimeoFeedbackIcon, setVimeoFeedbackIcon] = useState<React.ReactNode | null>(null);
   const vimeoWasUnmutedRef = useRef(false);
   const vimeoPlayerStateRef = useRef(vimeoPlayerState);
   const vimeoFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const vimeoPlayerRef = useRef<Player | null>(null);
+  const vimeoPlayerRef = useRef<HTMLIFrameElement | null>(null);
+  const ytPlayerRef = useRef<any>(null);
 
   // EoA context for scoped template resolution
   const [eoaContext, setEoaContext] = useState<{ campaign_id: string; mobilize_code: string | null; city: string | null; state: string | null; site_name: string | null } | null>(null);
@@ -525,33 +526,55 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-  const isVimeoUrl = (url: string) => {
-    return url.includes('vimeo.com');
-  };
+  const isVimeoUrl = (url: string) => url.includes('vimeo.com');
+  const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
 
   const getVimeoEmbedUrl = (url: string) => {
     const patterns = [
       /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,
       /player\.vimeo\.com\/video\/(\d+)/,
     ];
-    
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) {
-        const videoId = match[1];
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0`;
+        return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&api=1`;
       }
     }
     return url;
   };
 
+  const getYouTubeVideoId = (url: string): string | null => {
+    const patterns = [
+      /youtube\.com\/embed\/([^?&/]+)/,
+      /youtube\.com\/watch\?v=([^&]+)/,
+      /youtu\.be\/([^?&/]+)/,
+    ];
+    for (const p of patterns) {
+      const m = url.match(p);
+      if (m?.[1]) return m[1];
+    }
+    return null;
+  };
+
+  // Vimeo postMessage helper
+  const vimeoPost = (method: string, value?: any) => {
+    const iframe = vimeoPlayerRef.current;
+    if (!iframe?.contentWindow) return;
+    const msg: any = { method };
+    if (value !== undefined) msg.value = value;
+    iframe.contentWindow.postMessage(JSON.stringify(msg), '*');
+  };
+
   const handleExternalLink = (url: string) => {
-    // Check if it's a Vimeo URL
     if (isVimeoUrl(url)) {
       setVideoUrl(url);
+      setVideoProvider("vimeo");
+      setIsVideoOpen(true);
+    } else if (isYouTubeUrl(url)) {
+      setVideoUrl(url);
+      setVideoProvider("youtube");
       setIsVideoOpen(true);
     } else {
-      // For non-Vimeo URLs, open in new tab
       const link = document.createElement('a');
       link.href = url;
       link.target = '_blank';
@@ -563,8 +586,6 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-
-
   const showVimeoFeedback = useCallback((icon: React.ReactNode) => {
     if (vimeoFeedbackTimerRef.current) clearTimeout(vimeoFeedbackTimerRef.current);
     setVimeoFeedbackIcon(icon);
@@ -572,122 +593,190 @@ const InteractiveSlideOverlay = ({
   }, []);
 
   const closeVideo = () => {
-    if (vimeoPlayerRef.current) {
-      vimeoPlayerRef.current.destroy();
-      vimeoPlayerRef.current = null;
+    if (vimeoPlayerRef.current) vimeoPlayerRef.current = null;
+    if (ytPlayerRef.current) {
+      try { ytPlayerRef.current.destroy(); } catch {}
+      ytPlayerRef.current = null;
     }
-    if (videoContainerRef.current) {
-      videoContainerRef.current.innerHTML = '';
-    }
+    if (videoContainerRef.current) videoContainerRef.current.innerHTML = '';
     vimeoWasUnmutedRef.current = false;
     setVimeoPlayerState("idle");
+    setVideoProvider(null);
     setIsVideoOpen(false);
     setVideoUrl(null);
   };
 
-  // Initialize Vimeo player when video opens (muted autoplay)
+  // Initialize video player when video opens (muted autoplay)
   useEffect(() => {
-    if (isVideoOpen && videoUrl && videoContainerRef.current) {
-      videoContainerRef.current.innerHTML = '';
-      
+    if (!isVideoOpen || !videoUrl || !videoContainerRef.current || !videoProvider) return;
+    videoContainerRef.current.innerHTML = '';
+
+    if (videoProvider === "vimeo") {
       const iframe = document.createElement('iframe');
       iframe.src = getVimeoEmbedUrl(videoUrl);
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.border = 'none';
-      iframe.style.backgroundColor = '#000';
-      iframe.style.display = 'block';
-      iframe.style.pointerEvents = 'none';
+      iframe.style.cssText = 'width:100%;height:100%;border:none;background:#000;display:block;pointer-events:none';
       iframe.setAttribute('allowfullscreen', '');
-      
       videoContainerRef.current.appendChild(iframe);
-      
-      const player = new Player(iframe, {
-        muted: true,
-        autoplay: true,
-      });
-      // Re-apply in case Vimeo SDK overrides pointer-events
-      iframe.style.pointerEvents = 'none';
-      
-      vimeoPlayerRef.current = player;
-      setVimeoPlayerState("playing-muted");
-      
-      player.on('ended', () => {
-        closeVideo();
-      });
-      
+      vimeoPlayerRef.current = iframe;
+
+      const handleVimeoMessage = (e: MessageEvent) => {
+        if (!e.origin.includes('vimeo.com')) return;
+        try {
+          const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+          if (data.event === 'ready') {
+            iframe.contentWindow?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'finish' }), '*');
+            iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setVolume', value: 0 }), '*');
+            iframe.contentWindow?.postMessage(JSON.stringify({ method: 'play' }), '*');
+            setVimeoPlayerState("playing-muted");
+          }
+          if (data.event === 'finish') closeVideo();
+        } catch {}
+      };
+      window.addEventListener('message', handleVimeoMessage);
+
       return () => {
-        if (vimeoPlayerRef.current) {
-          vimeoPlayerRef.current.destroy();
-          vimeoPlayerRef.current = null;
-        }
-        if (videoContainerRef.current) {
-          videoContainerRef.current.innerHTML = '';
-        }
+        window.removeEventListener('message', handleVimeoMessage);
+        vimeoPlayerRef.current = null;
+        if (videoContainerRef.current) videoContainerRef.current.innerHTML = '';
       };
     }
-  }, [isVideoOpen, videoUrl]);
+
+    if (videoProvider === "youtube") {
+      if (!document.getElementById('yt-iframe-api')) {
+        const tag = document.createElement('script');
+        tag.id = 'yt-iframe-api';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+
+      const initYT = () => {
+        const videoId = getYouTubeVideoId(videoUrl!);
+        if (!videoId || !videoContainerRef.current) return;
+        const div = document.createElement('div');
+        div.id = 'yt-player-target';
+        videoContainerRef.current!.innerHTML = '';
+        videoContainerRef.current!.appendChild(div);
+
+        ytPlayerRef.current = new (window as any).YT.Player('yt-player-target', {
+          videoId,
+          width: '100%',
+          height: '100%',
+          playerVars: { autoplay: 1, controls: 0, modestbranding: 1, playsinline: 1, rel: 0, mute: 1 },
+          events: {
+            onReady: (e: any) => {
+              e.target.playVideo();
+              setVimeoPlayerState("playing-muted");
+              const ytIframe = videoContainerRef.current?.querySelector('iframe');
+              if (ytIframe) (ytIframe as HTMLElement).style.pointerEvents = 'none';
+            },
+            onStateChange: (e: any) => {
+              if (e.data === (window as any).YT.PlayerState.ENDED) closeVideo();
+            },
+          },
+        });
+      };
+
+      if ((window as any).YT?.Player) initYT();
+      else (window as any).onYouTubeIframeAPIReady = initYT;
+
+      return () => {
+        if (ytPlayerRef.current) {
+          try { ytPlayerRef.current.destroy(); } catch {}
+          ytPlayerRef.current = null;
+        }
+        if (videoContainerRef.current) videoContainerRef.current.innerHTML = '';
+      };
+    }
+  }, [isVideoOpen, videoUrl, videoProvider]);
 
   // Handle Escape key to close video
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isVideoOpen) {
-        closeVideo();
-      }
+      if (e.key === 'Escape' && isVideoOpen) closeVideo();
     };
-    
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isVideoOpen]);
 
-  // Pause/resume video on isActive change with state machine
+  // Pause/resume video on isActive change
   useEffect(() => {
-    if (!isVideoOpen || !vimeoPlayerRef.current) return;
+    if (!isVideoOpen) return;
     if (!isActive) {
       if (vimeoPlayerState === "playing-muted" || vimeoPlayerState === "playing-unmuted") {
         vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
-        vimeoPlayerRef.current.pause().catch(() => {});
-        vimeoPlayerRef.current.setVolume(0).catch(() => {});
+        if (videoProvider === "vimeo") {
+          vimeoPost('pause');
+          vimeoPost('setVolume', 0);
+        } else if (videoProvider === "youtube" && ytPlayerRef.current) {
+          ytPlayerRef.current.pauseVideo();
+          ytPlayerRef.current.mute();
+        }
         setVimeoPlayerState("paused");
       }
     } else {
       if (vimeoPlayerState === "paused") {
-        vimeoPlayerRef.current.play().catch(() => {});
-        if (vimeoWasUnmutedRef.current) {
-          vimeoPlayerRef.current.setVolume(1).catch(() => {});
-          setVimeoPlayerState("playing-unmuted");
-        } else {
-          setVimeoPlayerState("playing-muted");
+        if (videoProvider === "vimeo") {
+          vimeoPost('play');
+          if (vimeoWasUnmutedRef.current) {
+            vimeoPost('setVolume', 1);
+            setVimeoPlayerState("playing-unmuted");
+          } else {
+            setVimeoPlayerState("playing-muted");
+          }
+        } else if (videoProvider === "youtube" && ytPlayerRef.current) {
+          ytPlayerRef.current.playVideo();
+          if (vimeoWasUnmutedRef.current) {
+            ytPlayerRef.current.unMute();
+            ytPlayerRef.current.setVolume(100);
+            setVimeoPlayerState("playing-unmuted");
+          } else {
+            setVimeoPlayerState("playing-muted");
+          }
         }
       }
     }
   }, [isActive]);
 
-  // Keep ref in sync with state for use in IntersectionObserver callback
+  // Keep ref in sync
   useEffect(() => {
     vimeoPlayerStateRef.current = vimeoPlayerState;
   }, [vimeoPlayerState]);
 
-  // Also pause/resume when overlay scrolls out of view via IntersectionObserver
+  // IntersectionObserver pause/resume
   useEffect(() => {
     if (!isVideoOpen || !imageRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!vimeoPlayerRef.current) return;
         const currentState = vimeoPlayerStateRef.current;
         if (!entry.isIntersecting) {
           vimeoWasUnmutedRef.current = currentState === "playing-unmuted";
-          vimeoPlayerRef.current.pause().catch(() => {});
-          vimeoPlayerRef.current.setVolume(0).catch(() => {});
+          if (videoProvider === "vimeo") {
+            vimeoPost('pause');
+            vimeoPost('setVolume', 0);
+          } else if (videoProvider === "youtube" && ytPlayerRef.current) {
+            ytPlayerRef.current.pauseVideo();
+            ytPlayerRef.current.mute();
+          }
           setVimeoPlayerState("paused");
         } else if (currentState === "paused") {
-          vimeoPlayerRef.current.play().catch(() => {});
-          if (vimeoWasUnmutedRef.current) {
-            vimeoPlayerRef.current.setVolume(1).catch(() => {});
-            setVimeoPlayerState("playing-unmuted");
-          } else {
-            setVimeoPlayerState("playing-muted");
+          if (videoProvider === "vimeo") {
+            vimeoPost('play');
+            if (vimeoWasUnmutedRef.current) {
+              vimeoPost('setVolume', 1);
+              setVimeoPlayerState("playing-unmuted");
+            } else {
+              setVimeoPlayerState("playing-muted");
+            }
+          } else if (videoProvider === "youtube" && ytPlayerRef.current) {
+            ytPlayerRef.current.playVideo();
+            if (vimeoWasUnmutedRef.current) {
+              ytPlayerRef.current.unMute();
+              ytPlayerRef.current.setVolume(100);
+              setVimeoPlayerState("playing-unmuted");
+            } else {
+              setVimeoPlayerState("playing-muted");
+            }
           }
         }
       },
@@ -695,52 +784,61 @@ const InteractiveSlideOverlay = ({
     );
     observer.observe(imageRef.current);
     return () => observer.disconnect();
-  }, [isVideoOpen]);
+  }, [isVideoOpen, videoProvider]);
 
   const handleVimeoCenterTap = useCallback(() => {
-    const player = vimeoPlayerRef.current;
-    console.log("[VimeoCenterTap] called, playerState:", vimeoPlayerState, "player exists:", !!player);
-    if (!player) {
-      console.warn("[VimeoCenterTap] No player ref — bailing out");
-      return;
+    console.log("[VideoCenterTap] provider:", videoProvider, "state:", vimeoPlayerState);
+
+    if (videoProvider === "vimeo") {
+      switch (vimeoPlayerState) {
+        case "playing-muted":
+          vimeoPost('setVolume', 1);
+          setVimeoPlayerState("playing-unmuted");
+          showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
+          break;
+        case "playing-unmuted":
+          vimeoPost('pause');
+          setVimeoPlayerState("paused");
+          showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
+          break;
+        case "paused":
+          vimeoPost('play');
+          vimeoPost('setVolume', 1);
+          setVimeoPlayerState("playing-unmuted");
+          showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
+          break;
+      }
+    } else if (videoProvider === "youtube" && ytPlayerRef.current) {
+      const player = ytPlayerRef.current;
+      switch (vimeoPlayerState) {
+        case "playing-muted":
+          player.unMute();
+          player.setVolume(100);
+          setVimeoPlayerState("playing-unmuted");
+          showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
+          break;
+        case "playing-unmuted":
+          player.pauseVideo();
+          setVimeoPlayerState("paused");
+          showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
+          break;
+        case "paused":
+          player.playVideo();
+          player.unMute();
+          player.setVolume(100);
+          setVimeoPlayerState("playing-unmuted");
+          showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
+          break;
+      }
     }
-    switch (vimeoPlayerState) {
-      case "playing-muted":
-        console.log("[VimeoCenterTap] unmuting");
-        player.setVolume(1).catch((e: any) => console.error("[VimeoCenterTap] setVolume failed:", e));
-        setVimeoPlayerState("playing-unmuted");
-        showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
-        break;
-      case "playing-unmuted":
-        console.log("[VimeoCenterTap] pausing");
-        player.pause().catch((e: any) => console.error("[VimeoCenterTap] pause failed:", e));
-        setVimeoPlayerState("paused");
-        showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
-        break;
-      case "paused":
-        console.log("[VimeoCenterTap] resuming");
-        player.play().catch((e: any) => console.error("[VimeoCenterTap] play failed:", e));
-        player.setVolume(1).catch((e: any) => console.error("[VimeoCenterTap] setVolume failed:", e));
-        setVimeoPlayerState("playing-unmuted");
-        showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
-        break;
-    }
-  }, [vimeoPlayerState, showVimeoFeedback]);
+  }, [vimeoPlayerState, videoProvider, showVimeoFeedback]);
 
   const handleEmailLinks = (hotspot: Hotspot) => {
-    // Collect all external_link siblings with non-empty URLs
     const externalLinks = hotspots.filter(h => h.type === 'external_link' && h.url && h.url.trim().length > 0);
-
     if (externalLinks.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "No links found",
-        description: "There are no external link hotspots on this slide to bundle.",
-      });
+      toast({ variant: "destructive", title: "No links found", description: "There are no external link hotspots on this slide to bundle." });
       return;
     }
-
-    // Build numbered list body
     const lines = externalLinks.map((link, i) => {
       const num = i + 1;
       return link.label && link.label.trim().length > 0
@@ -749,16 +847,9 @@ const InteractiveSlideOverlay = ({
     });
     const body = lines.join('\n');
     const subject = hotspot.emailLinksSubject || 'Here are the links you requested…';
-
-    const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailUrl;
-
-    // Post-action nudge toast (6s)
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setTimeout(() => {
-      toast({
-        title: "Don't forget to share this with people you trust!",
-        duration: 6000,
-      });
+      toast({ title: "Don't forget to share this with people you trust!", duration: 6000 });
     }, 500);
   };
 
@@ -769,25 +860,25 @@ const InteractiveSlideOverlay = ({
       case "email":
         return handleEmail;
       case "external_link":
-        return () => {
-          if (hotspot?.url) {
-            handleExternalLink(hotspot.url);
-          }
-        };
+        return () => { if (hotspot?.url) handleExternalLink(hotspot.url); };
       case "vimeo":
         return () => {
           if (hotspot?.url) {
-            // Always use inline Vimeo player for vimeo hotspot type
             setVideoUrl(hotspot.url);
+            setVideoProvider("vimeo");
+            setIsVideoOpen(true);
+          }
+        };
+      case "youtube":
+        return () => {
+          if (hotspot?.url) {
+            setVideoUrl(hotspot.url);
+            setVideoProvider("youtube");
             setIsVideoOpen(true);
           }
         };
       case "email_links":
-        return () => {
-          if (hotspot) {
-            handleEmailLinks(hotspot);
-          }
-        };
+        return () => { if (hotspot) handleEmailLinks(hotspot); };
       case "social":
       case "form_trigger":
       case "custom":
@@ -811,7 +902,7 @@ const InteractiveSlideOverlay = ({
 
   return (
     <>
-      {/* Inline Vimeo player with swipe-passthrough zones */}
+      {/* Inline video player (Vimeo/YouTube) with swipe-passthrough zones */}
       {isVideoOpen && videoUrl && (
         <div className="absolute inset-0 z-[9999] bg-black">
           {/* Close button */}
@@ -955,6 +1046,7 @@ const InteractiveSlideOverlay = ({
                 e.stopPropagation();
                 console.log(`📱 Vimeo hotspot tapped for inline playback: ${hotspot.url}`);
                 setVideoUrl(hotspot.url!);
+                setVideoProvider("vimeo");
                 setIsVideoOpen(true);
               }}
               className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
@@ -965,15 +1057,36 @@ const InteractiveSlideOverlay = ({
           );
         }
 
-        // Check if this is a Vimeo link that should use the overlay
+        // Handle youtube hotspot type — always use inline player
+        if (hotspot.type === 'youtube' && hotspot.url) {
+          return (
+            <button
+              key={hotspot.id}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`📱 YouTube hotspot tapped for inline playback: ${hotspot.url}`);
+                setVideoUrl(hotspot.url!);
+                setVideoProvider("youtube");
+                setIsVideoOpen(true);
+              }}
+              className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+              style={transparentStyle}
+            >
+              {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+            </button>
+          );
+        }
+
+        // Check if this is a Vimeo or YouTube link that should use the overlay
         console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}`);
         if (hotspot.type === 'external_link' && hotspot.url) {
           const isVimeo = isVimeoUrl(hotspot.url);
-          console.log(`✅ External link detected: ${hotspot.url}, isVimeo: ${isVimeo}`);
+          const isYT = isYouTubeUrl(hotspot.url);
+          console.log(`✅ External link detected: ${hotspot.url}, isVimeo: ${isVimeo}, isYouTube: ${isYT}`);
           
-          // If it's a Vimeo URL, intercept and use handleExternalLink for inline playback
-          if (isVimeo) {
-            // Use play-button icon for Vimeo videos instead of the iconId
+          // If it's a video URL, intercept and use handleExternalLink for inline playback
+          if (isVimeo || isYT) {
             const videoIconId = 'play-button';
             return (
               <button
@@ -981,7 +1094,7 @@ const InteractiveSlideOverlay = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log(`📱 Vimeo link intercepted for inline playback: ${hotspot.url}`);
+                  console.log(`📱 Video link intercepted for inline playback: ${hotspot.url}`);
                   handleExternalLink(hotspot.url);
                 }}
                 className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
@@ -1002,7 +1115,7 @@ const InteractiveSlideOverlay = ({
           );
         }
           
-          // For non-Vimeo external links, use anchor tag
+          // For non-video external links, use anchor tag
           return (
             <a
               key={hotspot.id}
