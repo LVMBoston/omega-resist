@@ -41,3 +41,16 @@ Extended the new-tab pattern to the "Campaigns using: {name}" dialog on the Inte
 - Made each campaign `Card` in the Campaign Usage dialog clickable with `onClick={() => window.open(\`/campaign/${campaign.id}\`, '_blank'))`
 - Added `cursor-pointer` and `hover:bg-accent/50` styling for visual affordance.
 - The dialog remains open in TAB-1; the selected campaign's detail page opens in TAB-2.
+
+## Update — 2026-04-05 (2)
+
+### Campaign summary card banner on CampaignDetail
+
+Added a campaign summary card at the top of `/campaign/{id}` so users arriving from a new-tab click see the campaign identity (title, code, description) and key stats before the EoA/chapters/config tabs.
+
+#### Change (`src/pages/CampaignDetail.tsx`)
+
+- Replaced the bare `<h1>` heading with a `<Card>` that mirrors the campaign card style from `/campaign-config`.
+- Card displays: title, `utm_campaign` code, description, EoA count badge, and live stats (data rows, viral depth, earliest/latest active) fetched via `get_campaign_stats` RPC.
+- Tabs (Events/Actions, Chapters, Campaign Config) remain below the card unchanged.
+- This gives users arriving from the Template Repository or Campaign Orchestration page a clear sense of which campaign they're working on before diving into details.
