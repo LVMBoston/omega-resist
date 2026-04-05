@@ -809,7 +809,7 @@ export default function CampaignManager() {
           ref={setNodeRef} 
           style={style}
           className="cursor-pointer hover:shadow-lg transition-shadow" 
-          onClick={() => navigate(`/campaign/${campaign.id}`)}
+          onClick={() => window.open(`/campaign/${campaign.id}`, '_blank')}
         >
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -1087,7 +1087,7 @@ export default function CampaignManager() {
               onOpenChange={setWizardOpen}
               onSuccess={(campaignId) => {
                 fetchData();
-                navigate(`/campaign/${campaignId}`);
+                window.open(`/campaign/${campaignId}`, '_blank');
               }}
             />
 
