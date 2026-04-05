@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers, ChevronsUpDown } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Image as ImageIcon, Info, Eye, FolderKanban, MousePointerClick, BarChart3, ExternalLink, Layers, ChevronsUpDown, LayoutGrid } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FullResolutionHotspotEditor, generateAndUploadThumbnail } from "@/components/FullResolutionHotspotEditor";
@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateType, Hotspot } from "@/types/viralTemplates";
 import { detectOverlaps, detectOutOfBounds } from "@/lib/hotspotValidation";
 import { DataTemplateDialog } from "@/components/DataTemplateDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAllTemplateDecks, useAllTemplateCampaignCounts } from "@/hooks/useTemplateDecks";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Template {
