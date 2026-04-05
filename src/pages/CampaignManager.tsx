@@ -240,6 +240,7 @@ export default function CampaignManager() {
         l0_count: 0,
         l1_count: 0,
         l2_count: 0,
+        l3_count: 0,
         l3_plus_count: 0
       };
       
