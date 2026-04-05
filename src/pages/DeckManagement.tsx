@@ -490,7 +490,6 @@ const Index = () => {
                     key={deck.slug} 
                     deck={deck} 
                     onExportPDF={handleExportPDF} 
-                    onRemoveInteractive={handleRemoveInteractive} 
                     onDelete={handleDelete} 
                     onShowInteractiveImage={handleShowInteractiveImage} 
                     onShowImageSlides={handleShowImageSlides} 
