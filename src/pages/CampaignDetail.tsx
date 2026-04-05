@@ -77,6 +77,7 @@ export default function CampaignDetail() {
         l0Count: row.l0_count,
         l1Count: row.l1_count,
         l2Count: row.l2_count,
+        l3Count: row.l3_count,
         l3PlusCount: row.l3_plus_count,
         earliestActive: row.earliest_active,
         latestActive: row.latest_active,
