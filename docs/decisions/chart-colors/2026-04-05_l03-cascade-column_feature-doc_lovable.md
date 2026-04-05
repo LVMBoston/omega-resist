@@ -30,3 +30,15 @@ Updated the `get_campaign_stats` RPC and all UI consumers to explicitly show L3 
 - RPC still returns `l3_plus_count` for backward compatibility (now means L4+)
 - No schema/table changes — only RPC function signature
 - Chart components (`useChartData.ts`) already handle L03 separately
+
+## Update — 2026-04-05
+
+### Payload Visualization dialogs extended to L03
+
+Both payload structure dialogs in `CampaignEoaManager.tsx` (EoA-specific and Generic) now show an **L03 Payload** column, completing the cascade visualization from L00 → L01 → L02 → L03.
+
+#### Changes (`src/pages/CampaignEoaManager.tsx`)
+- Added `L03 Payload` column header to both payload tables
+- Added L03 values for all 11 rows: `utm_source=l03&`, `v_lvl=03&`, `t={103 AUTO-MINT}`, `p={102 AUTO-MINT}`, and shared fields (domain, deck, campaign, utm_id, utm_content, utm_medium, m=)
+- Widened dialog from `max-w-4xl` to `max-w-5xl` to accommodate the extra column
+- Updated description text to reference L03
