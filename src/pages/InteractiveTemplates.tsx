@@ -223,22 +223,11 @@ export default function InteractiveTemplates() {
       
       const deckSlugs = [...new Set(slideItems.map(item => item.deck_slug))];
       
-      // Step 2: Find deck_eoa_assignments for these decks
-      const { data: assignments, error: assignError } = await supabase
-        .from("deck_eoa_assignments")
-        .select("eoa_id")
-        .in("deck_slug", deckSlugs);
-      
-      if (assignError) throw assignError;
-      if (!assignments || assignments.length === 0) return [];
-      
-      const eoaIds = [...new Set(assignments.map(a => a.eoa_id))];
-      
-      // Step 3: Find events_actions for these EOAs
+      // Step 2: Find campaigns via events_actions.assigned_deck_slug
       const { data: eventsActions, error: eaError } = await supabase
         .from("events_actions")
         .select("campaign_id")
-        .in("id", eoaIds);
+        .in("assigned_deck_slug", deckSlugs);
       
       if (eaError) throw eaError;
       if (!eventsActions || eventsActions.length === 0) return [];
