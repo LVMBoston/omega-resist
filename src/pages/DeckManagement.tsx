@@ -754,17 +754,7 @@ const SortableDeckCard = ({ deck, onExportPDF, onDelete, onShowInteractiveImage,
                     Export
                   </Button>
                   <div className="flex gap-2">
-                    {deck.interactive_count > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onRemoveInteractive(deck.slug)}
-                        title="Remove interactive pages"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
+                    <Button
                       variant="outline" 
                       size="sm" 
                       onClick={() => onDelete(deck.slug)}
