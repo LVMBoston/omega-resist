@@ -257,6 +257,14 @@ export default function InteractiveTemplates() {
     },
   });
 
+  // Batch hooks for card indicators
+  const templateIds = templates?.map(t => t.id) || [];
+  const { data: templateDecksMap } = useAllTemplateDecks(templateIds);
+  const { data: campaignCountsMap } = useAllTemplateCampaignCounts(templateIds);
+
+  // Deck popover state
+  const [deckPopoverOpen, setDeckPopoverOpen] = useState<string | null>(null);
+
   // Filter templates based on active tab
   const actionTemplates = templates?.filter(isActionTemplate) || [];
   const dataTemplates = templates?.filter(isDataTemplate) || [];
