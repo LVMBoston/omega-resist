@@ -54,3 +54,15 @@ Added a campaign summary card at the top of `/campaign/{id}` so users arriving f
 - Card displays: title, `utm_campaign` code, description, EoA count badge, and live stats (data rows, viral depth, earliest/latest active) fetched via `get_campaign_stats` RPC.
 - Tabs (Events/Actions, Chapters, Campaign Config) remain below the card unchanged.
 - This gives users arriving from the Template Repository or Campaign Orchestration page a clear sense of which campaign they're working on before diving into details.
+
+## Update — 2026-04-05 (3)
+
+### Breadcrumb trails on DeckEditor and TemplateEditorPage
+
+Extended the breadcrumb navigation pattern (established on `CampaignDetail`) to two additional detail pages for consistent hierarchy.
+
+#### Changes
+
+- **`src/pages/DeckEditor.tsx`**: Replaced the back-arrow button and `<h1>Editing Deck: {slug}</h1>` with a breadcrumb trail: **Deck Management** (`/deck-management`) > **{slug}**.
+- **`src/pages/TemplateEditorPage.tsx`**: Replaced the back-arrow button and header title with a breadcrumb trail: **Template Repository** (`/interactive-templates`) > **{template name | "New Template"}**.
+- Removed unused `ArrowLeft` icon imports from both files.
