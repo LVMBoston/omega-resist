@@ -806,11 +806,45 @@ export default function InteractiveTemplates() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setViewingCampaigns(template.id)}
+              onClick={(e) => { e.stopPropagation(); setViewingCampaigns(template.id); }}
             >
               <FolderKanban className="h-4 w-4 mr-2" />
-              Campaigns
+              Campaigns ({campaignCountsMap?.[template.id] ?? 0})
             </Button>
+            <Popover open={deckPopoverOpen === template.id} onOpenChange={(open) => setDeckPopoverOpen(open ? template.id : null)}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); }}
+                >
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Decks ({templateDecksMap?.[template.id]?.length ?? 0})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72" onClick={(e) => e.stopPropagation()}>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium mb-2">Decks using this template</p>
+                  {(!templateDecksMap?.[template.id] || templateDecksMap[template.id].length === 0) ? (
+                    <p className="text-sm text-muted-foreground">Not used in any decks</p>
+                  ) : (
+                    templateDecksMap[template.id].map((deck) => (
+                      <a
+                        key={deck.slug}
+                        href={`/deck-editor/${deck.slug}`}
+                        className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="font-mono text-xs truncate">{deck.slug}</span>
+                        <Badge variant="secondary" className="ml-2 text-xs shrink-0">
+                          {deck.eoaCount} EoA{deck.eoaCount !== 1 ? 's' : ''}
+                        </Badge>
+                      </a>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               size="sm"
