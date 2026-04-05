@@ -130,15 +130,21 @@ export default function TemplateEditorPage() {
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="flex items-center gap-4 px-4 py-3 border-b bg-accent">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Repository
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-lg font-semibold text-accent-foreground">
-            {isNewTemplate ? "Create Data Template" : `Edit: ${template?.name || "Template"}`}
-          </h1>
-        </div>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/interactive-templates">Template Repository</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="font-semibold text-accent-foreground">
+                {isNewTemplate ? "New Template" : (template?.name || "Template")}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </header>
 
       {/* Editor */}
