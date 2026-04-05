@@ -1287,18 +1287,14 @@ export default function InteractiveTemplates() {
       <Dialog open={!!viewingCampaigns} onOpenChange={(open) => !open && setViewingCampaigns(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Campaigns Using This Template</DialogTitle>
-            <DialogDescription>
-              {templates?.find(t => t.id === viewingCampaigns)?.name || 'Template'}
-            </DialogDescription>
+            <DialogTitle>Campaigns using: {templates?.find(t => t.id === viewingCampaigns)?.name || 'Template'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {!templateCampaigns ? (
               <div className="text-center py-8 text-muted-foreground">Loading campaigns...</div>
             ) : templateCampaigns.length === 0 ? (
-              <div className="text-center py-8">
-                <FolderKanban className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">This template is not currently used in any campaigns</p>
+              <div className="text-center py-6">
+                <p className="text-muted-foreground">Not currently used in any campaigns</p>
               </div>
             ) : (
               <div className="space-y-2">
