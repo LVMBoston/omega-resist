@@ -740,7 +740,7 @@ export default function InteractiveTemplates() {
                 )}
               </CardTitle>
               <CardDescription className="mt-1 flex items-center gap-2">
-                {template.slug}
+                {displaySlug(template.slug)}
                 <Badge className={`${badgeClasses} border`}>
                   <TypeIcon className="h-3 w-3 mr-1" />
                   {typeLabel}
