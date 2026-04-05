@@ -1,58 +1,31 @@
 
 
-# Updated Plan: Template Card Enhancements (with Slug Display Cleanup)
+# Open Campaign Detail in New Browser Tab
 
-Appending one change to the existing approved plan.
+## Summary
 
-## Addition: Strip Numeric Suffix from Deck Slug Display
+When a user clicks a campaign card (e.g., BUGTEST) on the Campaign Orchestration page, the campaign's detail page (`/campaign/{id}`) opens in a **new browser tab** to the right — not the full campaign list. The current tab stays on Campaign Orchestration.
 
-### Changes
+## Changes
 
-1. **Display helper in `InteractiveTemplates.tsx`**
-   a. Add utility: `const displaySlug = (slug: string) => slug.replace(/-\d{10,}$/, '')`
-   b. Apply to deck slug labels in the Decks popover text
-   c. Keep full slug in `href` to `/deck-editor/{slug}`
+### 1. Card click opens new tab (`src/pages/CampaignManager.tsx`)
 
-2. **Decision document update**
-   a. Append `## Update — 2026-04-05` section to existing `docs/decisions/deck-editor/2026-04-05_template-card-deck-campaign-indicators_feature-doc_lovable.md`
+a. Line ~812: Change `onClick={() => navigate(\`/campaign/${campaign.id}\`)}` to `onClick={() => window.open(\`/campaign/${campaign.id}\`, '_blank')}`
 
-### Files Changed
-- `src/pages/InteractiveTemplates.tsx` — add `displaySlug`, apply to popover
-- `.lovable/plan.md` — append slug cleanup section
-- `docs/decisions/deck-editor/2026-04-05_template-card-deck-campaign-indicators_feature-doc_lovable.md` — append update section
+b. Line ~1090: Change wizard `onSuccess` callback from `navigate(\`/campaign/${campaignId}\`)` to `window.open(\`/campaign/${campaignId}\`, '_blank')` — after creating a campaign, its detail opens in a new tab while the list stays.
 
-### What Does Not Change
-- Link targets (full slug preserved in URLs)
-- Hook logic in `useTemplateDecks.ts`
-- Database schema
+### 2. Decision document
 
----
+a. Create `docs/decisions/campaigns/2026-04-05_campaign-detail-new-tab_feature-doc_lovable.md` recording the UX change.
 
-## Addition — 2026-04-05: Strip Numeric Suffix from Deck Slug Display
+## Files Changed
 
-### Rationale
+- `src/pages/CampaignManager.tsx` — two `navigate()` calls → `window.open(..., '_blank')`
+- `docs/decisions/campaigns/2026-04-05_campaign-detail-new-tab_feature-doc_lovable.md` — new
 
-Deck slugs include a timestamp suffix (e.g., `omega-reports-1772812835212`) that is noise in the UI. A production query confirms no two decks share a base slug, so stripping the suffix loses no information. The full slug is preserved in link `href` for correctness.
+## What Does Not Change
 
-### Changes
-
-1. **Display helper in `InteractiveTemplates.tsx`**
-   a. Add utility: `const displaySlug = (slug: string) => slug.replace(/-\d{10,}$/, '')`
-   b. Apply to deck slug labels in the Decks popover text
-   c. Keep full slug in `href` to `/deck-editor/{slug}`
-
-2. **Decision document update**
-   a. Append `## Update — 2026-04-05` section to existing decision doc
-
-### Files Changed
-
-- `src/pages/InteractiveTemplates.tsx` — add `displaySlug`, apply to popover
-- `.lovable/plan.md` — this section
-- `docs/decisions/deck-editor/2026-04-05_template-card-deck-campaign-indicators_feature-doc_lovable.md` — append update section
-
-### What Does Not Change
-
-- Link targets (full slug preserved in URLs)
-- Hook logic in `useTemplateDecks.ts`
-- Database schema
+- `CampaignDetail.tsx` — no modifications
+- Route definitions in `App.tsx`
+- Sidebar navigation
 
