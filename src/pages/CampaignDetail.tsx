@@ -108,6 +108,21 @@ export default function CampaignDetail() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-6 py-8">
+        {/* Breadcrumb */}
+        <Breadcrumb className="mb-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/campaign-config">Campaign Orchestration</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{campaign?.title || "Campaign"}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         {/* Campaign summary card */}
         <Card className="mb-6">
           <CardHeader>
