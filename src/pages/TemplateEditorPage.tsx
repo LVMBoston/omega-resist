@@ -5,8 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { DataTemplateEditor } from "@/components/DataTemplateEditor";
 import { Hotspot } from "@/types/viralTemplates";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import type { Json } from "@/integrations/supabase/types";
 
 export default function TemplateEditorPage() {
