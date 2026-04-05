@@ -14,7 +14,6 @@ import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
 import playButton from "@/assets/play-button.png";
 import { Hotspot } from "@/types/viralTemplates";
-import Player from "@vimeo/player";
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
