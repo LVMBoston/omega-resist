@@ -235,41 +235,7 @@ const Index = () => {
     }
   };
 
-  const handleRemoveInteractive = async (slug: string) => {
-    if (!confirm(`Remove all interactive pages from deck "${slug}"?`)) {
-      return;
-    }
-    try {
-      // Get all interactive slides for this deck
-      const {
-        data: interactiveSlides,
-        error: fetchError
-      } = await supabase.from("slide_items").select("id").eq("deck_slug", slug).eq("type", "spread-word");
-      if (fetchError) throw fetchError;
-
-      // Delete viral slide configs for these slides
-      if (interactiveSlides && interactiveSlides.length > 0) {
-        const slideIds = interactiveSlides.map(s => s.id);
-        const {
-          error: viralConfigsError
-        } = await supabase.from("viral_slide_configs").delete().in("slide_id", slideIds);
-        if (viralConfigsError) throw viralConfigsError;
-
-        // Delete the interactive slides
-        const {
-          error: slidesError
-        } = await supabase.from("slide_items").delete().eq("deck_slug", slug).eq("type", "spread-word");
-        if (slidesError) throw slidesError;
-        toast.success(`Removed ${interactiveSlides.length} interactive page(s)`);
-      } else {
-        toast.info("No interactive pages to remove");
-      }
-      fetchDecks();
-    } catch (error) {
-      console.error("Error removing interactive pages:", error);
-      toast.error("Failed to remove interactive pages");
-    }
-  };
+  
   const handleDelete = async (slug: string) => {
     if (!confirm(`Delete deck "${slug}"? This will also delete all associated slides.`)) {
       return;
