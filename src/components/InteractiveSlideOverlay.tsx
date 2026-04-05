@@ -1078,15 +1078,15 @@ const InteractiveSlideOverlay = ({
           );
         }
 
-        // Check if this is a Vimeo link that should use the overlay
+        // Check if this is a Vimeo or YouTube link that should use the overlay
         console.log(`🔗 Checking external_link: type=${hotspot.type}, url=${hotspot.url}`);
         if (hotspot.type === 'external_link' && hotspot.url) {
           const isVimeo = isVimeoUrl(hotspot.url);
-          console.log(`✅ External link detected: ${hotspot.url}, isVimeo: ${isVimeo}`);
+          const isYT = isYouTubeUrl(hotspot.url);
+          console.log(`✅ External link detected: ${hotspot.url}, isVimeo: ${isVimeo}, isYouTube: ${isYT}`);
           
-          // If it's a Vimeo URL, intercept and use handleExternalLink for inline playback
-          if (isVimeo) {
-            // Use play-button icon for Vimeo videos instead of the iconId
+          // If it's a video URL, intercept and use handleExternalLink for inline playback
+          if (isVimeo || isYT) {
             const videoIconId = 'play-button';
             return (
               <button
@@ -1094,7 +1094,7 @@ const InteractiveSlideOverlay = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log(`📱 Vimeo link intercepted for inline playback: ${hotspot.url}`);
+                  console.log(`📱 Video link intercepted for inline playback: ${hotspot.url}`);
                   handleExternalLink(hotspot.url);
                 }}
                 className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
@@ -1115,7 +1115,7 @@ const InteractiveSlideOverlay = ({
           );
         }
           
-          // For non-Vimeo external links, use anchor tag
+          // For non-video external links, use anchor tag
           return (
             <a
               key={hotspot.id}
