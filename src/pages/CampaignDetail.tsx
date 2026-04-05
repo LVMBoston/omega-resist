@@ -24,6 +24,7 @@ interface CampaignStats {
   l0Count: number;
   l1Count: number;
   l2Count: number;
+  l3Count: number;
   l3PlusCount: number;
   earliestActive: string | null;
   latestActive: string | null;
