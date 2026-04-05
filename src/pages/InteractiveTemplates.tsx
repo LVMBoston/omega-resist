@@ -824,7 +824,7 @@ export default function InteractiveTemplates() {
                         className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="font-mono text-xs truncate">{deck.slug}</span>
+                        <span className="font-mono text-xs truncate">{displaySlug(deck.slug)}</span>
                         <Badge variant="secondary" className="ml-2 text-xs shrink-0">
                           {deck.eoaCount} EoA{deck.eoaCount !== 1 ? 's' : ''}
                         </Badge>
