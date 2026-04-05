@@ -1290,7 +1290,11 @@ export default function InteractiveTemplates() {
             ) : (
               <div className="space-y-2">
                 {templateCampaigns.map((campaign: any) => (
-                  <Card key={campaign.id}>
+                  <Card
+                    key={campaign.id}
+                    className="cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() => window.open(`/campaign/${campaign.id}`, '_blank')}
+                  >
                     <CardHeader className="py-3">
                       <CardTitle className="text-base">{campaign.title}</CardTitle>
                       <CardDescription className="text-sm">
