@@ -774,7 +774,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {(selectedHotspotData.type === 'external_link' || selectedHotspotData.type === 'vimeo') && selectedHotspotData.url && (
+                      {(selectedHotspotData.type === 'external_link' || selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && selectedHotspotData.url && (
                         <div>
                           <Button
                             type="button"
