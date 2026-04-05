@@ -121,6 +121,7 @@ export const FullResolutionHotspotEditor = ({
     external_link: externalLinkIcon,
     email_links: emailLinksIcon,
     vimeo: playButtonIcon,
+    youtube: playButtonIcon,
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
@@ -130,6 +131,7 @@ export const FullResolutionHotspotEditor = ({
     external_link: null,
     email_links: null,
     vimeo: null,
+    youtube: null,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
@@ -138,7 +140,8 @@ export const FullResolutionHotspotEditor = ({
     social: "Social",
     external_link: "Link",
     email_links: "Email Links",
-    vimeo: "Video",
+    vimeo: "Vimeo",
+    youtube: "YouTube",
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
