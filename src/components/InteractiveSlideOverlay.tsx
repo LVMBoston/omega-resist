@@ -462,15 +462,15 @@ const InteractiveSlideOverlay = ({
 
   // Map iconId to actual icon/image
   const getHotspotIcon = (iconId: string, buttonWidth: number, buttonHeight: number) => {
-    // Use fixed 40px size for reliable mobile rendering
-    const iconSize = 40;
+    // Use the actual hotspot dimensions so icons match the editor preview
+    const iconSize = Math.max(Math.min(buttonWidth, buttonHeight), 24);
     
     // Wrapper div ensures consistent sizing across all icon types
     const iconWrapper = (icon: React.ReactNode) => (
       <div 
         style={{ 
-          width: `${iconSize}px`, 
-          height: `${iconSize}px`,
+          width: `${buttonWidth}px`, 
+          height: `${buttonHeight}px`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -515,6 +515,7 @@ const InteractiveSlideOverlay = ({
         return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
       case "link-icon":
         return iconWrapper(<FallbackImg src={externalLinkIcon} alt="External Link" style={imgWithShadow} fallback={<Link2 style={{ ...svgStyle, color: '#eab308' }} />} />);
+      case "video":
       case "play-button":
         return iconWrapper(<FallbackImg src={playButton} alt="Play Video" style={imgWithShadow} fallback={<Play style={{ ...svgStyle, color: '#22c55e' }} />} />);
       case "email-links":
