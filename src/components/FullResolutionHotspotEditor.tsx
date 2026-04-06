@@ -359,7 +359,7 @@ export const FullResolutionHotspotEditor = ({
   const updateHotspot = (id: string, updates: Partial<Hotspot>) => {
     const updatedHotspots = hotspots.map((h) => (h.id === id ? { ...h, ...updates } : h));
     setHotspots(updatedHotspots);
-    onSave(updatedHotspots);
+    onChange?.(updatedHotspots);
   };
 
   const deleteHotspot = (id: string) => {
