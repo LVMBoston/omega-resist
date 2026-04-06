@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -7,7 +7,8 @@ import { Slider } from "./ui/slider";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Card, CardContent } from "./ui/card";
-import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock } from "lucide-react";
 import { fetchOEmbed, type OEmbedResult } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,21 +22,30 @@ import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
 import externalLinkIcon from "@/assets/external-link-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
+import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
+import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
+import { MapCalibrationControls } from "@/components/MapCalibrationControls";
+import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
+import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
+import { LEVEL_COLORS } from "@/hooks/useChartData";
+import { useLiveMetrics } from "@/hooks/useLiveMetrics";
+import { DATA_HOTSPOT_TYPES } from "@/lib/hotspotClassification";
+import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube";
-  icon?: React.ComponentType<{ className?: string; size?: number }>; // React icon component (optional)
-  imageUrl?: string; // Custom image URL (optional)
-  width: number; // percentage
-  height: number; // percentage
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map";
+  icon?: React.ComponentType<{ className?: string; size?: number }>;
+  imageUrl?: string;
+  width: number;
+  height: number;
 }
 
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map";
   label: string;
   x: number;
   y: number;
@@ -49,6 +59,12 @@ interface Hotspot {
   emailLinksSubject?: string;
   emailLinksShowLabels?: boolean;
   isTransparent?: boolean;
+  // Data hotspot fields
+  metricKey?: string;
+  manualLabel?: string;
+  liveNumberStyle?: Record<string, any>;
+  chartConfig?: any;
+  mapConfig?: any;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
@@ -56,13 +72,11 @@ const SOCIAL_PLACEHOLDER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAA
 
 // Icon catalog organized by category with variants
 const ICON_PRESETS: IconPreset[] = [
-  // SMS variants - using custom iOS icon (real PNG)
+  // SMS variants
   { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 5, height: 4 },
-  
-  // Email variants - using custom iOS icon (real PNG)
+  // Email variants
   { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 5, height: 4 },
-  
-  // Social variants - placeholder PNGs (replace when real icons provided)
+  // Social variants
   { id: "social-facebook", label: "Facebook (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-instagram", label: "Instagram (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-twitter", label: "X/Twitter (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
@@ -70,19 +84,19 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "social-whatsapp", label: "WhatsApp (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-share", label: "Share (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-share-filled", label: "Share Filled (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
-  
   // External link variants
   { id: "link-icon", label: "External Link", type: "external_link", imageUrl: externalLinkIcon, width: 5, height: 4 },
-  
-  
   // Email links variant
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
-
-  // Video variant (auto-detects YouTube or Vimeo from URL)
+  // Video variant
   { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
+  // Data hotspot presets
+  { id: "live-number", label: "Live Number", type: "live_number", icon: Hash as any, width: 20, height: 8 },
+  { id: "chart-stacked", label: "Chart", type: "chart", icon: BarChart3 as any, width: 40, height: 30 },
+  { id: "map-activity", label: "Map", type: "map", icon: MapIcon as any, width: 50, height: 40 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -107,6 +121,70 @@ export const FullResolutionHotspotEditor = ({
   const [oEmbedResult, setOEmbedResult] = useState<OEmbedResult | null>(null);
   const [oEmbedLoading, setOEmbedLoading] = useState(false);
   const [oEmbedError, setOEmbedError] = useState<string | null>(null);
+
+  // Campaign selector state for data hotspot preview
+  const [campaignId, setCampaignId] = useState<string>("");
+  const [campaignCode, setCampaignCode] = useState<string>("");
+  const [campaigns, setCampaigns] = useState<{ id: string; code: string; title: string }[]>([]);
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
+  const userClearedCampaign = useRef(false);
+  const { metrics, metricsMap, loading: metricsLoading, resolveMetrics } = useLiveMetrics();
+
+  // Map controls state
+  const [mapBounds, setMapBounds] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
+  const [mapControls, setMapControls] = useState<Record<string, MapControls>>({});
+  const [mapZooms, setMapZooms] = useState<Record<string, number>>({});
+
+  // Check if any data hotspots exist
+  const hasDataHotspots = useMemo(() => hotspots.some(h => DATA_HOTSPOT_TYPES.has(h.type)), [hotspots]);
+
+  // Fetch campaigns for the selector
+  useEffect(() => {
+    if (!hasDataHotspots) return;
+    const fetchCampaigns = async () => {
+      const { data } = await supabase
+        .from('campaigns')
+        .select('id, code, title')
+        .order('title');
+      if (data) setCampaigns(data);
+    };
+    fetchCampaigns();
+  }, [hasDataHotspots]);
+
+  // Auto-select first campaign (unless user cleared)
+  useEffect(() => {
+    if (userClearedCampaign.current) return;
+    if (!campaignId && campaigns.length > 0 && hasDataHotspots) {
+      setCampaignId(campaigns[0].id);
+      setCampaignCode(campaigns[0].code);
+    }
+  }, [campaigns, campaignId, hasDataHotspots]);
+
+  // Resolve metrics when campaign changes
+  useEffect(() => {
+    if (!campaignCode) {
+      setDisplayValues({});
+      return;
+    }
+    resolveMetrics(campaignCode);
+  }, [campaignCode]);
+
+  // Update display values from metrics
+  useEffect(() => {
+    if (!campaignCode) return;
+    const newDisplayValues: Record<string, string> = {};
+    hotspots.forEach(h => {
+      if (h.type === 'live_number' && h.metricKey) {
+        if (h.metricKey === 'manual_entry') {
+          newDisplayValues[h.id] = h.manualLabel || "—";
+        } else {
+          const val = metricsMap[h.metricKey];
+          newDisplayValues[h.id] = val !== undefined ? String(val) : "0";
+        }
+      }
+    });
+    setDisplayValues(newDisplayValues);
+  }, [metricsMap, hotspots, campaignCode]);
 
   // Selected hotspot data for oEmbed
   const selectedHotspotData = hotspots.find((h) => h.id === selectedHotspot);
@@ -149,13 +227,16 @@ export const FullResolutionHotspotEditor = ({
   const outOfBoundsIds = useMemo(() => detectOutOfBounds(hotspots), [hotspots]);
   const outOfBoundsCount = outOfBoundsIds.length;
 
-  const categoryImages: Record<IconCategory, string> = {
+  const categoryImages: Record<IconCategory, string | null> = {
     sms: textIcon,
     email: mailIcon,
     social: shareIcon,
     external_link: externalLinkIcon,
     email_links: emailLinksIcon,
     video: playButtonIcon,
+    live_number: null,
+    chart: null,
+    map: null,
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
@@ -165,6 +246,9 @@ export const FullResolutionHotspotEditor = ({
     external_link: null,
     email_links: null,
     video: null,
+    live_number: Hash,
+    chart: BarChart3,
+    map: MapIcon,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
@@ -174,13 +258,18 @@ export const FullResolutionHotspotEditor = ({
     external_link: "Link",
     email_links: "Email Links",
     video: "Video",
+    live_number: "Number",
+    chart: "Chart",
+    map: "Map",
   };
+
+  const isDataType = (type: string) => DATA_HOTSPOT_TYPES.has(type);
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
-    // Check if a hotspot of this type already exists (allow multiple external_link and app_download)
-    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube'];
+    // Check if a hotspot of this type already exists (allow multiple for some types)
+    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
@@ -194,15 +283,15 @@ export const FullResolutionHotspotEditor = ({
       }
     }
 
-    const labelPadding = 2; // 2% padding for labels (reduced from 4%)
+    const labelPadding = 2;
     const rect = imageRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
     // Auto-number label for types that allow multiples
-    const allowMultipleTypes = ['external_link'];
+    const allowMultipleLabeled = ['external_link'];
     let label = selectedIconPreset.label;
-    if (allowMultipleTypes.includes(selectedIconPreset.type)) {
+    if (allowMultipleLabeled.includes(selectedIconPreset.type)) {
       const existingCount = hotspots.filter(h => h.type === selectedIconPreset.type).length;
       if (existingCount > 0) {
         label = `${selectedIconPreset.label} ${existingCount + 1}`;
@@ -222,6 +311,36 @@ export const FullResolutionHotspotEditor = ({
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
       ...(selectedIconPreset.type === "video" && { url: "" }),
       ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
+      // Data hotspot defaults
+      ...(selectedIconPreset.type === "live_number" && {
+        metricKey: "seeds",
+        liveNumberStyle: {
+          fontSize: "56",
+          fontWeight: "700",
+          color: "#1a1a1a",
+          backgroundColor: "#e8dcc8",
+          textAlign: "center",
+          verticalAlign: "center",
+          fontFamily: "Calibri, sans-serif",
+          padding: "4px",
+          borderRadius: "0px",
+        },
+      }),
+      ...(selectedIconPreset.type === "chart" && {
+        chartConfig: {
+          chartType: "stacked_bar",
+          dataSource: "cumulative_opens_by_level",
+          showXAxis: true,
+          showYAxis: false,
+        },
+      }),
+      ...(selectedIconPreset.type === "map" && {
+        mapConfig: {
+          mapStyle: "channel_colors" as const,
+          showClustering: false,
+          isLocked: false,
+        },
+      }),
     };
 
     const updatedHotspots = [...hotspots, newHotspot];
@@ -269,7 +388,7 @@ export const FullResolutionHotspotEditor = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !imageRef.current) return;
     
-    const labelPadding = 2; // 2% padding for labels (reduced from 4%)
+    const labelPadding = 2;
     const rect = imageRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left - dragOffset.x;
     const mouseY = e.clientY - rect.top - dragOffset.y;
@@ -280,7 +399,6 @@ export const FullResolutionHotspotEditor = ({
     const hotspot = hotspots.find(h => h.id === isDragging);
     if (!hotspot) return;
     
-    // Constrain to image bounds with label padding
     const constrainedX = Math.max(0, Math.min(100 - hotspot.width, x));
     const constrainedY = Math.max(labelPadding, Math.min(100 - labelPadding - hotspot.height, y));
     
@@ -301,7 +419,7 @@ export const FullResolutionHotspotEditor = ({
 
       let newX = hotspot.x;
       let newY = hotspot.y;
-      const step = 0.5; // Move by 0.5% per keypress
+      const step = 0.5;
 
       switch (e.key) {
         case "ArrowUp":
@@ -335,7 +453,268 @@ export const FullResolutionHotspotEditor = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDragging, hotspots]);
 
-  // selectedHotspotData is declared above (line 115) for oEmbed + render use
+  // Render a data hotspot on the canvas
+  const renderDataHotspot = (hotspot: Hotspot) => {
+    const isActive = selectedHotspot === hotspot.id;
+    const dragging = isDragging === hotspot.id;
+
+    if (hotspot.type === "live_number") {
+      const style = hotspot.liveNumberStyle || {};
+      const imageBounds = imageRef.current?.getBoundingClientRect();
+      const baseWidth = 1080;
+      const scaleFactor = imageBounds ? imageBounds.width / baseWidth : 1;
+      const baseFontSize = parseInt(style.fontSize || "56") || 56;
+      const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor));
+      const justifyContent =
+        style.textAlign === 'left' ? 'flex-start' :
+        style.textAlign === 'right' ? 'flex-end' : 'center';
+      const alignItems =
+        style.verticalAlign === 'top' ? 'flex-start' :
+        style.verticalAlign === 'bottom' ? 'flex-end' : 'center';
+
+      return (
+        <div
+          key={hotspot.id}
+          className={`absolute select-none transition-shadow cursor-move ${
+            isActive ? "ring-2 ring-primary ring-offset-2" : ""
+          } ${dragging ? "z-50 shadow-2xl" : "z-10"}`}
+          style={{
+            left: `${hotspot.x}%`,
+            top: `${hotspot.y}%`,
+            width: `${hotspot.width}%`,
+            height: `${hotspot.height}%`,
+            display: "flex",
+            fontSize: `${scaledFontSize}px`,
+            fontWeight: style.fontWeight || "700",
+            color: style.color || "#1a1a1a",
+            backgroundColor: style.backgroundColor || "#e8dcc8",
+            justifyContent,
+            alignItems,
+            fontFamily: style.fontFamily || "Calibri, sans-serif",
+            padding: style.padding || "4px",
+            borderRadius: style.borderRadius || "0px",
+          }}
+          onMouseDown={(e) => handleMouseDown(e, hotspot)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isDragging) setSelectedHotspot(hotspot.id);
+          }}
+        >
+          <span className="pointer-events-none whitespace-pre-line">
+            {hotspot.metricKey === 'manual_entry'
+              ? (hotspot.manualLabel || "—")
+              : (displayValues[hotspot.id] || "0")}
+          </span>
+          {/* Index badge */}
+          <div className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          }`}>
+            {hotspots.indexOf(hotspot) + 1}
+          </div>
+        </div>
+      );
+    }
+
+    if (hotspot.type === "chart") {
+      const chartConfig = hotspot.chartConfig || {
+        chartType: 'stacked_bar',
+        dataSource: 'cumulative_opens_by_level',
+        showXAxis: true,
+        showYAxis: false,
+      };
+
+      return (
+        <div
+          key={hotspot.id}
+          className={`absolute select-none transition-shadow cursor-move ${
+            isActive ? "ring-2 ring-blue-500 ring-offset-2" : ""
+          } ${dragging ? "z-50 shadow-2xl" : "z-10"}`}
+          style={{
+            left: `${hotspot.x}%`,
+            top: `${hotspot.y}%`,
+            width: `${hotspot.width}%`,
+            height: `${hotspot.height}%`,
+            backgroundColor: "rgba(255,255,255,0.95)",
+            border: "2px dashed rgba(59, 130, 246, 0.5)",
+            borderRadius: "4px",
+          }}
+          onMouseDown={(e) => handleMouseDown(e, hotspot)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isDragging) setSelectedHotspot(hotspot.id);
+          }}
+        >
+          {campaignCode ? (
+            <div className="w-full h-full p-1 pointer-events-none">
+              <ChartHotspotRenderer
+                campaignCode={campaignCode}
+                config={chartConfig}
+                width={100}
+                height={100}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-1 w-full h-full text-blue-600">
+              <BarChart3 className="w-6 h-6" />
+              <span className="text-xs font-medium">Chart</span>
+              <span className="text-[10px] text-muted-foreground">Select Campaign</span>
+              <div className="flex gap-1">
+                {Object.entries(LEVEL_COLORS).map(([level, color]) => (
+                  <span key={level} className="w-2 h-4 rounded-sm" style={{ backgroundColor: color }} />
+                ))}
+              </div>
+            </div>
+          )}
+          <div className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+            isActive ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground"
+          }`}>
+            {hotspots.indexOf(hotspot) + 1}
+          </div>
+        </div>
+      );
+    }
+
+    if (hotspot.type === "map") {
+      const mapConfig = hotspot.mapConfig || {
+        mapStyle: 'channel_colors' as const,
+        showClustering: false,
+      };
+      const isMapLocked = mapConfig.isLocked || false;
+      const imageBounds = imageRef.current?.getBoundingClientRect();
+      const pixelWidth = imageBounds ? (hotspot.width / 100) * imageBounds.width : 200;
+      const pixelHeight = imageBounds ? (hotspot.height / 100) * imageBounds.height : 150;
+
+      return (
+        <div
+          key={hotspot.id}
+          className={`absolute select-none transition-shadow overflow-hidden rounded-lg ${
+            isActive ? "ring-2 ring-purple-500 ring-offset-2" : ""
+          } ${dragging ? "z-50 shadow-2xl" : "z-10"}`}
+          style={{
+            left: `${hotspot.x}%`,
+            top: `${hotspot.y}%`,
+            width: `${hotspot.width}%`,
+            height: `${hotspot.height}%`,
+            border: isMapLocked ? "2px solid rgba(245, 158, 11, 0.7)" : "2px dashed rgba(168, 85, 247, 0.5)",
+          }}
+        >
+          {campaignCode ? (
+            <MapHotspotRenderer
+              campaignCode={campaignCode}
+              config={mapConfig}
+              width={pixelWidth}
+              height={pixelHeight}
+              isEditorMode={!isMapLocked}
+              onBoundsChange={!isMapLocked ? (bounds) => setMapBounds(prev => ({ ...prev, [hotspot.id]: bounds })) : undefined}
+              onMapReady={!isMapLocked ? (controls) => setMapControls(prev => ({ ...prev, [hotspot.id]: controls })) : undefined}
+              onMapZoomChange={(zoom) => setMapZooms(prev => ({ ...prev, [hotspot.id]: zoom }))}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-muted/50 text-purple-600">
+              <MapIcon className="w-8 h-8" />
+              <span className="text-xs font-medium">Map</span>
+              <span className="text-[10px] text-muted-foreground">Select Campaign</span>
+            </div>
+          )}
+
+          {/* Lock toggle */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              updateHotspot(hotspot.id, {
+                mapConfig: { ...mapConfig, isLocked: !isMapLocked },
+              } as any);
+            }}
+            className={`absolute top-0 right-0 w-7 h-7 flex items-center justify-center z-[1002] rounded-bl-lg cursor-pointer transition-colors ${
+              isMapLocked
+                ? "bg-amber-500 text-white hover:bg-amber-600"
+                : "bg-gray-500/60 text-white/80 hover:bg-gray-600"
+            }`}
+            title={isMapLocked ? "Click to unlock map" : "Click to lock map position"}
+          >
+            {isMapLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Drag handle */}
+          <div
+            className="absolute top-0 left-0 w-8 h-8 bg-purple-500/80 rounded-br-lg flex items-center justify-center cursor-move z-[1002]"
+            onMouseDown={(e) => handleMouseDown(e, hotspot)}
+            title="Drag to reposition"
+          >
+            <Move className="w-4 h-4 text-white" />
+          </div>
+
+          {/* Index badge */}
+          <div
+            className={`absolute -bottom-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-[1001] ${
+              isActive ? "bg-purple-500 text-white" : "bg-muted text-muted-foreground"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedHotspot(hotspot.id);
+            }}
+          >
+            {hotspots.indexOf(hotspot) + 1}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Render the right panel controls for a data hotspot
+  const renderDataControls = () => {
+    if (!selectedHotspotData || !isDataType(selectedHotspotData.type)) return null;
+
+    if (selectedHotspotData.type === "live_number") {
+      return (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm text-primary">Live Number Controls</h4>
+          <HotspotCalibrationControls
+            hotspot={selectedHotspotData as unknown as ViralHotspot}
+            displayValue={displayValues[selectedHotspotData.id] || "0"}
+            onUpdate={(updates) => updateHotspot(selectedHotspotData.id, updates as Partial<Hotspot>)}
+            onDisplayValueChange={(value) =>
+              setDisplayValues(prev => ({ ...prev, [selectedHotspotData.id]: value }))
+            }
+          />
+        </div>
+      );
+    }
+
+    if (selectedHotspotData.type === "chart") {
+      return (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm text-blue-600">Chart Controls</h4>
+          <ChartCalibrationControls
+            hotspot={selectedHotspotData as unknown as ViralHotspot}
+            onUpdate={(updates) => updateHotspot(selectedHotspotData.id, updates as Partial<Hotspot>)}
+          />
+        </div>
+      );
+    }
+
+    if (selectedHotspotData.type === "map") {
+      return (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm text-purple-600">Map Controls</h4>
+          <MapCalibrationControls
+            hotspot={selectedHotspotData as unknown as ViralHotspot}
+            onUpdate={(updates) => updateHotspot(selectedHotspotData.id, updates as Partial<Hotspot>)}
+            currentBounds={mapBounds[selectedHotspotData.id]}
+            onZoomIn={mapControls[selectedHotspotData.id]?.zoomIn}
+            onZoomOut={mapControls[selectedHotspotData.id]?.zoomOut}
+            currentZoom={mapZooms[selectedHotspotData.id]}
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-4">
@@ -374,6 +753,56 @@ export const FullResolutionHotspotEditor = ({
             </p>
           </div>
 
+          {/* Campaign selector — visible when data hotspots exist */}
+          {hasDataHotspots && (
+            <div className="mb-4 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5">
+              <div className="flex items-center gap-2 mb-1">
+                <Label className="text-sm font-medium">Preview Campaign</Label>
+                <span className="text-xs text-muted-foreground">(preview only — not saved)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  key={campaignId || '__empty__'}
+                  value={campaignId}
+                  onValueChange={(val) => {
+                    userClearedCampaign.current = false;
+                    const campaign = campaigns.find(c => c.id === val);
+                    if (campaign) {
+                      setCampaignId(campaign.id);
+                      setCampaignCode(campaign.code);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select a campaign to preview data..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campaigns.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.title} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {campaignId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      userClearedCampaign.current = true;
+                      setCampaignId("");
+                      setCampaignCode("");
+                      setDisplayValues({});
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+                {metricsLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -397,27 +826,47 @@ export const FullResolutionHotspotEditor = ({
               </div>
               
               {!selectedCategory ? (
-                // Step 1: Category selection
-                <div className="grid grid-cols-6 gap-2">
-                  {(["sms", "email", "social", "external_link", "email_links", "vimeo", "youtube"] as IconCategory[]).map((category) => {
-                    const CategoryIcon = categoryIcons[category];
-                    const categoryImageUrl = categoryImages[category];
-                    return (
-                      <Button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        variant="outline"
-                        className="flex flex-col items-center gap-1.5 h-auto py-3 px-2"
-                      >
-                        {categoryImageUrl ? (
-                          <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-6 h-6 object-contain" />
-                        ) : CategoryIcon ? (
-                          <CategoryIcon className="w-6 h-6" />
-                        ) : null}
-                        <span className="text-xs font-medium text-center leading-tight">{categoryLabels[category]}</span>
-                      </Button>
-                    );
-                  })}
+                // Step 1: Category selection — action types first, then data types
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Action</div>
+                  <div className="grid grid-cols-6 gap-2 mb-3">
+                    {(["sms", "email", "social", "external_link", "email_links", "video"] as IconCategory[]).map((category) => {
+                      const CategoryIcon = categoryIcons[category];
+                      const categoryImageUrl = categoryImages[category];
+                      return (
+                        <Button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          variant="outline"
+                          className="flex flex-col items-center gap-1.5 h-auto py-3 px-2"
+                        >
+                          {categoryImageUrl ? (
+                            <img src={categoryImageUrl} alt={categoryLabels[category]} className="w-6 h-6 object-contain" />
+                          ) : CategoryIcon ? (
+                            <CategoryIcon className="w-6 h-6" />
+                          ) : null}
+                          <span className="text-xs font-medium text-center leading-tight">{categoryLabels[category]}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Data</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["live_number", "chart", "map"] as IconCategory[]).map((category) => {
+                      const CategoryIcon = categoryIcons[category];
+                      return (
+                        <Button
+                          key={category}
+                          onClick={() => setSelectedCategory(category)}
+                          variant="outline"
+                          className="flex flex-col items-center gap-1.5 h-auto py-3 px-2 border-dashed"
+                        >
+                          {CategoryIcon && <CategoryIcon className="w-6 h-6" />}
+                          <span className="text-xs font-medium text-center leading-tight">{categoryLabels[category]}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 // Step 2: Icon variant selection
@@ -494,12 +943,17 @@ export const FullResolutionHotspotEditor = ({
                     />
                   ))}
                   {hotspots.map((hotspot) => {
+                    // Data hotspots get special rendering
+                    if (isDataType(hotspot.type)) {
+                      return renderDataHotspot(hotspot);
+                    }
+
+                    // Action hotspot rendering (unchanged)
                     const preset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
                     const HotspotIcon = preset?.icon;
                     const hotspotImageUrl = preset?.imageUrl;
                     const hasOverlap = overlaps.has(hotspot.id);
                     const isOutOfBounds = outOfBoundsIds.includes(hotspot.id);
-                    const overlapPartners = overlaps.get(hotspot.id) || [];
                     
                     return (
                       <div
@@ -623,10 +1077,20 @@ export const FullResolutionHotspotEditor = ({
                   </div>
                 </div>
 
-                {selectedHotspotData && (
+                {/* Data hotspot controls */}
+                {selectedHotspotData && isDataType(selectedHotspotData.type) && (
+                  <Card>
+                    <CardContent className="p-3">
+                      {renderDataControls()}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Action hotspot controls (existing) */}
+                {selectedHotspotData && !isDataType(selectedHotspotData.type) && (
                   <Card>
                     <CardContent className="p-3 space-y-2">
-                      {/* Position controls - active when not dragging */}
+                      {/* Position controls */}
                       <div className={`${isDragging ? 'opacity-40 pointer-events-none' : ''}`}>
                         <h4 className="font-semibold text-sm mb-1">Position</h4>
                         <div className="flex items-center gap-4">
@@ -820,8 +1284,6 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-
-
                       {selectedHotspotData.type === "email_links" && (
                         <div className="space-y-3">
                           <div>
@@ -910,7 +1372,6 @@ export const generateThumbnail = async (
   // Clear any selection before generating thumbnail
   if (clearSelection) {
     clearSelection();
-    // Small delay to ensure UI updates
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   return new Promise((resolve, reject) => {
@@ -922,17 +1383,14 @@ export const generateThumbnail = async (
     baseImg.crossOrigin = 'anonymous';
     
     baseImg.onload = async () => {
-      // Set canvas to match image dimensions
       canvas.width = baseImg.width;
       canvas.height = baseImg.height;
-      
-      // Draw base image
       ctx.drawImage(baseImg, 0, 0);
       
-      // Draw each hotspot icon and label
       for (const hotspot of hotspots) {
-        // Skip transparent hotspots — they have no visible icon
         if (hotspot.isTransparent) continue;
+        // Skip data hotspots in thumbnail (they render dynamically)
+        if (DATA_HOTSPOT_TYPES.has(hotspot.type)) continue;
         const iconPreset = ICON_PRESETS.find(p => p.id === hotspot.iconId);
         if (!iconPreset?.imageUrl) continue;
         
@@ -946,43 +1404,37 @@ export const generateThumbnail = async (
             const width = (hotspot.width / 100) * canvas.width;
             const height = (hotspot.height / 100) * canvas.height;
             
-            // Draw icon
             ctx.drawImage(iconImg, x, y, width, height);
             
-            // Draw label (skip for external_link — label is email metadata only)
             if (hotspot.type !== 'external_link') {
-            const fontSize = Math.max(14, width * 0.15);
-            ctx.font = `bold ${fontSize}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            // Measure text for background
-            const text = hotspot.label;
-            const metrics = ctx.measureText(text);
-            const textWidth = metrics.width;
-            const textHeight = fontSize * 1.4;
-            const padding = 8;
-            
-            // Calculate label position
-            const labelX = x + width / 2;
-            const labelY = hotspot.labelPosition === 'top' 
-              ? y - textHeight / 2 - padding 
-              : y + height + textHeight / 2 + padding;
-            
-            // Draw background
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.roundRect(
-              labelX - textWidth / 2 - padding,
-              labelY - textHeight / 2,
-              textWidth + padding * 2,
-              textHeight,
-              6
-            );
-            ctx.fill();
-            
-            // Draw text
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(text, labelX, labelY);
+              const fontSize = Math.max(14, width * 0.15);
+              ctx.font = `bold ${fontSize}px sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              
+              const text = hotspot.label;
+              const metrics = ctx.measureText(text);
+              const textWidth = metrics.width;
+              const textHeight = fontSize * 1.4;
+              const padding = 8;
+              
+              const labelX = x + width / 2;
+              const labelY = hotspot.labelPosition === 'top' 
+                ? y - textHeight / 2 - padding 
+                : y + height + textHeight / 2 + padding;
+              
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+              ctx.roundRect(
+                labelX - textWidth / 2 - padding,
+                labelY - textHeight / 2,
+                textWidth + padding * 2,
+                textHeight,
+                6
+              );
+              ctx.fill();
+              
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(text, labelX, labelY);
             }
             
             resolveIcon();
@@ -992,7 +1444,6 @@ export const generateThumbnail = async (
         }).catch(err => console.warn('Icon load failed:', err));
       }
       
-      // Convert canvas to blob
       canvas.toBlob((blob) => {
         if (blob) resolve(blob);
         else reject(new Error('Failed to create thumbnail blob'));
