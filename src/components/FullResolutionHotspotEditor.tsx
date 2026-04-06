@@ -365,7 +365,7 @@ export const FullResolutionHotspotEditor = ({
   const deleteHotspot = (id: string) => {
     const updatedHotspots = hotspots.filter((h) => h.id !== id);
     setHotspots(updatedHotspots);
-    onSave(updatedHotspots);
+    onChange?.(updatedHotspots);
     if (selectedHotspot === id) setSelectedHotspot(null);
   };
 
