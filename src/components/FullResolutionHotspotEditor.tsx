@@ -908,7 +908,7 @@ export const FullResolutionHotspotEditor = ({
                 
                 <Button onClick={() => {
                   setHotspots([]);
-                  onSave([]);
+                  onChange?.([]);
                 }} variant="outline" size="sm">
                   <X className="w-4 h-4 mr-2" />
                   Clear All

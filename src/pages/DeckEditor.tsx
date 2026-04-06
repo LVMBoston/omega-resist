@@ -750,7 +750,7 @@ export default function DeckEditor() {
       configId = data?.id;
     }
     if (!configId) {
-      toast.error('No template config found for this slide');
+      console.log('Skipping thumbnail capture — no template config yet for this slide');
       return;
     }
 
