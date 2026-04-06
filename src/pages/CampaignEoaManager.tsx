@@ -1008,12 +1008,25 @@ export default function CampaignEoaManager() {
       cell: ({ row }) => {
         const readiness = getMintReadiness(row.original);
         const Icon = readiness.icon;
-        return (
+        const badge = (
           <Badge variant="outline" className={readiness.className}>
             <Icon className="h-3 w-3 mr-1" />
             {readiness.label}
           </Badge>
         );
+        if (readiness.status === "minted") {
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs text-sm">An L00 seed token has been generated for this EoA. The token URL is locked and ready for QR code printing or distribution.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        }
+        return badge;
       },
       enableSorting: false,
     },
