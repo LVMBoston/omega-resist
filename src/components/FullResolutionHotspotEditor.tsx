@@ -82,7 +82,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo" | "youtube";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
