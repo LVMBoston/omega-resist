@@ -1004,7 +1004,22 @@ export default function CampaignEoaManager() {
     {
       id: "status",
       accessorKey: "status",
-      header: "Status",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help underline decoration-dotted underline-offset-4">Status</span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <div className="max-w-xs text-sm space-y-1">
+                <p><strong>Minted:</strong> L00 token generated, URL locked, ready for distribution.</p>
+                <p><strong>Needs Minting:</strong> Deck assigned but no L00 token yet.</p>
+                <p><strong>Missing fields:</strong> Required fields incomplete.</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       cell: ({ row }) => {
         const readiness = getMintReadiness(row.original);
         const Icon = readiness.icon;
