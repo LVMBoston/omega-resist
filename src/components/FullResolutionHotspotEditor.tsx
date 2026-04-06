@@ -1332,7 +1332,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {selectedHotspotData.type !== 'external_link' && selectedHotspotData.type !== 'email_links' && selectedHotspotData.type !== 'video' && selectedHotspotData.type !== 'vimeo' && selectedHotspotData.type !== 'youtube' && (
+                      {selectedHotspotData.type !== 'external_link' && selectedHotspotData.type !== 'email_links' && (
                         <div>
                           <Label>Label Position</Label>
                           <RadioGroup
