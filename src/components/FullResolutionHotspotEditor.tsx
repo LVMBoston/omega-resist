@@ -347,7 +347,7 @@ export const FullResolutionHotspotEditor = ({
 
     const updatedHotspots = [...hotspots, newHotspot];
     setHotspots(updatedHotspots);
-    onSave(updatedHotspots);
+    onChange?.(updatedHotspots);
     setSelectedHotspot(newHotspot.id);
     setIsPlacing(false);
     toast({
