@@ -142,9 +142,9 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
           GIF
         </div>
       )}
-      {slide.type === 'vimeo' && (
+      {(slide.type === 'vimeo' || slide.type === 'video') && (
         <div className="absolute top-1 right-8 bg-accent text-accent-foreground px-2 py-0.5 rounded text-xs font-medium">
-          Vimeo
+          {slide.type === 'vimeo' ? 'Vimeo' : 'Video'}
         </div>
       )}
       {/* Skip Deploy toggle — right side */}
