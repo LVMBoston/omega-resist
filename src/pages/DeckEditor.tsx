@@ -142,9 +142,9 @@ const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onTog
           GIF
         </div>
       )}
-      {slide.type === 'vimeo' && (
+      {(slide.type === 'vimeo' || slide.type === 'video') && (
         <div className="absolute top-1 right-8 bg-accent text-accent-foreground px-2 py-0.5 rounded text-xs font-medium">
-          Vimeo
+          {slide.type === 'vimeo' ? 'Vimeo' : 'Video'}
         </div>
       )}
       {/* Skip Deploy toggle — right side */}
@@ -681,7 +681,7 @@ export default function DeckEditor() {
   };
 
   // Classification helpers for auto-detect
-  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'vimeo']);
+  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'video', 'vimeo', 'youtube']);
   const DATA_TYPES = new Set(['live_number', 'chart', 'map']);
 
   const classifyHotspots = (hotspots: any[]): { slideType: string; templateType: string } => {
@@ -1662,7 +1662,7 @@ Add Slide(s)
                   </div>
                   
                   {/* Edit Hotspots — available for any slide type */}
-                  {selectedSlide.type !== 'vimeo' && (
+                  {selectedSlide.type !== 'vimeo' && selectedSlide.type !== 'video' && (
                     <div className="pt-2">
                       <Button
                         variant="outline"

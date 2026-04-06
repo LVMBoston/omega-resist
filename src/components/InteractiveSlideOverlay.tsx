@@ -1,4 +1,5 @@
 import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { detectVideoProvider } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -861,20 +862,17 @@ const InteractiveSlideOverlay = ({
         return handleEmail;
       case "external_link":
         return () => { if (hotspot?.url) handleExternalLink(hotspot.url); };
-      case "vimeo":
+      case "video":
+      case "vimeo":   // legacy fallthrough
+      case "youtube": // legacy fallthrough
         return () => {
           if (hotspot?.url) {
-            setVideoUrl(hotspot.url);
-            setVideoProvider("vimeo");
-            setIsVideoOpen(true);
-          }
-        };
-      case "youtube":
-        return () => {
-          if (hotspot?.url) {
-            setVideoUrl(hotspot.url);
-            setVideoProvider("youtube");
-            setIsVideoOpen(true);
+            const provider = detectVideoProvider(hotspot.url);
+            if (provider) {
+              setVideoUrl(hotspot.url);
+              setVideoProvider(provider);
+              setIsVideoOpen(true);
+            }
           }
         };
       case "email_links":
@@ -1036,39 +1034,21 @@ const InteractiveSlideOverlay = ({
           padding: 0,
         };
 
-        // Handle vimeo hotspot type — always use inline player
-        if (hotspot.type === 'vimeo' && hotspot.url) {
+        // Handle video/vimeo/youtube hotspot types — always use inline player
+        if ((hotspot.type === 'video' || hotspot.type === 'vimeo' || hotspot.type === 'youtube') && hotspot.url) {
+          const provider = detectVideoProvider(hotspot.url);
           return (
             <button
               key={hotspot.id}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log(`📱 Vimeo hotspot tapped for inline playback: ${hotspot.url}`);
-                setVideoUrl(hotspot.url!);
-                setVideoProvider("vimeo");
-                setIsVideoOpen(true);
-              }}
-              className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
-              style={transparentStyle}
-            >
-              {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
-            </button>
-          );
-        }
-
-        // Handle youtube hotspot type — always use inline player
-        if (hotspot.type === 'youtube' && hotspot.url) {
-          return (
-            <button
-              key={hotspot.id}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`📱 YouTube hotspot tapped for inline playback: ${hotspot.url}`);
-                setVideoUrl(hotspot.url!);
-                setVideoProvider("youtube");
-                setIsVideoOpen(true);
+                if (provider) {
+                  console.log(`📱 Video hotspot tapped for inline playback (${provider}): ${hotspot.url}`);
+                  setVideoUrl(hotspot.url!);
+                  setVideoProvider(provider);
+                  setIsVideoOpen(true);
+                }
               }}
               className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
               style={transparentStyle}
