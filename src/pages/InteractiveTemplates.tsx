@@ -1293,7 +1293,7 @@ export default function InteractiveTemplates() {
                   <Card
                     key={campaign.id}
                     className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => window.open(`/campaign/${campaign.id}`, '_blank')}
+                    onClick={() => navigate(`/campaign/${campaign.id}`)}
                   >
                     <CardHeader className="py-3">
                       <CardTitle className="text-base">{campaign.title}</CardTitle>
