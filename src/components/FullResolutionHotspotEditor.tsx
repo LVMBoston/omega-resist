@@ -913,6 +913,10 @@ export const FullResolutionHotspotEditor = ({
                   <X className="w-4 h-4 mr-2" />
                   Clear All
                 </Button>
+
+                <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
+                  Save & Close
+                </Button>
               </div>
             </div>
 
