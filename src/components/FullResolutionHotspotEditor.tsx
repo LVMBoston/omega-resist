@@ -101,12 +101,14 @@ type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links"
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
   initialHotspots?: Hotspot[];
+  onChange?: (hotspots: Hotspot[]) => void;
   onSave: (hotspots: Hotspot[]) => void;
 }
 
 export const FullResolutionHotspotEditor = ({
   imageUrl,
   initialHotspots = [],
+  onChange,
   onSave,
 }: FullResolutionHotspotEditorProps) => {
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
@@ -345,7 +347,7 @@ export const FullResolutionHotspotEditor = ({
 
     const updatedHotspots = [...hotspots, newHotspot];
     setHotspots(updatedHotspots);
-    onSave(updatedHotspots);
+    onChange?.(updatedHotspots);
     setSelectedHotspot(newHotspot.id);
     setIsPlacing(false);
     toast({
@@ -357,13 +359,13 @@ export const FullResolutionHotspotEditor = ({
   const updateHotspot = (id: string, updates: Partial<Hotspot>) => {
     const updatedHotspots = hotspots.map((h) => (h.id === id ? { ...h, ...updates } : h));
     setHotspots(updatedHotspots);
-    onSave(updatedHotspots);
+    onChange?.(updatedHotspots);
   };
 
   const deleteHotspot = (id: string) => {
     const updatedHotspots = hotspots.filter((h) => h.id !== id);
     setHotspots(updatedHotspots);
-    onSave(updatedHotspots);
+    onChange?.(updatedHotspots);
     if (selectedHotspot === id) setSelectedHotspot(null);
   };
 
@@ -906,10 +908,14 @@ export const FullResolutionHotspotEditor = ({
                 
                 <Button onClick={() => {
                   setHotspots([]);
-                  onSave([]);
+                  onChange?.([]);
                 }} variant="outline" size="sm">
                   <X className="w-4 h-4 mr-2" />
                   Clear All
+                </Button>
+
+                <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
+                  Save & Close
                 </Button>
               </div>
             </div>
