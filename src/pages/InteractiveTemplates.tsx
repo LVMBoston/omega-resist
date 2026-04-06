@@ -848,7 +848,7 @@ export default function InteractiveTemplates() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/template-editor/${template.id}`, '_blank')}
+                onClick={() => navigate(`/template-editor/${template.id}`)}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 New Tab
