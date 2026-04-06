@@ -782,7 +782,7 @@ export const FullResolutionHotspotEditor = ({
                       )}
 
                       {(selectedHotspotData.type === "external_link" || selectedHotspotData.type === "vimeo" || selectedHotspotData.type === "youtube") && (
-                        <div>
+                        <div className="space-y-2">
                           <Label>{selectedHotspotData.type === "vimeo" ? "Vimeo URL" : selectedHotspotData.type === "youtube" ? "YouTube URL" : "URL"}</Label>
                           <Input
                             value={selectedHotspotData.url || ""}
@@ -792,6 +792,38 @@ export const FullResolutionHotspotEditor = ({
                             placeholder={selectedHotspotData.type === "vimeo" ? "https://vimeo.com/123456789" : selectedHotspotData.type === "youtube" ? "https://www.youtube.com/watch?v=..." : "https://example.com"}
                             type="url"
                           />
+
+                          {/* oEmbed preview for video types */}
+                          {(selectedHotspotData.type === "vimeo" || selectedHotspotData.type === "youtube") && selectedHotspotData.url && (
+                            <div className="mt-2">
+                              {oEmbedLoading && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Validating…
+                                </div>
+                              )}
+                              {oEmbedError && !oEmbedLoading && (
+                                <p className="text-sm text-destructive py-1">{oEmbedError}</p>
+                              )}
+                              {oEmbedResult && !oEmbedLoading && (
+                                <div className="flex items-start gap-3 rounded-md border border-border bg-muted/50 p-2">
+                                  {oEmbedResult.thumbnailUrl && (
+                                    <img
+                                      src={oEmbedResult.thumbnailUrl}
+                                      alt={oEmbedResult.title}
+                                      className="w-[120px] rounded object-cover flex-shrink-0"
+                                    />
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium leading-tight truncate">{oEmbedResult.title}</p>
+                                    <span className="inline-block mt-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                      {oEmbedResult.provider}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -827,7 +859,11 @@ export const FullResolutionHotspotEditor = ({
                               });
                             }}
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            {(selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && oEmbedResult ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <ExternalLink className="w-4 h-4" />
+                            )}
                             Test URL
                           </Button>
                         </div>
