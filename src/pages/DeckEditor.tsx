@@ -681,7 +681,7 @@ export default function DeckEditor() {
   };
 
   // Classification helpers for auto-detect
-  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'vimeo']);
+  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'video', 'vimeo', 'youtube']);
   const DATA_TYPES = new Set(['live_number', 'chart', 'map']);
 
   const classifyHotspots = (hotspots: any[]): { slideType: string; templateType: string } => {
