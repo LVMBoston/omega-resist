@@ -111,7 +111,41 @@ export const FullResolutionHotspotEditor = ({
   const [oEmbedLoading, setOEmbedLoading] = useState(false);
   const [oEmbedError, setOEmbedError] = useState<string | null>(null);
 
-  // Detect overlaps and out-of-bounds in real-time
+  // Selected hotspot data for oEmbed
+  const selectedHotspotData = hotspots.find((h) => h.id === selectedHotspot);
+
+  // Debounced oEmbed validation for video URLs
+  useEffect(() => {
+    if (!selectedHotspotData) return;
+    if (selectedHotspotData.type !== "vimeo" && selectedHotspotData.type !== "youtube") {
+      setOEmbedResult(null);
+      setOEmbedError(null);
+      setOEmbedLoading(false);
+      return;
+    }
+    const url = selectedHotspotData.url;
+    if (!url || url.length < 10) {
+      setOEmbedResult(null);
+      setOEmbedError(null);
+      setOEmbedLoading(false);
+      return;
+    }
+    setOEmbedLoading(true);
+    setOEmbedError(null);
+    const timer = setTimeout(async () => {
+      const result = await fetchOEmbed(url);
+      if (result) {
+        setOEmbedResult(result);
+        setOEmbedError(null);
+      } else {
+        setOEmbedResult(null);
+        setOEmbedError("Could not validate this URL — check that it's a valid YouTube or Vimeo link");
+      }
+      setOEmbedLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [selectedHotspotData?.url, selectedHotspotData?.type, selectedHotspotData?.id]);
+
   const overlaps = useMemo(() => detectOverlaps(hotspots), [hotspots]);
   const intersections = useMemo(() => getAllIntersections(hotspots), [hotspots]);
   const overlapCount = overlaps.size;
