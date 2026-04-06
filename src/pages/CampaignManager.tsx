@@ -814,7 +814,7 @@ export default function CampaignManager() {
           ref={setNodeRef} 
           style={style}
           className="cursor-pointer hover:shadow-lg transition-shadow" 
-          onClick={() => window.open(`/campaign/${campaign.id}`, '_blank')}
+          onClick={() => navigate(`/campaign/${campaign.id}`)}
         >
           <CardHeader>
             <div className="flex justify-between items-start">
