@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatFloatingLocalTime } from "@/lib/dateUtils";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files, Info } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
