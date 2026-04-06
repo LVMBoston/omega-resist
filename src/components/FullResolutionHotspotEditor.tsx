@@ -78,11 +78,8 @@ const ICON_PRESETS: IconPreset[] = [
   // Email links variant
   { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
 
-  // Vimeo video variant
-  { id: "vimeo-video", label: "Vimeo Video", type: "vimeo", imageUrl: playButtonIcon, width: 5, height: 4 },
-
-  // YouTube video variant
-  { id: "youtube-video", label: "YouTube Video", type: "youtube", imageUrl: playButtonIcon, width: 5, height: 4 },
+  // Video variant (auto-detects YouTube or Vimeo from URL)
+  { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
 ];
 
 type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "vimeo" | "youtube";
