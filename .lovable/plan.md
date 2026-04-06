@@ -1,41 +1,37 @@
 
 
-## Plan: Split L3 from L3+ to Show Full Cascade
+## Plan: Add oEmbed Video URL Validation with Thumbnail Preview
 
-### Goal
-Replace the current "L3+" aggregate with an explicit L3 column, clearly showing the viral cascade L0 → L1 → L2 → L3 across all campaign stats displays.
+### What it does
+When a user enters a YouTube or Vimeo URL in the hotspot editor, the system calls the platform's public oEmbed endpoint to fetch the video's title and thumbnail. A small preview card appears below the URL input confirming the video is valid and embeddable — no publishing required.
 
 ### Changes
 
-**1. Database migration — update `get_campaign_stats` RPC**
-   a. Add `l3_count bigint` as a new return column: `COUNT(*) FILTER (WHERE t.level = 3)`
-   b. Change `l3_plus_count` to `COUNT(*) FILTER (WHERE t.level >= 4)` (captures any tokens beyond L3)
-   c. Return signature becomes: `..., l2_count, l3_count, l3_plus_count`
+**1. Create `src/lib/oEmbedValidation.ts`** (new file)
+   a. Export `fetchOEmbed(url: string): Promise<{ title: string; thumbnailUrl: string; provider: string } | null>`
+   b. Detect provider from URL using existing patterns (`youtube.com`, `youtu.be`, `vimeo.com`)
+   c. Call the public oEmbed JSON endpoints (no API key needed):
+      - YouTube: `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+      - Vimeo: `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`
+   d. Return parsed `{ title, thumbnailUrl, provider }` or `null` on error
+   e. Use a simple `fetch` with a 5-second timeout; catch errors gracefully
 
-**2. Update `src/pages/CampaignDetail.tsx`**
-   a. Add `l3Count: number` to the `CampaignStats` interface
-   b. Map `row.l3_count` in the stats query
-   c. Change label from "Viral Depth: L0 / L1 / L2 / L3+" to "Viral Depth: L0 / L1 / L2 / L3"
-   d. Display `stats.l3Count` in place of `stats.l3PlusCount`
-   e. If `l3PlusCount > 0`, append a subtle `L4+: N` indicator
+**2. Update `src/components/FullResolutionHotspotEditor.tsx`**
+   a. Add state: `oEmbedResult` (title + thumbnail + provider | null), `oEmbedLoading` (boolean), `oEmbedError` (string | null)
+   b. Add a debounced `useEffect` (800ms) that triggers `fetchOEmbed` whenever `selectedHotspotData.url` changes and the hotspot type is `vimeo` or `youtube`
+   c. Below the URL `<Input>` (line ~757), render a preview card:
+      - **Loading**: small spinner + "Validating…"
+      - **Success**: thumbnail image (120px wide), video title text, provider badge
+      - **Error**: red text "Could not validate this URL — check that it's a valid YouTube or Vimeo link"
+   d. Replace the "Test URL" button section (lines 777-796) for video types: keep the button but add a green checkmark icon when oEmbed succeeded, indicating the URL is confirmed embeddable
 
-**3. Update `src/pages/CampaignManager.tsx`**
-   a. Add `l3Count: number` to the `CampaignStats` interface
-   b. Map `l3_count` from the RPC response in `calculateCampaignStats`
-   c. Change the "Viral Depth" label and values to show `L0 / L1 / L2 / L3`
-   d. Same `L4+` overflow indicator if non-zero
+**3. No backend or database changes required**
+   - oEmbed endpoints are public, CORS-friendly, and require no API keys
 
-**4. Update `src/lib/campaignNarrative.ts`** (if it uses `l3_plus_count`)
-   a. Adjust to use the new `l3_count` field for narrative generation
+### Backward compatibility
+- No schema changes; purely a UI enhancement in the editor
+- Existing `external_link` URLs are unaffected (oEmbed only fires for video types)
 
-**5. Decision doc**
-   a. New file: `docs/decisions/chart-colors/2026-04-05_l03-cascade-column_feature-doc_lovable.md`
-
-### What Does Not Change
-- The RPC still returns `l3_plus_count` for backward compatibility (now meaning L4+)
-- No schema/table changes — only the RPC function signature
-- Chart components (`useChartData.ts`) already handle L03 separately
-
-### Technical Detail
-The `types.ts` file will auto-regenerate after the migration to include the new `l3_count` return field.
+### Decision doc
+- Save as new file: `docs/decisions/deck-editor/2026-04-06_oembed-video-validation_feature-doc_lovable.md`
 
