@@ -1241,7 +1241,7 @@ export const FullResolutionHotspotEditor = ({
                           }}
                           rows={2}
                           placeholder="Label (Shift+Enter for new line)"
-                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                          className="flex rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize"
                         />
                       </div>
                       )}
@@ -1332,7 +1332,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {selectedHotspotData.type !== 'external_link' && selectedHotspotData.type !== 'email_links' && selectedHotspotData.type !== 'video' && selectedHotspotData.type !== 'vimeo' && selectedHotspotData.type !== 'youtube' && (
+                      {selectedHotspotData.type !== 'external_link' && selectedHotspotData.type !== 'email_links' && (
                         <div>
                           <Label>Label Position</Label>
                           <RadioGroup
