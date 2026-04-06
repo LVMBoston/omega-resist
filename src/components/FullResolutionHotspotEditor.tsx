@@ -852,7 +852,7 @@ export const FullResolutionHotspotEditor = ({
                               });
                             }}
                           >
-                            {(selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && oEmbedResult ? (
+                            {(selectedHotspotData.type === 'video' || selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && oEmbedResult ? (
                               <CheckCircle2 className="w-4 h-4 text-green-600" />
                             ) : (
                               <ExternalLink className="w-4 h-4" />
