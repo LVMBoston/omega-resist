@@ -107,6 +107,9 @@ export const FullResolutionHotspotEditor = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
   const { toast } = useToast();
+  const [oEmbedResult, setOEmbedResult] = useState<OEmbedResult | null>(null);
+  const [oEmbedLoading, setOEmbedLoading] = useState(false);
+  const [oEmbedError, setOEmbedError] = useState<string | null>(null);
 
   // Detect overlaps and out-of-bounds in real-time
   const overlaps = useMemo(() => detectOverlaps(hotspots), [hotspots]);
