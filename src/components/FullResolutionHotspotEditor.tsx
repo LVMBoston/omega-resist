@@ -101,12 +101,14 @@ type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links"
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
   initialHotspots?: Hotspot[];
+  onChange?: (hotspots: Hotspot[]) => void;
   onSave: (hotspots: Hotspot[]) => void;
 }
 
 export const FullResolutionHotspotEditor = ({
   imageUrl,
   initialHotspots = [],
+  onChange,
   onSave,
 }: FullResolutionHotspotEditorProps) => {
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
