@@ -1046,8 +1046,8 @@ const InteractiveSlideOverlay = ({
                     ...(hotspot.labelPosition === 'top'
                       ? { bottom: '100%', marginBottom: '4px' }
                       : { top: '100%', marginTop: '4px' }),
-                    left: '50%',
-                    transform: 'translateX(-50%)',
+                    left: 0,
+                    width: '100%',
                     fontSize: `${Math.max(11, Math.min(buttonWidth * 0.15, 18))}px`,
                     fontWeight: 700,
                     color: '#fff',
