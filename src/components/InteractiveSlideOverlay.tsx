@@ -499,6 +499,8 @@ const InteractiveSlideOverlay = ({
         return <FallbackImg src={externalLinkIcon} alt="External Link" style={imgStyle} fallback={<Link2 style={{ ...svgStyle, color: '#eab308' }} />} />;
       case "video":
       case "play-button":
+      case "vimeo-video":
+      case "youtube-video":
         return <FallbackImg src={playButton} alt="Play Video" style={imgStyle} fallback={<Play style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "email-links":
         return <FallbackImg src={emailLinksIcon} alt="Email Links" style={imgStyle} fallback={<MailPlus style={{ ...svgStyle, color: '#22c55e' }} />} />;
