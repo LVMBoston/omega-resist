@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useState, useRef, useEffect } from "react";
 import QRCode from 'qrcode';
 import { useSettings } from "@/hooks/useSettings";
+import { useNavigate } from "react-router-dom";
 
 interface TokenDisplayProps {
   open: boolean;
@@ -22,6 +23,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
   const [showQRDialog, setShowQRDialog] = useState(true);
   const { getSetting, isLoading } = useSettings();
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const navigate = useNavigate();
 
   // Generate display QR code when dialog opens
   useEffect(() => {
@@ -59,6 +61,24 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
+  };
+
+  const openUrl = (url: string) => {
+    try {
+      const parsedUrl = new URL(url);
+      const currentHostname = window.location.hostname;
+      const isLovableApp = parsedUrl.hostname.endsWith(".lovable.app");
+      const isCurrentAppHost = parsedUrl.hostname === currentHostname;
+
+      if (isLovableApp || isCurrentAppHost) {
+        navigate(`${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`);
+        return;
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      navigate(url);
+    }
   };
 
   const generateDecoratedQRCanvas = async (urlForQr: string): Promise<HTMLCanvasElement> => {
@@ -339,7 +359,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(shortUrl, '_blank')}
+                     onClick={() => openUrl(shortUrl)}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Open
@@ -373,7 +393,7 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.open(fullUrl, '_blank')}
+                   onClick={() => openUrl(fullUrl)}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open
