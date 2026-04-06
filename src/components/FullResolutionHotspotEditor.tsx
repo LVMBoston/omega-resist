@@ -787,7 +787,7 @@ export const FullResolutionHotspotEditor = ({
                           />
 
                           {/* oEmbed preview for video types */}
-                          {(selectedHotspotData.type === "vimeo" || selectedHotspotData.type === "youtube") && selectedHotspotData.url && (
+                          {(selectedHotspotData.type === "video" || selectedHotspotData.type === "vimeo" || selectedHotspotData.type === "youtube") && selectedHotspotData.url && (
                             <div className="mt-2">
                               {oEmbedLoading && (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
