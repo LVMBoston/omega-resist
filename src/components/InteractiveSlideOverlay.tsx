@@ -862,20 +862,17 @@ const InteractiveSlideOverlay = ({
         return handleEmail;
       case "external_link":
         return () => { if (hotspot?.url) handleExternalLink(hotspot.url); };
-      case "vimeo":
+      case "video":
+      case "vimeo":   // legacy fallthrough
+      case "youtube": // legacy fallthrough
         return () => {
           if (hotspot?.url) {
-            setVideoUrl(hotspot.url);
-            setVideoProvider("vimeo");
-            setIsVideoOpen(true);
-          }
-        };
-      case "youtube":
-        return () => {
-          if (hotspot?.url) {
-            setVideoUrl(hotspot.url);
-            setVideoProvider("youtube");
-            setIsVideoOpen(true);
+            const provider = detectVideoProvider(hotspot.url);
+            if (provider) {
+              setVideoUrl(hotspot.url);
+              setVideoProvider(provider);
+              setIsVideoOpen(true);
+            }
           }
         };
       case "email_links":
