@@ -906,13 +906,8 @@ export const FullResolutionHotspotEditor = ({
                     : "Start by selecting a category"}
                 </div>
                 
-                <Button onClick={() => {
-                  setHotspots([]);
-                  onChange?.([]);
-                }} variant="outline" size="sm">
-                  <X className="w-4 h-4 mr-2" />
-                  Clear All
-                </Button>
+
+
 
                 <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
                   Save & Close
