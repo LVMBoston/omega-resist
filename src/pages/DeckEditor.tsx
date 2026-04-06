@@ -26,6 +26,7 @@ import { mintL00 } from "@/lib/virality/mint";
 import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
 import { FileDown } from "lucide-react";
+import { classifyHotspots } from "@/lib/hotspotClassification";
 
 interface Slide {
   id: string;
