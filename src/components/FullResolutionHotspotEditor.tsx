@@ -114,7 +114,7 @@ export const FullResolutionHotspotEditor = ({
   // Debounced oEmbed validation for video URLs
   useEffect(() => {
     if (!selectedHotspotData) return;
-    if (selectedHotspotData.type !== "vimeo" && selectedHotspotData.type !== "youtube") {
+    if (selectedHotspotData.type !== "video" && selectedHotspotData.type !== "vimeo" && selectedHotspotData.type !== "youtube") {
       setOEmbedResult(null);
       setOEmbedError(null);
       setOEmbedLoading(false);
