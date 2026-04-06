@@ -1771,6 +1771,9 @@ Add Slide(s)
             <FullResolutionHotspotEditor
               imageUrl={selectedSlide.content_url}
               initialHotspots={initialHotspots}
+              onChange={(hotspots) => {
+                setPreviewHotspots(hotspots as Hotspot[]);
+              }}
               onSave={handleSaveHotspots}
             />
           </DialogContent>
