@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ const isHybridTemplate = (template: Template): boolean => {
 };
 
 export default function InteractiveTemplates() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -848,7 +850,7 @@ export default function InteractiveTemplates() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/template-editor/${template.id}`, '_blank')}
+                onClick={() => navigate(`/template-editor/${template.id}`)}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 New Tab
@@ -1293,7 +1295,7 @@ export default function InteractiveTemplates() {
                   <Card
                     key={campaign.id}
                     className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => window.open(`/campaign/${campaign.id}`, '_blank')}
+                    onClick={() => navigate(`/campaign/${campaign.id}`)}
                   >
                     <CardHeader className="py-3">
                       <CardTitle className="text-base">{campaign.title}</CardTitle>
