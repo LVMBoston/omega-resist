@@ -66,3 +66,27 @@ Data hotspots are skipped during thumbnail generation (they render dynamically a
 - `src/components/FullResolutionHotspotEditor.tsx` (data categories, campaign selector, canvas rendering, calibration controls)
 - `src/pages/DeckEditor.tsx` (import classifyHotspots from shared utility)
 - `docs/decisions/deck-editor/2026-04-06_data-hotspot-editor-integration_feature-doc_lovable.md` (new — this document)
+
+## Update — 2026-04-06: Fix Hotspot Editor Bounce on Every Edit
+
+### Problem
+
+The `FullResolutionHotspotEditor` called `onSave(hotspots)` on every incremental change (add, drag, resize, delete, clear). In `DeckEditor.tsx`, `handleSaveHotspots` was wired as `onSave`, which closed the dialog, showed a toast, and triggered thumbnail capture on every edit — causing the editor to "bounce" closed immediately after placing a single hotspot.
+
+### Root Cause
+
+`onSave` conflated two purposes: live state sync (every edit) and final commit (user explicitly done editing).
+
+### Fix
+
+1. **Split `onSave` into `onChange` + `onSave`** in `FullResolutionHotspotEditor`:
+   - `onChange?: (hotspots: Hotspot[]) => void` — called on every incremental edit (add, update, delete, clear)
+   - `onSave: (hotspots: Hotspot[]) => void` — called only from the explicit "Save & Close" button
+2. **DeckEditor wiring**: `onChange` updates `previewHotspots` for live preview only; `onSave` triggers full commit (close dialog, stage changes, classify, thumbnail capture)
+3. **Thumbnail guard**: `handleCaptureThumbnail` silently skips when no `configId` exists (new slides not yet persisted) instead of showing an error toast
+4. **Added "Save & Close" button** to the editor's category selector panel
+
+### Files Changed
+
+- `src/components/FullResolutionHotspotEditor.tsx` — added `onChange` prop, replaced inline `onSave` calls with `onChange`, added Save & Close button
+- `src/pages/DeckEditor.tsx` — passed `onChange` handler, guarded thumbnail capture
