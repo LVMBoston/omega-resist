@@ -462,69 +462,53 @@ const InteractiveSlideOverlay = ({
 
   // Map iconId to actual icon/image
   const getHotspotIcon = (iconId: string, buttonWidth: number, buttonHeight: number) => {
-    // Use the actual hotspot dimensions so icons match the editor preview
-    const iconSize = Math.max(Math.min(buttonWidth, buttonHeight), 24);
-    
-    // Wrapper div ensures consistent sizing across all icon types
-    const iconWrapper = (icon: React.ReactNode) => (
-      <div 
-        style={{ 
-          width: `${buttonWidth}px`, 
-          height: `${buttonHeight}px`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {icon}
-      </div>
-    );
-    
-    const imgStyle = {
-      width: `${iconSize}px`,
-      height: `${iconSize}px`,
-      objectFit: 'contain' as const,
+    // Fill the entire hotspot area, matching the editor's w-full h-full object-contain
+    const imgStyle: React.CSSProperties = {
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
+      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
     };
-    
-    const svgStyle = {
-      width: `${iconSize}px`,
-      height: `${iconSize}px`,
+
+    const svgStyle: React.CSSProperties = {
+      width: '100%',
+      height: '100%',
+      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
     };
-    
-    const dropShadow = 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))';
-    const imgWithShadow = { ...imgStyle, filter: dropShadow };
 
     switch (iconId) {
       case "sms-ios":
-        return iconWrapper(<FallbackImg src={textIcon} alt="Text Message" style={imgWithShadow} fallback={<MessageSquare style={{ ...svgStyle, color: '#22c55e' }} />} />);
+        return <FallbackImg src={textIcon} alt="Text Message" style={imgStyle} fallback={<MessageSquare style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "email-ios":
-        return iconWrapper(<FallbackImg src={mailIcon} alt="Email" style={imgWithShadow} fallback={<Mail style={{ ...svgStyle, color: '#22c55e' }} />} />);
+        return <FallbackImg src={mailIcon} alt="Email" style={imgStyle} fallback={<Mail style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "social-facebook":
-        return iconWrapper(<FaFacebookF style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return <FaFacebookF style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-instagram":
-        return iconWrapper(<FaInstagram style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return <FaInstagram style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-twitter":
-        return iconWrapper(<FaXTwitter style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return <FaXTwitter style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-linkedin":
-        return iconWrapper(<FaLinkedinIn style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return <FaLinkedinIn style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-whatsapp":
-        return iconWrapper(<FaWhatsapp style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return <FaWhatsapp style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "social-share":
-        return iconWrapper(<FallbackImg src={shareIcon} alt="Share" style={imgWithShadow} fallback={<Share2 style={{ ...svgStyle, color: '#22c55e' }} />} />);
+        return <FallbackImg src={shareIcon} alt="Share" style={imgStyle} fallback={<Share2 style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "social-share-filled":
-        return iconWrapper(<BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />);
+        return <BsShareFill style={{ ...svgStyle, color: '#000000', filter: 'drop-shadow(0 2px 4px rgba(255,255,255,0.8))' }} />;
       case "link-icon":
-        return iconWrapper(<FallbackImg src={externalLinkIcon} alt="External Link" style={imgWithShadow} fallback={<Link2 style={{ ...svgStyle, color: '#eab308' }} />} />);
+        return <FallbackImg src={externalLinkIcon} alt="External Link" style={imgStyle} fallback={<Link2 style={{ ...svgStyle, color: '#eab308' }} />} />;
       case "video":
       case "play-button":
-        return iconWrapper(<FallbackImg src={playButton} alt="Play Video" style={imgWithShadow} fallback={<Play style={{ ...svgStyle, color: '#22c55e' }} />} />);
+      case "vimeo-video":
+      case "youtube-video":
+        return <FallbackImg src={playButton} alt="Play Video" style={imgStyle} fallback={<Play style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "email-links":
-        return iconWrapper(<FallbackImg src={emailLinksIcon} alt="Email Links" style={imgWithShadow} fallback={<MailPlus style={{ ...svgStyle, color: '#22c55e' }} />} />);
+        return <FallbackImg src={emailLinksIcon} alt="Email Links" style={imgStyle} fallback={<MailPlus style={{ ...svgStyle, color: '#22c55e' }} />} />;
       // Fallback for legacy or unknown icons
       default:
-        if (iconId.includes('sms')) return iconWrapper(<MessageSquare style={{ ...svgStyle, color: '#000000' }} />);
-        if (iconId.includes('email')) return iconWrapper(<Mail style={{ ...svgStyle, color: '#000000' }} />);
-        return iconWrapper(<Share2 style={{ ...svgStyle, color: '#000000' }} />);
+        if (iconId.includes('sms')) return <MessageSquare style={{ ...svgStyle, color: '#000000' }} />;
+        if (iconId.includes('email')) return <Mail style={{ ...svgStyle, color: '#000000' }} />;
+        return <Share2 style={{ ...svgStyle, color: '#000000' }} />;
     }
   };
 
