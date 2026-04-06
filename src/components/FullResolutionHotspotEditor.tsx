@@ -996,10 +996,10 @@ export const FullResolutionHotspotEditor = ({
                             ⚠
                           </div>
                         )}
-                        {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && hotspot.type !== 'vimeo' && hotspot.type !== 'youtube' && (
+                        {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && (
                         <div 
-                          className={`absolute left-1/2 -translate-x-1/2 px-3 py-1.5 text-xs font-bold whitespace-pre-line text-center pointer-events-none rounded-md shadow-lg ${
-                            hotspot.labelPosition === "top" ? "-top-8" : "-bottom-8"
+                          className={`absolute left-0 w-full px-2 py-1.5 text-xs font-bold whitespace-pre-line text-center pointer-events-none rounded-md shadow-lg ${
+                            hotspot.labelPosition === "top" ? "bottom-full mb-1" : "top-full mt-1"
                           } ${
                             hasOverlap
                               ? "bg-red-500 text-white ring-2 ring-red-500/50"
