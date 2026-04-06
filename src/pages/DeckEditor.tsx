@@ -1662,7 +1662,7 @@ Add Slide(s)
                   </div>
                   
                   {/* Edit Hotspots — available for any slide type */}
-                  {selectedSlide.type !== 'vimeo' && (
+                  {selectedSlide.type !== 'vimeo' && selectedSlide.type !== 'video' && (
                     <div className="pt-2">
                       <Button
                         variant="outline"

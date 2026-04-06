@@ -1034,39 +1034,21 @@ const InteractiveSlideOverlay = ({
           padding: 0,
         };
 
-        // Handle vimeo hotspot type — always use inline player
-        if (hotspot.type === 'vimeo' && hotspot.url) {
+        // Handle video/vimeo/youtube hotspot types — always use inline player
+        if ((hotspot.type === 'video' || hotspot.type === 'vimeo' || hotspot.type === 'youtube') && hotspot.url) {
+          const provider = detectVideoProvider(hotspot.url);
           return (
             <button
               key={hotspot.id}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log(`📱 Vimeo hotspot tapped for inline playback: ${hotspot.url}`);
-                setVideoUrl(hotspot.url!);
-                setVideoProvider("vimeo");
-                setIsVideoOpen(true);
-              }}
-              className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
-              style={transparentStyle}
-            >
-              {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
-            </button>
-          );
-        }
-
-        // Handle youtube hotspot type — always use inline player
-        if (hotspot.type === 'youtube' && hotspot.url) {
-          return (
-            <button
-              key={hotspot.id}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`📱 YouTube hotspot tapped for inline playback: ${hotspot.url}`);
-                setVideoUrl(hotspot.url!);
-                setVideoProvider("youtube");
-                setIsVideoOpen(true);
+                if (provider) {
+                  console.log(`📱 Video hotspot tapped for inline playback (${provider}): ${hotspot.url}`);
+                  setVideoUrl(hotspot.url!);
+                  setVideoProvider(provider);
+                  setIsVideoOpen(true);
+                }
               }}
               className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
               style={transparentStyle}
