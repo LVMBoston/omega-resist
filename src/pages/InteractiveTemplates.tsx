@@ -70,6 +70,7 @@ const isHybridTemplate = (template: Template): boolean => {
 };
 
 export default function InteractiveTemplates() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
