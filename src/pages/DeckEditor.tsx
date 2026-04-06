@@ -26,6 +26,7 @@ import { mintL00 } from "@/lib/virality/mint";
 import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
 import { FileDown } from "lucide-react";
+import { classifyHotspots } from "@/lib/hotspotClassification";
 
 interface Slide {
   id: string;
@@ -680,18 +681,7 @@ export default function DeckEditor() {
     }
   };
 
-  // Classification helpers for auto-detect
-  const ACTION_TYPES = new Set(['sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'video', 'vimeo', 'youtube']);
-  const DATA_TYPES = new Set(['live_number', 'chart', 'map']);
-
-  const classifyHotspots = (hotspots: any[]): { slideType: string; templateType: string } => {
-    if (!hotspots || hotspots.length === 0) return { slideType: 'image', templateType: 'display_only' };
-    const hasAction = hotspots.some((h: any) => ACTION_TYPES.has(h.type));
-    const hasData = hotspots.some((h: any) => DATA_TYPES.has(h.type));
-    if (hasAction && hasData) return { slideType: 'spread-word', templateType: 'hybrid' };
-    if (hasData) return { slideType: 'spread-word', templateType: 'stats_page' };
-    return { slideType: 'spread-word', templateType: 'interactive_share' };
-  };
+  // Classification helpers - imported from shared utility
 
   const loadHotspotsForSlide = async (slide: Slide) => {
     // Priority 1: staged changes
