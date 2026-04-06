@@ -1008,7 +1008,10 @@ export default function CampaignEoaManager() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="cursor-help underline decoration-dotted underline-offset-4">Status</span>
+              <span className="inline-flex items-center gap-1 cursor-help">
+                Status
+                <Info className="h-3.5 w-3.5 text-muted-foreground" strokeDasharray="3 2" />
+              </span>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               <div className="max-w-xs text-sm space-y-1">
