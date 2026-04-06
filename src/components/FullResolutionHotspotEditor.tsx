@@ -342,7 +342,7 @@ export const FullResolutionHotspotEditor = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDragging, hotspots]);
 
-  const selectedHotspotData = hotspots.find((h) => h.id === selectedHotspot);
+  // selectedHotspotData is declared above (line 115) for oEmbed + render use
 
   return (
     <div className="space-y-4">
