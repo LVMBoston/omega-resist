@@ -6,7 +6,7 @@ const features = [
     title: "Reach Without Risk",
     color: "text-emerald-400",
     description:
-      "Zero-friction QR access — no apps, no accounts. Anonymity by design with automatic IP purging. Messages spread through trust, not tracking.",
+      "Zero-friction QR access — no apps, no accounts. Anonymity by design. Messages spread through trust, not tracking.",
   },
   {
     icon: Film,
