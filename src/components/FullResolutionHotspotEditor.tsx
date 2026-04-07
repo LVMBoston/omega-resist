@@ -1316,7 +1316,7 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
-                      {(selectedHotspotData.type === 'external_link' || selectedHotspotData.type === 'video' || selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && selectedHotspotData.url && (
+                      {selectedHotspotData.type === 'external_link' && selectedHotspotData.url && (
                         <div>
                           <Button
                             type="button"
@@ -1331,12 +1331,39 @@ export const FullResolutionHotspotEditor = ({
                               });
                             }}
                           >
-                            {(selectedHotspotData.type === 'video' || selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && oEmbedResult ? (
+                            <ExternalLink className="w-4 h-4" />
+                            Test URL
+                          </Button>
+                        </div>
+                      )}
+
+                      {(selectedHotspotData.type === 'video' || selectedHotspotData.type === 'vimeo' || selectedHotspotData.type === 'youtube') && selectedHotspotData.url && (
+                        <div>
+                          <Button
+                            type="button"
+                            variant={oEmbedResult ? "outline" : "outline"}
+                            size="sm"
+                            className={`w-full mb-4 flex items-center gap-2 ${oEmbedResult ? 'border-green-500 text-green-700 hover:bg-green-50' : ''}`}
+                            onClick={() => {
+                              if (oEmbedResult) {
+                                toast({
+                                  title: "✅ Connection Verified",
+                                  description: `Connection to ${oEmbedResult.provider} successful — video will play on the published site.`,
+                                });
+                              } else {
+                                toast({
+                                  title: "Validating…",
+                                  description: "Checking video URL. If this persists, the URL may be invalid.",
+                                });
+                              }
+                            }}
+                          >
+                            {oEmbedResult ? (
                               <CheckCircle2 className="w-4 h-4 text-green-600" />
                             ) : (
                               <ExternalLink className="w-4 h-4" />
                             )}
-                            Test URL
+                            {oEmbedResult ? `${oEmbedResult.provider} Verified` : 'Test URL'}
                           </Button>
                         </div>
                       )}
