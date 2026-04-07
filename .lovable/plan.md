@@ -1,60 +1,77 @@
 
 
-# Add `tz_offset_note` Metric — DST-Aware Timezone Label
+# Unify UX Across Deck & Template Workflows
 
 ## Summary
-Add a new computed metric `tz_offset_note` that dynamically outputs `"Note: EDT = UTC - 4 hours"` or `"Note: EST = UTC - 5 hours"` based on the current DST state, replacing static manual text.
+
+Align the visual language and interaction patterns across DeckBuilder, DeckEditor, and Template editing, while merging the Template Repository into Deck Management as a tab.
+
+## Current State
+
+| Page | Layout | Header | Nav pattern | Save pattern |
+|------|--------|--------|-------------|-------------|
+| DeckBuilder | Centered card form | `<h1>` title | None (redirects to DeckManagement) | Submit button in form |
+| DeckEditor | 3-column (thumbnails/preview/properties) | Breadcrumb + action bar | Breadcrumb → Deck Management | Save Changes / Cancel / Save As |
+| InteractiveTemplates | Card grid | `<h1>` title | Sidebar link | Inline dialogs |
+| TemplateEditorPage | Full-screen, no sidebar | Breadcrumb header | Breadcrumb → Template Repository | Delegated to DataTemplateEditor |
 
 ## Plan
 
-### 1. Add metric key (`src/types/viralTemplates.ts`)
-   a. Add `| 'tz_offset_note'` to the `LiveMetricKey` union with comment `// Dynamic ET offset note (DST-aware)`.
+### 1. Align DeckBuilder header and chrome
 
-### 2. Client-side resolution (`src/hooks/useLiveMetrics.ts`)
-   a. Add `tz_offset_note: "Timezone Offset Note"` to `METRIC_LABELS`.
-   b. After the `campaign_story` block (~line 363), add:
-      - Use `Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })` to extract `"EDT"` or `"EST"`.
-      - Derive offset (EDT → 4, EST → 5).
-      - Push `{ key: "tz_offset_note", value: "Note: EDT = UTC - 4 hours", source: "current" }`.
+a. Replace the bare `<h1>` with a breadcrumb header matching DeckEditor: `Deck Management > New Deck`.
+b. Add a consistent action bar area (right-aligned) even though the only action is the submit button — this establishes the same visual rhythm.
+c. After successful creation, navigate to `/deck-editor/{slug}` instead of `/deck-management`, so the user flows directly into editing.
 
-### 3. Server-side resolution (`supabase/functions/render-stats-snapshot/index.ts`)
-   a. After the campaign story block (~line 340), add the same `Intl.DateTimeFormat` logic to `calculateMetrics` so SVG snapshots reflect the correct seasonal label.
+### 2. Merge Template Repository into Deck Management
 
-### 4. Metric dropdown (`src/components/HotspotCalibrationControls.tsx`)
-   a. Add `{ value: "tz_offset_note", label: "🕐 TZ Offset Note" }` to `METRIC_OPTIONS`.
+a. Add a `Tabs` component to DeckManagement with two tabs: **Decks** (current deck list) and **Templates** (current InteractiveTemplates content).
+b. Move the template card grid, filters (all/action/data/hybrid), create/edit dialogs, and all mutation logic from `InteractiveTemplates.tsx` into a new `TemplateRepositoryTab.tsx` component, rendered inside the Templates tab.
+c. Update the sidebar: remove the separate "Interactive Slide Editor" entry; rename "Deck Management" to "Decks & Templates" (or keep as-is — your call).
+d. Update `App.tsx`: redirect `/interactive-templates` to `/deck-management?tab=templates` for backward compatibility.
+e. Keep `/template-editor/:id` as a standalone route (no sidebar) since that full-screen editor is intentionally immersive.
 
-### 5. Preview label/icon maps (`src/components/SlidePreviewOverlay.tsx`)
-   a. Add `tz_offset_note: "TZ Note"` to `METRIC_LABELS`.
-   b. Add `tz_offset_note: Clock` to `METRIC_ICONS`.
+### 3. Align DeckManagement header
 
-### 6. Test harness labels (`src/pages/DataTemplateTestHarness.tsx`)
-   a. Add `tz_offset_note: "Timezone Offset Note"` to `METRIC_LABELS`.
+a. Replace the current DeckManagement header with the same breadcrumb + action bar pattern used in DeckEditor.
+b. Breadcrumb: just `Deck Management` (top-level, no parent).
+c. Action bar: "New Deck" button (navigates to `/deck-builder`), plus any existing refresh/export actions.
 
-### 7. Decision document
-   a. Append a new `## Update — 2026-04-07: TZ Offset Note Metric` section to `docs/decisions/deck-editor/2026-04-07_hotspot-controls-stable-layout_feature-doc_lovable.md`, including a **Possible Future Feature** subsection describing the generalized approach:
-      - Client passes `Intl.DateTimeFormat().resolvedOptions().timeZone` to `render-stats-snapshot`.
-      - Server uses that IANA timezone for all `toLocaleString` calls.
-      - Batch/cron jobs default to `America/New_York`.
-      - Per-campaign timezone preference stored in `campaigns` table.
-      - References the existing plan in `docs/decisions/snapshots/2026-03-06_timezone-passthrough-snapshots_feature-doc_lovable.md`.
+### 4. Standardize save/cancel/discard patterns
 
-## Core logic (both client and server)
-```typescript
-const parts = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/New_York',
-  timeZoneName: 'short',
-}).formatToParts(new Date());
-const abbr = parts.find(p => p.type === 'timeZoneName')?.value || 'EST';
-const offset = abbr === 'EDT' ? 4 : 5;
-const tzNote = `Note: ${abbr} = UTC - ${offset} hours`;
-```
+a. Document a shared pattern: primary action right-most, destructive/cancel left of it, status indicator (e.g., "Unsaved changes") as a badge.
+b. Ensure DeckBuilder, DeckEditor, and template edit dialogs all follow this order.
+c. Template edit dialogs already have unsaved-changes guards; verify DeckBuilder warns if navigating away mid-upload.
 
-## Files changed
-- `src/types/viralTemplates.ts`
-- `src/hooks/useLiveMetrics.ts`
-- `supabase/functions/render-stats-snapshot/index.ts`
-- `src/components/HotspotCalibrationControls.tsx`
-- `src/components/SlidePreviewOverlay.tsx`
-- `src/pages/DataTemplateTestHarness.tsx`
-- `docs/decisions/deck-editor/2026-04-07_hotspot-controls-stable-layout_feature-doc_lovable.md`
+### 5. Align template editing entry points
+
+a. From the Templates tab in Deck Management, clicking a template card opens the same editor it does today (action templates → inline dialog, data/hybrid templates → DataTemplateDialog or TemplateEditorPage).
+b. No change to the editing components themselves — only the entry point moves from a standalone page to a tab.
+
+### 6. Update decision document
+
+a. Create `docs/decisions/decks/2026-04-07_unified-deck-template-ux_feature-doc_lovable.md` with status "Approved & Implemented".
+
+## Files Changed
+
+- `src/pages/DeckBuilder.tsx` — breadcrumb header, navigate to editor on success
+- `src/pages/DeckManagement.tsx` — add Tabs (Decks / Templates), breadcrumb header, action bar
+- `src/components/TemplateRepositoryTab.tsx` (new) — extracted from InteractiveTemplates
+- `src/pages/InteractiveTemplates.tsx` — redirect wrapper to DeckManagement?tab=templates
+- `src/components/AppSidebar.tsx` — remove or update "Interactive Slide Editor" link
+- `src/App.tsx` — redirect `/interactive-templates` route
+- Decision document (new)
+
+## Files NOT Changed
+
+- `src/pages/DeckEditor.tsx` — already the reference layout
+- `src/pages/TemplateEditorPage.tsx` — intentionally standalone
+- `src/components/FullResolutionHotspotEditor.tsx` — no changes
+- `src/components/DataTemplateEditor.tsx` — no changes
+- Database schema — no migrations
+
+## Risk
+
+- InteractiveTemplates.tsx is ~1360 lines; extracting into a tab component requires careful state migration. Approach: lift as a self-contained component with its own query/mutation hooks (already pattern-compatible).
+- Backward links from other pages (e.g., DeckEditor breadcrumb linking to `/deck-management`) continue to work since that route persists.
 
