@@ -1775,6 +1775,10 @@ Add Slide(s)
                 setPreviewHotspots(hotspots as Hotspot[]);
               }}
               onSave={handleSaveHotspots}
+              onCancel={() => {
+                setPreviewHotspots(initialHotspots as Hotspot[]);
+                setHotspotEditorOpen(false);
+              }}
             />
           </DialogContent>
         </Dialog>

@@ -103,6 +103,7 @@ interface FullResolutionHotspotEditorProps {
   initialHotspots?: Hotspot[];
   onChange?: (hotspots: Hotspot[]) => void;
   onSave: (hotspots: Hotspot[]) => void;
+  onCancel?: () => void;
 }
 
 export const FullResolutionHotspotEditor = ({
@@ -110,6 +111,7 @@ export const FullResolutionHotspotEditor = ({
   initialHotspots = [],
   onChange,
   onSave,
+  onCancel,
 }: FullResolutionHotspotEditorProps) => {
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
@@ -909,9 +911,16 @@ export const FullResolutionHotspotEditor = ({
 
 
 
-                <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
-                  Save & Close
-                </Button>
+                <div className="flex gap-2">
+                  {onCancel && (
+                    <Button onClick={onCancel} variant="outline" size="sm">
+                      Discard Changes
+                    </Button>
+                  )}
+                  <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
+                    Save & Close
+                  </Button>
+                </div>
               </div>
             </div>
 
