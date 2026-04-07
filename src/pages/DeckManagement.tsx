@@ -17,6 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
+import { TemplateRepositoryTab } from "@/components/TemplateRepositoryTab";
+import { FolderOpen } from "lucide-react";
 interface DeckWithSlides {
   slug: string;
   created_at: string;
