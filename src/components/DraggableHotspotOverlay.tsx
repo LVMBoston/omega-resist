@@ -42,6 +42,7 @@ export function DraggableHotspotOverlay({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editModeIndex, setEditModeIndex] = useState<number | null>(null);
   const dragStartPos = useRef<{ x: number; y: number; hotspotX: number; hotspotY: number } | null>(null);
+  const mapControlsRef = useRef<Record<string, MapControls>>({});
 
   const getImageBounds = useCallback(() => {
     if (!imageRef.current) return null;
