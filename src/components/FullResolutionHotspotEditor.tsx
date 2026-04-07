@@ -103,6 +103,7 @@ interface FullResolutionHotspotEditorProps {
   initialHotspots?: Hotspot[];
   onChange?: (hotspots: Hotspot[]) => void;
   onSave: (hotspots: Hotspot[]) => void;
+  onCancel?: () => void;
 }
 
 export const FullResolutionHotspotEditor = ({
