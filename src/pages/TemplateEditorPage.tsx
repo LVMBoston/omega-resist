@@ -115,7 +115,7 @@ export default function TemplateEditorPage() {
   };
 
   const handleBack = () => {
-    navigate("/interactive-templates");
+    navigate("/deck-management?tab=templates");
   };
 
   if (isLoading && !isNewTemplate) {
