@@ -363,6 +363,12 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: "--", source: "fallback" });
       }
 
+      // TZ offset note (DST-aware)
+      const tzParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' }).formatToParts(new Date());
+      const tzAbbr = tzParts.find(p => p.type === 'timeZoneName')?.value || 'EST';
+      const tzOffset = tzAbbr === 'EDT' ? 4 : 5;
+      metricResults.push({ key: "tz_offset_note", label: METRIC_LABELS.tz_offset_note, value: `Note: ${tzAbbr} = UTC - ${tzOffset} hours`, source: "current" });
+
       console.log("[useLiveMetrics] Final metrics count:", metricResults.length, metricResults.map((m) => m.key));
       setMetrics(metricResults);
     } catch (err) {

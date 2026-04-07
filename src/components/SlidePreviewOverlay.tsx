@@ -70,6 +70,7 @@ const METRIC_ICONS: Record<string, React.ElementType> = {
   last_updated: Clock,
   campaign_story: Type,
   manual_entry: Type,
+  tz_offset_note: Clock,
 };
 
 export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {
