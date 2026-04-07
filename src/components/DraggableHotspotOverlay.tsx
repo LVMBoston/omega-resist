@@ -236,10 +236,7 @@ export function DraggableHotspotOverlay({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      onMapControlsReady && onMapZoomChange;
-                      // Use the map controls to zoom with small delta
-                      const controls = (mapRef as any)?.[hotspot.id];
-                      // Fallback: dispatch via onMapZoomChange with current + delta
+                      mapControlsRef.current[hotspot.id]?.zoomIn(0.5);
                     }}
                     className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer border-b border-gray-200"
                     title="Zoom in (fine)"
@@ -251,6 +248,7 @@ export function DraggableHotspotOverlay({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
+                      mapControlsRef.current[hotspot.id]?.zoomOut(0.5);
                     }}
                     className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer rounded-bl-lg"
                     title="Zoom out (fine)"
@@ -259,7 +257,6 @@ export function DraggableHotspotOverlay({
                   </button>
                 </div>
               )}
-              </button>
 
               {/* Drag handle - on the corner for map hotspots */}
               <div 
