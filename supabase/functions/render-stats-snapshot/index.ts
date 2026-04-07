@@ -482,6 +482,12 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     metrics.campaign_story = "--";
   }
 
+  // TZ offset note (DST-aware)
+  const tzParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' }).formatToParts(new Date());
+  const tzAbbr = tzParts.find((p: Intl.DateTimeFormatPart) => p.type === 'timeZoneName')?.value || 'EST';
+  const tzOffset = tzAbbr === 'EDT' ? 4 : 5;
+  metrics.tz_offset_note = `Note: ${tzAbbr} = UTC - ${tzOffset} hours`;
+
   return metrics;
 }
 

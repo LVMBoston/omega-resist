@@ -170,7 +170,8 @@ export type LiveMetricKey =
   | 'earliest_active'   // Earliest activity timestamp (viewer's local TZ)
   | 'latest_active'     // Latest activity timestamp (viewer's local TZ)
   | 'last_updated'      // When snapshot was last rendered (for SSR)
-  | 'campaign_story';   // Compact campaign narrative headline
+  | 'campaign_story'    // Compact campaign narrative headline
+  | 'tz_offset_note';  // Dynamic ET offset note (DST-aware)
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 

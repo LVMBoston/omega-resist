@@ -31,6 +31,7 @@ const METRIC_LABELS: Record<string, string> = {
   latest_active: "Last Active",
   last_updated: "Updated",
   campaign_story: "Story",
+  tz_offset_note: "TZ Note",
 };
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
@@ -69,6 +70,7 @@ const METRIC_ICONS: Record<string, React.ElementType> = {
   last_updated: Clock,
   campaign_story: Type,
   manual_entry: Type,
+  tz_offset_note: Clock,
 };
 
 export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {

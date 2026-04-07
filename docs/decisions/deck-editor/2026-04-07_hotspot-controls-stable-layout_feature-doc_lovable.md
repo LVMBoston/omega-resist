@@ -44,3 +44,54 @@ The mouse scroll wheel zoom on map hotspots is too coarse for precise framing.
 
 ### Rationale
 Fractional zoom (±0.5) provides much finer framing control than the default scroll wheel (±1 level per tick).
+
+## Update — 2026-04-07: TZ Offset Note Metric
+
+### Problem
+Hotspot #11 uses static manual text ("Note: ET = UTC - 5 hours") that becomes incorrect during Daylight Saving Time (UTC-4 in EDT).
+
+### Changes
+
+#### `src/types/viralTemplates.ts`
+- Added `'tz_offset_note'` to the `LiveMetricKey` union.
+
+#### `src/hooks/useLiveMetrics.ts`
+- Added `tz_offset_note: "Timezone Offset Note"` to `METRIC_LABELS`.
+- After the `campaign_story` block, computes the current Eastern Time abbreviation via `Intl.DateTimeFormat` and pushes the formatted note.
+
+#### `supabase/functions/render-stats-snapshot/index.ts`
+- Same `Intl.DateTimeFormat` logic added to `calculateMetrics` so SVG snapshots reflect the correct seasonal label.
+
+#### `src/components/HotspotCalibrationControls.tsx`
+- Added `{ value: "tz_offset_note", label: "🕐 TZ Offset Note" }` to `METRIC_OPTIONS`.
+
+#### `src/components/SlidePreviewOverlay.tsx`
+- Added `tz_offset_note: "TZ Note"` to `METRIC_LABELS` and `Clock` to `METRIC_ICONS`.
+
+#### `src/pages/DataTemplateTestHarness.tsx`
+- Added `tz_offset_note: "Timezone Offset Note"` to `METRIC_LABELS`.
+
+### Core Logic (shared client + server)
+```typescript
+const parts = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  timeZoneName: 'short',
+}).formatToParts(new Date());
+const abbr = parts.find(p => p.type === 'timeZoneName')?.value || 'EST';
+const offset = abbr === 'EDT' ? 4 : 5;
+const tzNote = `Note: ${abbr} = UTC - ${offset} hours`;
+```
+
+### Rationale
+Hardcoded "ET = UTC - 5" is wrong during EDT. Using `Intl.DateTimeFormat` with `America/New_York` auto-detects the current DST state and produces the correct abbreviation and offset.
+
+### Possible Future Feature: Generalized Viewer-Local Timezone Support
+
+Currently, the `tz_offset_note` metric (and all timestamp formatting in snapshots) is hardcoded to `America/New_York`. A future enhancement could make snapshots timezone-aware for any viewer:
+
+1. **Client passes timezone**: When `DeckViewer` or `StatsPageSlide` requests a snapshot refresh, include `Intl.DateTimeFormat().resolvedOptions().timeZone` (e.g., `"America/Chicago"`, `"Europe/London"`) in the request body.
+2. **Server uses viewer timezone**: `render-stats-snapshot` validates the IANA timezone string via `new Intl.DateTimeFormat('en-US', { timeZone })` (catch → fallback to `"America/New_York"`) and uses it for all `toLocaleString` / `toLocaleDateString` / `toLocaleTimeString` calls.
+3. **Batch/cron jobs**: Automated snapshot refreshes (e.g., `refresh-all-snapshots`) would default to `"America/New_York"` since there is no viewer context.
+4. **Per-campaign preference**: A `timezone` column on the `campaigns` table could store the campaign owner's preferred timezone, used as the default when no viewer timezone is provided.
+
+This approach is documented in detail in `docs/decisions/snapshots/2026-03-06_timezone-passthrough-snapshots_feature-doc_lovable.md`.
