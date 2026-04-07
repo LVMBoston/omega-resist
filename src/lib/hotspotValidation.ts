@@ -131,6 +131,10 @@ export function getAllIntersections(hotspots: Hotspot[]): Array<{
   
   for (let i = 0; i < hotspots.length; i++) {
     for (let j = i + 1; j < hotspots.length; j++) {
+      // Skip pairs where either hotspot is a data type (non-interactive)
+      if (DATA_HOTSPOT_TYPES.has(hotspots[i].type || '') || DATA_HOTSPOT_TYPES.has(hotspots[j].type || '')) {
+        continue;
+      }
       const intersection = calculateIntersectionRect(hotspots[i], hotspots[j]);
       if (intersection) {
         intersections.push({
