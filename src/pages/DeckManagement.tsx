@@ -427,86 +427,113 @@ const Index = () => {
   return <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="w-full px-6 py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Deck Management</h1>
-            <p className="text-sm text-muted-foreground mt-1">Add interactive slides, rearrange slides, add & remove slides. To edit an interactive slide use "Interactive Slide Editor"</p>
-          </div>
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-2xl font-bold">Deck Management</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex items-center gap-2">
-            <Button onClick={() => fetchDecks(true)} variant="outline" disabled={refreshing} title="Refresh slide counts">
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh Counts
-            </Button>
-            <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Import from Google Slides
+            {activeTab === "decks" && (
+              <>
+                <Button onClick={() => fetchDecks(true)} variant="outline" disabled={refreshing} title="Refresh slide counts">
+                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh Counts
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Import Google Slides</DialogTitle>
-                  <DialogDescription>
-                    Enter a Google Slides URL or presentation ID and choose a name for your deck.
-                    <br /><br />
-                    <strong>Important:</strong> You must share the presentation with your service account email.
-                    <br />
-                    Find the service account email in your Google Cloud Console under "Service Accounts".
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="slides-url">Google Slides URL</Label>
-                    <Input id="slides-url" placeholder="https://docs.google.com/presentation/d/1fDM9jDqB8G.../edit" value={googleSlidesUrl} onChange={e => setGoogleSlidesUrl(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="deck-slug">Deck Name</Label>
-                    <Input id="deck-slug" placeholder="my-deck" value={deckSlug} onChange={e => setDeckSlug(e.target.value)} />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleImportSlides} disabled={importing}>
-                    {importing ? "Importing..." : "Import"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <Button onClick={() => navigate("/deck-builder")}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Deck
-            </Button>
+                <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Import from Google Slides
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Import Google Slides</DialogTitle>
+                      <DialogDescription>
+                        Enter a Google Slides URL or presentation ID and choose a name for your deck.
+                        <br /><br />
+                        <strong>Important:</strong> You must share the presentation with your service account email.
+                        <br />
+                        Find the service account email in your Google Cloud Console under "Service Accounts".
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="slides-url">Google Slides URL</Label>
+                        <Input id="slides-url" placeholder="https://docs.google.com/presentation/d/1fDM9jDqB8G.../edit" value={googleSlidesUrl} onChange={e => setGoogleSlidesUrl(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="deck-slug">Deck Name</Label>
+                        <Input id="deck-slug" placeholder="my-deck" value={deckSlug} onChange={e => setDeckSlug(e.target.value)} />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleImportSlides} disabled={importing}>
+                        {importing ? "Importing..." : "Import"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button onClick={() => navigate("/deck-builder")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Deck
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <main className="w-full px-6 py-8">
-        {loading ? <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading decks...</p>
-          </div> : decks.length === 0 ? <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No decks found. Create your first deck to get started.</p>
-            <Button onClick={() => navigate("/deck-builder")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Deck
-            </Button>
-          </div> : <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={decks.map(d => d.slug)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {decks.map(deck => (
-                  <SortableDeckCard 
-                    key={deck.slug} 
-                    deck={deck} 
-                    onExportPDF={handleExportPDF} 
-                    onDelete={handleDelete} 
-                    onShowInteractiveImage={handleShowInteractiveImage} 
-                    onShowImageSlides={handleShowImageSlides} 
-                    onShowCampaignDetails={fetchCampaignDetails}
-                    formatDate={formatDate} 
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>}
+        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="decks">
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Decks
+            </TabsTrigger>
+            <TabsTrigger value="templates">
+              <Presentation className="h-4 w-4 mr-2" />
+              Templates
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="decks">
+            {loading ? <div className="text-center py-12">
+                <p className="text-muted-foreground">Loading decks...</p>
+              </div> : decks.length === 0 ? <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No decks found. Create your first deck to get started.</p>
+                <Button onClick={() => navigate("/deck-builder")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Deck
+                </Button>
+              </div> : <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={decks.map(d => d.slug)} strategy={rectSortingStrategy}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {decks.map(deck => (
+                      <SortableDeckCard 
+                        key={deck.slug} 
+                        deck={deck} 
+                        onExportPDF={handleExportPDF} 
+                        onDelete={handleDelete} 
+                        onShowInteractiveImage={handleShowInteractiveImage} 
+                        onShowImageSlides={handleShowImageSlides} 
+                        onShowCampaignDetails={fetchCampaignDetails}
+                        formatDate={formatDate} 
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>}
+          </TabsContent>
+
+          <TabsContent value="templates">
+            <TemplateRepositoryTab />
+          </TabsContent>
+        </Tabs>
       </main>
+
 
       <Dialog open={interactiveImageDialog} onOpenChange={setInteractiveImageDialog}>
         <DialogContent className="max-w-6xl max-h-[85vh]">
