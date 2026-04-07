@@ -1635,6 +1635,38 @@ Add Slide(s)
               {selectedSlide ? (
                 <div className="space-y-3 text-sm">
                   <div>
+                    <div className="text-muted-foreground">Name</div>
+                    <div className="font-medium truncate" title={(() => {
+                      if (selectedSlide.template_id) {
+                        const t = templates.find(tp => tp.id === selectedSlide.template_id);
+                        return t?.name || 'Interactive Slide';
+                      }
+                      if (selectedSlide.type === 'vimeo' || selectedSlide.type === 'video') return 'Video Slide';
+                      try {
+                        const url = new URL(selectedSlide.content_url);
+                        const filename = url.pathname.split('/').pop() || 'Slide';
+                        return decodeURIComponent(filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+                      } catch {
+                        return `Slide ${selectedSlide.position}`;
+                      }
+                    })()}>
+                      {(() => {
+                        if (selectedSlide.template_id) {
+                          const t = templates.find(tp => tp.id === selectedSlide.template_id);
+                          return t?.name || 'Interactive Slide';
+                        }
+                        if (selectedSlide.type === 'vimeo' || selectedSlide.type === 'video') return 'Video Slide';
+                        try {
+                          const url = new URL(selectedSlide.content_url);
+                          const filename = url.pathname.split('/').pop() || 'Slide';
+                          return decodeURIComponent(filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+                        } catch {
+                          return `Slide ${selectedSlide.position}`;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div>
                     <div className="text-muted-foreground">Position</div>
                     <div className="font-medium">{selectedSlide.position}</div>
                   </div>
