@@ -239,7 +239,7 @@ export function DraggableHotspotOverlay({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      mapControlsRef.current[hotspot.id]?.zoomIn(0.5);
+                      mapControlsRef.current[hotspot.id]?.zoomIn(0.25);
                     }}
                     className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer border-b border-gray-200"
                     title="Zoom in (fine)"
