@@ -911,9 +911,16 @@ export const FullResolutionHotspotEditor = ({
 
 
 
-                <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
-                  Save & Close
-                </Button>
+                <div className="flex gap-2">
+                  {onCancel && (
+                    <Button onClick={onCancel} variant="outline" size="sm">
+                      Discard Changes
+                    </Button>
+                  )}
+                  <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
+                    Save & Close
+                  </Button>
+                </div>
               </div>
             </div>
 
