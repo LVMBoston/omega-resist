@@ -193,10 +193,12 @@ export function DraggableHotspotOverlay({
                   height={pixelHeight}
                   isEditorMode={!isMapLocked}
                   onBoundsChange={!isMapLocked ? (bounds) => onMapBoundsChange?.(hotspot.id, bounds) : undefined}
-                  onMapReady={!isMapLocked ? (controls) => {
+                  onMapReady={(controls) => {
                     mapControlsRef.current[hotspot.id] = controls;
-                    onMapControlsReady?.(hotspot.id, controls);
-                  } : undefined}
+                    if (!isMapLocked) {
+                      onMapControlsReady?.(hotspot.id, controls);
+                    }
+                  }}
                   onMapZoomChange={(zoom) => onMapZoomChange?.(hotspot.id, zoom)}
                 />
               ) : (
