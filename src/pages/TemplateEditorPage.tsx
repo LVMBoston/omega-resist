@@ -115,7 +115,7 @@ export default function TemplateEditorPage() {
   };
 
   const handleBack = () => {
-    navigate("/interactive-templates");
+    navigate("/deck-management?tab=templates");
   };
 
   if (isLoading && !isNewTemplate) {
@@ -134,7 +134,7 @@ export default function TemplateEditorPage() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/interactive-templates">Template Repository</Link>
+                <Link to="/deck-management?tab=templates">Template Repository</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
