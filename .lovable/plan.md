@@ -1,37 +1,60 @@
 
 
-# Stabilize & Regroup HotspotCalibrationControls Layout
+# Add `tz_offset_note` Metric — DST-Aware Timezone Label
 
-## Problem
-Selecting "Manual Entry" conditionally inserts a Label textarea, shifting all controls below it. Controls are also not logically grouped.
+## Summary
+Add a new computed metric `tz_offset_note` that dynamically outputs `"Note: EDT = UTC - 4 hours"` or `"Note: EST = UTC - 5 hours"` based on the current DST state, replacing static manual text.
 
 ## Plan
 
-### 1. Always render the Label field (stable layout)
-   a. Remove the `{isManualEntry && ...}` conditional. Always render the Label textarea in the same grid slot.
-   b. When `metricKey !== "manual_entry"`, render it as `disabled` with `opacity-40` so the slot is occupied but visually muted.
+### 1. Add metric key (`src/types/viralTemplates.ts`)
+   a. Add `| 'tz_offset_note'` to the `LiveMetricKey` union with comment `// Dynamic ET offset note (DST-aware)`.
 
-### 2. Reorder into logical groups + 3-column row for Size/Weight/Font
-   Switch the grid to this order:
+### 2. Client-side resolution (`src/hooks/useLiveMetrics.ts`)
+   a. Add `tz_offset_note: "Timezone Offset Note"` to `METRIC_LABELS`.
+   b. After the `campaign_story` block (~line 363), add:
+      - Use `Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })` to extract `"EDT"` or `"EST"`.
+      - Derive offset (EDT → 4, EST → 5).
+      - Push `{ key: "tz_offset_note", value: "Note: EDT = UTC - 4 hours", source: "current" }`.
 
-   | Col 1 | Col 2 |
-   |-------|-------|
-   | **Metric** | **Label** (always present) |
-   | **Size** ·· **Weight** ·· **Font** | ← 3-col row spanning full width |
-   | **X** | **Y** |
-   | **W** | **H** |
-   | **H-Align** | **V-Align** |
-   | **Text Color** | **BG Color** |
-   | **Preview** | |
+### 3. Server-side resolution (`supabase/functions/render-stats-snapshot/index.ts`)
+   a. After the campaign story block (~line 340), add the same `Intl.DateTimeFormat` logic to `calculateMetrics` so SVG snapshots reflect the correct seasonal label.
 
-   a. Wrap Size, Weight, and Font in a single `col-span-2` container with an inner `grid grid-cols-3 gap-3`.
-   b. Convert **Size** from `SliderWithButtons` to a simple number input (matching Weight/Font height) to fit the 3-col layout — or keep the slider but shrink it. Given the annotated image shows compact dropdowns, a small number input with stepper is cleaner.
-   c. Move Font and Weight up from their current position (lines 179–211) into this row.
-   d. Move X/Y before W/H (already the case).
+### 4. Metric dropdown (`src/components/HotspotCalibrationControls.tsx`)
+   a. Add `{ value: "tz_offset_note", label: "🕐 TZ Offset Note" }` to `METRIC_OPTIONS`.
 
-### 3. File changed
-   - `src/components/HotspotCalibrationControls.tsx` — layout reorder, always-render label, 3-col Size/Weight/Font row
+### 5. Preview label/icon maps (`src/components/SlidePreviewOverlay.tsx`)
+   a. Add `tz_offset_note: "TZ Note"` to `METRIC_LABELS`.
+   b. Add `tz_offset_note: Clock` to `METRIC_ICONS`.
 
-### 4. Decision document
-   - Archive to `docs/decisions/deck-editor/2026-04-07_hotspot-controls-stable-layout_feature-doc_lovable.md`
+### 6. Test harness labels (`src/pages/DataTemplateTestHarness.tsx`)
+   a. Add `tz_offset_note: "Timezone Offset Note"` to `METRIC_LABELS`.
+
+### 7. Decision document
+   a. Append a new `## Update — 2026-04-07: TZ Offset Note Metric` section to `docs/decisions/deck-editor/2026-04-07_hotspot-controls-stable-layout_feature-doc_lovable.md`, including a **Possible Future Feature** subsection describing the generalized approach:
+      - Client passes `Intl.DateTimeFormat().resolvedOptions().timeZone` to `render-stats-snapshot`.
+      - Server uses that IANA timezone for all `toLocaleString` calls.
+      - Batch/cron jobs default to `America/New_York`.
+      - Per-campaign timezone preference stored in `campaigns` table.
+      - References the existing plan in `docs/decisions/snapshots/2026-03-06_timezone-passthrough-snapshots_feature-doc_lovable.md`.
+
+## Core logic (both client and server)
+```typescript
+const parts = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  timeZoneName: 'short',
+}).formatToParts(new Date());
+const abbr = parts.find(p => p.type === 'timeZoneName')?.value || 'EST';
+const offset = abbr === 'EDT' ? 4 : 5;
+const tzNote = `Note: ${abbr} = UTC - ${offset} hours`;
+```
+
+## Files changed
+- `src/types/viralTemplates.ts`
+- `src/hooks/useLiveMetrics.ts`
+- `supabase/functions/render-stats-snapshot/index.ts`
+- `src/components/HotspotCalibrationControls.tsx`
+- `src/components/SlidePreviewOverlay.tsx`
+- `src/pages/DataTemplateTestHarness.tsx`
+- `docs/decisions/deck-editor/2026-04-07_hotspot-controls-stable-layout_feature-doc_lovable.md`
 
