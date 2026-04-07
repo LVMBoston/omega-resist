@@ -193,10 +193,12 @@ export function DraggableHotspotOverlay({
                   height={pixelHeight}
                   isEditorMode={!isMapLocked}
                   onBoundsChange={!isMapLocked ? (bounds) => onMapBoundsChange?.(hotspot.id, bounds) : undefined}
-                  onMapReady={!isMapLocked ? (controls) => {
+                  onMapReady={(controls) => {
                     mapControlsRef.current[hotspot.id] = controls;
-                    onMapControlsReady?.(hotspot.id, controls);
-                  } : undefined}
+                    if (!isMapLocked) {
+                      onMapControlsReady?.(hotspot.id, controls);
+                    }
+                  }}
                   onMapZoomChange={(zoom) => onMapZoomChange?.(hotspot.id, zoom)}
                 />
               ) : (
@@ -239,7 +241,7 @@ export function DraggableHotspotOverlay({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      mapControlsRef.current[hotspot.id]?.zoomIn(0.5);
+                      mapControlsRef.current[hotspot.id]?.zoomIn(0.25);
                     }}
                     className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer border-b border-gray-200"
                     title="Zoom in (fine)"
@@ -251,7 +253,7 @@ export function DraggableHotspotOverlay({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      mapControlsRef.current[hotspot.id]?.zoomOut(0.5);
+                      mapControlsRef.current[hotspot.id]?.zoomOut(0.25);
                     }}
                     className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer rounded-bl-lg"
                     title="Zoom out (fine)"
