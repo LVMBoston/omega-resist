@@ -227,6 +227,39 @@ export function DraggableHotspotOverlay({
                 {isMapLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
               </button>
 
+              {/* Fine zoom controls - only when unlocked */}
+              {!isMapLocked && (
+                <div className="absolute top-8 right-0 flex flex-col z-[1002]" data-capture-hide>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onMapControlsReady && onMapZoomChange;
+                      // Use the map controls to zoom with small delta
+                      const controls = (mapRef as any)?.[hotspot.id];
+                      // Fallback: dispatch via onMapZoomChange with current + delta
+                    }}
+                    className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer border-b border-gray-200"
+                    title="Zoom in (fine)"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer rounded-bl-lg"
+                    title="Zoom out (fine)"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              </button>
+
               {/* Drag handle - on the corner for map hotspots */}
               <div 
                 data-capture-hide
