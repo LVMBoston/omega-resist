@@ -1,3 +1,5 @@
+import { DATA_HOTSPOT_TYPES } from './hotspotClassification';
+
 interface Hotspot {
   id: string;
   x: number;
@@ -62,14 +64,16 @@ export function detectOverlaps(hotspots: Hotspot[]): Map<string, string[]> {
   
   for (let i = 0; i < hotspots.length; i++) {
     for (let j = i + 1; j < hotspots.length; j++) {
+      // Skip pairs where either hotspot is a data type (non-interactive)
+      if (DATA_HOTSPOT_TYPES.has(hotspots[i].type || '') || DATA_HOTSPOT_TYPES.has(hotspots[j].type || '')) {
+        continue;
+      }
       if (checkOverlap(hotspots[i], hotspots[j])) {
-        // Add to h1's overlap list
         if (!overlaps.has(hotspots[i].id)) {
           overlaps.set(hotspots[i].id, []);
         }
         overlaps.get(hotspots[i].id)!.push(hotspots[j].id);
         
-        // Add to h2's overlap list
         if (!overlaps.has(hotspots[j].id)) {
           overlaps.set(hotspots[j].id, []);
         }
@@ -127,6 +131,10 @@ export function getAllIntersections(hotspots: Hotspot[]): Array<{
   
   for (let i = 0; i < hotspots.length; i++) {
     for (let j = i + 1; j < hotspots.length; j++) {
+      // Skip pairs where either hotspot is a data type (non-interactive)
+      if (DATA_HOTSPOT_TYPES.has(hotspots[i].type || '') || DATA_HOTSPOT_TYPES.has(hotspots[j].type || '')) {
+        continue;
+      }
       const intersection = calculateIntersectionRect(hotspots[i], hotspots[j]);
       if (intersection) {
         intersections.push({
