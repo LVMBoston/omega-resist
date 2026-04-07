@@ -1,3 +1,5 @@
+import { DATA_HOTSPOT_TYPES } from './hotspotClassification';
+
 interface Hotspot {
   id: string;
   x: number;
