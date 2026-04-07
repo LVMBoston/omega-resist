@@ -134,7 +134,7 @@ export default function TemplateEditorPage() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/interactive-templates">Template Repository</Link>
+                <Link to="/deck-management?tab=templates">Template Repository</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
