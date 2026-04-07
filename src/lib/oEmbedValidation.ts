@@ -22,22 +22,27 @@ export async function fetchOEmbed(url: string): Promise<OEmbedResult | null> {
   const provider = detectVideoProvider(url);
   if (!provider) return null;
 
-  const endpoint =
-    provider === "youtube"
-      ? `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
-      : `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const proxyUrl = `https://${projectId}.supabase.co/functions/v1/oembed-proxy?url=${encodeURIComponent(url)}`;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const res = await fetch(endpoint, { signal: controller.signal });
+    const res = await fetch(proxyUrl, {
+      signal: controller.signal,
+      headers: {
+        "apikey": anonKey,
+        "Content-Type": "application/json",
+      },
+    });
     if (!res.ok) return null;
     const data = await res.json();
     return {
       title: data.title ?? "Untitled",
-      thumbnailUrl: data.thumbnail_url ?? "",
-      provider: provider === "youtube" ? "YouTube" : "Vimeo",
+      thumbnailUrl: data.thumbnailUrl ?? "",
+      provider: data.provider ?? (provider === "youtube" ? "YouTube" : "Vimeo"),
     };
   } catch {
     return null;
