@@ -7,7 +7,7 @@ import { SliderWithButtons } from "@/components/ui/slider-with-buttons";
 
 // Common fonts available on most systems
 const FONT_OPTIONS = [
-  { value: "Calibri, sans-serif", label: "Calibri (Body)" },
+  { value: "Calibri, sans-serif", label: "Calibri" },
   { value: "'Arial', sans-serif", label: "Arial" },
   { value: "'Helvetica Neue', Helvetica, sans-serif", label: "Helvetica" },
   { value: "'Georgia', serif", label: "Georgia" },
@@ -65,7 +65,6 @@ export function HotspotCalibrationControls({
     });
   };
 
-  // Parse numeric values from style strings
   const fontSize = parseInt(style.fontSize || "56") || 56;
   const fontWeight = style.fontWeight || "700";
   const fontFamily = style.fontFamily || "Calibri, sans-serif";
@@ -77,31 +76,30 @@ export function HotspotCalibrationControls({
   const isManualEntry = hotspot.metricKey === "manual_entry";
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {/* Metric Key */}
-      <div className="space-y-2">
-        <Label className="text-xs">Metric</Label>
-        <Select 
-          value={hotspot.metricKey || "seeds"} 
-          onValueChange={(val) => onUpdate({ metricKey: val as LiveMetricKey })}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {METRIC_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Manual Label - only shown when Manual Entry is selected */}
-      {isManualEntry && (
+    <div className="space-y-3">
+      {/* Row 1: Metric | Label */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label className="text-xs">Label (use Enter for line breaks)</Label>
+          <Label className="text-xs">Metric</Label>
+          <Select
+            value={hotspot.metricKey || "seeds"}
+            onValueChange={(val) => onUpdate({ metricKey: val as LiveMetricKey })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {METRIC_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className={`space-y-2 ${!isManualEntry ? "opacity-40" : ""}`}>
+          <Label className="text-xs">Label</Label>
           <textarea
             key={`manual-label-${hotspot.id}`}
             value={hotspot.manualLabel || ""}
@@ -112,189 +110,193 @@ export function HotspotCalibrationControls({
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onDragStart={(e) => e.preventDefault()}
-            placeholder="Enter text..."
-            className="h-16 text-xs cursor-text w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+            placeholder={isManualEntry ? "Enter text..." : "Select Manual Entry"}
+            disabled={!isManualEntry}
+            className="h-16 text-xs cursor-text w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y disabled:cursor-not-allowed"
             draggable={false}
             rows={2}
           />
         </div>
-      )}
-
-      {/* Font Size - moved next to Metric */}
-      <SliderWithButtons
-        label="Size"
-        value={fontSize}
-        onChange={(val) => updateStyle({ fontSize: `${Math.round(val)}px` })}
-        min={12}
-        max={120}
-        step={1}
-        fineStep={1}
-        unit="px"
-      />
-
-      {/* X Position */}
-      <SliderWithButtons
-        label="X"
-        value={hotspot.x}
-        onChange={(val) => onUpdate({ x: val })}
-        min={0}
-        max={100}
-        step={0.5}
-        fineStep={0.1}
-      />
-
-      {/* Y Position */}
-      <SliderWithButtons
-        label="Y"
-        value={hotspot.y}
-        onChange={(val) => onUpdate({ y: val })}
-        min={0}
-        max={100}
-        step={0.5}
-        fineStep={0.1}
-      />
-
-      {/* Width */}
-      <SliderWithButtons
-        label="W"
-        value={hotspot.width}
-        onChange={(val) => onUpdate({ width: val })}
-        min={1}
-        max={100}
-        step={0.5}
-        fineStep={0.1}
-      />
-
-      {/* Height */}
-      <SliderWithButtons
-        label="H"
-        value={hotspot.height}
-        onChange={(val) => onUpdate({ height: val })}
-        min={1}
-        max={100}
-        step={0.5}
-        fineStep={0.1}
-      />
-
-      {/* Font Family */}
-      <div className="space-y-2">
-        <Label className="text-xs">Font</Label>
-        <Select value={fontFamily} onValueChange={(val) => updateStyle({ fontFamily: val })}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {FONT_OPTIONS.map((font) => (
-              <SelectItem key={font.value} value={font.value} className="text-xs">
-                {font.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Font Weight */}
-      <div className="space-y-2">
-        <Label className="text-xs">Weight</Label>
-        <Select value={fontWeight} onValueChange={(val) => updateStyle({ fontWeight: val })}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="400" className="text-xs">Normal</SelectItem>
-            <SelectItem value="500" className="text-xs">Medium</SelectItem>
-            <SelectItem value="600" className="text-xs">Semibold</SelectItem>
-            <SelectItem value="700" className="text-xs">Bold</SelectItem>
-            <SelectItem value="800" className="text-xs">Extra Bold</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Horizontal Align */}
-      <div className="space-y-2">
-        <Label className="text-xs">H-Align</Label>
-        <Select value={textAlign} onValueChange={(val) => updateStyle({ textAlign: val as 'left' | 'center' | 'right' })}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="left" className="text-xs">Left</SelectItem>
-            <SelectItem value="center" className="text-xs">Center</SelectItem>
-            <SelectItem value="right" className="text-xs">Right</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Vertical Align */}
-      <div className="space-y-2">
-        <Label className="text-xs">V-Align</Label>
-        <Select value={verticalAlign} onValueChange={(val) => updateStyle({ verticalAlign: val as 'top' | 'center' | 'bottom' })}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="top" className="text-xs">Top</SelectItem>
-            <SelectItem value="center" className="text-xs">Center</SelectItem>
-            <SelectItem value="bottom" className="text-xs">Bottom</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Text Color */}
-      <div className="space-y-2">
-        <Label className="text-xs">Text Color</Label>
-        <div className="flex gap-1">
+      {/* Row 2: Size | Weight | Font (3-col) */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-2">
+          <Label className="text-xs">Size</Label>
           <Input
-            value={textColor}
-            onChange={(e) => updateStyle({ color: e.target.value })}
-            placeholder="#1a1a1a"
-            className="h-8 text-xs font-mono flex-1"
+            type="number"
+            value={fontSize}
+            onChange={(e) => updateStyle({ fontSize: `${parseInt(e.target.value) || 12}px` })}
+            min={12}
+            max={120}
+            className="h-8 text-xs font-mono"
           />
-          <div className="relative h-8 w-8">
-            <input
-              type="color"
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Weight</Label>
+          <Select value={fontWeight} onValueChange={(val) => updateStyle({ fontWeight: val })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="400" className="text-xs">Normal</SelectItem>
+              <SelectItem value="500" className="text-xs">Medium</SelectItem>
+              <SelectItem value="600" className="text-xs">Semi</SelectItem>
+              <SelectItem value="700" className="text-xs">Bold</SelectItem>
+              <SelectItem value="800" className="text-xs">Extra</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Font</Label>
+          <Select value={fontFamily} onValueChange={(val) => updateStyle({ fontFamily: val })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FONT_OPTIONS.map((font) => (
+                <SelectItem key={font.value} value={font.value} className="text-xs">
+                  {font.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Row 3: X | Y */}
+      <div className="grid grid-cols-2 gap-3">
+        <SliderWithButtons
+          label="X"
+          value={hotspot.x}
+          onChange={(val) => onUpdate({ x: val })}
+          min={0}
+          max={100}
+          step={0.5}
+          fineStep={0.1}
+        />
+        <SliderWithButtons
+          label="Y"
+          value={hotspot.y}
+          onChange={(val) => onUpdate({ y: val })}
+          min={0}
+          max={100}
+          step={0.5}
+          fineStep={0.1}
+        />
+      </div>
+
+      {/* Row 4: W | H */}
+      <div className="grid grid-cols-2 gap-3">
+        <SliderWithButtons
+          label="W"
+          value={hotspot.width}
+          onChange={(val) => onUpdate({ width: val })}
+          min={1}
+          max={100}
+          step={0.5}
+          fineStep={0.1}
+        />
+        <SliderWithButtons
+          label="H"
+          value={hotspot.height}
+          onChange={(val) => onUpdate({ height: val })}
+          min={1}
+          max={100}
+          step={0.5}
+          fineStep={0.1}
+        />
+      </div>
+
+      {/* Row 5: H-Align | V-Align */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label className="text-xs">H-Align</Label>
+          <Select value={textAlign} onValueChange={(val) => updateStyle({ textAlign: val as 'left' | 'center' | 'right' })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="left" className="text-xs">Left</SelectItem>
+              <SelectItem value="center" className="text-xs">Center</SelectItem>
+              <SelectItem value="right" className="text-xs">Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">V-Align</Label>
+          <Select value={verticalAlign} onValueChange={(val) => updateStyle({ verticalAlign: val as 'top' | 'center' | 'bottom' })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="top" className="text-xs">Top</SelectItem>
+              <SelectItem value="center" className="text-xs">Center</SelectItem>
+              <SelectItem value="bottom" className="text-xs">Bottom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Row 6: Text Color | BG Color */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label className="text-xs">Text Color</Label>
+          <div className="flex gap-1">
+            <Input
               value={textColor}
               onChange={(e) => updateStyle({ color: e.target.value })}
-              className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
+              placeholder="#1a1a1a"
+              className="h-8 text-xs font-mono flex-1"
             />
-            <div
-              className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
-              style={{ backgroundColor: textColor }}
-            >
-              <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
+            <div className="relative h-8 w-8">
+              <input
+                type="color"
+                value={textColor}
+                onChange={(e) => updateStyle({ color: e.target.value })}
+                className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
+              />
+              <div
+                className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
+                style={{ backgroundColor: textColor }}
+              >
+                <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Background Color */}
-      <div className="space-y-2">
-        <Label className="text-xs">BG Color</Label>
-        <div className="flex gap-1">
-          <Input
-            value={bgColor}
-            onChange={(e) => updateStyle({ backgroundColor: e.target.value })}
-            placeholder="#e8dcc8"
-            className="h-8 text-xs font-mono flex-1"
-          />
-          <div className="relative h-8 w-8">
-            <input
-              type="color"
+        <div className="space-y-2">
+          <Label className="text-xs">BG Color</Label>
+          <div className="flex gap-1">
+            <Input
               value={bgColor}
               onChange={(e) => updateStyle({ backgroundColor: e.target.value })}
-              className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
+              placeholder="#e8dcc8"
+              className="h-8 text-xs font-mono flex-1"
             />
-            <div
-              className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
-              style={{ backgroundColor: bgColor }}
-            >
-              <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
+            <div className="relative h-8 w-8">
+              <input
+                type="color"
+                value={bgColor}
+                onChange={(e) => updateStyle({ backgroundColor: e.target.value })}
+                className="absolute inset-0 h-8 w-8 rounded border border-input cursor-pointer opacity-0"
+              />
+              <div
+                className="h-8 w-8 rounded border border-input flex items-center justify-center pointer-events-none"
+                style={{ backgroundColor: bgColor }}
+              >
+                <Pipette className="w-4 h-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Display Value */}
+      {/* Row 7: Preview */}
       <div className="space-y-2">
         <Label className="text-xs">Preview</Label>
         <Input
