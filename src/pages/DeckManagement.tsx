@@ -49,6 +49,8 @@ interface CampaignDetails {
 }
 
 const Index = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "decks";
   const [decks, setDecks] = useState<DeckWithSlides[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
