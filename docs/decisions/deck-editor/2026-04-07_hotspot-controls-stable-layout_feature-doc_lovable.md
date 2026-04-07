@@ -29,3 +29,18 @@ The `HotspotCalibrationControls` component had two UX issues:
 ## Rationale
 
 Keeping the Label field always present prevents layout shifts when toggling metric types. Grouping Size/Weight/Font together and pairing alignment controls makes the panel scannable and predictable.
+
+## Update — 2026-04-07: Fine Zoom Controls for Map Hotspots
+
+### Problem
+The mouse scroll wheel zoom on map hotspots is too coarse for precise framing.
+
+### Changes
+
+#### `src/components/DraggableHotspotOverlay.tsx`
+- Added `mapControlsRef` to store `MapControls` instances keyed by hotspot ID.
+- When a map hotspot is **unlocked**, +/− buttons appear below the lock toggle (right edge), each zooming by 0.5 levels for fine control.
+- The `onMapReady` callback now stores controls locally in addition to forwarding them upstream.
+
+### Rationale
+Fractional zoom (±0.5) provides much finer framing control than the default scroll wheel (±1 level per tick).

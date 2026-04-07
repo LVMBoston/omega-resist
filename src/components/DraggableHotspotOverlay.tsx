@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
-import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Share2, ExternalLink } from "lucide-react";
+import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Share2, ExternalLink, Plus, Minus } from "lucide-react";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
@@ -42,6 +42,7 @@ export function DraggableHotspotOverlay({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editModeIndex, setEditModeIndex] = useState<number | null>(null);
   const dragStartPos = useRef<{ x: number; y: number; hotspotX: number; hotspotY: number } | null>(null);
+  const mapControlsRef = useRef<Record<string, MapControls>>({});
 
   const getImageBounds = useCallback(() => {
     if (!imageRef.current) return null;
@@ -192,7 +193,10 @@ export function DraggableHotspotOverlay({
                   height={pixelHeight}
                   isEditorMode={!isMapLocked}
                   onBoundsChange={!isMapLocked ? (bounds) => onMapBoundsChange?.(hotspot.id, bounds) : undefined}
-                  onMapReady={!isMapLocked ? (controls) => onMapControlsReady?.(hotspot.id, controls) : undefined}
+                  onMapReady={!isMapLocked ? (controls) => {
+                    mapControlsRef.current[hotspot.id] = controls;
+                    onMapControlsReady?.(hotspot.id, controls);
+                  } : undefined}
                   onMapZoomChange={(zoom) => onMapZoomChange?.(hotspot.id, zoom)}
                 />
               ) : (
@@ -226,6 +230,36 @@ export function DraggableHotspotOverlay({
               >
                 {isMapLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
               </button>
+
+              {/* Fine zoom controls - only when unlocked */}
+              {!isMapLocked && (
+                <div className="absolute top-8 right-0 flex flex-col z-[1002]" data-capture-hide>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      mapControlsRef.current[hotspot.id]?.zoomIn(0.5);
+                    }}
+                    className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer border-b border-gray-200"
+                    title="Zoom in (fine)"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      mapControlsRef.current[hotspot.id]?.zoomOut(0.5);
+                    }}
+                    className="w-7 h-7 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 cursor-pointer rounded-bl-lg"
+                    title="Zoom out (fine)"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               {/* Drag handle - on the corner for map hotspots */}
               <div 
