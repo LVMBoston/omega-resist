@@ -111,6 +111,7 @@ export const FullResolutionHotspotEditor = ({
   initialHotspots = [],
   onChange,
   onSave,
+  onCancel,
 }: FullResolutionHotspotEditorProps) => {
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
