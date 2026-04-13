@@ -17,7 +17,7 @@ const getVimeoEmbedUrl = (url: string): string => {
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match?.[1]) {
-      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
+      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
     }
   }
   return url;
