@@ -1181,7 +1181,7 @@ export default function CampaignEoaManager() {
               variant="ghost"
               size="sm"
               onClick={() => cloneEoaForDeck(eoa)}
-              title="Clone for different deck (keeps utm_id)"
+              title="Clone EoA (blank mobilize code)"
             >
               <Files className="h-4 w-4" />
             </Button>
