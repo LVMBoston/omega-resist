@@ -456,14 +456,14 @@ function renderOverrideFields(
           <Label className="text-xs">SMS L00 Template</Label>
           <CopyButton text={values.smsL00 || getPlaceholder("smsL00")} />
         </div>
-        <Textarea value={values.smsL00} onChange={(e) => onChange("smsL00", e.target.value)} placeholder={getPlaceholder("smsL00")} rows={2} />
+        <Textarea value={values.smsL00} onChange={(e) => onChange("smsL00", e.target.value)} placeholder={getPlaceholder("smsL00")} rows={4} className="whitespace-pre-wrap" />
       </div>
       <div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">SMS L01 Template</Label>
           <CopyButton text={values.smsL01 || getPlaceholder("smsL01")} />
         </div>
-        <Textarea value={values.smsL01} onChange={(e) => onChange("smsL01", e.target.value)} placeholder={getPlaceholder("smsL01")} rows={2} />
+        <Textarea value={values.smsL01} onChange={(e) => onChange("smsL01", e.target.value)} placeholder={getPlaceholder("smsL01")} rows={4} className="whitespace-pre-wrap" />
       </div>
       <div>
         <div className="flex items-center justify-between">
@@ -477,7 +477,7 @@ function renderOverrideFields(
           <Label className="text-xs">Email L00 Body</Label>
           <CopyButton text={values.emailL00 || getPlaceholder("emailL00")} />
         </div>
-        <Textarea value={values.emailL00} onChange={(e) => onChange("emailL00", e.target.value)} placeholder={getPlaceholder("emailL00")} rows={2} />
+        <Textarea value={values.emailL00} onChange={(e) => onChange("emailL00", e.target.value)} placeholder={getPlaceholder("emailL00")} rows={4} className="whitespace-pre-wrap" />
       </div>
       <div>
         <div className="flex items-center justify-between">
@@ -491,7 +491,7 @@ function renderOverrideFields(
           <Label className="text-xs">Email L01 Body</Label>
           <CopyButton text={values.emailL01 || getPlaceholder("emailL01")} />
         </div>
-        <Textarea value={values.emailL01} onChange={(e) => onChange("emailL01", e.target.value)} placeholder={getPlaceholder("emailL01")} rows={2} />
+        <Textarea value={values.emailL01} onChange={(e) => onChange("emailL01", e.target.value)} placeholder={getPlaceholder("emailL01")} rows={4} className="whitespace-pre-wrap" />
       </div>
     </>
   );
