@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Volume2, VolumeX, Pause, Play } from "lucide-react";
 
 type PlayerState = "idle" | "playing-muted" | "playing-unmuted" | "paused";
@@ -178,62 +179,64 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
 
   const isShowingVideo = playerState !== "idle";
 
-  return (
-    <div className="relative w-full h-full">
-      {/* Poster image — visible when idle */}
-      {!isShowingVideo && (
-        <img
-          src={contentUrl}
-          alt="Video poster"
-          className="w-full h-full object-contain"
-        />
-      )}
-
-      {/* Inline video container */}
-      {isShowingVideo && (
-        <div className="relative w-full h-full">
-          {/* Left swipe-passthrough zone */}
-          <div className="absolute inset-y-0 left-0 w-[15%] z-30 pointer-events-none" />
-
-          {/* Center tap zone — use onTouchEnd for iOS Safari compatibility */}
-          <button
-            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCenterTap(); }}
-            onClick={(e) => { e.stopPropagation(); handleCenterTap(); }}
-            className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer pointer-events-auto"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-            aria-label="Toggle sound or pause"
-          />
-
-          {/* Right swipe-passthrough zone */}
-          <div className="absolute inset-y-0 right-0 w-[15%] z-30 pointer-events-none" />
-
-          {/* Vimeo iframe container */}
+  const videoOverlay =
+    isShowingVideo && typeof document !== "undefined"
+      ? createPortal(
           <div
-            ref={videoContainerRef}
-            className="absolute inset-0 w-full h-full bg-black pointer-events-none"
-            style={{ zIndex: 1 }}
+            className="fixed inset-0 z-[9999] bg-black"
+            style={{ width: "100vw", height: "100dvh" }}
+          >
+            <div className="absolute inset-y-0 left-0 w-[15%] z-30 pointer-events-none" />
+
+            <button
+              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCenterTap(); }}
+              onClick={(e) => { e.stopPropagation(); handleCenterTap(); }}
+              className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer pointer-events-auto"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Toggle sound or pause"
+            />
+
+            <div className="absolute inset-y-0 right-0 w-[15%] z-30 pointer-events-none" />
+
+            <div
+              ref={videoContainerRef}
+              className="absolute inset-0 w-full h-full bg-black pointer-events-none"
+              style={{ zIndex: 1 }}
+            />
+
+            {feedbackIcon && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 animate-fade-in">
+                <div className="bg-black/50 rounded-full p-4">
+                  {feedbackIcon}
+                </div>
+              </div>
+            )}
+
+            {playerState === "playing-muted" && !feedbackIcon && (
+              <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
+                <div className="bg-black/50 rounded-full p-2">
+                  <VolumeX className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            )}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      <div className="relative w-full h-full">
+        {!isShowingVideo && (
+          <img
+            src={contentUrl}
+            alt="Video poster"
+            className="w-full h-full object-contain"
           />
-
-          {/* Feedback icon overlay */}
-          {feedbackIcon && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 animate-fade-in">
-              <div className="bg-black/50 rounded-full p-4">
-                {feedbackIcon}
-              </div>
-            </div>
-          )}
-
-          {/* Muted indicator — persistent when muted */}
-          {playerState === "playing-muted" && !feedbackIcon && (
-            <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
-              <div className="bg-black/50 rounded-full p-2">
-                <VolumeX className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+      {videoOverlay}
+    </>
   );
 };
 

@@ -8,6 +8,7 @@ import { useSearchParams } from "react-router-dom";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
+import { createPortal } from "react-dom";
 import mailIcon from "@/assets/mail-icon.png";
 import externalLinkIcon from "@/assets/external-link-icon.png";
 import textIcon from "@/assets/text-icon.svg";
@@ -893,61 +894,62 @@ const InteractiveSlideOverlay = ({
     }))
   });
 
+  const videoOverlay =
+    isVideoOpen && videoUrl && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[9999] bg-black"
+            style={{ width: "100vw", height: "100dvh" }}
+          >
+            <button
+              onClick={closeVideo}
+              className="absolute top-4 right-4 z-[10001] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
+              aria-label="Close video"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="absolute inset-y-0 left-0 w-[15%] z-[10000] pointer-events-none" />
+
+            <button
+              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleVimeoCenterTap(); }}
+              onClick={(e) => { e.stopPropagation(); handleVimeoCenterTap(); }}
+              className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer pointer-events-auto"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Toggle sound or pause"
+            />
+
+            <div className="absolute inset-y-0 right-0 w-[15%] z-[10000] pointer-events-none" />
+
+            <div
+              ref={videoContainerRef}
+              className="absolute inset-0 w-full h-full bg-black pointer-events-none"
+              style={{ zIndex: 1 }}
+            />
+
+            {vimeoFeedbackIcon && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[10002] animate-fade-in">
+                <div className="bg-black/50 rounded-full p-4">
+                  {vimeoFeedbackIcon}
+                </div>
+              </div>
+            )}
+
+            {vimeoPlayerState === "playing-muted" && !vimeoFeedbackIcon && (
+              <div className="absolute bottom-4 right-4 z-[10002] pointer-events-none">
+                <div className="bg-black/50 rounded-full p-2">
+                  <VolumeX className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            )}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <>
-      {/* Inline video player (Vimeo/YouTube) with swipe-passthrough zones */}
-      {isVideoOpen && videoUrl && (
-        <div className="fixed inset-0 z-[9999] bg-black">
-          {/* Close button */}
-          <button
-            onClick={closeVideo}
-            className="absolute top-4 right-4 z-[10001] text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-colors"
-            aria-label="Close video"
-          >
-            <X size={24} />
-          </button>
-
-          {/* Left swipe-passthrough zone */}
-          <div className="absolute inset-y-0 left-0 w-[15%] z-[10000] pointer-events-none" />
-
-          {/* Center tap zone — use onTouchEnd for iOS Safari compatibility */}
-          <button
-            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleVimeoCenterTap(); }}
-            onClick={(e) => { e.stopPropagation(); handleVimeoCenterTap(); }}
-            className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer pointer-events-auto"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-            aria-label="Toggle sound or pause"
-          />
-
-          {/* Right swipe-passthrough zone */}
-          <div className="absolute inset-y-0 right-0 w-[15%] z-[10000] pointer-events-none" />
-
-          {/* Video container */}
-          <div 
-            ref={videoContainerRef}
-            className="absolute inset-0 w-full h-full bg-black pointer-events-none"
-            style={{ zIndex: 1 }}
-          />
-
-          {/* Feedback icon overlay */}
-          {vimeoFeedbackIcon && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[10002] animate-fade-in">
-              <div className="bg-black/50 rounded-full p-4">
-                {vimeoFeedbackIcon}
-              </div>
-            </div>
-          )}
-
-          {/* Muted indicator */}
-          {vimeoPlayerState === "playing-muted" && !vimeoFeedbackIcon && (
-            <div className="absolute bottom-4 right-4 z-[10002] pointer-events-none">
-              <div className="bg-black/50 rounded-full p-2">
-                <VolumeX className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {videoOverlay}
 
       <div className="absolute inset-0 pointer-events-none z-50" style={{ display: isVideoOpen ? 'none' : undefined }}>
       {!isVideoOpen && imageDimensions.width > 0 && imageDimensions.height > 0 && hotspots.map((hotspot) => {
