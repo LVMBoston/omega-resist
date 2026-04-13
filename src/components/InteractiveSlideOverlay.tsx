@@ -612,6 +612,7 @@ const InteractiveSlideOverlay = ({
           const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
           if (data.event === 'ready') {
             iframe.contentWindow?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'finish' }), '*');
+            iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setMuted', value: true }), '*');
             iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setVolume', value: 0 }), '*');
             iframe.contentWindow?.postMessage(JSON.stringify({ method: 'play' }), '*');
             setVimeoPlayerState("playing-muted");
@@ -778,9 +779,11 @@ const InteractiveSlideOverlay = ({
     if (videoProvider === "vimeo") {
       switch (vimeoPlayerState) {
         case "playing-muted":
+          vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setVimeoPlayerState("playing-unmuted");
           showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
+          break;
           break;
         case "playing-unmuted":
           vimeoPost('pause');
@@ -789,9 +792,11 @@ const InteractiveSlideOverlay = ({
           break;
         case "paused":
           vimeoPost('play');
+          vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setVimeoPlayerState("playing-unmuted");
           showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
+          break;
           break;
       }
     } else if (videoProvider === "youtube" && ytPlayerRef.current) {
