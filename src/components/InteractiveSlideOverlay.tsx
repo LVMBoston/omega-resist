@@ -694,6 +694,7 @@ const InteractiveSlideOverlay = ({
         vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
         if (videoProvider === "vimeo") {
           vimeoPost('pause');
+          vimeoPost('setMuted', true);
           vimeoPost('setVolume', 0);
         } else if (videoProvider === "youtube" && ytPlayerRef.current) {
           ytPlayerRef.current.pauseVideo();
@@ -706,6 +707,7 @@ const InteractiveSlideOverlay = ({
         if (videoProvider === "vimeo") {
           vimeoPost('play');
           if (vimeoWasUnmutedRef.current) {
+            vimeoPost('setMuted', false);
             vimeoPost('setVolume', 1);
             setVimeoPlayerState("playing-unmuted");
           } else {
