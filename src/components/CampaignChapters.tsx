@@ -18,7 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy } from "lucide-react";
+import { toast as sonnerToast } from "sonner";
 import ChapterForm from "@/components/ChapterForm";
 
 interface CampaignChaptersProps {
