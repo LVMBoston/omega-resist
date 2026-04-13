@@ -457,14 +457,14 @@ export default function CampaignEoaManager() {
     }
   };
 
-  // Clone EoA with everything the same except deck assignment (cleared)
+  // Clone EoA with everything the same except mobilize_code (cleared for manual entry)
   const cloneEoaForDeck = async (eoa: EventAction) => {
     const { error } = await supabase.from("events_actions").insert({
       campaign_id: eoa.campaign_id,
-      mobilize_id: eoa.mobilize_id,
-      mobilize_code: eoa.mobilize_code,
-      utm_id: eoa.utm_id, // Keep the same utm_id
-      title: eoa.title, // Keep the same title
+      mobilize_id: null, // Clear — user enters new mobilize event
+      mobilize_code: null, // Clear — user enters manually
+      utm_id: eoa.utm_id,
+      title: eoa.title + " (Clone)",
       site_name: eoa.site_name,
       city: eoa.city,
       state: eoa.state,
@@ -473,20 +473,23 @@ export default function CampaignEoaManager() {
       start_date: eoa.start_date,
       end_date: eoa.end_date,
       timezone: eoa.timezone,
-      assigned_deck_slug: null, // Clear deck assignment
+      assigned_deck_slug: eoa.assigned_deck_slug,
       description: eoa.description,
       utm_content: eoa.utm_content,
     });
     if (error) {
+      const isDuplicate = error.message.includes("idx_unique_mobilize_utm_per_campaign");
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to clone event/action: " + error.message
+        description: isDuplicate
+          ? "An EoA with this mobilize_code + utm_id already exists in this campaign."
+          : "Failed to clone event/action: " + error.message,
       });
     } else {
       toast({
         title: "Success",
-        description: "EoA cloned — assign a different deck to complete"
+        description: "EoA cloned — enter a Mobilize Code to complete setup",
       });
       fetchEoas();
     }
