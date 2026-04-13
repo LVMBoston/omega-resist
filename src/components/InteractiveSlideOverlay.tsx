@@ -523,7 +523,7 @@ const InteractiveSlideOverlay = ({
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) {
-        return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&api=1`;
+        return `https://player.vimeo.com/video/${match[1]}?autoplay=0&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&api=1`;
       }
     }
     return url;
@@ -783,24 +783,25 @@ const InteractiveSlideOverlay = ({
     if (videoProvider === "vimeo") {
       switch (vimeoPlayerState) {
         case "playing-muted":
+          console.log("[VimeoCenterTap] unmuting");
           vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setVimeoPlayerState("playing-unmuted");
           showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
           break;
-          break;
         case "playing-unmuted":
+          console.log("[VimeoCenterTap] pausing");
           vimeoPost('pause');
           setVimeoPlayerState("paused");
           showVimeoFeedback(<Pause className="h-12 w-12 text-white" />);
           break;
         case "paused":
+          console.log("[VimeoCenterTap] resuming unmuted");
           vimeoPost('play');
           vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setVimeoPlayerState("playing-unmuted");
           showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
-          break;
           break;
       }
     } else if (videoProvider === "youtube" && ytPlayerRef.current) {
@@ -896,7 +897,7 @@ const InteractiveSlideOverlay = ({
     <>
       {/* Inline video player (Vimeo/YouTube) with swipe-passthrough zones */}
       {isVideoOpen && videoUrl && (
-        <div className="absolute inset-0 z-[9999] bg-black">
+        <div className="fixed inset-0 z-[9999] bg-black">
           {/* Close button */}
           <button
             onClick={closeVideo}
