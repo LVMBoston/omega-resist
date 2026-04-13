@@ -18,7 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy } from "lucide-react";
+import { toast as sonnerToast } from "sonner";
 import ChapterForm from "@/components/ChapterForm";
 
 interface CampaignChaptersProps {
@@ -422,6 +423,27 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   );
 }
 
+function CopyButton({ text }: { text: string }) {
+  const handleCopy = () => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    sonnerToast.success("Copied to clipboard");
+  };
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 shrink-0"
+      onClick={handleCopy}
+      disabled={!text}
+      title="Copy to clipboard"
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
+
 function renderOverrideFields(
   values: OverrideValues,
   onChange: (field: keyof OverrideValues, value: string) => void,
@@ -430,27 +452,45 @@ function renderOverrideFields(
   return (
     <>
       <div>
-        <Label className="text-xs">SMS L00 Template</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">SMS L00 Template</Label>
+          <CopyButton text={values.smsL00 || getPlaceholder("smsL00")} />
+        </div>
         <Textarea value={values.smsL00} onChange={(e) => onChange("smsL00", e.target.value)} placeholder={getPlaceholder("smsL00")} rows={2} />
       </div>
       <div>
-        <Label className="text-xs">SMS L01 Template</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">SMS L01 Template</Label>
+          <CopyButton text={values.smsL01 || getPlaceholder("smsL01")} />
+        </div>
         <Textarea value={values.smsL01} onChange={(e) => onChange("smsL01", e.target.value)} placeholder={getPlaceholder("smsL01")} rows={2} />
       </div>
       <div>
-        <Label className="text-xs">Email L00 Subject</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Email L00 Subject</Label>
+          <CopyButton text={values.emailL00Subject || getPlaceholder("emailL00Subject")} />
+        </div>
         <Input value={values.emailL00Subject} onChange={(e) => onChange("emailL00Subject", e.target.value)} placeholder={getPlaceholder("emailL00Subject")} />
       </div>
       <div>
-        <Label className="text-xs">Email L00 Body</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Email L00 Body</Label>
+          <CopyButton text={values.emailL00 || getPlaceholder("emailL00")} />
+        </div>
         <Textarea value={values.emailL00} onChange={(e) => onChange("emailL00", e.target.value)} placeholder={getPlaceholder("emailL00")} rows={2} />
       </div>
       <div>
-        <Label className="text-xs">Email L01 Subject</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Email L01 Subject</Label>
+          <CopyButton text={values.emailL01Subject || getPlaceholder("emailL01Subject")} />
+        </div>
         <Input value={values.emailL01Subject} onChange={(e) => onChange("emailL01Subject", e.target.value)} placeholder={getPlaceholder("emailL01Subject")} />
       </div>
       <div>
-        <Label className="text-xs">Email L01 Body</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Email L01 Body</Label>
+          <CopyButton text={values.emailL01 || getPlaceholder("emailL01")} />
+        </div>
         <Textarea value={values.emailL01} onChange={(e) => onChange("emailL01", e.target.value)} placeholder={getPlaceholder("emailL01")} rows={2} />
       </div>
     </>
