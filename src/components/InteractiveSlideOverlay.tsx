@@ -523,7 +523,7 @@ const InteractiveSlideOverlay = ({
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) {
-        return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&api=1`;
+        return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&api=1`;
       }
     }
     return url;
@@ -612,6 +612,7 @@ const InteractiveSlideOverlay = ({
           const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
           if (data.event === 'ready') {
             iframe.contentWindow?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'finish' }), '*');
+            iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setMuted', value: true }), '*');
             iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setVolume', value: 0 }), '*');
             iframe.contentWindow?.postMessage(JSON.stringify({ method: 'play' }), '*');
             setVimeoPlayerState("playing-muted");
@@ -693,6 +694,7 @@ const InteractiveSlideOverlay = ({
         vimeoWasUnmutedRef.current = vimeoPlayerState === "playing-unmuted";
         if (videoProvider === "vimeo") {
           vimeoPost('pause');
+          vimeoPost('setMuted', true);
           vimeoPost('setVolume', 0);
         } else if (videoProvider === "youtube" && ytPlayerRef.current) {
           ytPlayerRef.current.pauseVideo();
@@ -705,6 +707,7 @@ const InteractiveSlideOverlay = ({
         if (videoProvider === "vimeo") {
           vimeoPost('play');
           if (vimeoWasUnmutedRef.current) {
+            vimeoPost('setMuted', false);
             vimeoPost('setVolume', 1);
             setVimeoPlayerState("playing-unmuted");
           } else {
@@ -739,6 +742,7 @@ const InteractiveSlideOverlay = ({
           vimeoWasUnmutedRef.current = currentState === "playing-unmuted";
           if (videoProvider === "vimeo") {
             vimeoPost('pause');
+            vimeoPost('setMuted', true);
             vimeoPost('setVolume', 0);
           } else if (videoProvider === "youtube" && ytPlayerRef.current) {
             ytPlayerRef.current.pauseVideo();
@@ -749,6 +753,7 @@ const InteractiveSlideOverlay = ({
           if (videoProvider === "vimeo") {
             vimeoPost('play');
             if (vimeoWasUnmutedRef.current) {
+              vimeoPost('setMuted', false);
               vimeoPost('setVolume', 1);
               setVimeoPlayerState("playing-unmuted");
             } else {
@@ -778,9 +783,11 @@ const InteractiveSlideOverlay = ({
     if (videoProvider === "vimeo") {
       switch (vimeoPlayerState) {
         case "playing-muted":
+          vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setVimeoPlayerState("playing-unmuted");
           showVimeoFeedback(<Volume2 className="h-12 w-12 text-white" />);
+          break;
           break;
         case "playing-unmuted":
           vimeoPost('pause');
@@ -789,9 +796,11 @@ const InteractiveSlideOverlay = ({
           break;
         case "paused":
           vimeoPost('play');
+          vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setVimeoPlayerState("playing-unmuted");
           showVimeoFeedback(<Play className="h-12 w-12 text-white" />);
+          break;
           break;
       }
     } else if (videoProvider === "youtube" && ytPlayerRef.current) {

@@ -17,7 +17,7 @@ const getVimeoEmbedUrl = (url: string): string => {
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match?.[1]) {
-      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&muted=1&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
+      return `https://player.vimeo.com/video/${match[1]}?autoplay=1&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
     }
   }
   return url;
@@ -76,6 +76,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
         if (data.event === 'ready') {
           iframe.contentWindow?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'finish' }), '*');
+          iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setMuted', value: true }), '*');
           iframe.contentWindow?.postMessage(JSON.stringify({ method: 'setVolume', value: 0 }), '*');
           iframe.contentWindow?.postMessage(JSON.stringify({ method: 'play' }), '*');
           setPlayerState("playing-muted");
@@ -103,6 +104,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
         console.log("[VimeoSlide] resuming playback");
         vimeoPost('play');
         if (wasUnmutedRef.current) {
+          vimeoPost('setMuted', false);
           vimeoPost('setVolume', 1);
           setPlayerState("playing-unmuted");
         } else {
@@ -114,6 +116,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
         console.log("[VimeoSlide] pausing (swipe away)");
         wasUnmutedRef.current = playerState === "playing-unmuted";
         vimeoPost('pause');
+        vimeoPost('setMuted', true);
         vimeoPost('setVolume', 0);
         setPlayerState("paused");
       }
@@ -127,6 +130,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     switch (playerState) {
       case "playing-muted":
         console.log("[VimeoSlide] tap: unmuting");
+        vimeoPost('setMuted', false);
         vimeoPost('setVolume', 1);
         setPlayerState("playing-unmuted");
         showFeedback(<Volume2 className="h-12 w-12 text-white" />);
@@ -140,6 +144,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
       case "paused":
         console.log("[VimeoSlide] tap: resuming");
         vimeoPost('play');
+        vimeoPost('setMuted', false);
         vimeoPost('setVolume', 1);
         setPlayerState("playing-unmuted");
         showFeedback(<Play className="h-12 w-12 text-white" />);
