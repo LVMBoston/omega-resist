@@ -39,12 +39,14 @@ interface UrlEvent {
   };
 }
 
+type DataSourceFilter = "real" | "simulated";
+
 export default function ActivityMonitor() {
   const [events, setEvents] = useState<UrlEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [l00Filter, setL00Filter] = useState<string>("all");
-  const [dataSourceFilter, setDataSourceFilter] = useState<"real" | "simulated" | "both">("real");
+  const [dataSourceFilter, setDataSourceFilter] = useState<DataSourceFilter>("real");
   const [l00Options, setL00Options] = useState<Array<{ eoa_id: string; mobilize_code: string; city: string; state: string }>>([]);
 
   useEffect(() => {
@@ -269,14 +271,13 @@ export default function ActivityMonitor() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Data Source</label>
-              <Select value={dataSourceFilter} onValueChange={(v) => setDataSourceFilter(v as "real" | "simulated" | "both")}>
+              <Select value={dataSourceFilter} onValueChange={(v) => setDataSourceFilter(v as DataSourceFilter)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="real">Real Data Only</SelectItem>
                   <SelectItem value="simulated">Simulated Data Only</SelectItem>
-                  <SelectItem value="both">Both Combined</SelectItem>
                 </SelectContent>
               </Select>
             </div>

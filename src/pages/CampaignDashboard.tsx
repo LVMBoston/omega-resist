@@ -69,6 +69,13 @@ interface UrlEvent {
 interface CampaignDashboardProps {
   campaignId?: string;
 }
+
+type DashboardDataSource = "real" | "simulated";
+
+const normalizeDataSource = (value: string | null | undefined): DashboardDataSource => (
+  value === "simulated" ? "simulated" : "real"
+);
+
 export default function CampaignDashboard({
   campaignId: propCampaignId
 }: CampaignDashboardProps = {}) {
@@ -183,7 +190,7 @@ export default function CampaignDashboard({
   const selectedCampaignId = propCampaignId || searchParams.get("campaignId") || "";
   const selectedCampaign = searchParams.get("campaign") || "";
   const eventTypeFilter = searchParams.get("eventType") || "all";
-  const dataSourceFilter = (searchParams.get("dataSource") || "real") as "real" | "simulated" | "both";
+  const dataSourceFilter = normalizeDataSource(searchParams.get("dataSource"));
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
   const hideLegacy = searchParams.get("hideLegacy") === "true";
   const showNoSpawns = searchParams.get("showNoSpawns") !== "false";
@@ -197,6 +204,14 @@ export default function CampaignDashboard({
     endDateParam ? new Date(endDateParam) : undefined
   );
 
+  useEffect(() => {
+    if (searchParams.get("dataSource") === "both") {
+      const params = new URLSearchParams(searchParams);
+      params.set("dataSource", "real");
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // Sync filters across tabs using localStorage
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
@@ -206,7 +221,7 @@ export default function CampaignDashboard({
         params.set("campaign", filters.campaign);
         params.set("campaignId", filters.campaignId);
         params.set("eventType", filters.eventType);
-        params.set("dataSource", filters.dataSource);
+        params.set("dataSource", normalizeDataSource(filters.dataSource));
         params.set("levels", filters.levels);
         if (filters.startDate) {
           params.set("startDate", filters.startDate);
@@ -294,7 +309,7 @@ export default function CampaignDashboard({
             params.set("campaign", savedCampaign.code);
             params.set("campaignId", savedCampaign.id);
             if (!params.has("eventType")) params.set("eventType", filters.eventType || "all");
-            if (!params.has("dataSource")) params.set("dataSource", filters.dataSource || "real");
+            if (!params.has("dataSource")) params.set("dataSource", normalizeDataSource(filters.dataSource));
             setSearchParams(params, {
               replace: true
             });
@@ -808,7 +823,6 @@ export default function CampaignDashboard({
             <SelectContent>
               <SelectItem value="real">Real Only</SelectItem>
               <SelectItem value="simulated">Simulated Only</SelectItem>
-              <SelectItem value="both">Both</SelectItem>
             </SelectContent>
           </Select>
 
@@ -939,6 +953,7 @@ export default function CampaignDashboard({
                             campaignCode={selectedCampaign}
                             campaignId={selectedCampaignId}
                             campaignTitle={campaignTitle}
+                            dataSource={dataSourceFilter}
                           />
                         )}
                       </div>
