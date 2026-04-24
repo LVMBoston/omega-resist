@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { mintL00, mintShare } from "@/lib/virality/mint";
 import { 
   getL00Location, 
@@ -57,6 +58,7 @@ const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: nu
 
 export default function Simulator() {
   const { toast } = useToast();
+  const { userRole } = useAuth();
   
   // Load saved settings from localStorage
   const loadSavedSettings = () => {
@@ -210,6 +212,16 @@ export default function Simulator() {
   };
 
   const runSimulation = async () => {
+    if (userRole !== "admin" && userRole !== "manager") {
+      toast({
+        title: "Cannot mint simulator tokens",
+        description: "Sign in with an admin or manager account before running simulations.",
+        variant: "destructive",
+        duration: Infinity,
+      });
+      return;
+    }
+
     if (selectedEoaIds.size === 0) {
       toast({
         title: "No EOAs selected",
