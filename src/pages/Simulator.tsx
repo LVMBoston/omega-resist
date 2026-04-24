@@ -57,6 +57,11 @@ const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: nu
   return new Date(baseTime.getTime() + generation * SIMULATION_GENERATION_INTERVAL_MS + sequence * SIMULATION_EVENT_SPACING_MS);
 };
 
+const isMintPermissionError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("Permission denied: only admin or manager can mint tokens");
+};
+
 export default function Simulator() {
   const { toast } = useToast();
   const { user, userRole, loading: authLoading } = useAuth();
@@ -93,6 +98,16 @@ export default function Simulator() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [progress, setProgress] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const redirectToSignIn = () => {
+    toast({
+      title: "Please sign in again",
+      description: "Your admin session is not available to the simulator right now.",
+      variant: "destructive",
+      duration: Infinity,
+    });
+    navigate(`/auth?redirect=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+  };
 
   // Fetch campaigns
   const { data: campaigns } = useQuery({
@@ -221,6 +236,12 @@ export default function Simulator() {
 
     if (!user) {
       navigate(`/auth?redirect=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      redirectToSignIn();
       return;
     }
 
@@ -384,6 +405,10 @@ export default function Simulator() {
       });
     } catch (error: any) {
       console.error("Simulation error:", error);
+        if (isMintPermissionError(error)) {
+          redirectToSignIn();
+          return;
+        }
       if (error.message === "Simulation aborted") {
         // Don't show error toast for user-initiated abort
         return;
