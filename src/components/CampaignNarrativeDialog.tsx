@@ -1,32 +1,62 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Copy, Download, Loader2, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchNarrativeData, generateCampaignNarrative, CampaignNarrativeResult } from "@/lib/campaignNarrative";
+import { fetchNarrativeAvailability, fetchNarrativeData, generateCampaignNarrative, CampaignNarrativeResult, NarrativeDataSource } from "@/lib/campaignNarrative";
 
 interface CampaignNarrativeDialogProps {
   campaignCode: string;
   campaignId: string;
   campaignTitle: string;
+  dataSource?: NarrativeDataSource;
 }
 
-export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitle }: CampaignNarrativeDialogProps) {
+export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitle, dataSource }: CampaignNarrativeDialogProps) {
   const [open, setOpen] = useState(false);
   const [narrative, setNarrative] = useState<CampaignNarrativeResult | null>(null);
+  const [needsDataChoice, setNeedsDataChoice] = useState(false);
+  const [selectedDataSource, setSelectedDataSource] = useState<NarrativeDataSource | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleOpen = async () => {
-    setOpen(true);
+  const loadNarrative = async (source: NarrativeDataSource) => {
     setNarrative(null);
+    setNeedsDataChoice(false);
+    setSelectedDataSource(source);
     setLoading(true);
     try {
-      const data = await fetchNarrativeData(campaignCode, campaignId);
+      const data = await fetchNarrativeData(campaignCode, campaignId, source);
       setNarrative(generateCampaignNarrative(data));
     } catch (err) {
       console.error("Narrative generation failed:", err);
       setNarrative({ headline: "Unable to generate narrative.", fullStory: "Unable to generate narrative. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    setOpen(true);
+    setNarrative(null);
+    setNeedsDataChoice(false);
+    setSelectedDataSource(null);
+    if (dataSource) {
+      await loadNarrative(dataSource);
+      return;
+    }
+    setLoading(true);
+    try {
+      const availability = await fetchNarrativeAvailability(campaignCode);
+      if (availability.hasReal && availability.hasSimulated) {
+        setNeedsDataChoice(true);
+      } else {
+        await loadNarrative(availability.hasSimulated ? "simulated" : "real");
+      }
+    } catch (err) {
+      console.error("Narrative availability check failed:", err);
+      await loadNarrative("real");
     } finally {
       setLoading(false);
     }
@@ -103,8 +133,21 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : needsDataChoice ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">This campaign has both real and simulated data. Choose one dataset for the story.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" onClick={() => loadNarrative("real")}>Use Real Data</Button>
+                <Button variant="outline" size="sm" onClick={() => loadNarrative("simulated")}>Use Simulated Data</Button>
+              </div>
+            </div>
           ) : narrative ? (
             <>
+              {selectedDataSource && (
+                <Badge variant="secondary" className="w-fit">
+                  Dataset: {selectedDataSource === "simulated" ? "Simulated data" : "Real data"}
+                </Badge>
+              )}
               <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto space-y-1">
                 {narrative.fullStory.split("\n").map((line, i) => renderFullStoryLine(line, i))}
               </div>
