@@ -41,11 +41,18 @@ interface EoA {
 }
 
 type SimulatedShareMedium = "sms" | "em";
+const SIMULATION_START_OFFSET_MS = 10 * 24 * 60 * 60 * 1000;
+const SIMULATION_GENERATION_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const SIMULATION_EVENT_SPACING_MS = 60 * 1000;
 
 const getSimulatedShareMedium = (index: number, parentMedium?: SimulatedShareMedium): SimulatedShareMedium => {
   const alternatingMedium: SimulatedShareMedium = index % 2 === 0 ? "sms" : "em";
   if (!parentMedium) return alternatingMedium;
   return parentMedium === "sms" ? "em" : "sms";
+};
+
+const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: number): Date => {
+  return new Date(baseTime.getTime() + generation * SIMULATION_GENERATION_INTERVAL_MS + sequence * SIMULATION_EVENT_SPACING_MS);
 };
 
 export default function Simulator() {
@@ -236,6 +243,16 @@ export default function Simulator() {
           continue;
         }
 
+        const simulationBaseTime = new Date(Date.now() - SIMULATION_START_OFFSET_MS);
+        let simulatedEventSequence = 0;
+
+        const { error: startDateError } = await supabase
+          .from('events_actions')
+          .update({ start_date: simulationBaseTime.toISOString() })
+          .eq('id', eoa.id);
+
+        if (startDateError) throw startDateError;
+
         // Get L00 base location
         const l00Location = await getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
         if (!l00Location) {
@@ -288,7 +305,7 @@ export default function Simulator() {
           }
 
           // Log L00 scan event with location
-          await logEventWithLocation(l00EventToken, "scan", l00Location);
+          await logEventWithLocation(l00EventToken, "scan", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequence++));
 
             // Mint L01 tokens
             for (let j = 0; j < l01Factor; j++) {
@@ -301,7 +318,7 @@ export default function Simulator() {
               
               // Mark as simulated
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
-              await logEventWithLocation(l01Token, "share", l01Location);
+              await logEventWithLocation(l01Token, "share", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequence++));
 
               // Mint L02 tokens
               for (let k = 0; k < l02Factor; k++) {
@@ -314,7 +331,7 @@ export default function Simulator() {
                 
                 // Mark as simulated
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
-                await logEventWithLocation(l02Token, "share", l02Location);
+                await logEventWithLocation(l02Token, "share", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequence++));
 
                 // Mint L03 tokens
                 for (let m = 0; m < l03Factor; m++) {
@@ -327,7 +344,7 @@ export default function Simulator() {
                   
                   // Mark as simulated
                   await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
-                  await logEventWithLocation(l03Token, "share", l03Location);
+                  await logEventWithLocation(l03Token, "share", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequence++));
                 }
               }
             }
@@ -447,7 +464,7 @@ export default function Simulator() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-md border bg-muted/50 p-3 text-sm text-muted-foreground">
-                Simulated shares use the currently map-visible real channels: Text/SMS triangles and Email squares. QR seed/open events remain circles.
+                Simulated shares use map-visible real channels: Text/SMS triangles and Email squares. Each selected EoA starts 10 days ago, then each share generation advances 12 hours.
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
