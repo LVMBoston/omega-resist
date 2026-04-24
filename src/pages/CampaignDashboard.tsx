@@ -31,7 +31,7 @@ import { SimulatorControls } from "@/components/SimulatorControls";
 import SamizdatMap from "@/components/SamizdatMap";
 import SamizdatEoaSelector from "@/components/SamizdatEoaSelector";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -665,6 +665,7 @@ export default function CampaignDashboard({
       });
     } finally {
       setIsClearingSimulationData(false);
+      setPendingSimulationClearScope(null);
     }
   };
 
