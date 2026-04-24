@@ -876,6 +876,50 @@ export default function CampaignDashboard({
             </SelectContent>
           </Select>
 
+          <AlertDialog>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isClearingSimulationData}>
+                  {isClearingSimulationData ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                  Clear Simulation Data
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuLabel>Simulation cleanup scope</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuCheckboxItem checked={false} onSelect={(event) => event.preventDefault()}>
+                    Current campaign only
+                  </DropdownMenuCheckboxItem>
+                </AlertDialogTrigger>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuCheckboxItem checked={false} onSelect={(event) => event.preventDefault()}>
+                    All campaigns
+                  </DropdownMenuCheckboxItem>
+                </AlertDialogTrigger>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear simulation data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Choose whether to remove simulated-only events and tokens for the current campaign or for every campaign. Real campaign data will not be deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="sm:justify-between">
+                <AlertDialogCancel disabled={isClearingSimulationData}>Cancel</AlertDialogCancel>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                  <AlertDialogAction disabled={isClearingSimulationData || !selectedCampaign} onClick={() => handleClearSimulationData("current")}>
+                    Current campaign
+                  </AlertDialogAction>
+                  <AlertDialogAction disabled={isClearingSimulationData} onClick={() => handleClearSimulationData("all")}>
+                    All campaigns
+                  </AlertDialogAction>
+                </div>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <Select value={eventTypeFilter} onValueChange={(val) => {
             const params = new URLSearchParams(searchParams);
             params.set("eventType", val);
