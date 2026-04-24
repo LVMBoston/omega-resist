@@ -877,7 +877,7 @@ export default function CampaignDashboard({
             </SelectContent>
           </Select>
 
-          <AlertDialog>
+          <AlertDialog open={pendingSimulationClearScope !== null} onOpenChange={(open) => !open && setPendingSimulationClearScope(null)}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={isClearingSimulationData}>
@@ -888,35 +888,26 @@ export default function CampaignDashboard({
               <DropdownMenuContent align="start" className="w-64">
                 <DropdownMenuLabel>Simulation cleanup scope</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuCheckboxItem checked={false} onSelect={(event) => event.preventDefault()}>
-                    Current campaign only
-                  </DropdownMenuCheckboxItem>
-                </AlertDialogTrigger>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuCheckboxItem checked={false} onSelect={(event) => event.preventDefault()}>
-                    All campaigns
-                  </DropdownMenuCheckboxItem>
-                </AlertDialogTrigger>
+                <DropdownMenuItem disabled={!selectedCampaign} onSelect={() => setPendingSimulationClearScope("current")}>
+                  Current campaign only
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setPendingSimulationClearScope("all")}>
+                  All campaigns
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Clear simulation data?</AlertDialogTitle>
+                <AlertDialogTitle>{pendingSimulationClearScope === "all" ? "Clear simulation data for all campaigns?" : "Clear simulation data for this campaign?"}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Choose whether to remove simulated-only events and tokens for the current campaign or for every campaign. Real campaign data will not be deleted.
+                  This will remove simulated-only events and tokens {pendingSimulationClearScope === "all" ? "across every campaign" : `for ${selectedCampaign || "the selected campaign"}`}. Real campaign data will not be deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className="sm:justify-between">
+              <AlertDialogFooter>
                 <AlertDialogCancel disabled={isClearingSimulationData}>Cancel</AlertDialogCancel>
-                <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                  <AlertDialogAction disabled={isClearingSimulationData || !selectedCampaign} onClick={() => handleClearSimulationData("current")}>
-                    Current campaign
-                  </AlertDialogAction>
-                  <AlertDialogAction disabled={isClearingSimulationData} onClick={() => handleClearSimulationData("all")}>
-                    All campaigns
-                  </AlertDialogAction>
-                </div>
+                <AlertDialogAction disabled={isClearingSimulationData || pendingSimulationClearScope === null} onClick={() => pendingSimulationClearScope && handleClearSimulationData(pendingSimulationClearScope)}>
+                  Clear simulation data
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
