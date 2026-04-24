@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +59,8 @@ const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: nu
 
 export default function Simulator() {
   const { toast } = useToast();
-  const { userRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   
   // Load saved settings from localStorage
   const loadSavedSettings = () => {
@@ -212,10 +214,20 @@ export default function Simulator() {
   };
 
   const runSimulation = async () => {
+    if (authLoading) {
+      toast({ title: "Checking sign-in", description: "Please wait a moment, then run the simulation again." });
+      return;
+    }
+
+    if (!user) {
+      navigate(`/auth?redirect=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+      return;
+    }
+
     if (userRole !== "admin" && userRole !== "manager") {
       toast({
         title: "Cannot mint simulator tokens",
-        description: "Sign in with an admin or manager account before running simulations.",
+        description: "This account needs admin or manager access before running simulations.",
         variant: "destructive",
         duration: Infinity,
       });

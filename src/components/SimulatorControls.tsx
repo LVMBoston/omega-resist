@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,8 @@ const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: nu
 
 export function SimulatorControls({ campaignId, onSimulationComplete }: SimulatorControlsProps) {
   const { toast } = useToast();
-  const { userRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   
   // Load saved settings from localStorage
@@ -259,10 +261,20 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
   };
 
   const runSimulation = async () => {
+    if (authLoading) {
+      toast({ title: "Checking sign-in", description: "Please wait a moment, then run the simulation again." });
+      return;
+    }
+
+    if (!user) {
+      navigate(`/auth?redirect=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+      return;
+    }
+
     if (userRole !== "admin" && userRole !== "manager") {
       toast({
         title: "Cannot mint simulator tokens",
-        description: "Sign in with an admin or manager account before running simulations.",
+        description: "This account needs admin or manager access before running simulations.",
         variant: "destructive",
         duration: Infinity,
       });
