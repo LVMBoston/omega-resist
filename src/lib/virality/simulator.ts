@@ -240,6 +240,38 @@ export function randomTimestampInRange(startDate: Date, endDate: Date): Date {
 }
 
 /**
+ * Create a real L00 instance token for simulated event logging.
+ * Base L00 tokens cannot receive url_events directly because the database
+ * enforces instance-suffixed L00 event tokens.
+ */
+export async function instantiateSimulatedL00Token(baseToken: string): Promise<string> {
+  if (!baseToken.startsWith('l00-') || baseToken.includes(':')) {
+    return baseToken;
+  }
+
+  const { data, error } = await supabase.rpc('instantiate_l00_token', {
+    _base_token: baseToken,
+  });
+
+  if (error) {
+    console.error('Error instantiating simulated L00 token:', error);
+    throw error;
+  }
+
+  const instanceToken = data?.[0]?.instance_token;
+  if (!instanceToken) {
+    throw new Error('Simulator could not create an L00 instance token');
+  }
+
+  await supabase
+    .from('tokens')
+    .update({ is_simulated: true })
+    .eq('token', instanceToken);
+
+  return instanceToken;
+}
+
+/**
  * Log event with location data using supabase
  */
 export async function logEventWithLocation(
@@ -247,26 +279,21 @@ export async function logEventWithLocation(
   eventType: "scan" | "view" | "share",
   location: LocationData
 ) {
-  // Insert directly with is_simulated flag
-  const { data, error } = await supabase
-    .from("url_events")
-    .insert({
-      token,
-      event_type: eventType,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      city: location.city,
-      region: location.region,
-      country: location.country,
-      country_code: location.country_code,
-      zip_code: location.zip_code,
-      location_source: 'ip', // Simulator uses IP-based coordinates from zip code database
-      is_simulated: true,
-      user_agent: "Simulator/1.0",
-      occurred_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('log_event', {
+    _token: token,
+    _event_type: eventType,
+    _utm_snapshot: null,
+    _ip_address: null,
+    _user_agent: 'Simulator/1.0',
+    _latitude: location.latitude,
+    _longitude: location.longitude,
+    _city: location.city,
+    _region: location.region,
+    _country: location.country,
+    _country_code: location.country_code,
+    _zip_code: location.zip_code,
+    _location_source: 'ip',
+  });
 
   if (error) {
     console.error("Error logging simulated event:", error);
