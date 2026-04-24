@@ -36,3 +36,17 @@ c. No browser console errors matched “foreign key” or “Error logging simul
 d. The UI showed “Simulation complete”.
 
 e. Database verification found a new simulated simulator event for campaign `qr` within the last 10 minutes.
+
+## Update — 2026-04-24
+
+## 1. SIM-3 simulator transmittal method alignment
+
+a. Status: Approved & Implemented.
+
+b. Finding: simulated L01-L03 shares used `social` and `p2p`, while real map-visible transmittal channels are `qr`, `sms`, and `em`.
+
+c. Decision: L00 simulation remains `qr`; simulated L01-L03 shares now use only `sms` and `em` so marker shapes mirror real data.
+
+d. Implementation: `src/components/SimulatorControls.tsx` and `src/pages/Simulator.tsx` use deterministic SMS/Email alternation for simulated share minting.
+
+e. Deferred: browser-native Social Share remains a To be Fixed / To be Decided taxonomy item until it has an approved real-data marker representation.

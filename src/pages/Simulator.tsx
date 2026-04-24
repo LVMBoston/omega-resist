@@ -40,6 +40,14 @@ interface EoA {
   assigned_deck_slug: string | null;
 }
 
+type SimulatedShareMedium = "sms" | "em";
+
+const getSimulatedShareMedium = (index: number, parentMedium?: SimulatedShareMedium): SimulatedShareMedium => {
+  const alternatingMedium: SimulatedShareMedium = index % 2 === 0 ? "sms" : "em";
+  if (!parentMedium) return alternatingMedium;
+  return parentMedium === "sms" ? "em" : "sms";
+};
+
 export default function Simulator() {
   const { toast } = useToast();
   
@@ -285,9 +293,10 @@ export default function Simulator() {
             // Mint L01 tokens
             for (let j = 0; j < l01Factor; j++) {
               const l01Location = await getLocationForLevel(1, l00Location);
+              const l01Medium = getSimulatedShareMedium(j);
               const { token: l01Token } = await mintShare({
                 parentToken: l00EventToken,
-                utmMedium: "social",
+                utmMedium: l01Medium,
               });
               
               // Mark as simulated
@@ -297,9 +306,10 @@ export default function Simulator() {
               // Mint L02 tokens
               for (let k = 0; k < l02Factor; k++) {
                 const l02Location = await getLocationForLevel(2, l01Location);
+                const l02Medium = getSimulatedShareMedium(k, l01Medium);
                 const { token: l02Token } = await mintShare({
                   parentToken: l01Token,
-                  utmMedium: "social",
+                  utmMedium: l02Medium,
                 });
                 
                 // Mark as simulated
@@ -309,9 +319,10 @@ export default function Simulator() {
                 // Mint L03 tokens
                 for (let m = 0; m < l03Factor; m++) {
                   const l03Location = await getLocationForLevel(3, l02Location);
+                  const l03Medium = getSimulatedShareMedium(m);
                   const { token: l03Token } = await mintShare({
                     parentToken: l02Token,
-                    utmMedium: "p2p",
+                    utmMedium: l03Medium,
                   });
                   
                   // Mark as simulated
@@ -435,6 +446,9 @@ export default function Simulator() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-md border bg-muted/50 p-3 text-sm text-muted-foreground">
+                Simulated shares use the currently map-visible real channels: Text/SMS triangles and Email squares. QR seed/open events remain circles.
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="l00-count">L00 Tokens per EOA</Label>
