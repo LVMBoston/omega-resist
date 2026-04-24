@@ -244,7 +244,7 @@ export default function Simulator() {
         }
 
         const simulationBaseTime = new Date(Date.now() - SIMULATION_START_OFFSET_MS);
-        let simulatedEventSequence = 0;
+        const simulatedEventSequences = [0, 0, 0, 0];
 
         const { error: startDateError } = await supabase
           .from('events_actions')
@@ -305,7 +305,7 @@ export default function Simulator() {
           }
 
           // Log L00 scan event with location
-          await logEventWithLocation(l00EventToken, "scan", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequence++));
+          await logEventWithLocation(l00EventToken, "scan", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequences[0]++));
 
             // Mint L01 tokens
             for (let j = 0; j < l01Factor; j++) {
@@ -318,7 +318,7 @@ export default function Simulator() {
               
               // Mark as simulated
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
-              await logEventWithLocation(l01Token, "share", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequence++));
+              await logEventWithLocation(l01Token, "share", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequences[1]++));
 
               // Mint L02 tokens
               for (let k = 0; k < l02Factor; k++) {
@@ -331,7 +331,7 @@ export default function Simulator() {
                 
                 // Mark as simulated
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
-                await logEventWithLocation(l02Token, "share", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequence++));
+                await logEventWithLocation(l02Token, "share", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequences[2]++));
 
                 // Mint L03 tokens
                 for (let m = 0; m < l03Factor; m++) {
@@ -344,7 +344,7 @@ export default function Simulator() {
                   
                   // Mark as simulated
                   await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
-                  await logEventWithLocation(l03Token, "share", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequence++));
+                  await logEventWithLocation(l03Token, "share", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequences[3]++));
                 }
               }
             }
