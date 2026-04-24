@@ -40,11 +40,18 @@ interface SimulatorControlsProps {
 }
 
 type SimulatedShareMedium = "sms" | "em";
+const SIMULATION_START_OFFSET_MS = 10 * 24 * 60 * 60 * 1000;
+const SIMULATION_GENERATION_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const SIMULATION_EVENT_SPACING_MS = 60 * 1000;
 
 const getSimulatedShareMedium = (index: number, parentMedium?: SimulatedShareMedium): SimulatedShareMedium => {
   const alternatingMedium: SimulatedShareMedium = index % 2 === 0 ? "sms" : "em";
   if (!parentMedium) return alternatingMedium;
   return parentMedium === "sms" ? "em" : "sms";
+};
+
+const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: number): Date => {
+  return new Date(baseTime.getTime() + generation * SIMULATION_GENERATION_INTERVAL_MS + sequence * SIMULATION_EVENT_SPACING_MS);
 };
 
 export function SimulatorControls({ campaignId, onSimulationComplete }: SimulatorControlsProps) {
@@ -282,6 +289,16 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             continue;
           }
 
+          const simulationBaseTime = new Date(Date.now() - SIMULATION_START_OFFSET_MS);
+          let simulatedEventSequence = 0;
+
+          const { error: startDateError } = await supabase
+            .from('events_actions')
+            .update({ start_date: simulationBaseTime.toISOString() })
+            .eq('id', eoa.id);
+
+          if (startDateError) throw startDateError;
+
           const l00Location = await getL00Location(eoa.zip_code, eoa.city || undefined, eoa.state || undefined);
           if (!l00Location) {
             toast({
@@ -322,8 +339,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
           // Log multiple scan/view events for this L00 based on l00Count
           for (let i = 0; i < l00Count; i++) {
-            await logEventWithLocation(l00EventToken, "scan", l00Location);
-            await logEventWithLocation(l00EventToken, "view", l00Location);
+            await logEventWithLocation(l00EventToken, "scan", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequence++));
+            await logEventWithLocation(l00EventToken, "view", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequence++));
           }
 
           // Generate L01 tokens (shares from L00)
@@ -334,8 +351,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             const l01Medium = getSimulatedShareMedium(j);
             const { token: l01Token } = await mintShare({ parentToken: l00EventToken, utmMedium: l01Medium });
             await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
-            await logEventWithLocation(l01Token, "view", l01Location);
-            await logEventWithLocation(l01Token, "share", l01Location);
+            await logEventWithLocation(l01Token, "view", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequence++));
+            await logEventWithLocation(l01Token, "share", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequence++));
 
             // Generate L02 tokens (shares from L01)
             for (let k = 0; k < l02Factor; k++) {
@@ -345,8 +362,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               const l02Medium = getSimulatedShareMedium(k, l01Medium);
               const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: l02Medium });
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
-              await logEventWithLocation(l02Token, "view", l02Location);
-              await logEventWithLocation(l02Token, "share", l02Location);
+              await logEventWithLocation(l02Token, "view", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequence++));
+              await logEventWithLocation(l02Token, "share", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequence++));
 
               // Generate L03 tokens (shares from L02)
               for (let m = 0; m < l03Factor; m++) {
@@ -356,8 +373,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
                 const l03Medium = getSimulatedShareMedium(m);
                 const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: l03Medium });
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
-                await logEventWithLocation(l03Token, "view", l03Location);
-                await logEventWithLocation(l03Token, "share", l03Location);
+                await logEventWithLocation(l03Token, "view", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequence++));
+                await logEventWithLocation(l03Token, "share", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequence++));
               }
             }
           }
@@ -461,7 +478,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-md border bg-muted/50 p-3 text-sm text-muted-foreground">
-            Simulated shares use the currently map-visible real channels: Text/SMS triangles and Email squares. QR seed/open events remain circles.
+            Simulated shares use map-visible real channels: Text/SMS triangles and Email squares. Each selected EoA starts 10 days ago, then each share generation advances 12 hours.
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
