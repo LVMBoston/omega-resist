@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface NarrativeData {
   campaignTitle: string;
   campaignCreatedAt: string;
+  dataSource: NarrativeDataSource;
   levelCounts: { level: number; count: number }[];
   sproutCount: number;
   viewCount: number;
@@ -17,34 +18,71 @@ export interface NarrativeData {
   speedDestCity: string | null;
 }
 
-export async function fetchNarrativeData(campaignCode: string, campaignId: string): Promise<NarrativeData> {
+export type NarrativeDataSource = "real" | "simulated";
+
+export interface NarrativeAvailability {
+  realCount: number;
+  simulatedCount: number;
+  hasReal: boolean;
+  hasSimulated: boolean;
+}
+
+export async function fetchNarrativeAvailability(campaignCode: string): Promise<NarrativeAvailability> {
+  const [realRes, simulatedRes] = await Promise.all([
+    supabase.from("tokens")
+      .select("id", { count: "exact", head: true })
+      .eq("utm_campaign", campaignCode)
+      .eq("is_simulated", false)
+      .is("deleted_at", null),
+    supabase.from("tokens")
+      .select("id", { count: "exact", head: true })
+      .eq("utm_campaign", campaignCode)
+      .eq("is_simulated", true)
+      .is("deleted_at", null),
+  ]);
+
+  return {
+    realCount: realRes.count || 0,
+    simulatedCount: simulatedRes.count || 0,
+    hasReal: (realRes.count || 0) > 0,
+    hasSimulated: (simulatedRes.count || 0) > 0,
+  };
+}
+
+export async function fetchNarrativeData(campaignCode: string, campaignId: string, dataSource: NarrativeDataSource = "real"): Promise<NarrativeData> {
+  const isSimulated = dataSource === "simulated";
+
   // Run queries in parallel
-  const [campaignRes, tokensRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes, lastShareRes] = await Promise.all([
+  const [campaignRes, levelRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes, lastShareRes] = await Promise.all([
     supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
-    supabase.rpc("get_campaign_stats", { campaign_codes: [campaignCode] }),
+    supabase.from("tokens")
+      .select("level")
+      .eq("utm_campaign", campaignCode)
+      .eq("is_simulated", isSimulated)
+      .is("deleted_at", null),
     supabase.from("tokens")
       .select("token, parent_token")
       .eq("utm_campaign", campaignCode)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .gt("level", 0)
       .not("parent_token", "is", null),
     supabase.from("url_events")
       .select("zip_code, region, country, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null),
     supabase.from("url_events")
       .select("region, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .eq("country", "United States")
       .is("deleted_at", null)
       .not("region", "is", null),
     supabase.from("url_events")
       .select("country, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .neq("country", "United States")
       .not("country", "is", null),
@@ -52,35 +90,40 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .select("id, tokens!inner(utm_campaign)", { count: "exact", head: true })
       .eq("tokens.utm_campaign", campaignCode)
       .eq("event_type", "view")
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null),
     supabase.from("tokens")
       .select("level, minted_at, events_actions!inner(campaign_id)")
       .eq("events_actions.campaign_id", campaignId)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .order("minted_at", { ascending: true }),
     supabase.from("url_events")
       .select("tokens!inner(utm_medium, utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .eq("event_type", "view"),
     supabase.from("tokens")
       .select("minted_at")
       .eq("utm_campaign", campaignCode)
       .gt("level", 0)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .order("minted_at", { ascending: false })
       .limit(1),
   ]);
 
-  const stats = (tokensRes.data as any)?.[0];
-  const l0 = stats?.l0_count || 0;
-  const l1 = stats?.l1_count || 0;
-  const l2 = stats?.l2_count || 0;
-  const l3 = (stats?.l3_count || 0) + (stats?.l3_plus_count || 0);
+  const levelTotals = new Map<number, number>();
+  for (const token of (levelRes.data || []) as any[]) {
+    const level = Number(token.level || 0);
+    const bucket = level >= 3 ? 3 : level;
+    levelTotals.set(bucket, (levelTotals.get(bucket) || 0) + 1);
+  }
+  const l0 = levelTotals.get(0) || 0;
+  const l1 = levelTotals.get(1) || 0;
+  const l2 = levelTotals.get(2) || 0;
+  const l3 = levelTotals.get(3) || 0;
 
   const levelCounts = [
     { level: 0, count: l0 },
@@ -134,7 +177,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       .select("token, l00_instance")
       .eq("utm_campaign", campaignCode)
       .eq("level", 1)
-      .eq("is_simulated", false)
+      .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .order("minted_at", { ascending: true })
       .limit(1);
@@ -145,7 +188,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
       const originEvtRes = await supabase.from("url_events")
         .select("city, region")
         .eq("token", firstL1.token)
-        .eq("is_simulated", false)
+        .eq("is_simulated", isSimulated)
         .is("deleted_at", null)
         .not("city", "is", null)
         .order("occurred_at", { ascending: true })
@@ -165,7 +208,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
           .eq("utm_campaign", campaignCode)
           .eq("level", maxLevel)
           .eq("l00_instance", firstL1.l00_instance)
-          .eq("is_simulated", false)
+          .eq("is_simulated", isSimulated)
           .is("deleted_at", null)
           .order("minted_at", { ascending: true })
           .limit(1);
@@ -176,7 +219,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
           const destEvtRes = await supabase.from("url_events")
             .select("city, region")
             .eq("token", destToken.token)
-            .eq("is_simulated", false)
+            .eq("is_simulated", isSimulated)
             .is("deleted_at", null)
             .not("city", "is", null)
             .order("occurred_at", { ascending: true })
@@ -196,6 +239,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
     campaignCreatedAt: campaignRes.data?.created_at || new Date().toISOString(),
+    dataSource,
     levelCounts,
     sproutCount: parentTokens.size || 0,
     viewCount: viewsRes.count || 0,
