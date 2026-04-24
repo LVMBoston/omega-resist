@@ -39,6 +39,14 @@ interface SimulatorControlsProps {
   onSimulationComplete?: () => void;
 }
 
+type SimulatedShareMedium = "sms" | "em";
+
+const getSimulatedShareMedium = (index: number, parentMedium?: SimulatedShareMedium): SimulatedShareMedium => {
+  const alternatingMedium: SimulatedShareMedium = index % 2 === 0 ? "sms" : "em";
+  if (!parentMedium) return alternatingMedium;
+  return parentMedium === "sms" ? "em" : "sms";
+};
+
 export function SimulatorControls({ campaignId, onSimulationComplete }: SimulatorControlsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -323,7 +331,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
             
             const l01Location = await getLocationForLevel(1, l00Location);
-            const { token: l01Token } = await mintShare({ parentToken: l00EventToken, utmMedium: "social" });
+            const l01Medium = getSimulatedShareMedium(j);
+            const { token: l01Token } = await mintShare({ parentToken: l00EventToken, utmMedium: l01Medium });
             await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
             await logEventWithLocation(l01Token, "view", l01Location);
             await logEventWithLocation(l01Token, "share", l01Location);
@@ -333,7 +342,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
               
               const l02Location = await getLocationForLevel(2, l01Location);
-              const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: "social" });
+              const l02Medium = getSimulatedShareMedium(k, l01Medium);
+              const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: l02Medium });
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
               await logEventWithLocation(l02Token, "view", l02Location);
               await logEventWithLocation(l02Token, "share", l02Location);
@@ -343,7 +353,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
                 if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
                 
                 const l03Location = await getLocationForLevel(3, l02Location);
-                const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: "p2p" });
+                const l03Medium = getSimulatedShareMedium(m);
+                const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: l03Medium });
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
                 await logEventWithLocation(l03Token, "view", l03Location);
                 await logEventWithLocation(l03Token, "share", l03Location);
@@ -449,6 +460,9 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           <CardDescription>Each EOA will generate ~{totalTokensPerEoa} tokens</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-md border bg-muted/50 p-3 text-sm text-muted-foreground">
+            Simulated shares use the currently map-visible real channels: Text/SMS triangles and Email squares. QR seed/open events remain circles.
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="l00-count">L00 Scan/View Events</Label>
