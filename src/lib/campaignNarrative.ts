@@ -261,6 +261,7 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   const {
     campaignTitle,
     campaignCreatedAt,
+    dataSource,
     levelCounts,
     sproutCount,
     viewCount,
@@ -278,6 +279,7 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   const lines: string[] = [];
 
   lines.push(campaignTitle);
+  lines.push(dataSource === "simulated" ? "Simulation report" : "Real data report");
   lines.push(`${daysActive} days ${hoursRemainder} hours active`);
   lines.push("");
 
@@ -334,6 +336,7 @@ function generateFullStory(data: NarrativeData): string {
   const {
     campaignTitle,
     campaignCreatedAt,
+    dataSource,
     levelCounts,
     sproutCount,
     viewCount,
@@ -410,6 +413,10 @@ function generateFullStory(data: NarrativeData): string {
   const lines: string[] = [];
 
   lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+  lines.push(`Dataset: ${dataSource === "simulated" ? "Simulated data" : "Real data"}`);
+  if (dataSource === "simulated") {
+    lines.push("Simulation report — not real field activity.");
+  }
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
