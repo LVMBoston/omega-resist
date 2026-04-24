@@ -290,7 +290,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           }
 
           const simulationBaseTime = new Date(Date.now() - SIMULATION_START_OFFSET_MS);
-          let simulatedEventSequence = 0;
+          const simulatedEventSequences = [0, 0, 0, 0];
 
           const { error: startDateError } = await supabase
             .from('events_actions')
@@ -339,8 +339,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
 
           // Log multiple scan/view events for this L00 based on l00Count
           for (let i = 0; i < l00Count; i++) {
-            await logEventWithLocation(l00EventToken, "scan", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequence++));
-            await logEventWithLocation(l00EventToken, "view", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequence++));
+            await logEventWithLocation(l00EventToken, "scan", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequences[0]++));
+            await logEventWithLocation(l00EventToken, "view", l00Location, getSimulationTimestamp(simulationBaseTime, 0, simulatedEventSequences[0]++));
           }
 
           // Generate L01 tokens (shares from L00)
@@ -351,8 +351,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             const l01Medium = getSimulatedShareMedium(j);
             const { token: l01Token } = await mintShare({ parentToken: l00EventToken, utmMedium: l01Medium });
             await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
-            await logEventWithLocation(l01Token, "view", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequence++));
-            await logEventWithLocation(l01Token, "share", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequence++));
+            await logEventWithLocation(l01Token, "view", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequences[1]++));
+            await logEventWithLocation(l01Token, "share", l01Location, getSimulationTimestamp(simulationBaseTime, 1, simulatedEventSequences[1]++));
 
             // Generate L02 tokens (shares from L01)
             for (let k = 0; k < l02Factor; k++) {
@@ -362,8 +362,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
               const l02Medium = getSimulatedShareMedium(k, l01Medium);
               const { token: l02Token } = await mintShare({ parentToken: l01Token, utmMedium: l02Medium });
               await supabase.from('tokens').update({ is_simulated: true }).eq('token', l02Token);
-              await logEventWithLocation(l02Token, "view", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequence++));
-              await logEventWithLocation(l02Token, "share", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequence++));
+              await logEventWithLocation(l02Token, "view", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequences[2]++));
+              await logEventWithLocation(l02Token, "share", l02Location, getSimulationTimestamp(simulationBaseTime, 2, simulatedEventSequences[2]++));
 
               // Generate L03 tokens (shares from L02)
               for (let m = 0; m < l03Factor; m++) {
@@ -373,8 +373,8 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
                 const l03Medium = getSimulatedShareMedium(m);
                 const { token: l03Token } = await mintShare({ parentToken: l02Token, utmMedium: l03Medium });
                 await supabase.from('tokens').update({ is_simulated: true }).eq('token', l03Token);
-                await logEventWithLocation(l03Token, "view", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequence++));
-                await logEventWithLocation(l03Token, "share", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequence++));
+                await logEventWithLocation(l03Token, "view", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequences[3]++));
+                await logEventWithLocation(l03Token, "share", l03Location, getSimulationTimestamp(simulationBaseTime, 3, simulatedEventSequences[3]++));
               }
             }
           }
