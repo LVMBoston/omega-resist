@@ -58,3 +58,13 @@ b. Confirm new simulated child tokens use only `sms` and `em` mediums.
 c. Confirm the map shows triangles for SMS/Text and squares for Email, with no new simulated `social` or `p2p` markers.
 
 d. Confirm the existing simulator foreign-key fix remains intact and no “Foreign key constraint violation” appears.
+
+## 6. Implementation status
+
+a. Status: Approved & Implemented.
+
+b. `SIM-3 — Align simulator transmittal methods with real map marker channels` is closed in code.
+
+c. `src/components/SimulatorControls.tsx` and `src/pages/Simulator.tsx` now generate simulated child shares only as `sms` or `em`.
+
+d. Browser-native Social Share remains a To be Fixed / To be Decided taxonomy item because it exists as an action but is not represented as a distinct map marker shape.
