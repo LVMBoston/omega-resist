@@ -9,7 +9,7 @@ import { shortenUrl } from "./shortener";
 const MintL00Input = z.object({
   eoaId: z.string().uuid(),
   deckSlug: z.string().min(1),
-  utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"])
+  utmMedium: z.enum(["qr", "em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x"])
 });
 
 const MintL00Output = z.object({ 
@@ -19,7 +19,7 @@ const MintL00Output = z.object({
 });
 
 /**
- * Mints L00 root token for an event/action.
+ * Mints an organizer-created L00 seed token for a campaign channel.
  * utm_content is automatically constructed as {mobilize_code}-{utm_id} by the database.
  * Optionally shortens URL in background if lazy=true
  * 
@@ -90,12 +90,12 @@ export async function mintL00(
 // Instance suffix generation is now handled server-side in instantiate_l00_token RPC
 
 /**
- * Instantiates an L00 token by creating a unique instance token.
- * This creates end-to-end lineage tracking by giving each deck open a unique token.
+ * Instantiates an organizer-created L00 seed token by creating a unique instance token.
+ * This creates end-to-end lineage tracking by giving each human deck open a unique token.
  * 
- * When a user scans a QR code (base L00 token), this function creates a unique
+ * When a user opens a base L00 seed token, this function creates a unique
  * instance (e.g., "l00-837854-rs1-qr:abc123") so that all events and shares from
- * that session can be traced back to this specific scan.
+ * that session can be traced back to this specific first open.
  * 
  * @param baseToken The original L00 token (e.g., "l00-837854-rs1-qr")
  * @returns The new instance token (e.g., "l00-837854-rs1-qr:x7f2k9") and its full URL
@@ -143,7 +143,7 @@ export async function instantiateL00Token(baseToken: string): Promise<{
 
 const MintShareInput = z.object({
   parentToken: z.string().min(1),
-  utmMedium: z.enum(["qr", "em", "sms", "social", "p2p"])
+  utmMedium: z.enum(["em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x"])
 });
 
 const MintShareOutput = z.object({ 
