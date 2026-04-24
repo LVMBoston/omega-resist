@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { mintL00, mintShare } from "@/lib/virality/mint";
-import { getL00Location, getLocationForLevel, logEventWithLocation } from "@/lib/virality/simulator";
+import { getL00Location, getLocationForLevel, instantiateSimulatedL00Token, logEventWithLocation } from "@/lib/virality/simulator";
 import { clearShortUrlCache } from "@/lib/virality/shortener";
 import { Loader2, Trash2, StopCircle } from "lucide-react";
 import {
@@ -310,10 +310,12 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             console.log(`Minted new simulated L00 token for ${eoa.title}: ${l00Token}`);
           }
           
+          const l00EventToken = await instantiateSimulatedL00Token(l00Token);
+
           // Log multiple scan/view events for this L00 based on l00Count
           for (let i = 0; i < l00Count; i++) {
-            await logEventWithLocation(l00Token, "scan", l00Location);
-            await logEventWithLocation(l00Token, "view", l00Location);
+            await logEventWithLocation(l00EventToken, "scan", l00Location);
+            await logEventWithLocation(l00EventToken, "view", l00Location);
           }
 
           // Generate L01 tokens (shares from L00)
@@ -321,7 +323,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
             if (abortControllerRef.current.signal.aborted) throw new Error("Simulation aborted");
             
             const l01Location = await getLocationForLevel(1, l00Location);
-            const { token: l01Token } = await mintShare({ parentToken: l00Token, utmMedium: "social" });
+            const { token: l01Token } = await mintShare({ parentToken: l00EventToken, utmMedium: "social" });
             await supabase.from('tokens').update({ is_simulated: true }).eq('token', l01Token);
             await logEventWithLocation(l01Token, "view", l01Location);
             await logEventWithLocation(l01Token, "share", l01Location);

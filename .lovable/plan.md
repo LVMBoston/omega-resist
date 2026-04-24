@@ -1,47 +1,53 @@
+## 1. What the error means
 
+a. The simulator successfully creates or finds the L00 token, but then tries to write simulated scan/view rows directly into `url_events`.
 
-## Plan: Export full project chat history to Markdown
+b. The database rejects that event write with “Foreign key constraint violation” because the event row references a token value that the database does not currently accept as present/valid at insert time.
 
-### 1. What I'll build
+c. In plain terms: the simulator is trying to record an event for a token before using the same safe server-side event path used by real deck interactions.
 
-A single Markdown file containing every user + AI message in this project's chat history, in chronological order, saved to `/mnt/documents/` and delivered as a downloadable artifact.
+## 2. Root cause
 
-### 2. How it works
+a. `src/components/SimulatorControls.tsx` calls `mintL00(...)`, then calls `logEventWithLocation(...)`.
 
-a. Use `trajectory_observability--get_trajectory_events` to pull events for this project, filtered to `event_types` covering user messages and AI assistant messages only (no tool calls, no file edits, no builds).
-b. Paginate backwards using `before_event_id` until the full history is retrieved (the API returns most recent first; I'll page until exhausted).
-c. Sort the collected events chronologically (oldest → newest).
-d. Render each turn as a Markdown section:
-   - Heading with turn number + timestamp + role (User / Assistant)
-   - Message body in a blockquote or fenced block to preserve formatting
-e. Write the result to `/mnt/documents/chat-history.md`.
-f. Emit a `<lov-artifact>` tag so you can preview / download it.
+b. `src/lib/virality/simulator.ts` implements `logEventWithLocation(...)` as a direct `.from("url_events").insert(...)`.
 
-### 3. Output structure
+c. That direct insert bypasses the existing `log_event` database function, which already validates token existence, applies rate limiting, and is the canonical event-writing path.
 
-```text
-# Project Chat History
-Exported: <date>
-Total turns: <N>
+d. The direct insert is fragile in the current schema/RLS/trigger state and is what is producing the foreign key failure in your screen.
 
----
+## 3. Minimal fix to unblock Bugtest simulation UI
 
-## Turn 1 — 2026-XX-XX HH:MM — User
-<message>
+a. Change `logEventWithLocation(...)` so it calls `supabase.rpc("log_event", ...)` instead of inserting directly into `url_events`.
 
-## Turn 2 — 2026-XX-XX HH:MM — Assistant
-<message>
+b. Pass the same simulated location data into the RPC: latitude, longitude, city, region, country, country_code, zip_code, location_source, user_agent.
 
-...
-```
+c. After the RPC creates the row, mark that newly created event as simulated if needed, or adjust the logging path so simulated events remain isolated as `is_simulated = true`.
 
-### 4. Caveats
+d. Keep the simulator’s existing “clear simulated data only” behavior in `SimulatorControls.tsx`; do not touch real events.
 
-a. "Everything available" means everything the trajectory store has retained for this project — very old turns may have been pruned by the platform; I can't recover what isn't there.
-b. Tool calls, file diffs, and system-injected context blocks are excluded per your "User + AI messages only" choice.
-c. If the file gets very large (multi-MB), I'll still deliver one file — let me know afterward if you'd prefer it split by date.
+## 4. Verification after implementation
 
-### 5. Decision log
+a. Use the browser preview on the current Bugtest campaign route.
 
-This is a new one-off export task, not a feature change — no entry needed under `docs/decisions/`.
+b. Run a tiny simulation: one ready EoA, `L00 Scan/View Events = 1`, and share factors set to `0`.
 
+c. Confirm no “Foreign key constraint violation” toast appears.
+
+d. Confirm the Events Listing or map shows the simulated rows when the data source filter is set to `Simulated` or `Both`.
+
+e. Confirm the database has new `url_events` rows for the simulated token with `is_simulated = true`.
+
+## 5. Checklist updates
+
+a. Record this as a new “To be Fixed” item in `.lovable/plan.md`: `SIM-2 — Simulator direct url_events insert causes foreign key violation`.
+
+b. Mark `SIM-2` as fixed only after the browser test and database check pass.
+
+c. Leave the known jitter-related items as “To be Fixed” or open, not blockers for the Bugtest UI simulation smoke test: `P0.x`, `P1.0a`, `P1.0b`, `P1.0c`, `OQ-1`, `OQ-2`, `OQ-3`, `OQ-12`, and `OQ-13`.
+
+## 6. Decision record
+
+a. After implementation, archive the approved plan as a new decision document: `docs/decisions/simulator/<YYYY-MM-DD>_simulator-foreign-key-fix_feature-doc_lovable.md`.
+
+b. The decision document will include `Status: Approved & Implemented`, the implementation date, the cause, the fix, and verification notes.
