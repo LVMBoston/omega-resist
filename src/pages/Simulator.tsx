@@ -36,6 +36,7 @@ import {
 interface EoA {
   id: string;
   title: string;
+  type: string;
   city: string | null;
   state: string | null;
   zip_code: string | null;
@@ -129,7 +130,7 @@ export default function Simulator() {
       if (!selectedCampaignId) return [];
       const { data, error } = await supabase
         .from("events_actions")
-        .select("id, title, city, state, zip_code, assigned_deck_slug")
+        .select("id, title, type, city, state, zip_code, assigned_deck_slug")
         .eq("campaign_id", selectedCampaignId)
         .order("title");
       if (error) throw error;
@@ -490,8 +491,11 @@ export default function Simulator() {
                       />
                       <div className="flex-1">
                         <div className="font-medium">{eoa.title}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {eoa.city}, {eoa.state} {eoa.zip_code} • Deck: {eoa.assigned_deck_slug || "None"}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                          <span>Type: {eoa.type || "N/A"}</span>
+                          <span>Town: {eoa.city || "N/A"}</span>
+                          <span>Zip: {eoa.zip_code || "N/A"}</span>
+                          <span>Deck: {eoa.assigned_deck_slug || "None"}</span>
                         </div>
                       </div>
                     </div>
