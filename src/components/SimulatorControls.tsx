@@ -29,6 +29,7 @@ import {
 interface EoA {
   id: string;
   title: string;
+  type: string;
   city: string | null;
   state: string | null;
   zip_code: string | null;
@@ -115,7 +116,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
     queryFn: async () => {
       const { data, error } = await supabase
         .from("events_actions")
-        .select("id, title, city, state, zip_code, assigned_deck_slug, mobilize_code")
+        .select("id, title, type, city, state, zip_code, assigned_deck_slug, mobilize_code")
         .eq("campaign_id", campaignId)
         .order("title");
       if (error) throw error;
@@ -516,8 +517,11 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
                   <Checkbox checked={selectedEoaIds.has(eoa.id)} onCheckedChange={() => toggleEoaSelection(eoa.id)} />
                   <div className="flex-1">
                     <div className="font-medium">{eoa.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {eoa.city}, {eoa.state} {eoa.zip_code} • Deck: {eoa.assigned_deck_slug || "None"}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                      <span>Type: {eoa.type || "N/A"}</span>
+                      <span>Town: {eoa.city || "N/A"}</span>
+                      <span>Zip: {eoa.zip_code || "N/A"}</span>
+                      <span>Deck: {eoa.assigned_deck_slug || "None"}</span>
                     </div>
                   </div>
                 </div>
