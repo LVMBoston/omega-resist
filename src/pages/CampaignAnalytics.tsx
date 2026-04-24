@@ -62,6 +62,8 @@ interface Campaign {
   title: string;
 }
 
+type DataSourceFilter = "real" | "simulated";
+
 export default function CampaignAnalytics() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -69,7 +71,7 @@ export default function CampaignAnalytics() {
   const [loading, setLoading] = useState(true);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [l00Filter, setL00Filter] = useState<string>("all");
-  const [dataSourceFilter, setDataSourceFilter] = useState<"real" | "simulated" | "both">("real");
+  const [dataSourceFilter, setDataSourceFilter] = useState<DataSourceFilter>("real");
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [l00Options, setL00Options] = useState<Array<{ eoa_id: string; mobilize_code: string; city: string; state: string }>>([]);
   const [lastFilterChange, setLastFilterChange] = useState<Date>(new Date());
@@ -459,14 +461,13 @@ export default function CampaignAnalytics() {
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Data Source</label>
-                    <Select value={dataSourceFilter} onValueChange={(v) => handleFilterChange(() => setDataSourceFilter(v as "real" | "simulated" | "both"))}>
+                    <Select value={dataSourceFilter} onValueChange={(v) => handleFilterChange(() => setDataSourceFilter(v as DataSourceFilter))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="real">Real Data Only</SelectItem>
                         <SelectItem value="simulated">Simulated Data Only</SelectItem>
-                        <SelectItem value="both">Both Combined</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
