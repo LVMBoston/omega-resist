@@ -214,6 +214,12 @@ const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, enga
         <polygon points="${cx},${topY} ${rightX},${bottomY} ${leftX},${bottomY}" 
           fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
       </svg>`;
+    case "diamond":
+      const mid = size / 2;
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="${mid},${halfStroke} ${size - halfStroke},${mid} ${mid},${size - halfStroke} ${halfStroke},${mid}" 
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+      </svg>`;
     case "circle":
     default:
       const r = (size / 2) - halfStroke;
