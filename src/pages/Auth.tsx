@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,10 @@ export default function Auth() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const isResettingPasswordRef = useRef(false);
+  const redirectPath = searchParams.get("redirect") || "/";
 
   useEffect(() => {
     // Check URL hash for recovery mode immediately
@@ -42,12 +44,12 @@ export default function Auth() {
         setIsResettingPassword(true);
         isResettingPasswordRef.current = true;
       } else if (event === "SIGNED_IN" && session && !isResettingPasswordRef.current) {
-        navigate("/");
+        navigate(redirectPath);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, redirectPath]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +103,7 @@ export default function Auth() {
       title: "Success",
       description: isSignUp ? "Account created successfully" : "You've been signed in",
     });
-    navigate("/");
+    navigate(redirectPath);
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
