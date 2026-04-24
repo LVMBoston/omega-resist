@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { mintL00, mintShare } from "@/lib/virality/mint";
 import { getL00Location, getLocationForLevel, instantiateSimulatedL00Token, logEventWithLocation } from "@/lib/virality/simulator";
 import { clearShortUrlCache } from "@/lib/virality/shortener";
@@ -56,6 +57,7 @@ const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: nu
 
 export function SimulatorControls({ campaignId, onSimulationComplete }: SimulatorControlsProps) {
   const { toast } = useToast();
+  const { userRole } = useAuth();
   const queryClient = useQueryClient();
   
   // Load saved settings from localStorage
@@ -257,6 +259,16 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
   };
 
   const runSimulation = async () => {
+    if (userRole !== "admin" && userRole !== "manager") {
+      toast({
+        title: "Cannot mint simulator tokens",
+        description: "Sign in with an admin or manager account before running simulations.",
+        variant: "destructive",
+        duration: Infinity,
+      });
+      return;
+    }
+
     if (selectedEoaIds.size === 0) {
       toast({ title: "No EOAs selected", description: "Please select at least one event/action.", variant: "destructive", duration: Infinity });
       return;
@@ -270,6 +282,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
     const selectedEoas = eoas?.filter(e => selectedEoaIds.has(e.id)) || [];
     const totalSteps = selectedEoas.length;
     let completedSteps = 0;
+    let successfulEoas = 0;
 
     try {
       for (const eoa of selectedEoas) {
@@ -380,6 +393,7 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           }
 
           console.log(`✓ Successfully completed ${eoa.title}`);
+          successfulEoas++;
         } catch (eoaError: any) {
           console.error(`Error processing ${eoa.title}:`, eoaError);
           toast({
@@ -403,11 +417,15 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       // Final refresh at completion
       await queryClient.invalidateQueries();
 
-      toast({ 
-        title: "Simulation complete!", 
-        description: `Generated data for ${selectedEoas.length} EOAs. Switch to "Simulated" or "Both" data source in Filters to view.`,
-        duration: 8000
-      });
+      if (successfulEoas === 0) {
+        toast({ title: "Simulation did not generate data", description: "Every selected EoA failed. Check the error notifications above before retrying.", variant: "destructive", duration: Infinity });
+      } else {
+        toast({ 
+          title: "Simulation complete!", 
+          description: `Generated data for ${successfulEoas} of ${selectedEoas.length} EOAs. Switch to "Simulated" or "Both" data source in Filters to view.`,
+          duration: 8000
+        });
+      }
       
       if (onSimulationComplete) onSimulationComplete();
     } catch (error: any) {
