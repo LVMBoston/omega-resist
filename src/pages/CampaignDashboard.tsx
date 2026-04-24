@@ -823,7 +823,6 @@ export default function CampaignDashboard({
             <SelectContent>
               <SelectItem value="real">Real Only</SelectItem>
               <SelectItem value="simulated">Simulated Only</SelectItem>
-              <SelectItem value="both">Both</SelectItem>
             </SelectContent>
           </Select>
 
@@ -954,6 +953,7 @@ export default function CampaignDashboard({
                             campaignCode={selectedCampaign}
                             campaignId={selectedCampaignId}
                             campaignTitle={campaignTitle}
+                            dataSource={dataSourceFilter}
                           />
                         )}
                       </div>
