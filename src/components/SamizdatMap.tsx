@@ -120,8 +120,8 @@ interface ViewportStats {
   shape?: EoaShape; // The actual shape for rendering
 }
 
-// EoA shape types based on utm_id prefix
-type EoaShape = "circle" | "square" | "triangle";
+// Marker shapes based on utm_medium
+type EoaShape = "circle" | "square" | "triangle" | "diamond";
 
 // View mode for the map
 type ViewMode = "all" | "chain";
@@ -134,6 +134,10 @@ const MEDIUM_COLORS: Record<string, string> = {
   tx: "#00cc66",   // text alternate code - green
   fb: "#1877f2",   // Facebook - FB blue
   bs: "#0085ff",   // BlueSky - sky blue
+  li: "#0a66c2",   // LinkedIn - blue
+  x: "#111111",    // X/Twitter - black
+  social: "#64748b", // generic social
+  p2p: "#64748b",  // peer-to-peer
 };
 
 const MEDIUM_LABELS: Record<string, string> = {
@@ -143,6 +147,10 @@ const MEDIUM_LABELS: Record<string, string> = {
   tx: "Text (SMS)",
   fb: "Facebook",
   bs: "BlueSky",
+  li: "LinkedIn",
+  x: "X",
+  social: "Social",
+  p2p: "Peer-to-peer",
 };
 
 // Colors by level (contrast-verified against border colors white/amber/cyan)
@@ -159,16 +167,19 @@ const getLevelColor = (level: number): string => {
   return LEVEL_COLORS[level] || LEVEL_COLORS[0];
 };
 
+const SOCIAL_MEDIUMS = new Set(["fb", "bs", "li", "x", "social", "p2p"]);
+
 // Share medium shape mapping based on utm_medium
 const getShareMediumShape = (utmMedium: string): EoaShape => {
-  if (!utmMedium) return "circle";
+  if (!utmMedium) return "diamond";
   const medium = utmMedium.toLowerCase();
   
-  if (medium === "qr") return "circle";           // QR scan (L00 only in practice)
-  if (medium === "em") return "square";           // Email share
-  if (medium === "sms") return "triangle";        // SMS/Text share
+  if (medium === "qr") return "circle";           // QR seed/open
+  if (medium === "em") return "square";           // Email seed/share
+  if (medium === "sms" || medium === "tx") return "triangle"; // SMS/Text seed/share
+  if (SOCIAL_MEDIUMS.has(medium)) return "diamond"; // Social seed/share
   
-  return "circle"; // default fallback
+  return "diamond"; // explicit non-QR fallback
 };
 
 // Share medium shape labels for legend
@@ -176,6 +187,7 @@ const SHARE_MEDIUM_LABELS: Record<EoaShape, string> = {
   circle: "QR Scan",
   square: "Email",
   triangle: "SMS/Text",
+  diamond: "Social/P2P",
 };
 
 // Generate SVG for marker shape
@@ -200,6 +212,12 @@ const getShapeSVG = (shape: EoaShape, fillColor: string, size: number = 14, enga
       const rightX = size - halfStroke;
       return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <polygon points="${cx},${topY} ${rightX},${bottomY} ${leftX},${bottomY}" 
+          fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+      </svg>`;
+    case "diamond":
+      const mid = size / 2;
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="${mid},${halfStroke} ${size - halfStroke},${mid} ${mid},${size - halfStroke} ${halfStroke},${mid}" 
           fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
       </svg>`;
     case "circle":
@@ -259,7 +277,7 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [highlightedEventIndex, setHighlightedEventIndex] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle", "diamond"]));
   const [loupeActive, setLoupeActive] = useState(false);
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
@@ -519,6 +537,7 @@ const SamizdatMap = ({
       circle: { total: 0, visible: 0 },
       square: { total: 0, visible: 0 },
       triangle: { total: 0, visible: 0 },
+      diamond: { total: 0, visible: 0 },
     };
 
     timeFilteredEvents.forEach((event) => {
@@ -794,12 +813,20 @@ const SamizdatMap = ({
 
       setEoaStartDates(startDates);
 
-      // Step 4b: Deduplicate return visits for Action-type EoAs
-      // For Action-type EoAs, keep only the first view event per token
+      // Step 4b: Deduplicate L00 return visits across all organizer seed channels.
+      // Keep only the earliest origin view per l00_instance; later views remain return visits.
       const firstViewByToken: Record<string, boolean> = {};
+      const firstViewByL00Instance: Record<string, boolean> = {};
       const deduplicatedEvents = sortedEvents.filter((event) => {
         const td = tokenData[event.token];
         if (!td) return true;
+        if (td.level === 0 && td.l00Instance) {
+          if (!firstViewByL00Instance[td.l00Instance]) {
+            firstViewByL00Instance[td.l00Instance] = true;
+            return true;
+          }
+          return false;
+        }
         const eoaType = eoaTypes[td.eoaId];
         if (eoaType !== "Action") return true; // Event-type: keep all (each scan = unique person)
         if (!firstViewByToken[event.token]) {
@@ -1599,7 +1626,7 @@ const SamizdatMap = ({
                   {/* Share medium shapes */}
                   <div className="flex items-center gap-2 pl-3">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Medium</span>
-                    {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
+                    {(["circle", "square", "triangle", "diamond"] as EoaShape[]).map((shape) => (
                       <div key={shape} className="flex items-center gap-1 text-xs">
                         <div className="w-[18px] h-[18px]" dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 18) }} />
                         <span>{SHARE_MEDIUM_LABELS[shape]}</span>

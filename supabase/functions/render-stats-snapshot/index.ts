@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Retry helper for database queries
 async function fetchWithRetry<T>(
-  queryFn: () => Promise<{ data: T | null; error: any }>,
+  queryFn: () => PromiseLike<{ data: T | null; error: any }>,
   description: string,
   maxAttempts = 5,
   delayMs = 1000
@@ -32,6 +32,16 @@ async function fetchWithRetry<T>(
     }
   }
   return null;
+}
+
+interface CampaignSnapshotInfo {
+  title?: string | null;
+  created_at?: string | null;
+}
+
+interface ViralSlideTemplateSnapshot {
+  image_url: string;
+  hotspots?: any[] | null;
 }
 
 // Fetch image and convert to base64 data URL
@@ -214,7 +224,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.depth = tokenArray.length > 0 ? Math.max(...tokenArray.map((t: any) => t.level)).toString() : "0";
   metrics.viral_coefficient = l00Count > 0 ? (sharesCount / l00Count).toFixed(2) : "0.00";
 
-  const campaignData = await fetchWithRetry(
+  const campaignData = await fetchWithRetry<CampaignSnapshotInfo>(
     () => supabase.from("campaigns").select("title").eq("code", campaignCode).maybeSingle(),
     "campaign title query"
   );
@@ -242,12 +252,12 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
   // Campaign story — full narrative (inline generation matching client-side generateFullStory)
-  const campaignInfo = await fetchWithRetry(
+  const campaignInfo = await fetchWithRetry<CampaignSnapshotInfo>(
     () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
     "campaign info for story"
   );
   if (campaignInfo) {
-    const msActive = Date.now() - new Date(campaignInfo.created_at).getTime();
+    const msActive = Date.now() - new Date(campaignInfo.created_at || Date.now()).getTime();
     const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
     const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const seedCount = parseInt(String(metrics.seeds).replace(/,/g, ""), 10) || 0;
@@ -512,7 +522,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const template = await fetchWithRetry(
+    const template = await fetchWithRetry<ViralSlideTemplateSnapshot>(
       () => supabase.from("viral_slide_configs").select("*").eq("id", template_id).single(),
       "template fetch"
     );

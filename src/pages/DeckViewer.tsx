@@ -11,6 +11,10 @@ import { ViralSlide } from "@/components/ViralSlideV2";
 import { logEvent, instantiateL00Token, maybeReinstantiateL00, fetchGeolocation } from "@/lib/virality/mint";
 import { useAuth } from "@/contexts/AuthContext";
 
+const isCrawlerUserAgent = (userAgent: string): boolean => {
+  return /bot|crawler|spider|facebookexternalhit|facebot|linkedinbot|twitterbot|xbot|slackbot|discordbot|whatsapp|telegrambot|bluesky|embedly|quora link preview|pinterest|vkshare|skypeuripreview/i.test(userAgent);
+};
+
 interface SlideItem {
   id: string;
   position: number;
@@ -105,15 +109,22 @@ export default function DeckViewer() {
   const [instanceTokenProcessed, setInstanceTokenProcessed] = useState(false);
   const [activeToken, setActiveToken] = useState<string | null>(viralToken);
 
-  // Instance token creation and location-based re-instantiation for L00 tokens
+  // L00 seed token creation and location-based re-instantiation for organizer channels
   useEffect(() => {
     const processInstanceToken = async () => {
       // Skip if already processed or no token
       if (instanceTokenProcessed || !viralToken) return;
+
+      if (isCrawlerUserAgent(navigator.userAgent)) {
+        console.log('🤖 Preview crawler detected, skipping L00 instantiation:', navigator.userAgent);
+        setActiveToken(null);
+        setInstanceTokenProcessed(true);
+        return;
+      }
       
-      // Case 1: Base L00 token (no colon) - create new instance
+      // Case 1: Base L00 seed token (no colon) - create new human-viewer instance
       if (viralToken.startsWith('l00-') && !viralToken.includes(':')) {
-        console.log('🔄 Base L00 detected, creating instance token for:', viralToken);
+        console.log('🔄 Base L00 seed detected, creating instance token for:', viralToken);
 
         const result = await instantiateL00Token(viralToken);
         
@@ -133,7 +144,7 @@ export default function DeckViewer() {
         return;
       }
       
-      // Case 2: L00 instance token (has colon) - check for different location
+      // Case 2: L00 instance token (has colon) - check for different recipient location
       if (viralToken.startsWith('l00-') && viralToken.includes(':')) {
         console.log('🔍 L00 instance detected, checking for location change:', viralToken);
         
@@ -301,6 +312,12 @@ export default function DeckViewer() {
       
       if (!activeToken) {
         console.log("❌ No active token found");
+        return;
+      }
+
+      if (isCrawlerUserAgent(navigator.userAgent)) {
+        console.log("🤖 Preview crawler detected, skipping view event log");
+        setEventLogged(true);
         return;
       }
 

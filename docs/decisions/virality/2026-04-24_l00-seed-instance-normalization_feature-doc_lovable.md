@@ -1,4 +1,9 @@
-# Plan: L00 Seed Instance Normalization Across All Organizer Channels
+# L00 Seed Instance Normalization Across All Organizer Channels
+
+Status: Approved & Implemented
+Date: 2026-04-24
+
+## Approved Plan
 
 ## 1. Goal and corrected model
 
@@ -98,3 +103,17 @@ docs/decisions/virality/<YYYY-MM-DD>_l00-seed-instance-normalization_feature-doc
 ```
 
 8d. The document will include `Status: Approved & Implemented`, the implementation date, and the final approved plan content.
+
+## Implementation Notes — 2026-04-24
+
+1a. Added a backend guard so viral share minting rejects `qr` and accepts only explicit non-QR share mediums.
+
+1b. Updated client-side share validation to reserve `qr` for L00 seed tokens while allowing social organizer seed channels.
+
+1c. Added crawler user-agent protection before L00 instantiation and view logging.
+
+1d. Updated map medium classification so social/P2P traffic uses a diamond marker instead of falling through to QR/circle.
+
+1e. Updated map event normalization so L00 origin markers keep only the earliest `view` per `l00_instance` across all channels.
+
+1f. Verified with `bun run build` and `deno check supabase/functions/render-stats-snapshot/index.ts`.
