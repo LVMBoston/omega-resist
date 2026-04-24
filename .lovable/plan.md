@@ -1,70 +1,56 @@
-## 1. Finding
+## 1. Goal
 
-a. You are right: the simulator is currently generating `utm_medium = social` for L01/L02 and `utm_medium = p2p` for L03.
+a. When a simulation runs, anchor that selected EoA’s timeline at **10 days before the current time**.
 
-b. The real UI paths that are implemented mint these share mediums:
-   - `sms` for SMS/Text.
-   - `em` for Email.
-   - `social` for the browser-native share/copy action.
+b. Make each simulated spawn occur **12 hours after the prior generation step**, so map animation/timeline playback has a realistic spread instead of every event happening at `now()`.
 
-c. The map shape logic only recognizes:
-   - `qr` = circle.
-   - `em` = square.
-   - `sms` = triangle.
-   - Anything else falls back to circle.
+c. No questions from me: this is clear enough to implement.
 
-d. Database check confirms the mismatch: real event data has `qr`, `sms`, and `em`; simulated-only data has `social` and `p2p`. That means simulated markers can show fallback circle shapes that do not match the real-data channels you are trying to test.
+## 2. Implementation plan
 
-## 2. Proposed simulator rule
+a. Update `src/lib/virality/simulator.ts` so `logEventWithLocation` can accept an optional simulated timestamp.
 
-a. Keep L00 as `qr` because real campaign seeds/initial scans are QR-like origins.
+b. Add a new backend migration that updates the canonical `log_event` RPC with an optional `_occurred_at` parameter that defaults to `now()`. Existing real scanner paths will keep working unchanged because they will not pass the new parameter.
 
-b. Change simulated L01/L02/L03 share minting to use only the real map-visible methods: `sms` and `em`.
+c. In `src/components/SimulatorControls.tsx`, compute a simulation base time per selected EoA:
+   - `baseTime = now - 10 days`.
+   - L00 scan/view events occur at the base time.
+   - L01 events occur at base time + 12 hours.
+   - L02 events occur at base time + 24 hours.
+   - L03 events occur at base time + 36 hours.
 
-c. Do not generate `social` or `p2p` in the simulator for now, because they are not represented as distinct real-data marker shapes in the Samizdat map.
+ d. If multiple events are generated within the same level, add a small deterministic offset so they do not all stack at the exact same millisecond while still preserving the 12-hour generation cadence.
 
-d. Use a simple deterministic spread, not random-only, so a small test is predictable:
-   - L01 alternates `sms`, `em`, `sms`, `em`.
-   - L02 alternates opposite of its parent where possible.
-   - L03 alternates `sms`, `em` as well.
+ e. Update the older standalone `src/pages/Simulator.tsx` path with the same timing behavior so it does not drift from the Campaign Dashboard simulator.
 
-## 3. UI clarification
+f. Update the simulator UI note to explain the timeline behavior: simulation starts 10 days ago and each share generation advances by 12 hours.
 
-a. Add a small note in the Campaign Dashboard simulator controls explaining that simulated shares use only currently map-visible real channels: Text/SMS and Email.
+## 3. EoA start time handling
 
-b. Optionally show the shape legend near the simulator settings:
-   - Circle = QR seed/open.
-   - Triangle = SMS/Text.
-   - Square = Email.
+a. On each simulation run, update the selected `events_actions.start_date` to **10 days before the present**.
 
-c. Leave browser-native Social Share as a known “To be Fixed / To be Decided” item, because it exists as an action but does not yet have a dedicated map shape or real-channel taxonomy.
+b. This update will apply only to the selected EoAs being simulated.
 
-## 4. Files to change after approval
+c. I will not modify `end_date` unless you later ask for that; the requested behavior only mentions start time.
 
-a. `src/components/SimulatorControls.tsx`: replace simulator `social` and `p2p` share minting with `sms`/`em` selection logic and add the explanatory note.
+## 4. Checklist and decision log
 
-b. `src/pages/Simulator.tsx`: apply the same medium changes to the older standalone simulator path so it does not keep generating inconsistent data if someone uses it later.
+a. Add a new checklist item in `.lovable/plan.md`, for example: `SIM-4 — Realistic simulator timing for animation playback`.
 
-c. `.lovable/plan.md`: log a new closed/active checklist item such as `SIM-3 — Align simulator transmittal methods with real map marker channels`.
+b. Mark it implemented after the code/database changes are complete.
 
-d. `docs/decisions/simulator/2026-04-24_simulator-foreign-key-fix_feature-doc_lovable.md`: append an `Update — 2026-04-24` section documenting this follow-up, or create a new simulator decision document if you prefer it separated. This plan updates the existing simulator fix plan.
+c. Append an `Update — 2026-04-24` section to the existing simulator decision document: `docs/decisions/simulator/2026-04-24_simulator-foreign-key-fix_feature-doc_lovable.md`.
+
+ d. This approved plan updates the existing simulator decision log, not a new standalone plan.
 
 ## 5. Verification after implementation
 
-a. Run a small BUGTEST simulation with L01 enabled.
+a. Run a small BUGTEST simulation.
 
-b. Confirm new simulated child tokens use only `sms` and `em` mediums.
+b. Query the generated simulated events and confirm their `occurred_at` values start about 10 days ago and progress in 12-hour generation steps.
 
-c. Confirm the map shows triangles for SMS/Text and squares for Email, with no new simulated `social` or `p2p` markers.
+c. Confirm selected EoA `start_date` was updated to about 10 days ago.
 
-d. Confirm the existing simulator foreign-key fix remains intact and no “Foreign key constraint violation” appears.
+d. Confirm the simulator still uses only real marker channels: QR circles, SMS triangles, and Email squares.
 
-## 6. Implementation status
-
-a. Status: Approved & Implemented.
-
-b. `SIM-3 — Align simulator transmittal methods with real map marker channels` is closed in code.
-
-c. `src/components/SimulatorControls.tsx` and `src/pages/Simulator.tsx` now generate simulated child shares only as `sms` or `em`.
-
-d. Browser-native Social Share remains a To be Fixed / To be Decided taxonomy item because it exists as an action but is not represented as a distinct map marker shape.
+e. Confirm no foreign key constraint violation returns.
