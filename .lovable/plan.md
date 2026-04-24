@@ -1,77 +1,53 @@
+## 1. What the error means
 
+a. The simulator successfully creates or finds the L00 token, but then tries to write simulated scan/view rows directly into `url_events`.
 
-# Unify UX Across Deck & Template Workflows
+b. The database rejects that event write with “Foreign key constraint violation” because the event row references a token value that the database does not currently accept as present/valid at insert time.
 
-## Summary
+c. In plain terms: the simulator is trying to record an event for a token before using the same safe server-side event path used by real deck interactions.
 
-Align the visual language and interaction patterns across DeckBuilder, DeckEditor, and Template editing, while merging the Template Repository into Deck Management as a tab.
+## 2. Root cause
 
-## Current State
+a. `src/components/SimulatorControls.tsx` calls `mintL00(...)`, then calls `logEventWithLocation(...)`.
 
-| Page | Layout | Header | Nav pattern | Save pattern |
-|------|--------|--------|-------------|-------------|
-| DeckBuilder | Centered card form | `<h1>` title | None (redirects to DeckManagement) | Submit button in form |
-| DeckEditor | 3-column (thumbnails/preview/properties) | Breadcrumb + action bar | Breadcrumb → Deck Management | Save Changes / Cancel / Save As |
-| InteractiveTemplates | Card grid | `<h1>` title | Sidebar link | Inline dialogs |
-| TemplateEditorPage | Full-screen, no sidebar | Breadcrumb header | Breadcrumb → Template Repository | Delegated to DataTemplateEditor |
+b. `src/lib/virality/simulator.ts` implements `logEventWithLocation(...)` as a direct `.from("url_events").insert(...)`.
 
-## Plan
+c. That direct insert bypasses the existing `log_event` database function, which already validates token existence, applies rate limiting, and is the canonical event-writing path.
 
-### 1. Align DeckBuilder header and chrome
+d. The direct insert is fragile in the current schema/RLS/trigger state and is what is producing the foreign key failure in your screen.
 
-a. Replace the bare `<h1>` with a breadcrumb header matching DeckEditor: `Deck Management > New Deck`.
-b. Add a consistent action bar area (right-aligned) even though the only action is the submit button — this establishes the same visual rhythm.
-c. After successful creation, navigate to `/deck-editor/{slug}` instead of `/deck-management`, so the user flows directly into editing.
+## 3. Minimal fix to unblock Bugtest simulation UI
 
-### 2. Merge Template Repository into Deck Management
+a. Change `logEventWithLocation(...)` so it calls `supabase.rpc("log_event", ...)` instead of inserting directly into `url_events`.
 
-a. Add a `Tabs` component to DeckManagement with two tabs: **Decks** (current deck list) and **Templates** (current InteractiveTemplates content).
-b. Move the template card grid, filters (all/action/data/hybrid), create/edit dialogs, and all mutation logic from `InteractiveTemplates.tsx` into a new `TemplateRepositoryTab.tsx` component, rendered inside the Templates tab.
-c. Update the sidebar: remove the separate "Interactive Slide Editor" entry; rename "Deck Management" to "Decks & Templates" (or keep as-is — your call).
-d. Update `App.tsx`: redirect `/interactive-templates` to `/deck-management?tab=templates` for backward compatibility.
-e. Keep `/template-editor/:id` as a standalone route (no sidebar) since that full-screen editor is intentionally immersive.
+b. Pass the same simulated location data into the RPC: latitude, longitude, city, region, country, country_code, zip_code, location_source, user_agent.
 
-### 3. Align DeckManagement header
+c. After the RPC creates the row, mark that newly created event as simulated if needed, or adjust the logging path so simulated events remain isolated as `is_simulated = true`.
 
-a. Replace the current DeckManagement header with the same breadcrumb + action bar pattern used in DeckEditor.
-b. Breadcrumb: just `Deck Management` (top-level, no parent).
-c. Action bar: "New Deck" button (navigates to `/deck-builder`), plus any existing refresh/export actions.
+d. Keep the simulator’s existing “clear simulated data only” behavior in `SimulatorControls.tsx`; do not touch real events.
 
-### 4. Standardize save/cancel/discard patterns
+## 4. Verification after implementation
 
-a. Document a shared pattern: primary action right-most, destructive/cancel left of it, status indicator (e.g., "Unsaved changes") as a badge.
-b. Ensure DeckBuilder, DeckEditor, and template edit dialogs all follow this order.
-c. Template edit dialogs already have unsaved-changes guards; verify DeckBuilder warns if navigating away mid-upload.
+a. Use the browser preview on the current Bugtest campaign route.
 
-### 5. Align template editing entry points
+b. Run a tiny simulation: one ready EoA, `L00 Scan/View Events = 1`, and share factors set to `0`.
 
-a. From the Templates tab in Deck Management, clicking a template card opens the same editor it does today (action templates → inline dialog, data/hybrid templates → DataTemplateDialog or TemplateEditorPage).
-b. No change to the editing components themselves — only the entry point moves from a standalone page to a tab.
+c. Confirm no “Foreign key constraint violation” toast appears.
 
-### 6. Update decision document
+d. Confirm the Events Listing or map shows the simulated rows when the data source filter is set to `Simulated` or `Both`.
 
-a. Create `docs/decisions/decks/2026-04-07_unified-deck-template-ux_feature-doc_lovable.md` with status "Approved & Implemented".
+e. Confirm the database has new `url_events` rows for the simulated token with `is_simulated = true`.
 
-## Files Changed
+## 5. Checklist updates
 
-- `src/pages/DeckBuilder.tsx` — breadcrumb header, navigate to editor on success
-- `src/pages/DeckManagement.tsx` — add Tabs (Decks / Templates), breadcrumb header, action bar
-- `src/components/TemplateRepositoryTab.tsx` (new) — extracted from InteractiveTemplates
-- `src/pages/InteractiveTemplates.tsx` — redirect wrapper to DeckManagement?tab=templates
-- `src/components/AppSidebar.tsx` — remove or update "Interactive Slide Editor" link
-- `src/App.tsx` — redirect `/interactive-templates` route
-- Decision document (new)
+a. Record this as a new “To be Fixed” item in `.lovable/plan.md`: `SIM-2 — Simulator direct url_events insert causes foreign key violation`.
 
-## Files NOT Changed
+b. Mark `SIM-2` as fixed only after the browser test and database check pass.
 
-- `src/pages/DeckEditor.tsx` — already the reference layout
-- `src/pages/TemplateEditorPage.tsx` — intentionally standalone
-- `src/components/FullResolutionHotspotEditor.tsx` — no changes
-- `src/components/DataTemplateEditor.tsx` — no changes
-- Database schema — no migrations
+c. Leave the known jitter-related items as “To be Fixed” or open, not blockers for the Bugtest UI simulation smoke test: `P0.x`, `P1.0a`, `P1.0b`, `P1.0c`, `OQ-1`, `OQ-2`, `OQ-3`, `OQ-12`, and `OQ-13`.
 
-## Risk
+## 6. Decision record
 
-- InteractiveTemplates.tsx is ~1360 lines; extracting into a tab component requires careful state migration. Approach: lift as a self-contained component with its own query/mutation hooks (already pattern-compatible).
-- Backward links from other pages (e.g., DeckEditor breadcrumb linking to `/deck-management`) continue to work since that route persists.
+a. After implementation, archive the approved plan as a new decision document: `docs/decisions/simulator/<YYYY-MM-DD>_simulator-foreign-key-fix_feature-doc_lovable.md`.
 
+b. The decision document will include `Status: Approved & Implemented`, the implementation date, the cause, the fix, and verification notes.
