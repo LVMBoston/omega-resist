@@ -54,3 +54,15 @@ c. Confirm selected EoA `start_date` was updated to about 10 days ago.
 d. Confirm the simulator still uses only real marker channels: QR circles, SMS triangles, and Email squares.
 
 e. Confirm no foreign key constraint violation returns.
+
+## 6. Implementation status
+
+a. Status: Approved & Implemented.
+
+b. `SIM-4 — Realistic simulator timing for animation playback` is closed in code and backend function behavior.
+
+c. Selected EoAs are updated to start 10 days before the simulation run.
+
+d. Simulated event timestamps now begin at the EoA start time and advance by 12 hours per spawn generation, with small deterministic spacing between events in the same generation.
+
+e. This updates the existing simulator fix plan rather than creating a new plan.
