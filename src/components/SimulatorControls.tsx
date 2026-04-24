@@ -56,6 +56,11 @@ const getSimulationTimestamp = (baseTime: Date, generation: number, sequence: nu
   return new Date(baseTime.getTime() + generation * SIMULATION_GENERATION_INTERVAL_MS + sequence * SIMULATION_EVENT_SPACING_MS);
 };
 
+const isMintPermissionError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("Permission denied: only admin or manager can mint tokens");
+};
+
 export function SimulatorControls({ campaignId, onSimulationComplete }: SimulatorControlsProps) {
   const { toast } = useToast();
   const { user, userRole, loading: authLoading } = useAuth();
@@ -94,6 +99,16 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
   const abortControllerRef = useRef<AbortController | null>(null);
   const [showFirstWarning, setShowFirstWarning] = useState(false);
   const [showSecondWarning, setShowSecondWarning] = useState(false);
+
+  const redirectToSignIn = () => {
+    toast({
+      title: "Please sign in again",
+      description: "Your admin session is not available to the simulator right now.",
+      variant: "destructive",
+      duration: Infinity,
+    });
+    navigate(`/auth?redirect=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+  };
 
   const { data: eoas, isLoading: eoasLoading } = useQuery({
     queryKey: ["eoas", campaignId],
@@ -271,6 +286,12 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
       return;
     }
 
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      redirectToSignIn();
+      return;
+    }
+
     if (userRole !== "admin" && userRole !== "manager") {
       toast({
         title: "Cannot mint simulator tokens",
@@ -407,6 +428,11 @@ export function SimulatorControls({ campaignId, onSimulationComplete }: Simulato
           console.log(`✓ Successfully completed ${eoa.title}`);
           successfulEoas++;
         } catch (eoaError: any) {
+          if (isMintPermissionError(eoaError)) {
+            redirectToSignIn();
+            throw new Error("Your admin session expired or is unavailable. Please sign in again.");
+          }
+
           console.error(`Error processing ${eoa.title}:`, eoaError);
           toast({
             title: "EoA Processing Error",
