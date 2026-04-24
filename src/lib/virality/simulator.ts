@@ -277,9 +277,10 @@ export async function instantiateSimulatedL00Token(baseToken: string): Promise<s
 export async function logEventWithLocation(
   token: string,
   eventType: "scan" | "view" | "share",
-  location: LocationData
+  location: LocationData,
+  occurredAt?: Date
 ) {
-  const { data, error } = await supabase.rpc('log_event', {
+  const { data, error } = await (supabase as any).rpc('log_event', {
     _token: token,
     _event_type: eventType,
     _utm_snapshot: null,
@@ -293,6 +294,7 @@ export async function logEventWithLocation(
     _country_code: location.country_code,
     _zip_code: location.zip_code,
     _location_source: 'ip',
+    _occurred_at: occurredAt?.toISOString(),
   });
 
   if (error) {

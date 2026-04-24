@@ -50,3 +50,17 @@ c. Decision: L00 simulation remains `qr`; simulated L01-L03 shares now use only 
 d. Implementation: `src/components/SimulatorControls.tsx` and `src/pages/Simulator.tsx` use deterministic SMS/Email alternation for simulated share minting.
 
 e. Deferred: browser-native Social Share remains a To be Fixed / To be Decided taxonomy item until it has an approved real-data marker representation.
+
+## Update — 2026-04-24
+
+## 1. SIM-4 realistic simulator timing for animation playback
+
+a. Status: Approved & Implemented.
+
+b. Decision: every selected EoA simulation run anchors that EoA's `start_date` at 10 days before the present.
+
+c. Decision: simulated activity starts at that timestamp and advances by 12 hours per spawn generation so animation playback has a realistic time axis.
+
+d. Implementation: the canonical event logging backend function accepts an optional event timestamp while keeping real-data logging defaulted to the current time.
+
+e. Implementation: `src/components/SimulatorControls.tsx`, `src/pages/Simulator.tsx`, and `src/lib/virality/simulator.ts` now pass deterministic simulation timestamps into event logging.

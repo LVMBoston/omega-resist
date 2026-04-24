@@ -935,6 +935,25 @@ export type Database = {
             }
             Returns: string
           }
+        | {
+            Args: {
+              _city?: string
+              _country?: string
+              _country_code?: string
+              _event_type: string
+              _ip_address?: unknown
+              _latitude?: number
+              _location_source?: string
+              _longitude?: number
+              _occurred_at?: string
+              _region?: string
+              _token: string
+              _user_agent?: string
+              _utm_snapshot?: Json
+              _zip_code?: string
+            }
+            Returns: string
+          }
       lookup_token: {
         Args: { _token: string }
         Returns: {
