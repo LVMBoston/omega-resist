@@ -531,6 +531,7 @@ const SamizdatMap = ({
       circle: { total: 0, visible: 0 },
       square: { total: 0, visible: 0 },
       triangle: { total: 0, visible: 0 },
+      diamond: { total: 0, visible: 0 },
     };
 
     timeFilteredEvents.forEach((event) => {
