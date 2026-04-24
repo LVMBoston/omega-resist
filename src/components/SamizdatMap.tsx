@@ -277,7 +277,7 @@ const SamizdatMap = ({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [highlightedEventIndex, setHighlightedEventIndex] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle"]));
+  const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle", "diamond"]));
   const [loupeActive, setLoupeActive] = useState(false);
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
@@ -813,12 +813,20 @@ const SamizdatMap = ({
 
       setEoaStartDates(startDates);
 
-      // Step 4b: Deduplicate return visits for Action-type EoAs
-      // For Action-type EoAs, keep only the first view event per token
+      // Step 4b: Deduplicate L00 return visits across all organizer seed channels.
+      // Keep only the earliest origin view per l00_instance; later views remain return visits.
       const firstViewByToken: Record<string, boolean> = {};
+      const firstViewByL00Instance: Record<string, boolean> = {};
       const deduplicatedEvents = sortedEvents.filter((event) => {
         const td = tokenData[event.token];
         if (!td) return true;
+        if (td.level === 0 && td.l00Instance) {
+          if (!firstViewByL00Instance[td.l00Instance]) {
+            firstViewByL00Instance[td.l00Instance] = true;
+            return true;
+          }
+          return false;
+        }
         const eoaType = eoaTypes[td.eoaId];
         if (eoaType !== "Action") return true; // Event-type: keep all (each scan = unique person)
         if (!firstViewByToken[event.token]) {
@@ -1618,7 +1626,7 @@ const SamizdatMap = ({
                   {/* Share medium shapes */}
                   <div className="flex items-center gap-2 pl-3">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Medium</span>
-                    {(["circle", "square", "triangle"] as EoaShape[]).map((shape) => (
+                    {(["circle", "square", "triangle", "diamond"] as EoaShape[]).map((shape) => (
                       <div key={shape} className="flex items-center gap-1 text-xs">
                         <div className="w-[18px] h-[18px]" dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 18) }} />
                         <span>{SHARE_MEDIUM_LABELS[shape]}</span>
