@@ -13,6 +13,7 @@ import { mintL00, mintShare } from "@/lib/virality/mint";
 import { 
   getL00Location, 
   getLocationForLevel, 
+  instantiateSimulatedL00Token,
   logEventWithLocation,
   randomTimestampInRange,
   type LocationData 
@@ -269,6 +270,8 @@ export default function Simulator() {
           console.log(`Minted new simulated L00 token for ${eoa.title}: ${l00Token}`);
         }
 
+        const l00EventToken = await instantiateSimulatedL00Token(l00Token);
+
         // Mint L00 shares (simulate multiple people scanning the same QR code)
         for (let i = 0; i < l00Count; i++) {
           // Check if aborted
@@ -277,13 +280,13 @@ export default function Simulator() {
           }
 
           // Log L00 scan event with location
-          await logEventWithLocation(l00Token, "scan", l00Location);
+          await logEventWithLocation(l00EventToken, "scan", l00Location);
 
             // Mint L01 tokens
             for (let j = 0; j < l01Factor; j++) {
               const l01Location = await getLocationForLevel(1, l00Location);
               const { token: l01Token } = await mintShare({
-                parentToken: l00Token,
+                parentToken: l00EventToken,
                 utmMedium: "social",
               });
               
