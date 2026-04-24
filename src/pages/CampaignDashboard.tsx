@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Activity, MapPin, Smartphone, TrendingUp, ArrowUpDown, Trash2, Copy, RefreshCw, Download, Columns } from "lucide-react";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,7 +31,7 @@ import { SimulatorControls } from "@/components/SimulatorControls";
 import SamizdatMap from "@/components/SamizdatMap";
 import SamizdatEoaSelector from "@/components/SamizdatEoaSelector";
 import { getViralCoefficient, getConversionFunnel, getAmplificationByLevel, getEngagementByLevel, getViralCycleTime, getTopPerformingContent, getGeographicSpread } from "@/lib/virality/analytics";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -92,6 +92,8 @@ export default function CampaignDashboard({
   const [showFirstWarning, setShowFirstWarning] = useState(false);
   const [showSecondWarning, setShowSecondWarning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isClearingSimulationData, setIsClearingSimulationData] = useState(false);
+  const [pendingSimulationClearScope, setPendingSimulationClearScope] = useState<"current" | "all" | null>(null);
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [highlightedRowIds, setHighlightedRowIds] = useState<Set<string>>(new Set());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -617,6 +619,56 @@ export default function CampaignDashboard({
     });
   };
 
+  const handleClearSimulationData = async (scope: "current" | "all") => {
+    if (scope === "current" && !selectedCampaign) {
+      toast({
+        variant: "destructive",
+        title: "No campaign selected",
+        description: "Select a campaign before clearing its simulation data."
+      });
+      return;
+    }
+
+    setIsClearingSimulationData(true);
+    try {
+      const rpcArgs = scope === "current" ? { _campaign_code: selectedCampaign } : {};
+      const { data, error } = await supabase.rpc("clear_simulation_data", rpcArgs);
+      if (error) throw error;
+
+      await supabase.rpc("refresh_daily_aggregates");
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["eventsV2"] }),
+        queryClient.invalidateQueries({ queryKey: ["eventCounts"] }),
+        queryClient.invalidateQueries({ queryKey: ["viralCoefficient"] }),
+        queryClient.invalidateQueries({ queryKey: ["conversionFunnel"] }),
+        queryClient.invalidateQueries({ queryKey: ["amplification"] }),
+        queryClient.invalidateQueries({ queryKey: ["engagement"] }),
+        queryClient.invalidateQueries({ queryKey: ["cycleTime"] }),
+        queryClient.invalidateQueries({ queryKey: ["contentPerformance"] }),
+        queryClient.invalidateQueries({ queryKey: ["geographic"] }),
+      ]);
+      fetchEvents();
+      setMapRefreshKey((key) => key + 1);
+
+      const result = data?.[0];
+      toast({
+        title: "Simulation data cleared",
+        description: `${result?.deleted_events ?? 0} simulated events and ${result?.deleted_tokens ?? 0} simulated tokens removed${scope === "current" ? ` for ${selectedCampaign}` : " across all campaigns"}.`
+      });
+    } catch (error) {
+      console.error("Simulation cleanup failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Cleanup failed",
+        description: error instanceof Error ? error.message : "Failed to clear simulation data."
+      });
+    } finally {
+      setIsClearingSimulationData(false);
+      setPendingSimulationClearScope(null);
+    }
+  };
+
   // Fetch eventsV2 (the main events table with rich filtering)
   const selectedLevels = levelFilter.split(",").map(Number);
   const {
@@ -825,6 +877,41 @@ export default function CampaignDashboard({
               <SelectItem value="simulated">Simulated Only</SelectItem>
             </SelectContent>
           </Select>
+
+          <AlertDialog open={pendingSimulationClearScope !== null} onOpenChange={(open) => !open && setPendingSimulationClearScope(null)}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isClearingSimulationData}>
+                  {isClearingSimulationData ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                  Clear Simulation Data
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuLabel>Simulation cleanup scope</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={!selectedCampaign} onSelect={() => setPendingSimulationClearScope("current")}>
+                  Current campaign only
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setPendingSimulationClearScope("all")}>
+                  All campaigns
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{pendingSimulationClearScope === "all" ? "Clear simulation data for all campaigns?" : "Clear simulation data for this campaign?"}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove simulated-only events and tokens {pendingSimulationClearScope === "all" ? "across every campaign" : `for ${selectedCampaign || "the selected campaign"}`}. Real campaign data will not be deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isClearingSimulationData}>Cancel</AlertDialogCancel>
+                <AlertDialogAction disabled={isClearingSimulationData || pendingSimulationClearScope === null} onClick={() => pendingSimulationClearScope && handleClearSimulationData(pendingSimulationClearScope)}>
+                  Clear simulation data
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <Select value={eventTypeFilter} onValueChange={(val) => {
             const params = new URLSearchParams(searchParams);

@@ -819,6 +819,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_simulation_data: {
+        Args: { _campaign_code?: string }
+        Returns: {
+          deleted_events: number
+          deleted_tokens: number
+        }[]
+      }
       generate_share_code: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
       generate_token: { Args: never; Returns: string }
