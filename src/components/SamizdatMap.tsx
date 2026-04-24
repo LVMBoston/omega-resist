@@ -120,8 +120,8 @@ interface ViewportStats {
   shape?: EoaShape; // The actual shape for rendering
 }
 
-// EoA shape types based on utm_id prefix
-type EoaShape = "circle" | "square" | "triangle";
+// Marker shapes based on utm_medium
+type EoaShape = "circle" | "square" | "triangle" | "diamond";
 
 // View mode for the map
 type ViewMode = "all" | "chain";
@@ -134,6 +134,10 @@ const MEDIUM_COLORS: Record<string, string> = {
   tx: "#00cc66",   // text alternate code - green
   fb: "#1877f2",   // Facebook - FB blue
   bs: "#0085ff",   // BlueSky - sky blue
+  li: "#0a66c2",   // LinkedIn - blue
+  x: "#111111",    // X/Twitter - black
+  social: "#64748b", // generic social
+  p2p: "#64748b",  // peer-to-peer
 };
 
 const MEDIUM_LABELS: Record<string, string> = {
@@ -143,6 +147,10 @@ const MEDIUM_LABELS: Record<string, string> = {
   tx: "Text (SMS)",
   fb: "Facebook",
   bs: "BlueSky",
+  li: "LinkedIn",
+  x: "X",
+  social: "Social",
+  p2p: "Peer-to-peer",
 };
 
 // Colors by level (contrast-verified against border colors white/amber/cyan)
@@ -159,16 +167,19 @@ const getLevelColor = (level: number): string => {
   return LEVEL_COLORS[level] || LEVEL_COLORS[0];
 };
 
+const SOCIAL_MEDIUMS = new Set(["fb", "bs", "li", "x", "social", "p2p"]);
+
 // Share medium shape mapping based on utm_medium
 const getShareMediumShape = (utmMedium: string): EoaShape => {
-  if (!utmMedium) return "circle";
+  if (!utmMedium) return "diamond";
   const medium = utmMedium.toLowerCase();
   
-  if (medium === "qr") return "circle";           // QR scan (L00 only in practice)
-  if (medium === "em") return "square";           // Email share
-  if (medium === "sms") return "triangle";        // SMS/Text share
+  if (medium === "qr") return "circle";           // QR seed/open
+  if (medium === "em") return "square";           // Email seed/share
+  if (medium === "sms" || medium === "tx") return "triangle"; // SMS/Text seed/share
+  if (SOCIAL_MEDIUMS.has(medium)) return "diamond"; // Social seed/share
   
-  return "circle"; // default fallback
+  return "diamond"; // explicit non-QR fallback
 };
 
 // Share medium shape labels for legend
@@ -176,6 +187,7 @@ const SHARE_MEDIUM_LABELS: Record<EoaShape, string> = {
   circle: "QR Scan",
   square: "Email",
   triangle: "SMS/Text",
+  diamond: "Social/P2P",
 };
 
 // Generate SVG for marker shape
