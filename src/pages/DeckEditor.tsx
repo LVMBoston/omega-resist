@@ -27,6 +27,8 @@ import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
 import { FileDown } from "lucide-react";
 import { classifyHotspots } from "@/lib/hotspotClassification";
+import { Badge } from "@/components/ui/badge";
+import { getDeckDeploymentStatus, statusBadgeClasses, statusLabel, formatDeployedTimestamp } from "@/lib/deckStatus";
 
 interface Slide {
   id: string;
