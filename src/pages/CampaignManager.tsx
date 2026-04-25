@@ -941,9 +941,27 @@ export default function CampaignManager() {
                 </Button>
               </div>
             </div>
-            {campaign.description && <p className="text-sm text-muted-foreground mt-2">
-              {campaign.description}
-            </p>}
+            {campaign.description && (
+              <div className="mt-2">
+                <p
+                  className={`text-sm text-muted-foreground whitespace-pre-wrap ${
+                    descriptionExpanded ? "" : "line-clamp-2"
+                  }`}
+                >
+                  {campaign.description}
+                </p>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline mt-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDescriptionExpanded((v) => !v);
+                  }}
+                >
+                  {descriptionExpanded ? "Show less" : "Show more"}
+                </button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
