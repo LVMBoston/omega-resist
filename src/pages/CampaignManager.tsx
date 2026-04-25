@@ -23,6 +23,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import CampaignWizard from "@/components/CampaignWizard";
+import { getDeckDeploymentStatus, statusBadgeClasses, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
+import { mintL00 } from "@/lib/virality/mint";
 interface Campaign {
   id: string;
   code: string;
@@ -58,6 +60,13 @@ interface CampaignStats {
   chaptersCount: number;
 }
 
+interface DeckStatusRow {
+  slug: string;
+  status: 'draft' | 'live' | 'pending';
+  lastDeployedAt: Date | null;
+  affectedEoaIds: string[]; // EOAs in THIS campaign assigned to this deck
+}
+
 interface DeploymentState {
   ready: boolean;
   hasExistingTokens: boolean;
@@ -65,6 +74,7 @@ interface DeploymentState {
   totalEoas: number;
   lastDeployed: string | null;
   deckSlugs: string[];
+  deckStatuses: DeckStatusRow[];
 }
 const codeSchema = z.string().min(1, "Code is required").regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
 export default function CampaignManager() {
