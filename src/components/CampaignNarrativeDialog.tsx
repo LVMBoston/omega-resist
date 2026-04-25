@@ -158,7 +158,7 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
             </div>
           ) : narrative ? (
             <>
-              <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto space-y-1">
+              <div className="text-sm leading-snug max-h-[60vh] overflow-y-auto space-y-0">
                 {narrative.fullStory.split("\n").map((line, i) => renderFullStoryLine(line, i))}
               </div>
               <div className="flex gap-2 pt-2">
