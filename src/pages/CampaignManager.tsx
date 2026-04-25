@@ -800,7 +800,47 @@ export default function CampaignManager() {
         setDeploying(false);
       }
     };
-    
+
+    const handleDeployDeck = async (e: React.MouseEvent, deckSlug: string, eoaIds: string[]) => {
+      e.stopPropagation();
+      if (eoaIds.length === 0) {
+        toast({ variant: "destructive", title: "No EoAs", description: "No ready EoAs assigned to this deck." });
+        return;
+      }
+      setDeploying(true);
+      try {
+        let successCount = 0;
+        let errorCount = 0;
+        for (const eoaId of eoaIds) {
+          try {
+            await mintL00({ eoaId, deckSlug, utmMedium: "qr" }, { lazy: false });
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to mint L00 for EoA ${eoaId} on deck ${deckSlug}:`, err);
+            errorCount++;
+          }
+        }
+        if (successCount > 0) {
+          await supabase
+            .from('decks')
+            .update({ last_deployed_at: new Date().toISOString() })
+            .eq('slug', deckSlug);
+          toast({
+            title: "Deck Deployed",
+            description: `${successCount} event${successCount !== 1 ? 's' : ''} updated for ${deckSlug}. Existing QR codes keep working.`,
+          });
+        }
+        if (errorCount > 0) {
+          toast({ variant: "destructive", title: "Partial Deployment", description: `${errorCount} EoA(s) failed.` });
+        }
+        onRefreshDeployment();
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Deployment Failed", description: error.message });
+      } finally {
+        setDeploying(false);
+      }
+    };
+
     const style = {
       transform: CSS.Transform.toString(transform),
       transition,
