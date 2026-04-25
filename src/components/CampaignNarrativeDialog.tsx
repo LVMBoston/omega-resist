@@ -126,8 +126,11 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
         size="sm"
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
+          console.log("[CampaignNarrativeButton] click", { iconOnly, campaignCode });
           handleOpen();
         }}
+        onPointerDown={(e) => e.stopPropagation()}
         title={iconOnly ? "Campaign Story" : undefined}
       >
         <BookOpen className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} />
