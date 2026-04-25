@@ -123,7 +123,8 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
     <>
       <Button
         variant={iconOnly ? "ghost" : "outline"}
-        size="sm"
+        size={iconOnly ? "icon" : "sm"}
+        className={iconOnly ? "h-8 w-8" : undefined}
         onClick={(e) => {
           e.stopPropagation();
           handleOpen();
