@@ -137,7 +137,12 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base">Campaign Story</DialogTitle>
+            <DialogTitle className="text-base pr-6">Campaign: {campaignTitle}</DialogTitle>
+            {selectedDataSource && !needsDataChoice && (
+              <Badge variant="secondary" className="w-fit mt-1">
+                Dataset: {selectedDataSource === "simulated" ? "Simulated data" : "Real data"}
+              </Badge>
+            )}
           </DialogHeader>
           {loading ? (
             <div className="flex items-center justify-center py-8">
@@ -153,11 +158,6 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
             </div>
           ) : narrative ? (
             <>
-              {selectedDataSource && (
-                <Badge variant="secondary" className="w-fit">
-                  Dataset: {selectedDataSource === "simulated" ? "Simulated data" : "Real data"}
-                </Badge>
-              )}
               <div className="text-sm leading-relaxed max-h-[60vh] overflow-y-auto space-y-1">
                 {narrative.fullStory.split("\n").map((line, i) => renderFullStoryLine(line, i))}
               </div>
