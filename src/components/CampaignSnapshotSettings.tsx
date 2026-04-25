@@ -361,7 +361,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
           Server-Side Rendering
         </CardTitle>
         <CardDescription>
-          Pre-render stats pages as static images for reliable display on iOS and faster loading.
+          Pre-render stats pages as static images for reliable display on mobile devices and faster loading.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
