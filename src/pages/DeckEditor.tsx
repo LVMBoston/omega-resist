@@ -1399,7 +1399,7 @@ export default function DeckEditor() {
             <Button 
               variant="outline" 
               onClick={handleCancel}
-              disabled={!hasChanges || saving}
+              disabled={saving}
             >
               Cancel
             </Button>
