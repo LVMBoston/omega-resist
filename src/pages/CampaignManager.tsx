@@ -990,54 +990,70 @@ export default function CampaignManager() {
                   </DropdownMenu>
                 )}
                 
-                {deploymentState.ready ? (
-                  deploymentState.lastDeployed ? (
-                    <div className="flex justify-center py-2">
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0">
-                        Deployed {new Date(deploymentState.lastDeployed).toLocaleString('en-US', {
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric', 
-                          hour: 'numeric', 
-                          minute: '2-digit',
-                          hour12: true 
-                        })}
-                      </Badge>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="w-full"
-                      onClick={handleDeploy}
-                      disabled={deploying}
-                    >
-                      {deploying ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deploying...
-                        </>
-                      ) : (
-                        "Ready to Deploy"
-                      )}
-                    </Button>
+                {/* Per-deck deployment status */}
+                {deploymentState.deckStatuses.length === 0 ? (
+                  !deploymentState.ready && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex justify-center py-2">
+                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
+                              Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
+                            </Badge>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
+                          <p className="text-xs">Missing Mobilize Code or Deck</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )
                 ) : (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex justify-center py-2">
-                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
-                            Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
-                          </Badge>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
-                        <p className="text-xs">Missing Mobilize Code or Deck</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <div className="space-y-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        const live = deploymentState.deckStatuses.filter(d => d.status === 'live').length;
+                        const pending = deploymentState.deckStatuses.filter(d => d.status === 'pending').length;
+                        const total = deploymentState.deckStatuses.length;
+                        if (pending > 0) return `${pending} of ${total} deck${total !== 1 ? 's' : ''} need deploy`;
+                        if (live === total) return `${total} of ${total} deck${total !== 1 ? 's' : ''} Live`;
+                        return `${live} of ${total} deck${total !== 1 ? 's' : ''} Live`;
+                      })()}
+                    </div>
+                    {deploymentState.deckStatuses.map(d => (
+                      <div
+                        key={d.slug}
+                        className="flex items-center gap-2 text-xs rounded border px-2 py-1.5 hover:bg-accent/50 transition-colors"
+                      >
+                        <button
+                          type="button"
+                          className="font-mono truncate flex-1 text-left hover:underline"
+                          onClick={() => navigate(`/deck-editor/${d.slug}`)}
+                          title={d.slug}
+                        >
+                          {d.slug}
+                        </button>
+                        <Badge className={cn("text-[10px] px-1.5 py-0", statusBadgeClasses(d.status))}>
+                          {statusLabel(d.status)}
+                          {d.status === 'live' && d.lastDeployedAt && (
+                            <span className="ml-1 opacity-80">• {formatDeployedTimestamp(d.lastDeployedAt)}</span>
+                          )}
+                        </Badge>
+                        {(d.status === 'pending' || (d.status === 'draft' && d.affectedEoaIds.length > 0)) && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-6 px-2 text-[10px]"
+                            disabled={deploying}
+                            onClick={(e) => handleDeployDeck(e, d.slug, d.affectedEoaIds)}
+                          >
+                            {deploying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Deploy'}
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
