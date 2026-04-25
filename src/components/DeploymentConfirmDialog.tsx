@@ -7,6 +7,7 @@ interface DeploymentConfirmDialogProps {
   eoaCount: number;
   campaigns: string[];
   isDeploying: boolean;
+  deckSlug?: string;
 }
 
 export function DeploymentConfirmDialog({
@@ -15,20 +16,24 @@ export function DeploymentConfirmDialog({
   onConfirm,
   eoaCount,
   campaigns,
-  isDeploying
+  isDeploying,
+  deckSlug,
 }: DeploymentConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Deploy Deck Changes?</AlertDialogTitle>
+          <AlertDialogTitle>
+            Deploy {deckSlug ? <span className="font-mono">{deckSlug}</span> : "this deck"}?
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
                 This deck is used by <strong>{eoaCount} event{eoaCount !== 1 ? 's' : ''}</strong> across{' '}
                 <strong>{campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''}</strong>.
+                Only events assigned to this deck will be re-published — other decks in the same campaign are unaffected.
               </p>
-              
+
               {campaigns.length > 0 && (
                 <div className="bg-muted rounded p-3 space-y-1">
                   <div className="font-semibold text-sm">Affected Campaigns:</div>
@@ -44,11 +49,11 @@ export function DeploymentConfirmDialog({
               )}
 
               <div className="border-l-2 border-primary pl-3 space-y-1 text-sm">
-                <div className="font-semibold">What happens when you deploy:</div>
+                <div className="font-semibold">What deploy does:</div>
                 <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                  <li>New content will be live immediately</li>
-                  <li>Existing QR codes continue to work</li>
-                  <li>New tokens generated for all {eoaCount} event{eoaCount !== 1 ? 's' : ''}</li>
+                  <li>Marks this deck as Live with the latest content</li>
+                  <li>Re-renders snapshots for affected campaigns</li>
+                  <li><strong>Existing QR codes and viral links keep working</strong> — no tokens are invalidated</li>
                   <li>Updates visible on next scan/view</li>
                 </ul>
               </div>

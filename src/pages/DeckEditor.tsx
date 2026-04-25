@@ -27,6 +27,8 @@ import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
 import { FileDown } from "lucide-react";
 import { classifyHotspots } from "@/lib/hotspotClassification";
+import { Badge } from "@/components/ui/badge";
+import { getDeckDeploymentStatus, statusBadgeClasses, statusLabel, formatDeployedTimestamp } from "@/lib/deckStatus";
 
 interface Slide {
   id: string;
@@ -211,6 +213,7 @@ export default function DeckEditor() {
   const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string }>>([]);
+  const [deckMeta, setDeckMeta] = useState<{ last_deployed_at: string | null; last_modified_at: string | null } | null>(null);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newDeckSlug, setNewDeckSlug] = useState('');
   const [savingAs, setSavingAs] = useState(false);
@@ -396,6 +399,19 @@ export default function DeckEditor() {
         setHasDeployedTokens(true);
       } else {
         setHasDeployedTokens(false);
+      }
+
+      // Fetch deck deploy/modify timestamps for status badge
+      const { data: deckRow } = await supabase
+        .from('decks')
+        .select('last_deployed_at, last_modified_at')
+        .eq('slug', slug)
+        .maybeSingle();
+      if (deckRow) {
+        setDeckMeta({
+          last_deployed_at: (deckRow as any).last_deployed_at ?? null,
+          last_modified_at: (deckRow as any).last_modified_at ?? null,
+        });
       }
     } catch (error: any) {
       console.error('Error fetching deck usage:', error);
@@ -1292,9 +1308,18 @@ export default function DeckEditor() {
         }
       }
 
+      // Stamp deck.last_deployed_at on success so per-deck status reflects this deploy.
       if (successCount > 0) {
+        const { error: stampError } = await supabase
+          .from('decks')
+          .update({ last_deployed_at: new Date().toISOString() })
+          .eq('slug', slug);
+        if (stampError) {
+          console.error('Failed to stamp deck last_deployed_at:', stampError);
+        }
+
         toast.success(
-          `Deployed! ${successCount} event${successCount !== 1 ? 's' : ''} updated. Changes are now live.`,
+          `Deployed! ${successCount} event${successCount !== 1 ? 's' : ''} updated. Existing QR codes keep working.`,
           { duration: 5000 }
         );
       }
@@ -1342,6 +1367,24 @@ export default function DeckEditor() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          {(() => {
+            const { status, lastDeployedAt } = getDeckDeploymentStatus({
+              last_deployed_at: deckMeta?.last_deployed_at ?? null,
+              last_modified_at: deckMeta?.last_modified_at ?? null,
+              hasUsage: hasDeployedTokens || eoaCount > 0,
+            });
+            return (
+              <Badge
+                className={statusBadgeClasses(status)}
+                title={lastDeployedAt ? `Last deployed: ${formatDeployedTimestamp(lastDeployedAt)}` : undefined}
+              >
+                {statusLabel(status)}
+                {status === 'live' && lastDeployedAt && (
+                  <span className="ml-1 opacity-80">• {formatDeployedTimestamp(lastDeployedAt)}</span>
+                )}
+              </Badge>
+            );
+          })()}
           <div className="flex gap-2 items-center">
             {referenceDimensions && (
               <div className="text-sm text-muted-foreground px-4 py-2 bg-muted rounded">
@@ -1916,6 +1959,7 @@ Add Slide(s)
         open={deploymentDialogOpen}
         onOpenChange={setDeploymentDialogOpen}
         onConfirm={handleDeployConfirm}
+        deckSlug={slug}
         eoaCount={eoaCount}
         campaigns={campaigns}
         isDeploying={isDeploying}

@@ -1,100 +1,102 @@
-# Plan: L00 Seed Instance Normalization Across All Organizer Channels
 
-## 1. Goal and corrected model
+# Per-Deck Deployment Status — Rework
 
-1a. Treat every organizer-created Level 0 token as a **seed token**, regardless of channel: QR, email, SMS, Facebook, LinkedIn, Bluesky, or other social distribution.
+## 1. Problem
 
-1b. A seed token has no viewer identity until a human recipient opens the deck. On first open, the app creates a unique `l00_instance` token and logs the origin `view` event against that instance.
+Today "Deployed {timestamp}" on a campaign card is derived from the **most recent L00 token mint** across all that campaign's EOAs. This conflates two different things:
 
-1c. Track viral flow from the instance, not from the bare seed. All L01+ tokens inherit the original `l00_instance`, so downstream shares remain tied to the first human opener.
+- a. A **campaign** going live for the first time (initial mint).
+- b. A **deck** being modified and re-published (which only re-mints L00 rows for EOAs assigned to that deck).
 
-1d. Continue treating later `view` events for the same `l00_instance` as **return visits / retention**, not new origin markers.
+Because one campaign can use multiple decks (e.g. Deck A on EOAs 1–3, Deck B on EOAs 4–6), and one deck can be used by multiple campaigns, a single campaign-level "Deployed" badge cannot honestly represent state. Editing Deck A should not change the displayed deployment status of EOAs using Deck B.
 
-1e. This plan does **not** redefine return visits. It only makes the map and guardrails consistently recognize the earliest `view` per `l00_instance` as the origin marker across all L00 channels.
+Additionally, every deploy resets `tokens.minted_at`, which means the campaign-level "Deployed {date}" no longer reflects when the campaign first went live — it reflects whichever deck was most recently re-deployed. We need a deck-scoped source of truth.
 
-## 2. Channel and visual encoding rules
+## 2. Token Behavior on Deploy (clarification)
 
-2a. Keep marker **color** as viral depth:
+Re-deploying a deck **does not invalidate any tokens**:
 
-```text
-L00 = dark slate
-L01 = green
-L02 = purple
-L03+ = red
-```
+- a. L00 token strings are deterministic (`l00-{mobilize_code}-{utm_id...}`), so the deploy deletes and re-inserts the L00 row with the **same string** — existing QR codes keep working.
+- b. L01–L03 viral child tokens are preserved (they reference parent by string, which is unchanged).
+- c. Slide content (images, hotspots, ordering) is read **live** at view time from `slide_items`; saving alone (without deploy) is enough for the next scan to show new content.
+- d. The only thing the deploy actually does to tokens is reset `minted_at` on the L00 rows and re-render snapshots — it is essentially a "publish" action, not an invalidation.
 
-2b. Keep marker **shape** as distribution/share medium. QR remains circle, email remains square, SMS/text remains triangle.
+This means we need a separate, deck-scoped timestamp to mean "deployed at" — `tokens.minted_at` is the wrong source of truth.
 
-2c. Extend medium handling for organizer social channels instead of collapsing everything to QR. Existing social medium values such as `fb` and `bs`, and future values such as `li`, `x`, or `social`, will be explicitly classified rather than falling through to the QR/circle default.
+## 3. New Definition of "Deployed"
 
-2d. Update the map legend/labels so users can distinguish organizer social-origin L00 markers from QR markers where the existing shape vocabulary permits. If we need to keep only the existing three shapes, social channels will use a documented fallback shape/label rather than silently appearing as QR.
+**"Deployed" is a per-deck property: the timestamp of the most recent successful publish of that deck.**
 
-2e. Enforce the invariant that a QR-shaped marker means `utm_medium = 'qr'`; L01+ QR markers should not be produced by share minting logic.
+- a. **Draft** → deck has no EOAs assigned and no L00 tokens.
+- b. **Live** → `last_deployed_at IS NOT NULL AND last_modified_at <= last_deployed_at`.
+- c. **Pending Deploy** → `last_modified_at > last_deployed_at` (changes saved, deploy not yet run).
+- d. Re-deploying a Live deck simply updates `last_deployed_at` to now; tokens and QR codes are unaffected.
 
-## 3. Instantiation and event lifecycle
+## 4. Data Model Changes
 
-3a. Preserve the current deck-open lifecycle: `DeckViewer.tsx` detects a bare `l00-*` seed token, calls `instantiateL00Token(...)`, replaces the URL with the instance token, then logs the `view` event.
+a. Add `decks.last_deployed_at timestamptz NULL` — set by the deploy flow on success.
+b. Add `decks.last_modified_at timestamptz NULL` — set on any `slide_items` insert/update/delete.
+c. Trigger `slide_items_touch_deck` (AFTER INSERT/UPDATE/DELETE on `slide_items`) updates `decks.last_modified_at = now()` for the affected `deck_slug`.
+d. Seed `last_deployed_at` from existing L00 token mint times in the same migration (one-time backfill via the data tool):
+   ```sql
+   UPDATE decks d
+   SET last_deployed_at = sub.max_minted
+   FROM (
+     SELECT deck_slug, MAX(minted_at) AS max_minted
+     FROM tokens
+     WHERE level = 0 AND deleted_at IS NULL
+     GROUP BY deck_slug
+   ) sub
+   WHERE d.slug = sub.deck_slug;
+   ```
+e. Status itself is **derived in the UI**, not stored.
 
-3b. Generalize comments and naming from QR-specific language to channel-neutral “L00 seed” language, because QR, email, SMS, and social all follow the same seed-to-instance lifecycle.
+## 5. UI Changes
 
-3c. Keep the current rule that an already-instanced L00 URL may be re-instantiated for a different real recipient when appropriate. This remains the system’s protection against forwarded organizer links causing multiple people to share one instance.
-
-3d. Add crawler/bot protection to L00 instantiation/logging so social preview bots do not create human viewer instances. This is especially important for Facebook, LinkedIn, X, and messaging app previews. The guard should detect common crawler user agents before calling `instantiateL00Token(...)` or `logEvent(...)`.
-
-## 4. Map data normalization
-
-4a. Update `SamizdatMap.tsx` so map origin markers are deduplicated by `l00_instance` for L00 tokens across all mediums, not only by token and not only for Action-type EoAs.
-
-4b. For each `l00_instance`, keep the earliest qualifying `view` event as the map marker. Later `view` events for that same instance are excluded from marker rendering and remain available conceptually as return visits.
-
-4c. Preserve L01+ markers as actual downstream viral events. Their grouping remains based on their own token/event, while their lineage remains queryable via inherited `l00_instance`.
-
-4d. Preserve existing geographic handling: ZIP-based coordinates for US events, rounded lat/lon for international events, and current simulated/real data filtering.
-
-4e. Preserve existing engagement border logic: white for opened, amber for share intent, cyan for completed share.
-
-## 5. Share minting guardrails
-
-5a. Update `mintShare` validation and/or call sites so user-generated L01+ shares cannot use `utm_medium = 'qr'`.
-
-5b. Keep QR available for organizer-minted L00 seed tokens only.
-
-5c. Ensure share mediums use explicit allowed values. Current code allows `qr`, `em`, `sms`, `social`, and `p2p`; the implementation will separate allowed **seed mediums** from allowed **share mediums** so Level 0 campaign starts and viral shares cannot accidentally use the wrong channel semantics.
-
-5d. Ensure L01+ tokens continue inheriting `l00_instance` from their parent.
-
-## 6. Reporting and metrics impact
-
-6a. Do not fabricate or backfill metrics. Existing data will be displayed only as returned by the database.
-
-6b. Do not change how raw `url_events` are stored. Multiple `view` events for the same token/instance remain valid database facts.
-
-6c. Update only the map-origin interpretation layer unless a database guard is necessary for share medium constraints.
-
-6d. Keep return-visit logic separate from origin-marker rendering. A repeated open of the same instance is not a duplicate QR/email/SMS/social event; it is a return visit.
-
-## 7. Technical implementation targets
-
-7a. `src/pages/DeckViewer.tsx`: update L00 seed/instance comments and add crawler-safe behavior before instantiation/logging.
-
-7b. `src/lib/virality/mint.ts`: split seed-medium and share-medium validation, prevent `qr` from being used for L01+ share minting, and update QR-specific comments to channel-neutral language.
-
-7c. `src/components/SamizdatMap.tsx`: normalize event deduplication around earliest `view` per `l00_instance`; update medium-to-shape/label handling for social mediums; add guardrails against invalid level/medium combinations.
-
-7d. Database migration, only if needed: add a server-side guard to prevent `mint_share` from accepting `qr` as a share medium. This is safer than relying only on client-side validation.
-
-7e. Tests/verification: add or update unit-level checks where available for medium classification and L00 instance deduplication; run the project’s relevant tests/build checks after implementation.
-
-## 8. Decision documentation
-
-8a. After approval and implementation, archive this approved plan as a decision document.
-
-8b. This will be a new plan named **L00 Seed Instance Normalization Across All Organizer Channels** unless an existing decision document for this exact topic is found during implementation.
-
-8c. The decision document will be saved under:
+### 5a. Campaign Card (CampaignManager)
+Replace the single "Deployed {date}" badge with a **per-deck status row**, one line per deck the campaign uses:
 
 ```text
-docs/decisions/virality/<YYYY-MM-DD>_l00-seed-instance-normalization_feature-doc_lovable.md
+Deck: samizdat-deck-3      [Live • Mar 5]
+Deck: ice-takedown-v2      [Pending Deploy]   [Deploy]
+Deck: town-hall            [Draft]
 ```
 
-8d. The document will include `Status: Approved & Implemented`, the implementation date, and the final approved plan content.
+- Each row is clickable and opens the Deck Editor for that deck.
+- The campaign-level "Deploy" button is removed; deployment is per deck (from the row, or from the Deck Editor save flow which already exists).
+- Roll-up at the top of the card: e.g. `2 of 3 decks Live` or `1 deck needs deploy`.
+
+### 5b. Deck Editor (header)
+Show the deck's current status badge in the header next to the deck name (Draft / Live / Pending Deploy). On save with `hasDeployedTokens`, the existing `DeploymentConfirmDialog` continues to fire.
+
+### 5c. Deck Management list
+Add a `Status` column with the same three-state badge plus `Last deployed` timestamp. Sortable.
+
+### 5d. DeploymentConfirmDialog copy
+Tighten the dialog to make per-deck scope explicit and remove the misleading "new tokens" framing:
+- a. Title: "Deploy {deck-slug}?"
+- b. Body: "This deck is used by **{eoaCount} events** across **{campaigns.length} campaigns**. Re-deploying refreshes their published content. Existing QR codes and viral links keep working — no tokens are invalidated."
+
+## 6. Technical Details
+
+- a. Migration adds two nullable timestamp columns to `decks` and the `slide_items_touch_deck` trigger.
+- b. Backfill of `last_deployed_at` runs as a one-shot data update via the insert tool after the schema migration.
+- c. Edge function `deploy-template-snapshots` and `handleDeployConfirm` in `DeckEditor.tsx`: on success, `UPDATE decks SET last_deployed_at = now() WHERE slug = $1`.
+- d. New helper `src/lib/deckStatus.ts` exporting `getDeckDeploymentStatus(deck) → { status: 'draft' | 'live' | 'pending', lastDeployedAt }`.
+- e. CampaignManager fetch extended to join `decks` for each unique `assigned_deck_slug` of the campaign.
+
+## 7. What Does Not Change
+
+- Token minting logic, short URL behavior, snapshot rendering pipeline.
+- Existing QR codes — re-deploying keeps the same short URLs and token strings working.
+- The `deck_versions` table (left as-is for future versioning work; not used here).
+
+## 8. Out of Scope (future)
+
+- Per-EOA deploy state inside the campaign EOA manager (which 3 of 12 EOAs are stale).
+- Auto-deploy on save (we keep the explicit confirm dialog).
+
+## 9. Decision Log
+
+This is a **new** plan. On approval, archive as
+`docs/decisions/decks/<YYYY-MM-DD>_per-deck-deployment-status_feature-doc_lovable.md`.

@@ -23,6 +23,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import CampaignWizard from "@/components/CampaignWizard";
+import { getDeckDeploymentStatus, statusBadgeClasses, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
+import { mintL00 } from "@/lib/virality/mint";
 interface Campaign {
   id: string;
   code: string;
@@ -58,6 +60,13 @@ interface CampaignStats {
   chaptersCount: number;
 }
 
+interface DeckStatusRow {
+  slug: string;
+  status: 'draft' | 'live' | 'pending';
+  lastDeployedAt: Date | null;
+  affectedEoaIds: string[]; // EOAs in THIS campaign assigned to this deck
+}
+
 interface DeploymentState {
   ready: boolean;
   hasExistingTokens: boolean;
@@ -65,6 +74,7 @@ interface DeploymentState {
   totalEoas: number;
   lastDeployed: string | null;
   deckSlugs: string[];
+  deckStatuses: DeckStatusRow[];
 }
 const codeSchema = z.string().min(1, "Code is required").regex(/^[a-z0-9_-]+$/, "Code must contain only lowercase letters, numbers, hyphens, and underscores");
 export default function CampaignManager() {
@@ -302,19 +312,40 @@ export default function CampaignManager() {
       }
     }
     
+    // Collect every unique deck slug across all campaigns and fetch deck rows
+    const allDeckSlugs = [...new Set(
+      eoas.map(e => e.assigned_deck_slug).filter((s): s is string => !!s)
+    )];
+
+    let deckMetaBySlug = new Map<string, { last_deployed_at: string | null; last_modified_at: string | null }>();
+    if (allDeckSlugs.length > 0) {
+      const { data: deckRows } = await supabase
+        .from('decks')
+        .select('slug, last_deployed_at, last_modified_at')
+        .in('slug', allDeckSlugs);
+      if (deckRows) {
+        for (const d of deckRows as any[]) {
+          deckMetaBySlug.set(d.slug, {
+            last_deployed_at: d.last_deployed_at ?? null,
+            last_modified_at: d.last_modified_at ?? null,
+          });
+        }
+      }
+    }
+
     // Build deployment state for each campaign
     for (const [campaignId, campaignEoas] of campaignEoaMap) {
       const readyEoas = campaignEoas.filter(e => e.mobilize_code && e.assigned_deck_slug);
       const allReady = readyEoas.length > 0 && readyEoas.length === campaignEoas.length;
-      
+
       // Get unique deck slugs
       const deckSlugs = [...new Set(
         campaignEoas
           .map(e => e.assigned_deck_slug)
           .filter((slug): slug is string => slug !== null)
       )];
-      
-      // Find latest deployed token for this campaign
+
+      // Find latest deployed token for this campaign (legacy, kept for compat)
       let lastDeployed: string | null = null;
       for (const eoa of campaignEoas) {
         const mintedAt = tokensByEoaId.get(eoa.id);
@@ -322,19 +353,37 @@ export default function CampaignManager() {
           lastDeployed = mintedAt;
         }
       }
-      
+
       const hasExistingTokens = campaignEoas.some(e => tokensByEoaId.has(e.id));
-      
+
+      // Per-deck status rows for this campaign
+      const deckStatuses: DeckStatusRow[] = deckSlugs.map(slug => {
+        const meta = deckMetaBySlug.get(slug);
+        const affectedEoaIds = campaignEoas
+          .filter(e => e.assigned_deck_slug === slug && e.mobilize_code)
+          .map(e => e.id);
+        const deckHasTokens = campaignEoas.some(
+          e => e.assigned_deck_slug === slug && tokensByEoaId.has(e.id)
+        );
+        const { status, lastDeployedAt } = getDeckDeploymentStatus({
+          last_deployed_at: meta?.last_deployed_at ?? null,
+          last_modified_at: meta?.last_modified_at ?? null,
+          hasUsage: deckHasTokens || affectedEoaIds.length > 0,
+        });
+        return { slug, status, lastDeployedAt, affectedEoaIds };
+      });
+
       states.set(campaignId, {
         ready: allReady,
         hasExistingTokens,
         readyEoas: readyEoas.length,
         totalEoas: campaignEoas.length,
         lastDeployed,
-        deckSlugs
+        deckSlugs,
+        deckStatuses,
       });
     }
-    
+
     setDeploymentStates(states);
   };
 
@@ -751,7 +800,47 @@ export default function CampaignManager() {
         setDeploying(false);
       }
     };
-    
+
+    const handleDeployDeck = async (e: React.MouseEvent, deckSlug: string, eoaIds: string[]) => {
+      e.stopPropagation();
+      if (eoaIds.length === 0) {
+        toast({ variant: "destructive", title: "No EoAs", description: "No ready EoAs assigned to this deck." });
+        return;
+      }
+      setDeploying(true);
+      try {
+        let successCount = 0;
+        let errorCount = 0;
+        for (const eoaId of eoaIds) {
+          try {
+            await mintL00({ eoaId, deckSlug, utmMedium: "qr" }, { lazy: false });
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to mint L00 for EoA ${eoaId} on deck ${deckSlug}:`, err);
+            errorCount++;
+          }
+        }
+        if (successCount > 0) {
+          await supabase
+            .from('decks')
+            .update({ last_deployed_at: new Date().toISOString() })
+            .eq('slug', deckSlug);
+          toast({
+            title: "Deck Deployed",
+            description: `${successCount} event${successCount !== 1 ? 's' : ''} updated for ${deckSlug}. Existing QR codes keep working.`,
+          });
+        }
+        if (errorCount > 0) {
+          toast({ variant: "destructive", title: "Partial Deployment", description: `${errorCount} EoA(s) failed.` });
+        }
+        onRefreshDeployment();
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Deployment Failed", description: error.message });
+      } finally {
+        setDeploying(false);
+      }
+    };
+
     const style = {
       transform: CSS.Transform.toString(transform),
       transition,
@@ -941,54 +1030,70 @@ export default function CampaignManager() {
                   </DropdownMenu>
                 )}
                 
-                {deploymentState.ready ? (
-                  deploymentState.lastDeployed ? (
-                    <div className="flex justify-center py-2">
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0">
-                        Deployed {new Date(deploymentState.lastDeployed).toLocaleString('en-US', {
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric', 
-                          hour: 'numeric', 
-                          minute: '2-digit',
-                          hour12: true 
-                        })}
-                      </Badge>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="w-full"
-                      onClick={handleDeploy}
-                      disabled={deploying}
-                    >
-                      {deploying ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deploying...
-                        </>
-                      ) : (
-                        "Ready to Deploy"
-                      )}
-                    </Button>
+                {/* Per-deck deployment status */}
+                {deploymentState.deckStatuses.length === 0 ? (
+                  !deploymentState.ready && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex justify-center py-2">
+                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
+                              Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
+                            </Badge>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
+                          <p className="text-xs">Missing Mobilize Code or Deck</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )
                 ) : (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex justify-center py-2">
-                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
-                            Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
-                          </Badge>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
-                        <p className="text-xs">Missing Mobilize Code or Deck</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <div className="space-y-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        const live = deploymentState.deckStatuses.filter(d => d.status === 'live').length;
+                        const pending = deploymentState.deckStatuses.filter(d => d.status === 'pending').length;
+                        const total = deploymentState.deckStatuses.length;
+                        if (pending > 0) return `${pending} of ${total} deck${total !== 1 ? 's' : ''} need deploy`;
+                        if (live === total) return `${total} of ${total} deck${total !== 1 ? 's' : ''} Live`;
+                        return `${live} of ${total} deck${total !== 1 ? 's' : ''} Live`;
+                      })()}
+                    </div>
+                    {deploymentState.deckStatuses.map(d => (
+                      <div
+                        key={d.slug}
+                        className="flex items-center gap-2 text-xs rounded border px-2 py-1.5 hover:bg-accent/50 transition-colors"
+                      >
+                        <button
+                          type="button"
+                          className="font-mono truncate flex-1 text-left hover:underline"
+                          onClick={() => navigate(`/deck-editor/${d.slug}`)}
+                          title={d.slug}
+                        >
+                          {d.slug}
+                        </button>
+                        <Badge className={cn("text-[10px] px-1.5 py-0", statusBadgeClasses(d.status))}>
+                          {statusLabel(d.status)}
+                          {d.status === 'live' && d.lastDeployedAt && (
+                            <span className="ml-1 opacity-80">• {formatDeployedTimestamp(d.lastDeployedAt)}</span>
+                          )}
+                        </Badge>
+                        {(d.status === 'pending' || (d.status === 'draft' && d.affectedEoaIds.length > 0)) && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-6 px-2 text-[10px]"
+                            disabled={deploying}
+                            onClick={(e) => handleDeployDeck(e, d.slug, d.affectedEoaIds)}
+                          >
+                            {deploying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Deploy'}
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -1157,7 +1262,8 @@ export default function CampaignManager() {
                       readyEoas: 0,
                       totalEoas: 0,
                       lastDeployed: null,
-                      deckSlugs: []
+                      deckSlugs: [],
+                      deckStatuses: []
                     };
                     return (
                       <SortableCard 
