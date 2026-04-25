@@ -1367,6 +1367,24 @@ export default function DeckEditor() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          {(() => {
+            const { status, lastDeployedAt } = getDeckDeploymentStatus({
+              last_deployed_at: deckMeta?.last_deployed_at ?? null,
+              last_modified_at: deckMeta?.last_modified_at ?? null,
+              hasUsage: hasDeployedTokens || eoaCount > 0,
+            });
+            return (
+              <Badge
+                className={statusBadgeClasses(status)}
+                title={lastDeployedAt ? `Last deployed: ${formatDeployedTimestamp(lastDeployedAt)}` : undefined}
+              >
+                {statusLabel(status)}
+                {status === 'live' && lastDeployedAt && (
+                  <span className="ml-1 opacity-80">• {formatDeployedTimestamp(lastDeployedAt)}</span>
+                )}
+              </Badge>
+            );
+          })()}
           <div className="flex gap-2 items-center">
             {referenceDimensions && (
               <div className="text-sm text-muted-foreground px-4 py-2 bg-muted rounded">
