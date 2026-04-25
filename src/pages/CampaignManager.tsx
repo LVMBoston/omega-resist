@@ -950,16 +950,18 @@ export default function CampaignManager() {
                 >
                   {campaign.description}
                 </p>
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline mt-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDescriptionExpanded((v) => !v);
-                  }}
-                >
-                  {descriptionExpanded ? "Show less" : "Show more"}
-                </button>
+                {campaign.description.length > 120 && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline mt-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDescriptionExpanded((v) => !v);
+                    }}
+                  >
+                    {descriptionExpanded ? "Show less" : "Show more"}
+                  </button>
+                )}
               </div>
             )}
           </CardHeader>
