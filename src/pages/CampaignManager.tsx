@@ -1206,7 +1206,8 @@ export default function CampaignManager() {
                       readyEoas: 0,
                       totalEoas: 0,
                       lastDeployed: null,
-                      deckSlugs: []
+                      deckSlugs: [],
+                      deckStatuses: []
                     };
                     return (
                       <SortableCard 
