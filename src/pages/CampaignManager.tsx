@@ -946,6 +946,12 @@ export default function CampaignManager() {
                 </Button>
                 <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
+                  navigate(`/campaign/${campaign.id}/story`);
+                }}>
+                  <BookOpen className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
                   handleDeleteClick(campaign);
                 }}>
                   <Trash2 className="h-4 w-4" />
