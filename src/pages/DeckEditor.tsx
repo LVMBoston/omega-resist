@@ -1292,9 +1292,18 @@ export default function DeckEditor() {
         }
       }
 
+      // Stamp deck.last_deployed_at on success so per-deck status reflects this deploy.
       if (successCount > 0) {
+        const { error: stampError } = await supabase
+          .from('decks')
+          .update({ last_deployed_at: new Date().toISOString() })
+          .eq('slug', slug);
+        if (stampError) {
+          console.error('Failed to stamp deck last_deployed_at:', stampError);
+        }
+
         toast.success(
-          `Deployed! ${successCount} event${successCount !== 1 ? 's' : ''} updated. Changes are now live.`,
+          `Deployed! ${successCount} event${successCount !== 1 ? 's' : ''} updated. Existing QR codes keep working.`,
           { duration: 5000 }
         );
       }
@@ -1916,6 +1925,7 @@ Add Slide(s)
         open={deploymentDialogOpen}
         onOpenChange={setDeploymentDialogOpen}
         onConfirm={handleDeployConfirm}
+        deckSlug={slug}
         eoaCount={eoaCount}
         campaigns={campaigns}
         isDeploying={isDeploying}
