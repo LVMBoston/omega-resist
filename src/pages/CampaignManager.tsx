@@ -312,19 +312,40 @@ export default function CampaignManager() {
       }
     }
     
+    // Collect every unique deck slug across all campaigns and fetch deck rows
+    const allDeckSlugs = [...new Set(
+      eoas.map(e => e.assigned_deck_slug).filter((s): s is string => !!s)
+    )];
+
+    let deckMetaBySlug = new Map<string, { last_deployed_at: string | null; last_modified_at: string | null }>();
+    if (allDeckSlugs.length > 0) {
+      const { data: deckRows } = await supabase
+        .from('decks')
+        .select('slug, last_deployed_at, last_modified_at')
+        .in('slug', allDeckSlugs);
+      if (deckRows) {
+        for (const d of deckRows as any[]) {
+          deckMetaBySlug.set(d.slug, {
+            last_deployed_at: d.last_deployed_at ?? null,
+            last_modified_at: d.last_modified_at ?? null,
+          });
+        }
+      }
+    }
+
     // Build deployment state for each campaign
     for (const [campaignId, campaignEoas] of campaignEoaMap) {
       const readyEoas = campaignEoas.filter(e => e.mobilize_code && e.assigned_deck_slug);
       const allReady = readyEoas.length > 0 && readyEoas.length === campaignEoas.length;
-      
+
       // Get unique deck slugs
       const deckSlugs = [...new Set(
         campaignEoas
           .map(e => e.assigned_deck_slug)
           .filter((slug): slug is string => slug !== null)
       )];
-      
-      // Find latest deployed token for this campaign
+
+      // Find latest deployed token for this campaign (legacy, kept for compat)
       let lastDeployed: string | null = null;
       for (const eoa of campaignEoas) {
         const mintedAt = tokensByEoaId.get(eoa.id);
@@ -332,19 +353,37 @@ export default function CampaignManager() {
           lastDeployed = mintedAt;
         }
       }
-      
+
       const hasExistingTokens = campaignEoas.some(e => tokensByEoaId.has(e.id));
-      
+
+      // Per-deck status rows for this campaign
+      const deckStatuses: DeckStatusRow[] = deckSlugs.map(slug => {
+        const meta = deckMetaBySlug.get(slug);
+        const affectedEoaIds = campaignEoas
+          .filter(e => e.assigned_deck_slug === slug && e.mobilize_code)
+          .map(e => e.id);
+        const deckHasTokens = campaignEoas.some(
+          e => e.assigned_deck_slug === slug && tokensByEoaId.has(e.id)
+        );
+        const { status, lastDeployedAt } = getDeckDeploymentStatus({
+          last_deployed_at: meta?.last_deployed_at ?? null,
+          last_modified_at: meta?.last_modified_at ?? null,
+          hasUsage: deckHasTokens || affectedEoaIds.length > 0,
+        });
+        return { slug, status, lastDeployedAt, affectedEoaIds };
+      });
+
       states.set(campaignId, {
         ready: allReady,
         hasExistingTokens,
         readyEoas: readyEoas.length,
         totalEoas: campaignEoas.length,
         lastDeployed,
-        deckSlugs
+        deckSlugs,
+        deckStatuses,
       });
     }
-    
+
     setDeploymentStates(states);
   };
 
