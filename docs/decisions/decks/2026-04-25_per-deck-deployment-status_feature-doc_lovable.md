@@ -43,3 +43,33 @@ Redefined "Deployed" as a **per-deck** property instead of a derived per-campaig
 
 - Per-EOA deploy state inside the Campaign EOA manager.
 - Auto-deploy on save.
+
+## Update — 2026-04-25 (Consolidated Deck UI on Campaign Cards)
+
+**Status**: Approved & Implemented
+
+### What changed
+The two stacked deck areas on each Campaign Manager card (the "View N Slide Decks" button/dropdown and the per-deck status list) were merged into a single per-deck list. Each row now contains:
+
+- Status dot (green = Live, amber = Pending Deploy, muted = Draft) with tooltip showing the full status label and last-deployed timestamp
+- Deck slug (monospaced, truncated, full slug on hover)
+- Slide count (e.g. `12 slides`)
+- EoA scope (e.g. `3 EoAs`) — number of campaign EoAs assigned to this deck
+- View icon button (Eye) — opens the existing thumbnail dialog
+- Edit icon button (Pencil) — navigates to `/deck-editor/{slug}`
+- Deploy button — only when status is Pending or (Draft with affected EoAs)
+
+A single summary line above the rows (e.g. `3 decks · 2 Live, 1 needs deploy`) replaces both the old "View N Slide Decks" label and the old "X of Y decks need deploy" line.
+
+### Implementation
+- File: `src/pages/CampaignManager.tsx` only.
+- Extended the existing decks fetch to also count `slide_items` rows per deck (single grouped query, parallelized with the deck metadata query via `Promise.all`).
+- Added `slideCount: number` to the `DeckStatusRow` interface.
+- Removed unused imports: `DropdownMenu*`, `ChevronDown`, `statusBadgeClasses`.
+
+### Empty / not-ready states
+- No decks assigned → single muted "No deck assigned" row.
+- EoAs not ready → existing amber "Not Ready (X/Y EoAs)" badge retained.
+
+### Out of scope
+- Slide-count badge does not yet honor `skip_deploy = true` filtering; it counts all `slide_items`. Acceptable for the at-a-glance hint.

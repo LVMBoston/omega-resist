@@ -19,11 +19,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
 import CampaignWizard from "@/components/CampaignWizard";
-import { getDeckDeploymentStatus, statusBadgeClasses, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
+import { getDeckDeploymentStatus, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
 import { mintL00 } from "@/lib/virality/mint";
 interface Campaign {
   id: string;
@@ -65,6 +63,7 @@ interface DeckStatusRow {
   status: 'draft' | 'live' | 'pending';
   lastDeployedAt: Date | null;
   affectedEoaIds: string[]; // EOAs in THIS campaign assigned to this deck
+  slideCount: number;
 }
 
 interface DeploymentState {
@@ -318,17 +317,29 @@ export default function CampaignManager() {
     )];
 
     let deckMetaBySlug = new Map<string, { last_deployed_at: string | null; last_modified_at: string | null }>();
+    let slideCountBySlug = new Map<string, number>();
     if (allDeckSlugs.length > 0) {
-      const { data: deckRows } = await supabase
-        .from('decks')
-        .select('slug, last_deployed_at, last_modified_at')
-        .in('slug', allDeckSlugs);
+      const [{ data: deckRows }, { data: slideRows }] = await Promise.all([
+        supabase
+          .from('decks')
+          .select('slug, last_deployed_at, last_modified_at')
+          .in('slug', allDeckSlugs),
+        supabase
+          .from('slide_items')
+          .select('deck_slug')
+          .in('deck_slug', allDeckSlugs),
+      ]);
       if (deckRows) {
         for (const d of deckRows as any[]) {
           deckMetaBySlug.set(d.slug, {
             last_deployed_at: d.last_deployed_at ?? null,
             last_modified_at: d.last_modified_at ?? null,
           });
+        }
+      }
+      if (slideRows) {
+        for (const s of slideRows as any[]) {
+          slideCountBySlug.set(s.deck_slug, (slideCountBySlug.get(s.deck_slug) ?? 0) + 1);
         }
       }
     }
@@ -370,7 +381,7 @@ export default function CampaignManager() {
           last_modified_at: meta?.last_modified_at ?? null,
           hasUsage: deckHasTokens || affectedEoaIds.length > 0,
         });
-        return { slug, status, lastDeployedAt, affectedEoaIds };
+        return { slug, status, lastDeployedAt, affectedEoaIds, slideCount: slideCountBySlug.get(slug) ?? 0 };
       });
 
       states.set(campaignId, {
@@ -1004,117 +1015,132 @@ export default function CampaignManager() {
                   </div>
                 </>
               )}
-              <div className="space-y-2">
-                {deckSlugs.length === 0 ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    disabled
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    No Deck Assigned
-                  </Button>
-                ) : deckSlugs.length === 1 ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={handleViewDeck}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View {deckSlugs[0]}
-                  </Button>
-                ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full"
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        View {deckSlugs.length} Slide Decks
-                        <ChevronDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
-                      {deckSlugs.map((slug) => (
-                        <DropdownMenuItem 
-                          key={slug} 
-                          onClick={(e) => handleViewDeck(e as unknown as React.MouseEvent, slug)}
-                        >
-                          {slug}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                
-                {/* Per-deck deployment status */}
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                 {deploymentState.deckStatuses.length === 0 ? (
-                  !deploymentState.ready && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex justify-center py-2">
-                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
-                              Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
-                            </Badge>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
-                          <p className="text-xs">Missing Mobilize Code or Deck</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )
+                  <>
+                    <div className="text-xs font-medium text-muted-foreground">Decks</div>
+                    <div className="text-xs rounded border px-2 py-1.5 text-muted-foreground italic">
+                      No deck assigned
+                    </div>
+                    {!deploymentState.ready && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex justify-center pt-1">
+                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-0">
+                                Not Ready ({deploymentState.readyEoas}/{deploymentState.totalEoas} EoAs)
+                              </Badge>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{deploymentState.readyEoas} of {deploymentState.totalEoas} EoAs ready</p>
+                            <p className="text-xs">Missing Mobilize Code or Deck</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </>
                 ) : (
-                  <div className="space-y-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
-                    <div className="text-xs text-muted-foreground">
+                  <>
+                    <div className="text-xs font-medium text-muted-foreground">
                       {(() => {
+                        const total = deploymentState.deckStatuses.length;
                         const live = deploymentState.deckStatuses.filter(d => d.status === 'live').length;
                         const pending = deploymentState.deckStatuses.filter(d => d.status === 'pending').length;
-                        const total = deploymentState.deckStatuses.length;
-                        if (pending > 0) return `${pending} of ${total} deck${total !== 1 ? 's' : ''} need deploy`;
-                        if (live === total) return `${total} of ${total} deck${total !== 1 ? 's' : ''} Live`;
-                        return `${live} of ${total} deck${total !== 1 ? 's' : ''} Live`;
+                        const draft = deploymentState.deckStatuses.filter(d => d.status === 'draft').length;
+                        const noun = `deck${total !== 1 ? 's' : ''}`;
+                        if (pending > 0) {
+                          return `${total} ${noun} · ${pending} need${pending === 1 ? 's' : ''} deploy${live > 0 ? `, ${live} Live` : ''}`;
+                        }
+                        if (live === total) return `${total} ${noun} · All Live`;
+                        if (draft === total) return `${total} ${noun} · ${draft === 1 ? 'Draft' : 'All Draft'}`;
+                        return `${total} ${noun} · ${live} Live, ${draft} Draft`;
                       })()}
                     </div>
-                    {deploymentState.deckStatuses.map(d => (
-                      <div
-                        key={d.slug}
-                        className="flex items-center gap-2 text-xs rounded border px-2 py-1.5 hover:bg-accent/50 transition-colors"
-                      >
-                        <button
-                          type="button"
-                          className="font-mono truncate flex-1 text-left hover:underline"
-                          onClick={() => navigate(`/deck-editor/${d.slug}`)}
-                          title={d.slug}
-                        >
-                          {d.slug}
-                        </button>
-                        <Badge className={cn("text-[10px] px-1.5 py-0", statusBadgeClasses(d.status))}>
-                          {statusLabel(d.status)}
-                          {d.status === 'live' && d.lastDeployedAt && (
-                            <span className="ml-1 opacity-80">• {formatDeployedTimestamp(d.lastDeployedAt)}</span>
-                          )}
-                        </Badge>
-                        {(d.status === 'pending' || (d.status === 'draft' && d.affectedEoaIds.length > 0)) && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="h-6 px-2 text-[10px]"
-                            disabled={deploying}
-                            onClick={(e) => handleDeployDeck(e, d.slug, d.affectedEoaIds)}
-                          >
-                            {deploying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Deploy'}
-                          </Button>
-                        )}
+                    <TooltipProvider>
+                      <div className="space-y-1.5">
+                        {deploymentState.deckStatuses.map(d => {
+                          const showDeploy = d.status === 'pending' || (d.status === 'draft' && d.affectedEoaIds.length > 0);
+                          const dotClass =
+                            d.status === 'live'
+                              ? 'bg-green-500'
+                              : d.status === 'pending'
+                              ? 'bg-amber-500'
+                              : 'bg-muted-foreground/40';
+                          return (
+                            <div
+                              key={d.slug}
+                              className="flex items-center gap-2 text-xs rounded border px-2 py-1.5 hover:bg-accent/50 transition-colors"
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    className={cn("inline-block h-2.5 w-2.5 rounded-full shrink-0", dotClass)}
+                                    aria-label={statusLabel(d.status)}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="font-medium">{statusLabel(d.status)}</p>
+                                  {d.lastDeployedAt && (
+                                    <p className="text-xs">Deployed {formatDeployedTimestamp(d.lastDeployedAt)}</p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+
+                              <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                                <span className="font-mono truncate" title={d.slug}>{d.slug}</span>
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                  {d.slideCount} slide{d.slideCount !== 1 ? 's' : ''} · {d.affectedEoaIds.length} EoA{d.affectedEoaIds.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={(e) => handleViewDeck(e, d.slug)}
+                                    aria-label={`View ${d.slug} thumbnails`}
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>View thumbnails</TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => navigate(`/deck-editor/${d.slug}`)}
+                                    aria-label={`Edit ${d.slug}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Open Deck Editor</TooltipContent>
+                              </Tooltip>
+
+                              {showDeploy && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px]"
+                                  disabled={deploying}
+                                  onClick={(e) => handleDeployDeck(e, d.slug, d.affectedEoaIds)}
+                                >
+                                  {deploying ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Deploy'}
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+                    </TooltipProvider>
+                  </>
                 )}
               </div>
             </div>
