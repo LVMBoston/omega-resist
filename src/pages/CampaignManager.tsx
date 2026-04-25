@@ -927,30 +927,30 @@ export default function CampaignManager() {
               >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1">
                 <CardTitle>{campaign.title}</CardTitle>
                 <CardDescription>utm_campaign: {campaign.code}</CardDescription>
               </div>
-              <div className="flex gap-0.5 items-center shrink-0">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
+              <div className="flex gap-0.5 items-center">
+                <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleEditCampaign(campaign);
                 }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
+                <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleCloneOpen(campaign);
                 }}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
+                <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   navigate(`/campaign/${campaign.id}/story`);
                 }}>
                   <BookOpen className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
+                <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleDeleteClick(campaign);
                 }}>
