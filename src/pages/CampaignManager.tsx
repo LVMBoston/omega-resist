@@ -711,6 +711,7 @@ export default function CampaignManager() {
     const [loadingDeck, setLoadingDeck] = useState(false);
     const [selectedDeckSlug, setSelectedDeckSlug] = useState<string | null>(null);
     const [deploying, setDeploying] = useState(false);
+    const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
     const {
       attributes,
@@ -940,9 +941,29 @@ export default function CampaignManager() {
                 </Button>
               </div>
             </div>
-            {campaign.description && <p className="text-sm text-muted-foreground mt-2">
-              {campaign.description}
-            </p>}
+            {campaign.description && (
+              <div className="mt-2">
+                <p
+                  className={`text-sm text-muted-foreground whitespace-pre-wrap ${
+                    descriptionExpanded ? "" : "line-clamp-2"
+                  }`}
+                >
+                  {campaign.description}
+                </p>
+                {campaign.description.length > 120 && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline mt-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDescriptionExpanded((v) => !v);
+                    }}
+                  >
+                    {descriptionExpanded ? "Show less" : "Show more"}
+                  </button>
+                )}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
