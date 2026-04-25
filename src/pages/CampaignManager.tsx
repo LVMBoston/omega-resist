@@ -65,6 +65,7 @@ interface DeckStatusRow {
   status: 'draft' | 'live' | 'pending';
   lastDeployedAt: Date | null;
   affectedEoaIds: string[]; // EOAs in THIS campaign assigned to this deck
+  slideCount: number;
 }
 
 interface DeploymentState {
