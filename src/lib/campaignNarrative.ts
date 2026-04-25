@@ -412,8 +412,6 @@ function generateFullStory(data: NarrativeData): string {
 
   const lines: string[] = [];
 
-  lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
-  lines.push(`Dataset: ${dataSource === "simulated" ? "Simulated data" : "Real data"}`);
   if (dataSource === "simulated") {
     lines.push("Simulation report — not real field activity.");
   }
