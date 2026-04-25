@@ -11,9 +11,10 @@ interface CampaignNarrativeDialogProps {
   campaignId: string;
   campaignTitle: string;
   dataSource?: NarrativeDataSource;
+  iconOnly?: boolean;
 }
 
-export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitle, dataSource }: CampaignNarrativeDialogProps) {
+export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitle, dataSource, iconOnly }: CampaignNarrativeDialogProps) {
   const [open, setOpen] = useState(false);
   const [narrative, setNarrative] = useState<CampaignNarrativeResult | null>(null);
   const [needsDataChoice, setNeedsDataChoice] = useState(false);
