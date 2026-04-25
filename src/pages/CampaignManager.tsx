@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import CampaignWizard from "@/components/CampaignWizard";
 import { getDeckDeploymentStatus, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
 import { mintL00 } from "@/lib/virality/mint";
+import { CampaignNarrativeButton } from "@/components/CampaignNarrativeDialog";
 interface Campaign {
   id: string;
   code: string;
@@ -944,12 +945,12 @@ export default function CampaignManager() {
                 }}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={e => {
-                  e.stopPropagation();
-                  navigate(`/campaign/${campaign.id}/story`);
-                }}>
-                  <BookOpen className="h-4 w-4" />
-                </Button>
+                <CampaignNarrativeButton
+                  campaignCode={campaign.code}
+                  campaignId={campaign.id}
+                  campaignTitle={campaign.title}
+                  iconOnly
+                />
                 <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleDeleteClick(campaign);
