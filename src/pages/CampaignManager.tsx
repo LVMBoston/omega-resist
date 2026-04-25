@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import CampaignWizard from "@/components/CampaignWizard";
 import { getDeckDeploymentStatus, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
 import { mintL00 } from "@/lib/virality/mint";
+import { CampaignNarrativeButton } from "@/components/CampaignNarrativeDialog";
 interface Campaign {
   id: string;
   code: string;
