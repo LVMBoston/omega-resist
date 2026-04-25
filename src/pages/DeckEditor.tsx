@@ -977,13 +977,23 @@ export default function DeckEditor() {
   };
 
   const handleCancel = () => {
-    setSlides([...originalSlides]);
-    setPendingUploads([]);
-    setPendingDeletes([]);
-    setHotspotChanges({});
-    setHasChanges(false);
-    setSelectedSlideIds(new Set());
-    toast.info('Changes discarded');
+    if (hasChanges) {
+      const confirmed = window.confirm('Discard unsaved changes and exit?');
+      if (!confirmed) return;
+      setSlides([...originalSlides]);
+      setPendingUploads([]);
+      setPendingDeletes([]);
+      setHotspotChanges({});
+      setHasChanges(false);
+      setSelectedSlideIds(new Set());
+      toast.info('Changes discarded');
+    }
+    // Return to the page that invoked the editor
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/deck-management');
+    }
   };
 
   const toggleSlideCheck = (slideId: string) => {
