@@ -319,17 +319,29 @@ export default function CampaignManager() {
     )];
 
     let deckMetaBySlug = new Map<string, { last_deployed_at: string | null; last_modified_at: string | null }>();
+    let slideCountBySlug = new Map<string, number>();
     if (allDeckSlugs.length > 0) {
-      const { data: deckRows } = await supabase
-        .from('decks')
-        .select('slug, last_deployed_at, last_modified_at')
-        .in('slug', allDeckSlugs);
+      const [{ data: deckRows }, { data: slideRows }] = await Promise.all([
+        supabase
+          .from('decks')
+          .select('slug, last_deployed_at, last_modified_at')
+          .in('slug', allDeckSlugs),
+        supabase
+          .from('slide_items')
+          .select('deck_slug')
+          .in('deck_slug', allDeckSlugs),
+      ]);
       if (deckRows) {
         for (const d of deckRows as any[]) {
           deckMetaBySlug.set(d.slug, {
             last_deployed_at: d.last_deployed_at ?? null,
             last_modified_at: d.last_modified_at ?? null,
           });
+        }
+      }
+      if (slideRows) {
+        for (const s of slideRows as any[]) {
+          slideCountBySlug.set(s.deck_slug, (slideCountBySlug.get(s.deck_slug) ?? 0) + 1);
         }
       }
     }
