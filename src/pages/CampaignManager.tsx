@@ -383,7 +383,7 @@ export default function CampaignManager() {
           last_modified_at: meta?.last_modified_at ?? null,
           hasUsage: deckHasTokens || affectedEoaIds.length > 0,
         });
-        return { slug, status, lastDeployedAt, affectedEoaIds };
+        return { slug, status, lastDeployedAt, affectedEoaIds, slideCount: slideCountBySlug.get(slug) ?? 0 };
       });
 
       states.set(campaignId, {
