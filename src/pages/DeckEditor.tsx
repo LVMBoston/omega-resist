@@ -211,6 +211,7 @@ export default function DeckEditor() {
   const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string }>>([]);
+  const [deckMeta, setDeckMeta] = useState<{ last_deployed_at: string | null; last_modified_at: string | null } | null>(null);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newDeckSlug, setNewDeckSlug] = useState('');
   const [savingAs, setSavingAs] = useState(false);
@@ -396,6 +397,19 @@ export default function DeckEditor() {
         setHasDeployedTokens(true);
       } else {
         setHasDeployedTokens(false);
+      }
+
+      // Fetch deck deploy/modify timestamps for status badge
+      const { data: deckRow } = await supabase
+        .from('decks')
+        .select('last_deployed_at, last_modified_at')
+        .eq('slug', slug)
+        .maybeSingle();
+      if (deckRow) {
+        setDeckMeta({
+          last_deployed_at: (deckRow as any).last_deployed_at ?? null,
+          last_modified_at: (deckRow as any).last_modified_at ?? null,
+        });
       }
     } catch (error: any) {
       console.error('Error fetching deck usage:', error);
