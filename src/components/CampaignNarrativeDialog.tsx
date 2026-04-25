@@ -121,9 +121,17 @@ export function CampaignNarrativeButton({ campaignCode, campaignId, campaignTitl
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={handleOpen}>
-        <BookOpen className="h-4 w-4 mr-2" />
-        Story
+      <Button
+        variant={iconOnly ? "ghost" : "outline"}
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleOpen();
+        }}
+        title={iconOnly ? "Campaign Story" : undefined}
+      >
+        <BookOpen className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} />
+        {!iconOnly && "Story"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm sm:max-w-md">
