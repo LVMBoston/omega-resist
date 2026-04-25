@@ -945,12 +945,17 @@ export default function CampaignManager() {
                 }}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                <CampaignNarrativeButton
-                  campaignCode={campaign.code}
-                  campaignId={campaign.id}
-                  campaignTitle={campaign.title}
-                  iconOnly
-                />
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <CampaignNarrativeButton
+                    campaignCode={campaign.code}
+                    campaignId={campaign.id}
+                    campaignTitle={campaign.title}
+                    iconOnly
+                  />
+                </div>
                 <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
                   handleDeleteClick(campaign);
