@@ -932,14 +932,14 @@ export default function CampaignManager() {
                 <CardTitle>{campaign.title}</CardTitle>
                 <CardDescription>utm_campaign: {campaign.code}</CardDescription>
               </div>
-              <div className="flex gap-0.5 items-center">
-                <Button variant="ghost" size="sm" onClick={e => {
+              <div className="flex gap-0.5 items-center flex-wrap shrink-0 justify-end">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
                   e.stopPropagation();
                   handleEditCampaign(campaign);
                 }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={e => {
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
                   e.stopPropagation();
                   handleCloneOpen(campaign);
                 }}>
@@ -947,7 +947,7 @@ export default function CampaignManager() {
                 </Button>
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  className="contents"
                 >
                   <CampaignNarrativeButton
                     campaignCode={campaign.code}
@@ -956,7 +956,7 @@ export default function CampaignManager() {
                     iconOnly
                   />
                 </div>
-                <Button variant="ghost" size="sm" onClick={e => {
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
                   e.stopPropagation();
                   handleDeleteClick(campaign);
                 }}>
