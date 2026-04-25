@@ -711,6 +711,7 @@ export default function CampaignManager() {
     const [loadingDeck, setLoadingDeck] = useState(false);
     const [selectedDeckSlug, setSelectedDeckSlug] = useState<string | null>(null);
     const [deploying, setDeploying] = useState(false);
+    const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
     const {
       attributes,
