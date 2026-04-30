@@ -104,3 +104,34 @@ d. **P1.0a CHECK constraint:** approve as written once P0.x decides the canonica
 ## 8. Plan lineage
 
 This plan **updates** the active jitter implementation checklist in `.lovable/plan.md`. Records two completed items (P2.2, OQ-4), three new findings (OQ-6 outcome, OQ-7 outcome, case-mismatch bug), and four new prerequisite tasks (P0.x case fix, P1.0a CHECK constraint, P1.0b type immutability, P1.0c log scrubbing). No new decision document until a Phase 1 chunk ships.
+
+---
+
+## Update — 2026-04-30
+
+**Status: Approved & Implemented (partial — P0.x only)**
+
+User decisions on the four open questions from §7, and the resulting implementation batch.
+
+### 9. Decisions recorded
+
+a. **§7a — Case canonicalization (P0.x):** **1a — lowercase canonical.** Fix RPC and UI; no data migration. Implemented via case-insensitive comparison (`lower(_eoa_type) = 'event'`) for forward-compatibility against any stray capitalized rows.
+b. **§7d — P1.0a CHECK constraint:** **4b — defer.** Will ship with P1.3 (jitter) when ready, using the lowercase canonical from 9a.
+c. **§7c — OQ-7 log scrubbing (P1.0c):** **3a — defer.** User is mid-test; scrubbing of `console.log` IP/lat/lng/zip lines in edge functions (`geoip`, `reverse-geocode`, others) is held until user signals testing complete. When run, will **strip offending lines entirely** (not replace with safe summaries) per user direction.
+d. **§7b — OQ-6 (P1.0b, type immutability trigger):** **adopted as future work** (decision §7b option not re-asked this turn; remains open). Captured here so it is not forgotten — needs decision before P1.3 ships.
+e. **§2a — Adoption of jitter checklist findings** as canonical reference: confirmed.
+
+### 10. Implemented this turn
+
+a. **P0.x — `maybe_reinstantiate_l00` case fix:** Function updated to use `lower(_eoa_type) = 'event'` instead of `= 'Event'`. Now correctly routes Event-type EoAs to per-scan re-instantiation regardless of stored case. Migration applied successfully.
+b. **`EoaForm.tsx`:** No change required — verified the Select already emits lowercase `'event'` / `'action'`. Default value also lowercase.
+
+### 11. Deferred (explicit, do not action without further approval)
+
+a. **P1.0a** — CHECK constraint on `events_actions.type`. Bundle with P1.3.
+b. **P1.0b** — EoA type immutability trigger. Awaiting §7b decision (block-vs-invalidate).
+c. **P1.0c** — Edge-function log scrubbing. Awaiting user "testing complete" signal. Scope: strip lines (not summarize).
+
+### 12. Plan lineage
+
+This update appends to the same `revised_privacy_architecture` decision file. Records the user's approval of P0.x (1a) and adoption (2a), and the explicit deferral of P1.0a (4b) and P1.0c (3a). P1.0b remains an open question for the next round.
