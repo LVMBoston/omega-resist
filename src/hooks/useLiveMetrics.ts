@@ -317,6 +317,14 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       // Campaign name (sanitized above)
       metricResults.push({ key: "campaign_name", label: METRIC_LABELS.campaign_name, value: campaign.title, source: "campaigns" });
 
+      // Campaign description
+      metricResults.push({
+        key: "campaign_description",
+        label: METRIC_LABELS.campaign_description,
+        value: sanitizeText(campaign.description),
+        source: "campaigns",
+      });
+
       // Date/time metrics — use validated viewer timezone
       const now = new Date();
       metricResults.push({ key: "current_date", label: METRIC_LABELS.current_date, value: formatInTimeZone(now, viewerTz, "MMM d, yyyy zzz"), source: "current" });
