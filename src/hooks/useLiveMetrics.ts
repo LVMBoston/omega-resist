@@ -17,6 +17,7 @@ interface Campaign {
   id: string;
   title: string;
   code: string;
+  description?: string | null;
 }
 
 export interface UseLiveMetricsResult {
@@ -53,6 +54,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   latest_active: "Latest Active",
   last_updated: "Last Updated",
   campaign_story: "Campaign Story",
+  campaign_description: "Campaign Description",
   tz_offset_note: "Timezone Offset Note",
 };
 
@@ -143,6 +145,7 @@ const NUMERIC_KEYS: LiveMetricKey[] = [
 const TEXT_KEYS: LiveMetricKey[] = [
   "viral_coefficient", "campaign_name", "current_date", "current_time",
   "earliest_active", "latest_active", "last_updated", "campaign_story",
+  "campaign_description",
 ];
 
 const EMPTY_METRICS: MetricResult[] = [
@@ -185,7 +188,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         async () =>
           await supabase
             .from("campaigns")
-            .select("id, title, code")
+            .select("id, title, code, description")
             .eq(isUuid ? "id" : "code", campaignIdOrCode)
             .maybeSingle()
       );
@@ -313,6 +316,14 @@ export function useLiveMetrics(): UseLiveMetricsResult {
 
       // Campaign name (sanitized above)
       metricResults.push({ key: "campaign_name", label: METRIC_LABELS.campaign_name, value: campaign.title, source: "campaigns" });
+
+      // Campaign description
+      metricResults.push({
+        key: "campaign_description",
+        label: METRIC_LABELS.campaign_description,
+        value: sanitizeText(campaign.description),
+        source: "campaigns",
+      });
 
       // Date/time metrics — use validated viewer timezone
       const now = new Date();
