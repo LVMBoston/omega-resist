@@ -144,6 +144,7 @@ const NUMERIC_KEYS: LiveMetricKey[] = [
 const TEXT_KEYS: LiveMetricKey[] = [
   "viral_coefficient", "campaign_name", "current_date", "current_time",
   "earliest_active", "latest_active", "last_updated", "campaign_story",
+  "campaign_description",
 ];
 
 const EMPTY_METRICS: MetricResult[] = [
