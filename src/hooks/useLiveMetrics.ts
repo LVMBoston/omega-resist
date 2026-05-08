@@ -53,6 +53,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   latest_active: "Latest Active",
   last_updated: "Last Updated",
   campaign_story: "Campaign Story",
+  campaign_description: "Campaign Description",
   tz_offset_note: "Timezone Offset Note",
 };
 
