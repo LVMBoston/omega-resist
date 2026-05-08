@@ -17,6 +17,7 @@ interface Campaign {
   id: string;
   title: string;
   code: string;
+  description?: string | null;
 }
 
 export interface UseLiveMetricsResult {
