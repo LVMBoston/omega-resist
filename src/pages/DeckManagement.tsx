@@ -430,7 +430,7 @@ const Index = () => {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage className="text-2xl font-bold">Deck Management</BreadcrumbPage>
+                <BreadcrumbPage className="text-2xl font-bold">Deck/Template Management</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
