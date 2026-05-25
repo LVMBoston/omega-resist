@@ -7,9 +7,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle, ExternalLink, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CampaignSnapshotSettingsProps {
   campaignId: string;
