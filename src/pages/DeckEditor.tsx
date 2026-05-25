@@ -60,6 +60,79 @@ interface ViralConfig {
   hotspots: any;
 }
 
+const SlidePreviewImage = ({
+  contentUrl,
+  templateImageUrl,
+  fallbackUrl,
+  altText,
+  onDelete,
+}: {
+  contentUrl: string;
+  templateImageUrl?: string;
+  fallbackUrl?: string;
+  altText: string;
+  onDelete: () => void;
+}) => {
+  const [failed, setFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  // Reset failure state when the source slide changes
+  useEffect(() => {
+    setFailed(false);
+    setFailedSrc(null);
+  }, [contentUrl, templateImageUrl, fallbackUrl]);
+
+  if (failed) {
+    // Build a human-readable reason
+    const isTemplateBroken = !!templateImageUrl && failedSrc === templateImageUrl;
+    const isSameAsTemplate = templateImageUrl && contentUrl === templateImageUrl;
+    const reason = isTemplateBroken
+      ? "This slide's template background image is missing from storage. Re-upload the template image, or pick a different template."
+      : isSameAsTemplate
+      ? "The template image this slide uses is missing from storage."
+      : "This slide's background image is missing from storage and no fallback is available.";
+
+    return (
+      <div className="w-full aspect-[9/16] rounded-lg border bg-muted/30 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <ImageIcon className="h-16 w-16 text-muted-foreground" />
+        <div className="space-y-2">
+          <p className="font-semibold text-foreground">Slide cannot be rendered</p>
+          <p className="text-sm text-muted-foreground max-w-md">{reason}</p>
+          {failedSrc && (
+            <p className="text-xs text-muted-foreground/70 break-all max-w-md">
+              Missing: {failedSrc.split('/').pop()}
+            </p>
+          )}
+        </div>
+        <Button variant="destructive" size="sm" onClick={onDelete}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete this slide
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={contentUrl}
+      alt={altText}
+      className="w-full rounded-lg border"
+      onError={(e) => {
+        const img = e.target as HTMLImageElement;
+        if (templateImageUrl && img.src !== templateImageUrl) {
+          console.warn(`⚠️ content_url failed, falling back to template image_url`);
+          img.src = templateImageUrl;
+        } else if (fallbackUrl && img.src !== fallbackUrl) {
+          img.src = fallbackUrl;
+        } else {
+          setFailedSrc(img.src);
+          setFailed(true);
+        }
+      }}
+    />
+  );
+};
+
 const SortableSlide = ({ slide, onSelect, onDelete, isSelected, isChecked, onToggleCheck, isSkipped, onToggleSkip, templateInfo }: { slide: Slide; onSelect: () => void; onDelete: () => void; isSelected: boolean; isChecked: boolean; onToggleCheck: () => void; isSkipped: boolean; onToggleSkip: () => void; templateInfo?: { name: string; isDataTemplate: boolean; backgroundType: string; hotspotCount: number } }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: slide.id });
   
