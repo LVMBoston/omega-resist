@@ -7,9 +7,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle, ExternalLink, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CampaignSnapshotSettingsProps {
   campaignId: string;
@@ -88,6 +89,7 @@ function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: stri
 
 function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId: string; campaignCode: string; context: TemplateContext | undefined }) {
   const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.svg`;
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <div className="mt-2 space-y-0.5 text-xs text-muted-foreground border-t pt-2">
@@ -100,12 +102,41 @@ function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId
       ) : (
         <p className="italic">No deck linkage found for this campaign</p>
       )}
-      <p>
-        <span className="font-medium">PNG:</span>{" "}
-        <a href={pngUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
-          View snapshot <ExternalLink className="w-3 h-3" />
+      <p className="inline-flex items-center gap-3 flex-wrap">
+        <span className="font-medium">Snapshot:</span>
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="text-primary hover:underline inline-flex items-center gap-1"
+        >
+          <Eye className="w-3 h-3" /> Preview
+        </button>
+        <a
+          href={pngUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          className="text-primary hover:underline inline-flex items-center gap-1"
+        >
+          Download <ExternalLink className="w-3 h-3" />
         </a>
       </p>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Snapshot preview — {campaignCode}</DialogTitle>
+          </DialogHeader>
+          <div className="w-full overflow-auto bg-muted/30 rounded-md">
+            {/* Rendered via <img> so Supabase's Content-Disposition: attachment and sandbox CSP on public SVGs don't apply */}
+            <img
+              src={pngUrl}
+              alt={`Snapshot for ${campaignCode}`}
+              className="w-full h-auto block"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
