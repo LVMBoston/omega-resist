@@ -45,7 +45,7 @@ const navigation = [
   {
     title: "Decks",
     items: [
-      { title: "Deck Management", url: "/deck-management", icon: FolderOpen },
+      { title: "Deck/Template Management", url: "/deck-management", icon: FolderOpen },
     ],
   },
   {
