@@ -1720,7 +1720,6 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
                     {(() => {
-                      // Center preview prefers raw content_url so overlay is visible; falls back to thumbnail_url
                       const contentUrl = selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
                         return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
@@ -1728,18 +1727,18 @@ Add Slide(s)
                       const templateImageUrl = selectedSlide.template_id
                         ? templates.find(t => t.id === selectedSlide.template_id)?.image_url
                         : undefined;
-                      const fallbackUrl = selectedSlide.thumbnail_url;
-                      return <img src={contentUrl} alt={`Slide ${selectedSlide.position}`} className="w-full rounded-lg border" onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        if (templateImageUrl && img.src !== templateImageUrl) {
-                          console.warn(`⚠️ Slide ${selectedSlide.position} content_url failed, falling back to template image_url`);
-                          img.src = templateImageUrl;
-                        } else if (fallbackUrl && img.src !== fallbackUrl) {
-                          img.src = fallbackUrl;
-                        } else {
-                          img.style.display = 'none';
-                        }
-                      }} />;
+                      return (
+                        <SlidePreviewImage
+                          contentUrl={contentUrl}
+                          templateImageUrl={templateImageUrl}
+                          fallbackUrl={selectedSlide.thumbnail_url}
+                          altText={`Slide ${selectedSlide.position}`}
+                          onDelete={() => {
+                            setSlideToDelete(selectedSlide);
+                            setDeleteDialogOpen(true);
+                          }}
+                        />
+                      );
                     })()}
                     {/* Hotspot preview overlay for interactive slides */}
                     {selectedSlide.type === 'spread-word' && previewHotspots.length > 0 && (
