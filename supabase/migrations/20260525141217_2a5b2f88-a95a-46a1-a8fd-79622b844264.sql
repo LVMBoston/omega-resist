@@ -1,0 +1,1 @@
+UPDATE public.slide_items SET content_url = 'https://wznilzguqjwvkysuleta.supabase.co/storage/v1/object/public/slides/interactive-templates/d5903351-710d-4509-912c-5f90524106a5.JPG' WHERE id = '61f26a30-b61d-4667-9b8d-838dcd5b3be7';
