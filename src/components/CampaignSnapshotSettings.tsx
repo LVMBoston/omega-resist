@@ -356,11 +356,13 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
     },
   });
 
-  // Render all templates
+  // Render all templates: include any template that is either wired into a deck
+  // for this campaign OR already has a snapshot file for this campaign in storage
+  // (so orphan / previously-deployed snapshots stay current too).
   const handleRenderAll = async () => {
-    const toRender = templateContexts
-      ? templates.filter(t => templateContexts[t.id])
-      : [];
+    const toRender = templates.filter(t =>
+      Boolean(templateContexts?.[t.id]) || Boolean(snapshotAges?.[t.id])
+    );
     for (const template of toRender) {
       await renderSnapshotMutation.mutateAsync(template.id);
     }
