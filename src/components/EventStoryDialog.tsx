@@ -8,7 +8,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation, Link, ArrowDown, Copy } from "lucide-react";
+import { Loader2, MapPin, Calendar, Eye, QrCode, Share2, Navigation, Link, ArrowDown, Copy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { formatTimeDelta } from "@/lib/dateUtils";
