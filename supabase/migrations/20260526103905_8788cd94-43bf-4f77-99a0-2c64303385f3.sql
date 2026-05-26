@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_url_events_token_event_type ON public.url_events (token, event_type);
