@@ -1709,14 +1709,14 @@ const SamizdatMap = ({
 
           {/* No-spawns toggle - to the left of playback controls */}
           <div className="absolute bottom-3 z-[1000] flex items-end gap-2" style={{ right: '12px' }}>
-            <div className="bg-background/95 backdrop-blur-sm rounded-md px-2.5 py-2 shadow-md border border-border flex items-center gap-2" style={{ minWidth: '260px' }}>
+            <div className="bg-background/95 backdrop-blur-sm rounded-md px-2.5 py-2 shadow-md border border-border flex items-center gap-2 w-[140px]">
               <Switch
                 id="no-spawns-toggle"
                 checked={showNoSpawnsLocal}
                 onCheckedChange={setShowNoSpawnsLocal}
-                className="scale-75"
+                className="scale-75 shrink-0"
               />
-              <Label htmlFor="no-spawns-toggle" className="text-[10px] font-medium cursor-pointer whitespace-nowrap">
+              <Label htmlFor="no-spawns-toggle" className="text-[10px] font-medium cursor-pointer leading-tight">
                 Hide stale opens
               </Label>
             </div>
