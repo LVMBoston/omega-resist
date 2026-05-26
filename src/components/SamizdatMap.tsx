@@ -1606,10 +1606,10 @@ const SamizdatMap = ({
           {displayEvents.length > 0 && (
             <div className="absolute bottom-3 left-3 z-[1000] flex items-end gap-2">
               <div className="backdrop-blur-sm rounded-md px-2.5 py-1.5 shadow-md border border-border" style={{ backgroundColor: "hsla(48, 96%, 83%, 0.95)" }}>
-                <div className="flex items-center gap-3 divide-x divide-border">
+                <div className="flex flex-col gap-1.5 divide-y divide-border">
                   {/* Level colors */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Level</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide w-16">Level</span>
                     {[
                       { label: "L00", color: LEVEL_COLORS[0] },
                       { label: "L01", color: LEVEL_COLORS[1] },
@@ -1624,8 +1624,8 @@ const SamizdatMap = ({
                   </div>
                   
                   {/* Share medium shapes */}
-                  <div className="flex items-center gap-2 pl-3">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Medium</span>
+                  <div className="flex items-center gap-2 pt-1.5">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide w-16">Medium</span>
                     {(["circle", "square", "triangle", "diamond"] as EoaShape[]).map((shape) => (
                       <div key={shape} className="flex items-center gap-1 text-xs">
                         <div className="w-[18px] h-[18px]" dangerouslySetInnerHTML={{ __html: getShapeSVG(shape, "#64748b", 18) }} />
@@ -1635,8 +1635,8 @@ const SamizdatMap = ({
                   </div>
 
                   {/* Engagement border colors */}
-                  <div className="flex items-center gap-2 pl-3">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Engage</span>
+                  <div className="flex items-center gap-2 pt-1.5">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide w-16">Engage</span>
                     {(["none", "intent", "completed"] as EngagementState[]).map((state) => (
                       <div key={state} className="flex items-center gap-1 text-xs">
                         <span className="w-3.5 h-3.5 rounded-full border-2" style={{ backgroundColor: "#64748b", borderColor: ENGAGEMENT_BORDER_COLORS[state] }} />
@@ -1645,6 +1645,7 @@ const SamizdatMap = ({
                     ))}
                   </div>
                 </div>
+
               </div>
 
               {/* Timeline date/time box - shown during playback or when position < 1 */}
