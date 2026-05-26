@@ -276,6 +276,7 @@ const SamizdatMap = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [highlightedEventIndex, setHighlightedEventIndex] = useState<number | null>(null);
+  const [storyAutoOpenEnabled, setStoryAutoOpenEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enabledChannels, setEnabledChannels] = useState<Set<EoaShape>>(new Set(["circle", "square", "triangle", "diamond"]));
   const [loupeActive, setLoupeActive] = useState(false);
@@ -974,6 +975,7 @@ const SamizdatMap = ({
     setSelectedRootToken(null);
     setSelectedChainToken(null);
     setSelectedEventId(null);
+    setStoryAutoOpenEnabled(true);
     setSelectedL00Instance(null);
     setHighlightedEventIndex(null);
     setIsPlaying(false);
@@ -993,6 +995,7 @@ const SamizdatMap = ({
     setSelectedRootToken(event.rootToken);
     setSelectedChainToken(event.token);
     setViewMode("chain");
+    setStoryAutoOpenEnabled(true);
     setSelectedEventId(event.eventId);
 
     // Show all chain events immediately and highlight the first one
@@ -1042,7 +1045,7 @@ const SamizdatMap = ({
     return { lat, lng };
   }, []);
 
-  // Pan map + show pulse highlight + open story panel on step change
+  // Pan map + show pulse highlight; only auto-open story when not manually dismissed
   useEffect(() => {
     if (highlightedEventIndex === null || !mapRef.current || chainEventsOrdered.length === 0) {
       if (highlightMarkerRef.current && mapRef.current) {
@@ -1060,8 +1063,9 @@ const SamizdatMap = ({
     // Pan to the highlighted event
     mapRef.current.panTo([lat, lng], { animate: true });
 
-    // Open the story panel
-    setSelectedEventId(event.eventId);
+    if (storyAutoOpenEnabled) {
+      setSelectedEventId(event.eventId);
+    }
 
     // Add/update highlight pulse marker
     if (highlightMarkerRef.current) {
@@ -1080,7 +1084,7 @@ const SamizdatMap = ({
       zIndexOffset: 10000,
       interactive: false,
     }).addTo(mapRef.current);
-  }, [highlightedEventIndex, chainEventsOrdered, displayEvents, getJitteredPosition]);
+  }, [highlightedEventIndex, chainEventsOrdered, displayEvents, getJitteredPosition, storyAutoOpenEnabled]);
 
   // Draw polylines connecting parent→child events in chain mode
   useEffect(() => {
@@ -1887,7 +1891,10 @@ const SamizdatMap = ({
         {selectedEventId && (
           <EventStoryPanel
             eventId={selectedEventId}
-            onClose={() => setSelectedEventId(null)}
+            onClose={() => {
+              setStoryAutoOpenEnabled(false);
+              setSelectedEventId(null);
+            }}
           />
         )}
       </div>
