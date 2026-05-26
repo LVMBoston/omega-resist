@@ -1912,6 +1912,7 @@ Add Slide(s)
                   </div>
                 )}
               </div>
+              )}
             </CardContent>
           </Card>
         </div>
