@@ -1761,10 +1761,21 @@ Add Slide(s)
           </Card>
 
           {/* Right Sidebar - Properties */}
-          <Card className="h-full overflow-hidden">
-            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
-              <h3 className="font-semibold">Slide Properties</h3>
-              {selectedSlide ? (
+          <Card className={propertiesCollapsed ? "overflow-hidden" : "h-full overflow-hidden"}>
+            <CardContent className={propertiesCollapsed ? "p-4" : "p-4 space-y-4 overflow-y-auto h-full"}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Slide Properties</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPropertiesCollapsed(v => !v)}
+                  aria-label={propertiesCollapsed ? "Expand Slide Properties" : "Collapse Slide Properties"}
+                  className="h-7 w-7 p-0"
+                >
+                  {propertiesCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </Button>
+              </div>
+              {!propertiesCollapsed && (selectedSlide ? (
                 <div className="space-y-3 text-sm">
                   <div>
                     <div className="text-muted-foreground">Name</div>
