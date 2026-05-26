@@ -1868,7 +1868,9 @@ Add Slide(s)
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
-              )}
+              ))}
+              {!propertiesCollapsed && (
+
               
               <div className="border-t pt-4 space-y-3 text-sm">
                 <h4 className="font-semibold">Deck Usage</h4>
