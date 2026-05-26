@@ -601,14 +601,23 @@ export function EventStoryDialog({ eventId, open, onOpenChange }: EventStoryDial
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto">
-        <SheetHeader className="flex flex-row items-center justify-between pr-8">
-          <div>
+        <SheetHeader className="flex flex-row items-center justify-between gap-2 pr-10">
+          <div className="min-w-0">
             <SheetTitle className="flex items-center gap-2">
               <Navigation className="w-5 h-5" />
               Event Story
             </SheetTitle>
             <SheetDescription className="sr-only">Details about the selected event</SheetDescription>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </Button>
           {eventDetails && tokenDetails && (
             <Button
               variant="outline"
