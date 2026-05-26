@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera } from "lucide-react";
+import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { captureSlideThumbnail } from "@/lib/snapshotCapture";
 import { Input } from "@/components/ui/input";
@@ -291,6 +291,7 @@ export default function DeckEditor() {
   const [newDeckSlug, setNewDeckSlug] = useState('');
   const [savingAs, setSavingAs] = useState(false);
   const [saveAsError, setSaveAsError] = useState('');
+  const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
   const [selectedSlideIds, setSelectedSlideIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkMoveDialogOpen, setBulkMoveDialogOpen] = useState(false);
@@ -1760,10 +1761,21 @@ Add Slide(s)
           </Card>
 
           {/* Right Sidebar - Properties */}
-          <Card className="h-full overflow-hidden">
-            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
-              <h3 className="font-semibold">Slide Properties</h3>
-              {selectedSlide ? (
+          <Card className={propertiesCollapsed ? "overflow-hidden" : "h-full overflow-hidden"}>
+            <CardContent className={propertiesCollapsed ? "p-4" : "p-4 space-y-4 overflow-y-auto h-full"}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Slide Properties</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPropertiesCollapsed(v => !v)}
+                  aria-label={propertiesCollapsed ? "Expand Slide Properties" : "Collapse Slide Properties"}
+                  className="h-7 w-7 p-0"
+                >
+                  {propertiesCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </Button>
+              </div>
+              {!propertiesCollapsed && (selectedSlide ? (
                 <div className="space-y-3 text-sm">
                   <div>
                     <div className="text-muted-foreground">Name</div>
@@ -1856,7 +1868,9 @@ Add Slide(s)
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
-              )}
+              ))}
+              {!propertiesCollapsed && (
+
               
               <div className="border-t pt-4 space-y-3 text-sm">
                 <h4 className="font-semibold">Deck Usage</h4>
@@ -1898,6 +1912,7 @@ Add Slide(s)
                   </div>
                 )}
               </div>
+              )}
             </CardContent>
           </Card>
         </div>
