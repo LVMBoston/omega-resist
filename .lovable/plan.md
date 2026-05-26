@@ -1,42 +1,67 @@
-## Consolidate Deck Sections on Campaign Cards
+## What's eating your disk
 
-Today each campaign card has **two** stacked deck areas: a "View N Slide Decks" button/dropdown and a per-deck status list below it. This plan merges them into one scannable per-deck list.
+Two things dominate your storage and IO budget — and neither is your app's "real" data:
+
+1. **`cron.job_run_details` = 228 MB.** Your `refresh-all-snapshots` cron fires every minute (1,440 rows/day), and you have ~145,000 rows going back to **Feb 14**. Postgres has never been told to clean them up.
+2. **`net._http_response` = 110 MB on disk** for only ~360 live rows. That's table **bloat** — rows got deleted but the disk space was never reclaimed.
+
+For context, your actual app tables (`tokens`, `url_events`, `zip_codes`, etc.) total well under 15 MB combined. The cron infrastructure is **>95% of your disk pressure**.
+
+A third, smaller contributor: every-minute heartbeat means constant writes to `viral_slide_configs.snapshot_rendered_at` (354k updates on 37 rows) and constant scans on `tokens`/`url_events` to compute metrics, even when nothing changed.
 
 ---
 
-### 1. Unified deck row
+## Plan
 
-Replace both areas with a single section labeled "Decks (N)". Each deck gets one row containing, left → right:
+### 1. One-time cleanup (biggest, fastest win — frees ~330 MB)
 
-a. **Status icon** — small colored dot matching the existing status (Live = green, Pending = amber, Draft = muted), with a tooltip showing the full status label and last-deployed timestamp.
-b. **Deck name (slug)** — monospaced, truncates with `title` attribute for full slug on hover.
-c. **Slide count** — small muted hint, e.g. `12 slides`. Requires preloading slide counts per deck (see Technical Notes).
-d. **EoA-scope annotation** — small muted `(N EoAs)` so the deploy scope is visible before clicking.
-e. **View icon button** (`Eye`) — opens the existing thumbnail dialog (calls `handleViewDeck(e, slug)`).
-f. **Edit icon button** (`Pencil`) — navigates to `/deck-editor/{slug}`.
-g. **Deploy button** — only when status is `pending` or (`draft` with affected EoAs). Same `handleDeployDeck` logic as today.
+a. Truncate `cron.job_run_details` (keep only the last 7 days for debugging).
+b. `VACUUM FULL net._http_response` to reclaim the 110 MB of bloat.
+c. `VACUUM FULL cron.job_run_details` after truncation.
 
-The row stops click propagation so clicks don't trigger card-level navigation.
+Expected result: disk IO budget drops from 81% to roughly 20–30%.
 
-### 2. Section header / summary
+### 2. Stop the bleeding (prevent it from coming back)
 
-One concise summary line above the rows replaces both the current "View N Slide Decks" button label and the current "X of Y decks need deploy" line:
+a. Add a nightly cron job that deletes `cron.job_run_details` older than 7 days.
+b. Add a nightly cron job that deletes `net._http_response` older than 24 hours (responses aren't useful after that).
 
-- `3 decks · 2 Live, 1 needs deploy` (mixed)
-- `2 decks · All Live` (all live)
-- `1 deck · Draft` (single draft)
+### 3. Slow the snapshot heartbeat (optional, reduces ongoing write load)
 
-### 3. Empty / not-ready states
+a. Change `refresh-all-snapshots` schedule from `* * * * *` (every minute) to `*/5 * * * *` (every 5 minutes). The orchestrator already enforces per-campaign `snapshot_interval_minutes` internally, so a slower heartbeat doesn't change refresh behavior for any campaign whose interval is ≥5 min — it just cuts cron history growth and pg_net traffic by 5×.
+b. If you want even less load and your fastest campaign uses the default 60-min interval, go to `*/10`.
 
-a. **No decks assigned** — show a single muted disabled row: "No deck assigned".
-b. **EoAs not ready** — keep the existing amber "Not Ready (X/Y EoAs)" badge under the deck list when there are no deck statuses but the campaign has unready EoAs.
+### 4. Reduce repeated full-table reads inside the orchestrator (smaller, ongoing win)
 
-### 4. Technical notes
+The `refresh-all-snapshots` edge function re-queries `tokens` and `url_events` for every enabled campaign on every tick. On your current data sizes that's cheap, but with the every-minute schedule it adds up (1.68B tuples read from `tokens`, 627M from `url_events` lifetime). Two easy changes:
 
-a. **Slide count source** — extend the existing decks fetch (around line 322 in `CampaignManager.tsx`) to also pull a slide count per deck. Easiest path: a single grouped query against `slide_items` filtered to the collected `deckSlugs`, mapped into the same `deckMetaBySlug` map and threaded into each `DeckStatusRow`. No new state; one extra query during the existing load flow.
-b. **Files touched** — only `src/pages/CampaignManager.tsx`. Replace lines ~1007–1119 (the two deck blocks inside `SortableCampaignCard`). Reuse `handleViewDeck`, `handleDeployDeck`, `navigate('/deck-editor/...')`, `deploymentState.deckStatuses`, and `deckSlugs`. Add `slideCount` to the `DeckStatusRow` type.
-c. **No schema changes, no auth changes, no new routes.**
+a. Inside `refresh-all-snapshots`, **skip campaigns whose `snapshot_rendered_at` is still fresh** *before* doing any token/event queries — currently the staleness check happens after some work.
+b. Add a composite index on `url_events (token, event_type)` if not already present — speeds the per-campaign metric counts.
 
-### 5. Decision-doc follow-up
+### 5. What this won't fix
 
-After implementation, append an `## Update — 2026-04-25` section to `docs/decisions/decks/2026-04-25_per-deck-deployment-status_feature-doc_lovable.md` documenting the consolidated UI. This builds on the existing per-deck-deployment-status decision rather than starting a new one.
+- Disk **size** (storage) and disk **IO budget** are separate quotas in Lovable Cloud. This plan targets IO + size together, but if you later see "out of compute / memory" warnings, that's a different instance-upgrade conversation.
+- If campaign volume grows 10× (lots of new tokens/url_events), you'll eventually want pagination and an archive strategy for old `url_events`. Not urgent today.
+
+---
+
+## Technical details (for reference)
+
+Migrations involved:
+- `TRUNCATE` + `VACUUM FULL` on the two bloated tables (one-time, run inside a migration so it's auditable).
+- `SELECT cron.schedule('purge-cron-history', '0 3 * * *', $$ DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days' $$);`
+- `SELECT cron.schedule('purge-http-responses', '15 3 * * *', $$ DELETE FROM net._http_response WHERE created < now() - interval '24 hours' $$);`
+- `SELECT cron.alter_job(jobid, schedule := '*/5 * * * *') FROM cron.job WHERE jobname = 'refresh-all-snapshots';`
+- `CREATE INDEX IF NOT EXISTS idx_url_events_token_event_type ON public.url_events (token, event_type);`
+
+Edge function edit:
+- `supabase/functions/refresh-all-snapshots/index.ts` — move the `snapshot_rendered_at` staleness check to before per-campaign metric queries.
+
+Decision log:
+- New plan. Will be archived to `docs/decisions/performance/2026-05-26_disk-io-cleanup_feature-doc_lovable.md` after approval and implementation.
+
+---
+
+## What I need from you
+
+Approve and I'll execute in order: 1 (cleanup) → 2 (purge jobs) → 3 (slower heartbeat) → 4 (orchestrator + index). If you want to skip step 3 (keep minute-level snapshots), say so and I'll leave the schedule alone.
