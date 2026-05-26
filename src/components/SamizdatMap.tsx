@@ -1709,7 +1709,7 @@ const SamizdatMap = ({
 
           {/* No-spawns toggle - to the left of playback controls */}
           <div className="absolute bottom-3 z-[1000] flex items-end gap-2" style={{ right: '12px' }}>
-            <div className="bg-background/95 backdrop-blur-sm rounded-md px-2.5 py-2 shadow-md border border-border flex items-center gap-2">
+            <div className="bg-background/95 backdrop-blur-sm rounded-md px-2.5 py-2 shadow-md border border-border flex items-center gap-2" style={{ minWidth: '260px' }}>
               <Switch
                 id="no-spawns-toggle"
                 checked={showNoSpawnsLocal}
