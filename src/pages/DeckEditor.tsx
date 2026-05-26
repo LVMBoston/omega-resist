@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera } from "lucide-react";
+import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { captureSlideThumbnail } from "@/lib/snapshotCapture";
 import { Input } from "@/components/ui/input";
