@@ -27,6 +27,7 @@ interface FirstViewResult {
 const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorProps) => {
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [firstViewDates, setFirstViewDates] = useState<Record<string, string>>({});
+  const [isOpen, setIsOpen] = useState(false);
 
   // Query EoAs for this campaign (no longer filtering by start_date)
   const { data: eoas, isLoading: isLoadingEoas } = useQuery({
