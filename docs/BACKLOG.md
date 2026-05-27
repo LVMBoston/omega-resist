@@ -29,4 +29,15 @@ Items use numbered sections and lettered sub-items per project convention.
 
 ---
 
+## 3. Real-time map display overhaul
+
+**Observation:** The Samizdat real-time map (`ActivityMap.tsx`) has several UX and narrative issues that degrade the organizer experience when monitoring live campaign activity.
+
+**Deferred work:**
+- a. Improve narrative: add contextual storytelling to the map (e.g., "First share in Chicago!", "Viral chain reached 3 levels deep") rather than raw dot clusters.
+- b. Fix UI issues: panning the map snaps back — investigate `moveend` save/restore logic and Leaflet state conflicts causing the viewport to reset on interaction.
+- c. Improve sequential listing of events in a chain: the current listing does not clearly show the chronological propagation path (L00 → L01 → L02) per `l00_instance`; add a chain-sequence view or overlay that visualizes parent/child relationships and event ordering.
+
+---
+
 _Add new deferred items as new numbered sections below._
