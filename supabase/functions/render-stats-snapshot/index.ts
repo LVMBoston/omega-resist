@@ -653,11 +653,13 @@ Deno.serve(async (req) => {
 
       // === Special rendering for campaign_story ===
       if (hotspot.metricKey === "campaign_story") {
-        const storyFontSize = Math.round(scaledFontSize * 0.85);
-        const titleFontSize = Math.round(storyFontSize * 1.25);
-        const lineHeight = storyFontSize * 1.35;
-        const paragraphGap = lineHeight * 0.5;
-        const emojiIndent = storyFontSize * 1.8;
+        // Story text is rendered smaller than other live numbers so the whole
+        // multi-paragraph narrative fits inside the hotspot on mobile.
+        const storyFontSize = Math.round(scaledFontSize * 0.5);
+        const titleFontSize = Math.round(storyFontSize * 1.2);
+        const lineHeight = storyFontSize * 1.25;
+        const paragraphGap = lineHeight * 0.4;
+        const emojiIndent = storyFontSize * 1.6;
         const padding = 12;
         const maxCharsPerLine = Math.floor((hsWidth - padding * 2) / (storyFontSize * 0.52));
         const maxCharsIndented = Math.floor((hsWidth - padding * 2 - emojiIndent) / (storyFontSize * 0.52));
