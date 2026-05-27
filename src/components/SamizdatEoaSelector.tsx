@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { formatFloatingLocalTime } from "@/lib/dateUtils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface SamizdatEoaSelectorProps {
   campaignId: string;
@@ -26,6 +27,7 @@ interface FirstViewResult {
 const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorProps) => {
   const [selectedEoaIds, setSelectedEoaIds] = useState<string[]>([]);
   const [firstViewDates, setFirstViewDates] = useState<Record<string, string>>({});
+  const [isOpen, setIsOpen] = useState(false);
 
   // Query EoAs for this campaign (no longer filtering by start_date)
   const { data: eoas, isLoading: isLoadingEoas } = useQuery({
@@ -157,29 +159,39 @@ const SamizdatEoaSelector = ({ campaignId, onEoaChange }: SamizdatEoaSelectorPro
   }
 
   return (
-    <div className="space-y-3 py-2">
-      {activeEoas.map((eoa) => {
-        const firstView = getFirstViewForEoa(eoa);
-        return (
-          <div key={eoa.id} className="flex items-center space-x-3">
-            <Checkbox
-              id={eoa.id}
-              checked={selectedEoaIds.includes(eoa.id)}
-              onCheckedChange={() => toggleEoa(eoa.id)}
-            />
-            <label
-              htmlFor={eoa.id}
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
-              {eoa.utm_id}{" "}
-              <span className="text-muted-foreground">
-                (First open: {firstView ? formatFirstView(firstView) : "No opens yet"})
-              </span>
-            </label>
-          </div>
-        );
-      })}
-    </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-md">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+        <span className="flex items-center gap-2">
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          EoAs ({selectedEoaIds.length} of {activeEoas.length} selected)
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="space-y-3 px-3 py-2 border-t">
+          {activeEoas.map((eoa) => {
+            const firstView = getFirstViewForEoa(eoa);
+            return (
+              <div key={eoa.id} className="flex items-center space-x-3">
+                <Checkbox
+                  id={eoa.id}
+                  checked={selectedEoaIds.includes(eoa.id)}
+                  onCheckedChange={() => toggleEoa(eoa.id)}
+                />
+                <label
+                  htmlFor={eoa.id}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {eoa.utm_id}{" "}
+                  <span className="text-muted-foreground">
+                    (First open: {firstView ? formatFirstView(firstView) : "No opens yet"})
+                  </span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
