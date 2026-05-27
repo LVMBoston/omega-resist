@@ -1774,7 +1774,11 @@ const SamizdatMap = ({
               />
               <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>{totalDurationMs > 0 ? formatElapsedTime(totalDurationMs * timelinePosition) : "—"}</span>
-                <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
+                {viewMode === "chain" && selectedL00Instance ? (
+                  <span>Events: {displayEvents.length} / {eventPoints.filter(e => e.l00Instance === selectedL00Instance).length}</span>
+                ) : (
+                  <span>Events: {filteredEventPoints.length} / {eventPoints.length}</span>
+                )}
               </div>
             </div>
           </div>
