@@ -17,10 +17,42 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy, Sparkles } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import ChapterForm from "@/components/ChapterForm";
+
+type GenField = "smsL00" | "smsL01" | "emailL00" | "emailL01";
+type Tone = "urgent" | "informative" | "hopeful" | "defiant";
+const GEN_FIELD_META: Record<GenField, { channel: "sms" | "email"; level: "l00" | "l01" }> = {
+  smsL00: { channel: "sms", level: "l00" },
+  smsL01: { channel: "sms", level: "l01" },
+  emailL00: { channel: "email", level: "l00" },
+  emailL01: { channel: "email", level: "l01" },
+};
 
 interface CampaignChaptersProps {
   campaignId: string;
@@ -63,6 +95,15 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [savingChapter, setSavingChapter] = useState<string | null>(null);
 
+  // Campaign info (for AI generation prompt context)
+  const [campaignTitle, setCampaignTitle] = useState("");
+  const [campaignDescription, setCampaignDescription] = useState("");
+
+  // AI generation
+  const [tone, setTone] = useState<Tone>("informative");
+  const [generatingField, setGeneratingField] = useState<string | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
 
@@ -72,8 +113,72 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchChapters(), fetchOverrides(), fetchGlobalDefaults()]);
+    await Promise.all([fetchChapters(), fetchOverrides(), fetchGlobalDefaults(), fetchCampaignInfo()]);
     setLoading(false);
+  };
+
+  const fetchCampaignInfo = async () => {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("title, description")
+      .eq("id", campaignId)
+      .single();
+    if (data) {
+      setCampaignTitle(data.title || "");
+      setCampaignDescription(data.description || "");
+    }
+  };
+
+  const canGenerate = campaignTitle.trim().length > 0 && campaignDescription.trim().length > 0;
+
+  const runGenerate = async (scope: string | null, field: GenField) => {
+    const key = `${scope ?? "campaign"}:${field}`;
+    setGeneratingField(key);
+    try {
+      const meta = GEN_FIELD_META[field];
+      const { data, error } = await supabase.functions.invoke("draft-campaign-message", {
+        body: {
+          campaignTitle,
+          campaignDescription,
+          tone,
+          channel: meta.channel,
+          level: meta.level,
+        },
+      });
+      if (error) {
+        const status = (error as any).context?.status;
+        let message = "Couldn't generate message. Please try again.";
+        if (status === 429) message = "Too many requests — please wait a moment and try again.";
+        else if (status === 402) message = "AI credits exhausted. Add credits in workspace settings.";
+        toast({ variant: "destructive", title: "Generation failed", description: message });
+        return;
+      }
+      const text = (data as any)?.text as string | undefined;
+      if (!text) {
+        toast({ variant: "destructive", title: "Generation failed", description: "Empty response. Please try again." });
+        return;
+      }
+      if (scope === null) {
+        setCampaignOverrides((prev) => ({ ...prev, [field]: text }));
+      } else {
+        setChapterOverrides((prev) => ({
+          ...prev,
+          [scope]: { ...(prev[scope] || { ...EMPTY_OVERRIDES }), [field]: text },
+        }));
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Generation failed", description: e?.message || "Unexpected error." });
+    } finally {
+      setGeneratingField(null);
+    }
+  };
+
+  const handleGenerateClick = (scope: string | null, field: GenField, currentValue: string) => {
+    if (currentValue.trim().length > 0) {
+      setPendingOverwrite({ scope, field });
+      return;
+    }
+    runGenerate(scope, field);
   };
 
   const fetchChapters = async () => {
@@ -326,7 +431,27 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           <CollapsibleContent>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">These override global defaults for all chapters in this campaign unless a chapter has its own override.</p>
-              {renderOverrideFields(campaignOverrides, (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })), (field) => getPlaceholder(field))}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">AI tone</Label>
+                <Select value={tone} onValueChange={(v) => setTone(v as Tone)}>
+                  <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="informative">Informative</SelectItem>
+                    <SelectItem value="hopeful">Hopeful</SelectItem>
+                    <SelectItem value="defiant">Defiant</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!canGenerate && (
+                  <span className="text-xs text-muted-foreground">Add a campaign title & description to enable Generate.</span>
+                )}
+              </div>
+              {renderOverrideFields(
+                campaignOverrides,
+                (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })),
+                (field) => getPlaceholder(field),
+                { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate }
+              )}
               <div className="flex gap-2 pt-2">
                 <Button size="sm" onClick={handleSaveCampaignOverrides} disabled={!hasCampaignChanges || savingCampaign}>
                   {savingCampaign ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
@@ -379,7 +504,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                         ...prev,
                         [chapter.mobilize_code]: { ...(prev[chapter.mobilize_code] || { ...EMPTY_OVERRIDES }), [field]: value },
                       })),
-                      (field) => getPlaceholder(field, chapter.mobilize_code)
+                      (field) => getPlaceholder(field, chapter.mobilize_code),
+                      { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate }
                     )}
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" onClick={() => handleSaveChapterOverrides(chapter.mobilize_code)} disabled={!hasChanges || savingChapter === chapter.mobilize_code}>
@@ -419,6 +545,23 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={pendingOverwrite !== null} onOpenChange={(o) => { if (!o) setPendingOverwrite(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing draft?</AlertDialogTitle>
+            <AlertDialogDescription>This will replace your current draft with a new AI-generated version.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingOverwrite(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const p = pendingOverwrite;
+              setPendingOverwrite(null);
+              if (p) runGenerate(p.scope, p.field);
+            }}>Replace</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -444,27 +587,67 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+interface GenProps {
+  scope: string | null;
+  onGenerate: (scope: string | null, field: GenField, currentValue: string) => void;
+  generatingField: string | null;
+  canGenerate: boolean;
+}
+
+function GenerateButton({ field, value, gen }: { field: GenField; value: string; gen?: GenProps }) {
+  if (!gen) return null;
+  const key = `${gen.scope ?? "campaign"}:${field}`;
+  const isBusy = gen.generatingField === key;
+  const disabled = !gen.canGenerate || gen.generatingField !== null;
+  const btn = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-7 px-2 text-xs"
+      disabled={disabled}
+      onClick={() => gen.onGenerate(gen.scope, field, value)}
+    >
+      {isBusy ? (
+        <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Generating…</>
+      ) : (
+        <><Sparkles className="mr-1 h-3 w-3" />Generate</>
+      )}
+    </Button>
+  );
+  if (gen.canGenerate) return btn;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild><span>{btn}</span></TooltipTrigger>
+        <TooltipContent>Add a campaign name and description first.</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function renderOverrideFields(
   values: OverrideValues,
   onChange: (field: keyof OverrideValues, value: string) => void,
-  getPlaceholder: (field: keyof OverrideValues) => string
+  getPlaceholder: (field: keyof OverrideValues) => string,
+  gen?: GenProps
 ) {
+  const bodyRow = (field: GenField, label: string) => (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex items-center gap-1">
+          <GenerateButton field={field} value={values[field]} gen={gen} />
+          <CopyButton text={values[field] || getPlaceholder(field)} />
+        </div>
+      </div>
+      <Textarea value={values[field]} onChange={(e) => onChange(field, e.target.value)} placeholder={getPlaceholder(field)} rows={4} className="whitespace-pre-wrap" />
+    </div>
+  );
   return (
     <>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">SMS L00 Template</Label>
-          <CopyButton text={values.smsL00 || getPlaceholder("smsL00")} />
-        </div>
-        <Textarea value={values.smsL00} onChange={(e) => onChange("smsL00", e.target.value)} placeholder={getPlaceholder("smsL00")} rows={4} className="whitespace-pre-wrap" />
-      </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">SMS L01 Template</Label>
-          <CopyButton text={values.smsL01 || getPlaceholder("smsL01")} />
-        </div>
-        <Textarea value={values.smsL01} onChange={(e) => onChange("smsL01", e.target.value)} placeholder={getPlaceholder("smsL01")} rows={4} className="whitespace-pre-wrap" />
-      </div>
+      {bodyRow("smsL00", "SMS L00 Template")}
+      {bodyRow("smsL01", "SMS L01 Template")}
       <div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Email L00 Subject</Label>
@@ -472,13 +655,7 @@ function renderOverrideFields(
         </div>
         <Input value={values.emailL00Subject} onChange={(e) => onChange("emailL00Subject", e.target.value)} placeholder={getPlaceholder("emailL00Subject")} />
       </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Email L00 Body</Label>
-          <CopyButton text={values.emailL00 || getPlaceholder("emailL00")} />
-        </div>
-        <Textarea value={values.emailL00} onChange={(e) => onChange("emailL00", e.target.value)} placeholder={getPlaceholder("emailL00")} rows={4} className="whitespace-pre-wrap" />
-      </div>
+      {bodyRow("emailL00", "Email L00 Body")}
       <div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Email L01 Subject</Label>
@@ -486,13 +663,7 @@ function renderOverrideFields(
         </div>
         <Input value={values.emailL01Subject} onChange={(e) => onChange("emailL01Subject", e.target.value)} placeholder={getPlaceholder("emailL01Subject")} />
       </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Email L01 Body</Label>
-          <CopyButton text={values.emailL01 || getPlaceholder("emailL01")} />
-        </div>
-        <Textarea value={values.emailL01} onChange={(e) => onChange("emailL01", e.target.value)} placeholder={getPlaceholder("emailL01")} rows={4} className="whitespace-pre-wrap" />
-      </div>
+      {bodyRow("emailL01", "Email L01 Body")}
     </>
   );
 }
