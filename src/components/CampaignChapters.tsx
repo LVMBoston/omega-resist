@@ -17,10 +17,42 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy, Sparkles } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import ChapterForm from "@/components/ChapterForm";
+
+type GenField = "smsL00" | "smsL01" | "emailL00" | "emailL01";
+type Tone = "urgent" | "informative" | "hopeful" | "defiant";
+const GEN_FIELD_META: Record<GenField, { channel: "sms" | "email"; level: "l00" | "l01" }> = {
+  smsL00: { channel: "sms", level: "l00" },
+  smsL01: { channel: "sms", level: "l01" },
+  emailL00: { channel: "email", level: "l00" },
+  emailL01: { channel: "email", level: "l01" },
+};
 
 interface CampaignChaptersProps {
   campaignId: string;
