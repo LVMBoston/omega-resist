@@ -385,15 +385,29 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
                 {codeError && <p className="text-sm text-destructive mt-1">{codeError}</p>}
                 <p className="text-xs text-muted-foreground mt-1">Only lowercase a-z, 0-9, "-", "_". Cannot be changed once tokens exist.</p>
               </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description..." />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tip: a clear description here lets AI draft the messages in Step 2.
+              <div className="space-y-2">
+                <Label>Campaign Brief & Description</Label>
+                <p className="text-xs text-muted-foreground">
+                  Build a structured brief. Each field has an AI <span className="font-medium">Suggest</span> button. The brief feeds AI message drafts, narratives, and reports.
                 </p>
+                <CampaignBriefWizard
+                  campaignTitle={title}
+                  onTitleChange={setTitle}
+                  brief={brief}
+                  onBriefChange={setBrief}
+                  description={description}
+                  onDescriptionChange={setDescription}
+                />
               </div>
               <div className="flex justify-end">
-                <Button onClick={() => setStep(2)} disabled={!canAdvanceStep1}>
+                <Button
+                  onClick={() => {
+                    // Use brief.tone as default for messaging step
+                    if (brief.tone) setTone(brief.tone as Tone);
+                    setStep(2);
+                  }}
+                  disabled={!canAdvanceStep1}
+                >
                   Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
