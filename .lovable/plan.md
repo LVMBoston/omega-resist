@@ -1,88 +1,61 @@
-# AI-Assisted Message Drafting in Campaign Wizard Step 2
+## What you're seeing
 
-**Status: Proposed (new plan)** — Date: 2026-06-04
+On the campaign you opened (BUGTEST), the small "Generate" buttons next to each message field aren't appearing at all in the **Campaign-Level Messaging Overrides** card. On "Autocratic Framing and Response" they do appear.
 
-This is a **new** feature plan; it does not update any prior decision doc. On approval, archive at `docs/decisions/messaging/2026-06-04_ai-drafted-campaign-messages_feature-doc_lovable.md`.
+## What I checked
 
----
+1. The edge function (`draft-campaign-message`) works — I can call it directly and it returns a draft.
+2. The Generate-button code in `src/components/CampaignChapters.tsx` is wired the same way for every campaign — there's no campaign-specific branch.
+3. The campaign description for BUGTEST is populated in the database, so the "missing description" path shouldn't apply.
 
-## 1. Goal
+Because nothing in the code should hide the button per-campaign, the most likely real-world causes are:
+   a. The small per-field button is genuinely there but visually lost (it's a tiny ghost button to the right of the field label, easy to miss).
+   b. A stale cached bundle is being served on that tab, and the button literally isn't in the DOM yet.
+   c. An edge case in the render (e.g. `gen` prop dropped somewhere) is silently skipping the button on cards where overrides already exist.
 
-In `CampaignWizard.tsx` Step 2, let the user click a **Generate** button next to each of the four message fields. The system uses the campaign's **Name + Description** from Step 1 (plus a tone selector and the channel/level context) to draft a short message via Lovable AI, then drops the result into that field.
+## The plan — make Generate impossible to miss and self-diagnosing
 
-What the user sees:
-- Four small "✨ Generate" buttons, one per textarea (SMS L00, SMS L01, Email L00, Email L01).
-- A tone dropdown at the top of Step 2 (Urgent / Informative / Hopeful / Defiant).
-- If a field already has text, a small confirm dialog asks "Replace existing draft?" before overwriting.
-- A loading spinner replaces the button while generating; errors show as a red toast.
+### 1. Add a prominent "Generate AI drafts" action bar at the top of every overrides card
 
----
+a. In `src/components/CampaignChapters.tsx`, add a clearly visible primary-styled button row at the top of both the **Campaign-Level Messaging Overrides** card and each **Chapter** card, labeled "Generate AI drafts" with the Sparkles icon.
+b. Clicking it opens a small inline panel with: tone selector, four checkboxes (SMS L00, SMS L01, Email L00, Email L01) pre-checked, and a "Generate selected" button.
+c. The panel runs each selected field through the existing `runGenerate` flow sequentially, showing per-field progress.
+d. Keep the existing tiny per-field Generate buttons as a secondary affordance.
 
-## 2. Scope
+### 2. Always render the per-field Generate button, never conditionally
 
-a. **In scope:** UI buttons, tone selector, backend edge function that calls Lovable AI, prompt design tuned per channel/level, overwrite confirmation, error handling for rate limit (429) and credits (402).
-b. **Out of scope:** Saving drafts as templates, regenerating chapter-level messages (Step 3), editing Global defaults, batch generation across multiple campaigns.
+a. Audit `renderOverrideFields` / `GenerateButton` so the button element is always in the DOM for sms/email body fields, regardless of `gen` truthiness or `canGenerate` state.
+b. When `canGenerate` is false, render the button visibly disabled with an inline reason ("Campaign needs a title and description") next to it — not as a tooltip-only hint.
 
----
+### 3. Show the live "ready/not ready" state at the top of the card
 
-## 3. UX details
+a. Add a one-line status under the card title: "AI drafting: ready" (green dot) or "AI drafting: needs campaign description" (amber dot), pulled from the same `canGenerate` value.
+b. If not ready, include a one-click link "Edit campaign description" that opens the campaign edit dialog/page so the user can fix it without navigating.
 
-a. **Tone selector** — A single `Select` placed above the four textareas. Default: *Informative*. Applies to every Generate click in the step.
-b. **Per-field button** — Small `ghost` button with a Sparkles icon + "Generate", positioned at the right edge of each field's `Label` row. Disabled when:
-  - Campaign Name or Description (Step 1) is empty → tooltip: "Add a campaign name and description in Step 1 first."
-  - A generation is already in flight for that field.
-c. **Overwrite confirm** — If the textarea has non-whitespace content, open a small `AlertDialog`: "This will replace your current draft. Continue?" with Cancel / Replace.
-d. **Loading state** — Button shows `<Loader2 className="animate-spin" />` + "Generating…". The textarea is left editable.
-e. **Errors** — Use existing `useToast` with `variant: "destructive"`:
-  - 429: "Too many requests — please wait a moment and try again."
-  - 402: "AI credits exhausted. Add credits in workspace settings."
-  - Other: "Couldn't generate message. Please try again."
+### 4. Mirror the same prominent action bar in the Create Campaign wizard (Step 2)
 
----
+a. `src/components/CampaignWizard.tsx` already has per-field Generate; add the same top-of-card "Generate AI drafts" action bar so the experience is consistent between creation and editing.
 
-## 4. Prompt design (backend)
+### 5. Force a fresh bundle so cached views update
 
-The edge function receives `{ campaignTitle, campaignDescription, tone, channel, level }` and builds one prompt per call. Constraints baked into the system prompt:
+a. No code change required, but after deploying I will ask you to hard-reload (Cmd-Shift-R) the campaign page once to rule out a stale bundle, and confirm the new action bar shows on BUGTEST.
 
-a. **SMS L00** — ≤ 280 chars, first-person opener from an organizer to a friend/contact who has never seen this campaign. Must include `{{link}}` placeholder. No greeting like "Dear". Plain text, no markdown, no emoji unless tone is "Hopeful".
-b. **SMS L01** — ≤ 280 chars, written for a recipient who is forwarding to *their* contacts (one degree out). Must include `{{link}}`. Tone slightly more explanatory ("a friend shared this with me…").
-c. **Email L00** — 2–4 short paragraphs, organizer→contact. Include `{{link}}` on its own line. No subject line in the body; subject is handled elsewhere.
-d. **Email L01** — 2–4 short paragraphs, recipient→their contacts. Include `{{link}}`.
-e. **Placeholders allowed:** `{{link}}`, `{{city}}`, `{{state}}`, `{{site_name}}` — system prompt instructs the model to use them naturally and never to invent other `{{...}}` tokens.
-f. **Tone modifier** appended to system prompt, e.g. *"Tone: Defiant — confident, plainspoken, refuses the regime's framing; avoid melodrama."*
+## What does not change
 
----
+- The edge function `draft-campaign-message` and its prompts.
+- Database schema or message storage.
+- The Overwrite confirmation dialog.
+- The global-defaults fallback behavior.
 
-## 5. Technical details
+## Files touched
 
-a. **New edge function** `supabase/functions/draft-campaign-message/index.ts`:
-  - POST body: `{ campaignTitle, campaignDescription, tone, channel: 'sms'|'email', level: 'l00'|'l01' }` validated with Zod.
-  - Calls Lovable AI Gateway (`https://ai.gateway.lovable.dev/v1/chat/completions`) with model `google/gemini-2.5-flash`, `stream: false` (responses are short — no streaming needed; simpler client code).
-  - Returns `{ text: string }`. Surfaces 429/402 with matching status codes per Lovable AI guidance.
-  - CORS headers, no auth required by config (`verify_jwt` already defaults to false for Lovable-managed functions).
-b. **Client wiring in `CampaignWizard.tsx`:**
-  - New state: `tone` (default `"informative"`), `generatingField: 'smsL00'|'smsL01'|'emailL00'|'emailL01'|null`, `confirmField` for overwrite dialog.
-  - New helper `handleGenerate(field)`: validates Step 1 inputs → checks overwrite → calls `supabase.functions.invoke('draft-campaign-message', { body: ... })` → writes result into `overrides[field]`.
-  - Imports: `Sparkles`, `Loader2` from `lucide-react`; `Select`, `AlertDialog` from `@/components/ui/*`.
-c. **No DB changes.** No new tables, no new RLS.
-d. **Secrets.** `LOVABLE_API_KEY` is auto-provisioned by Lovable Cloud; verify presence at deploy time only.
+- `src/components/CampaignChapters.tsx` (primary changes for items 1, 2, 3)
+- `src/components/CampaignWizard.tsx` (item 4)
+- New decision doc: `docs/decisions/messaging/2026-06-04_ai-drafts-prominent-controls_feature-doc_lovable.md` (per the Decision Log rule — this updates the existing 2026-06-04 AI-drafts plan in the same folder).
 
----
+## Verification (per Visual Bug Debugging Rule)
 
-## 6. Files touched
-
-a. `supabase/functions/draft-campaign-message/index.ts` — **new**
-b. `src/components/CampaignWizard.tsx` — add tone selector, per-field Generate buttons, overwrite dialog, invoke logic
-c. `docs/decisions/messaging/2026-06-04_ai-drafted-campaign-messages_feature-doc_lovable.md` — **new** (archive of this plan after implementation)
-
-No other files change.
-
----
-
-## 7. Verification
-
-a. With a campaign description filled in, click Generate on each of the 4 fields; confirm a sensible draft appears that includes `{{link}}` and respects the length constraint.
-b. Try Generate with the description empty → button is disabled with tooltip.
-c. Type text into a field, click Generate → confirm dialog appears; Cancel keeps text, Replace overwrites.
-d. Switch tone to *Defiant*, regenerate → output noticeably changes voice.
-e. Browser console + network panel: confirm one POST to the edge function per click, response within ~3 s.
+a. Open BUGTEST campaign → Campaign-Level Messaging Overrides → confirm "Generate AI drafts" action bar is visible at the top.
+b. Click it, generate all four fields, confirm text appears in each field.
+c. Repeat on a campaign with no description: confirm the amber "needs campaign description" status shows and buttons are disabled-but-visible with the reason inline.
+d. Confirm the same on a chapter card and in the Create Campaign wizard.
