@@ -13,8 +13,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Loader2, Check, SkipForward } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, SkipForward, Sparkles } from "lucide-react";
 import ChapterForm from "@/components/ChapterForm";
 
 const codeSchema = z
@@ -27,6 +50,16 @@ interface CampaignWizardProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: (campaignId: string) => void;
 }
+
+type FieldKey = "smsL00" | "smsL01" | "emailL00" | "emailL01";
+type Tone = "urgent" | "informative" | "hopeful" | "defiant";
+
+const FIELD_META: Record<FieldKey, { channel: "sms" | "email"; level: "l00" | "l01"; label: string }> = {
+  smsL00: { channel: "sms", level: "l00", label: "SMS L00 Template" },
+  smsL01: { channel: "sms", level: "l01", label: "SMS L01 Template" },
+  emailL00: { channel: "email", level: "l00", label: "Email L00 Body" },
+  emailL01: { channel: "email", level: "l01", label: "Email L01 Body" },
+};
 
 export default function CampaignWizard({ open, onOpenChange, onSuccess }: CampaignWizardProps) {
   const { toast } = useToast();
@@ -48,6 +81,11 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
     smsL01: "",
   });
 
+  // AI drafting state
+  const [tone, setTone] = useState<Tone>("informative");
+  const [generatingField, setGeneratingField] = useState<FieldKey | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<FieldKey | null>(null);
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState({
     emailL00: "",
@@ -67,6 +105,9 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
       setOverrides({ emailL00: "", emailL01: "", smsL00: "", smsL01: "" });
       setCreatedCampaignId(null);
       setCreating(false);
+      setTone("informative");
+      setGeneratingField(null);
+      setPendingOverwrite(null);
       fetchGlobalDefaults();
     }
   }, [open]);
@@ -103,6 +144,94 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
   };
 
   const canAdvanceStep1 = code.trim() && title.trim() && !codeError;
+  const canGenerate = title.trim().length > 0 && description.trim().length > 0;
+
+  const runGenerate = async (field: FieldKey) => {
+    setGeneratingField(field);
+    try {
+      const meta = FIELD_META[field];
+      const { data, error } = await supabase.functions.invoke("draft-campaign-message", {
+        body: {
+          campaignTitle: title,
+          campaignDescription: description,
+          tone,
+          channel: meta.channel,
+          level: meta.level,
+        },
+      });
+
+      if (error) {
+        // Supabase wraps non-2xx into error; try to read status from context
+        const ctx = (error as any).context;
+        const status = ctx?.status;
+        let message = "Couldn't generate message. Please try again.";
+        if (status === 429) message = "Too many requests — please wait a moment and try again.";
+        else if (status === 402) message = "AI credits exhausted. Add credits in workspace settings.";
+        toast({ variant: "destructive", title: "Generation failed", description: message });
+        return;
+      }
+
+      const text = (data as any)?.text as string | undefined;
+      if (!text) {
+        toast({ variant: "destructive", title: "Generation failed", description: "Empty response. Please try again." });
+        return;
+      }
+
+      setOverrides((prev) => ({ ...prev, [field]: text }));
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Generation failed",
+        description: e?.message || "Unexpected error. Please try again.",
+      });
+    } finally {
+      setGeneratingField(null);
+    }
+  };
+
+  const handleGenerateClick = (field: FieldKey) => {
+    if (overrides[field].trim().length > 0) {
+      setPendingOverwrite(field);
+      return;
+    }
+    runGenerate(field);
+  };
+
+  const renderGenerateButton = (field: FieldKey) => {
+    const isBusy = generatingField === field;
+    const disabled = !canGenerate || generatingField !== null;
+    const btn = (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs"
+        disabled={disabled}
+        onClick={() => handleGenerateClick(field)}
+      >
+        {isBusy ? (
+          <>
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            Generating…
+          </>
+        ) : (
+          <>
+            <Sparkles className="mr-1 h-3 w-3" />
+            Generate
+          </>
+        )}
+      </Button>
+    );
+    if (canGenerate) return btn;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild><span>{btn}</span></TooltipTrigger>
+          <TooltipContent>Add a campaign name and description in Step 1 first.</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
 
   const handleFinish = async (addChapter: boolean) => {
     if (addChapter) {
@@ -195,6 +324,24 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
 
   const stepLabels = ["Identity", "Messaging", "First Chapter"];
 
+  const renderField = (field: FieldKey) => {
+    const meta = FIELD_META[field];
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <Label className="text-xs">{meta.label}</Label>
+          {renderGenerateButton(field)}
+        </div>
+        <Textarea
+          value={overrides[field]}
+          onChange={(e) => setOverrides({ ...overrides, [field]: e.target.value })}
+          placeholder={globalDefaults[field] || "Global default"}
+          rows={3}
+        />
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -227,6 +374,9 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
               <div>
                 <Label>Description</Label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description..." />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tip: a clear description here lets AI draft the messages in Step 2.
+                </p>
               </div>
               <div className="flex justify-end">
                 <Button onClick={() => setStep(2)} disabled={!canAdvanceStep1}>
@@ -242,42 +392,32 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
               <p className="text-sm text-muted-foreground">
                 Optionally override the global message templates for this campaign. Leave blank to use global defaults. Use {"{{link}}"} for the share URL, {"{{city}}"}, {"{{state}}"}, {"{{site_name}}"} for geographic placeholders.
               </p>
-              <div>
-                <Label className="text-xs">SMS L00 Template</Label>
-                <Textarea
-                  value={overrides.smsL00}
-                  onChange={(e) => setOverrides({ ...overrides, smsL00: e.target.value })}
-                  placeholder={globalDefaults.smsL00 || "Global default"}
-                  rows={3}
-                />
+
+              {/* Tone selector */}
+              <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-3">
+                <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                <div className="flex-1">
+                  <Label className="text-xs">AI tone for generated drafts</Label>
+                  <p className="text-[11px] text-muted-foreground">Applies when you click Generate next to any field.</p>
+                </div>
+                <Select value={tone} onValueChange={(v) => setTone(v as Tone)}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="informative">Informative</SelectItem>
+                    <SelectItem value="hopeful">Hopeful</SelectItem>
+                    <SelectItem value="defiant">Defiant</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label className="text-xs">SMS L01 Template</Label>
-                <Textarea
-                  value={overrides.smsL01}
-                  onChange={(e) => setOverrides({ ...overrides, smsL01: e.target.value })}
-                  placeholder={globalDefaults.smsL01 || "Global default"}
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Email L00 Body</Label>
-                <Textarea
-                  value={overrides.emailL00}
-                  onChange={(e) => setOverrides({ ...overrides, emailL00: e.target.value })}
-                  placeholder={globalDefaults.emailL00 || "Global default"}
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Email L01 Body</Label>
-                <Textarea
-                  value={overrides.emailL01}
-                  onChange={(e) => setOverrides({ ...overrides, emailL01: e.target.value })}
-                  placeholder={globalDefaults.emailL01 || "Global default"}
-                  rows={3}
-                />
-              </div>
+
+              {renderField("smsL00")}
+              {renderField("smsL01")}
+              {renderField("emailL00")}
+              {renderField("emailL01")}
+
               <div className="flex justify-between">
                 <Button variant="outline" onClick={() => setStep(1)}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -322,6 +462,33 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
           )}
         </div>
       </DialogContent>
+
+      {/* Overwrite confirmation */}
+      <AlertDialog
+        open={pendingOverwrite !== null}
+        onOpenChange={(o) => { if (!o) setPendingOverwrite(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This field already has content. Generating will replace it with a new AI draft.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const f = pendingOverwrite;
+                setPendingOverwrite(null);
+                if (f) runGenerate(f);
+              }}
+            >
+              Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
