@@ -95,8 +95,14 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [savingChapter, setSavingChapter] = useState<string | null>(null);
 
-  // Global defaults for placeholders
-  const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
+  // Campaign info (for AI generation prompt context)
+  const [campaignTitle, setCampaignTitle] = useState("");
+  const [campaignDescription, setCampaignDescription] = useState("");
+
+  // AI generation
+  const [tone, setTone] = useState<Tone>("informative");
+  const [generatingField, setGeneratingField] = useState<string | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
 
   // Campaign info (for AI generation prompt context)
   const [campaignTitle, setCampaignTitle] = useState("");
