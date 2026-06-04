@@ -504,7 +504,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                         ...prev,
                         [chapter.mobilize_code]: { ...(prev[chapter.mobilize_code] || { ...EMPTY_OVERRIDES }), [field]: value },
                       })),
-                      (field) => getPlaceholder(field, chapter.mobilize_code)
+                      (field) => getPlaceholder(field, chapter.mobilize_code),
+                      { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate }
                     )}
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" onClick={() => handleSaveChapterOverrides(chapter.mobilize_code)} disabled={!hasChanges || savingChapter === chapter.mobilize_code}>
