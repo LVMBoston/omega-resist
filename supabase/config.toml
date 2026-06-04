@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.deploy-template-snapshots]
 verify_jwt = false
+
+[functions.draft-campaign-message]
+verify_jwt = false
