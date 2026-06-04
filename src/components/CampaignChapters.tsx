@@ -53,6 +53,13 @@ const GEN_FIELD_META: Record<GenField, { channel: "sms" | "email"; level: "l00" 
   emailL00: { channel: "email", level: "l00" },
   emailL01: { channel: "email", level: "l01" },
 };
+const GEN_FIELD_LABELS: Record<GenField, string> = {
+  smsL00: "SMS L00",
+  smsL01: "SMS L01",
+  emailL00: "Email L00",
+  emailL01: "Email L01",
+};
+
 
 interface CampaignChaptersProps {
   campaignId: string;
