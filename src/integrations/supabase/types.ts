@@ -57,6 +57,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          brief: Json | null
           campaign_type: string
           code: string
           created_at: string
@@ -69,6 +70,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brief?: Json | null
           campaign_type?: string
           code: string
           created_at?: string
@@ -81,6 +83,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brief?: Json | null
           campaign_type?: string
           code?: string
           created_at?: string

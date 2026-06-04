@@ -2,14 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, cache-control, pragma, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, cache-control, pragma, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
 };
 
-type Channel = "sms" | "email";
-type Level = "l00" | "l01";
 type Tone = "urgent" | "informative" | "hopeful" | "defiant";
+type Mode = "suggest_field" | "synthesize_description" | "suggest_title";
+type FieldKey = "what" | "why" | "when" | "where" | "who" | "ask";
 
 interface Brief {
   what?: string;
@@ -24,23 +25,23 @@ interface Brief {
 }
 
 interface Body {
-  campaignTitle: string;
-  campaignDescription: string;
-  tone: Tone;
-  channel: Channel;
-  level: Level;
+  mode: Mode;
+  campaignTitle?: string;
   brief?: Brief;
+  field?: FieldKey; // required when mode === "suggest_field"
 }
 
-const TONE_GUIDANCE: Record<Tone, string> = {
-  urgent: "Urgent — convey time-sensitivity and stakes; direct and active voice; no melodrama.",
-  informative: "Informative — calm, clear, plainspoken; explain what this is and why it matters.",
-  hopeful: "Hopeful — warm, encouraging, agency-affirming; light use of emoji is OK (1 max).",
-  defiant: "Defiant — confident, plainspoken, refuses the regime's framing; principled, not angry.",
+const FIELD_GUIDANCE: Record<FieldKey, string> = {
+  what: "One concrete sentence describing the event or action. Active voice. No buzzwords.",
+  why: "Two sentences max on why this matters now — the stakes, who is affected, what is at risk.",
+  when: "Plain date/time, or 'ongoing' / 'nationwide'. No filler.",
+  where: "Locations, scope, or 'nationwide'. Mention the geographic level (city/state/country).",
+  who: "One sentence naming the audience the ask is aimed at (e.g. 'registered voters in swing states').",
+  ask: "One sentence stating the concrete call to action (sign up, show up, share, donate, contact a rep).",
 };
 
-function briefBlock(b: Brief | undefined): string | null {
-  if (!b) return null;
+function briefToContext(b: Brief | undefined): string {
+  if (!b) return "(no brief yet)";
   const lines: string[] = [];
   if (b.what) lines.push(`What: ${b.what}`);
   if (b.why) lines.push(`Why it matters: ${b.why}`);
@@ -50,39 +51,50 @@ function briefBlock(b: Brief | undefined): string | null {
   if (b.ask) lines.push(`The ask: ${b.ask}`);
   if (b.key_facts?.length) lines.push(`Key facts to include:\n- ${b.key_facts.join("\n- ")}`);
   if (b.do_not_say?.length) lines.push(`Do NOT say:\n- ${b.do_not_say.join("\n- ")}`);
-  return lines.length ? lines.join("\n") : null;
+  if (b.tone) lines.push(`Tone: ${b.tone}`);
+  return lines.length ? lines.join("\n") : "(no brief yet)";
 }
 
 function buildPrompt(b: Body): { system: string; user: string } {
-  const isSMS = b.channel === "sms";
-  const lengthRule = isSMS
-    ? "MUST be 280 characters or fewer (including the {{link}} placeholder). No subject line."
-    : "Write 2–4 short paragraphs. Place {{link}} on its own line where the reader is invited to act. No subject line, no signature.";
+  const ctx = briefToContext(b.brief);
+  const title = b.campaignTitle?.trim() || "(untitled campaign)";
 
-  const audience =
-    b.level === "l00"
-      ? "You are writing as the campaign organizer, sending this directly to a friend or contact who has never seen this campaign before."
-      : "You are writing as someone who just received this from a friend and is forwarding it to their own contacts (one degree out). Acknowledge that framing naturally (e.g. 'A friend shared this with me…') without sounding scripted.";
-
-  const system = [
-    `You draft short outreach messages for grassroots civic campaigns.`,
-    audience,
-    `Channel: ${b.channel.toUpperCase()}. Level: ${b.level.toUpperCase()}.`,
-    lengthRule,
-    `Allowed placeholders: {{link}}, {{city}}, {{state}}, {{site_name}}. Use {{link}} exactly once. Never invent other {{...}} tokens.`,
-    `Plain text only — no markdown, no headings, no bullet lists.`,
-    `${TONE_GUIDANCE[b.tone]}`,
-    `Return ONLY the message body. Do not add commentary, quotes, or labels like "SMS:".`,
-  ].join("\n");
-
-  const brief = briefBlock(b.brief);
-  const userParts = [`Campaign name: ${b.campaignTitle}`];
-  if (brief) {
-    userParts.push(`\nStructured brief (authoritative — use these facts, follow the guardrails):\n${brief}`);
+  if (b.mode === "suggest_field") {
+    const f = b.field!;
+    return {
+      system: [
+        "You help organizers fill out a structured brief for a grassroots civic campaign.",
+        `You are drafting ONLY the "${f}" field.`,
+        FIELD_GUIDANCE[f],
+        "Plain text only. No markdown, no quotes, no labels. Return ONLY the field's value.",
+      ].join("\n"),
+      user: `Campaign name: ${title}\n\nWhat is already known:\n${ctx}\n\nDraft a strong "${f}" value now.`,
+    };
   }
-  userParts.push(`\nCampaign description (for tone/context):\n${b.campaignDescription}`);
-  userParts.push(`\nDraft the message now.`);
-  return { system, user: userParts.join("\n") };
+
+  if (b.mode === "synthesize_description") {
+    return {
+      system: [
+        "You synthesize a clear, plainspoken campaign description from a structured brief.",
+        "Write 2–4 short sentences. No headings, no bullets, no markdown.",
+        "Lead with what is happening and why it matters. End with the ask.",
+        "Never invent facts. If the brief omits a detail, omit it from the description.",
+        "Return ONLY the description.",
+      ].join("\n"),
+      user: `Campaign name: ${title}\n\nBrief:\n${ctx}\n\nWrite the description now.`,
+    };
+  }
+
+  // suggest_title
+  return {
+    system: [
+      "You suggest a concise, memorable campaign name from a structured brief.",
+      "Max 6 words. Title case. No punctuation other than commas or em-dashes.",
+      "Avoid clichés ('Stand Up', 'Rise Up', 'Together We…'). Be concrete.",
+      "Return ONLY the name. No quotes, no commentary.",
+    ].join("\n"),
+    user: `Current name: ${title}\n\nBrief:\n${ctx}\n\nSuggest a better name now.`,
+  };
 }
 
 serve(async (req) => {
@@ -99,11 +111,14 @@ serve(async (req) => {
 
     const raw = (await req.json()) as Partial<Body>;
     const errors: string[] = [];
-    if (!raw.campaignTitle?.trim()) errors.push("campaignTitle is required");
-    if (!raw.campaignDescription?.trim()) errors.push("campaignDescription is required");
-    if (!raw.tone || !["urgent", "informative", "hopeful", "defiant"].includes(raw.tone)) errors.push("invalid tone");
-    if (!raw.channel || !["sms", "email"].includes(raw.channel)) errors.push("invalid channel");
-    if (!raw.level || !["l00", "l01"].includes(raw.level)) errors.push("invalid level");
+    if (!raw.mode || !["suggest_field", "synthesize_description", "suggest_title"].includes(raw.mode)) {
+      errors.push("invalid mode");
+    }
+    if (raw.mode === "suggest_field") {
+      if (!raw.field || !["what", "why", "when", "where", "who", "ask"].includes(raw.field)) {
+        errors.push("invalid or missing field");
+      }
+    }
     if (errors.length) {
       return new Response(JSON.stringify({ error: errors.join("; ") }), {
         status: 400,
@@ -151,7 +166,11 @@ serve(async (req) => {
     }
 
     const data = await aiResp.json();
-    const text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
+    let text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
+    // Strip wrapping quotes if any
+    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+      text = text.slice(1, -1).trim();
+    }
     if (!text) {
       return new Response(JSON.stringify({ error: "Empty response from AI" }), {
         status: 502,
@@ -164,7 +183,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("draft-campaign-message error:", e);
+    console.error("draft-campaign-brief error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

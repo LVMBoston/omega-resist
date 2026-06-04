@@ -1,38 +1,70 @@
-# Plan: Fix AI Draft Generation Failure
+## Campaign Brief Wizard — Plan
 
-## 1. Confirm the exact failure path
- a. Reproduce the bug on the published site for BUGTEST, not just in preview, because you already hard-reset and published.
- b. Capture the browser-side failure from Console and Network so I can confirm whether the request is being blocked before it leaves the page.
- c. Compare the request headers the page is sending with the headers the AI drafting backend currently allows.
+Status: Proposed — replaces the plain Description textarea in `CampaignWizard` step 1 and upgrades the AI message drafter to consume the new structured brief.
 
-## 2. Fix the backend request handling
- a. Update the AI drafting backend function to use the standard browser-safe CORS setup used elsewhere in this project.
- b. Expand the allowed request headers if the browser is sending headers that the current function does not allow.
- c. Make sure the preflight response and every success/error response return the same CORS headers, so the browser does not block the real POST.
- d. Re-test until the POST reaches the backend and the function logs show an actual invocation.
+### 1. What it produces
 
-## 3. Fix the client-side error handling
- a. Improve the generate action so it surfaces the real failure reason instead of always showing the generic red "try again" toast.
- b. Distinguish between these cases in the UI: blocked request, network failure, backend validation error, rate limit, credit exhaustion, and empty AI response.
- c. Add temporary diagnostic logging while testing so I can prove whether the failure is happening in the page, in transit, or in the backend.
+a. A **structured brief** stored on `campaigns.brief` (new `jsonb` column) with these fields:
+   - `what` — one-sentence description of the event/action
+   - `why` — why it matters, the stakes
+   - `when` — date/time or "ongoing / nationwide"
+   - `where` — locations or scope
+   - `who` — audience the ask is aimed at
+   - `ask` — the concrete call to action
+   - `key_facts[]` — bullet facts the AI must include
+   - `do_not_say[]` — guardrails the AI must avoid
+   - `tone` — urgent | informative | hopeful | defiant
+b. A **synthesized human description** saved to the existing `campaigns.description` field. Downstream code that reads `description` keeps working unchanged.
+c. An **optional refined campaign title** (the user can accept an AI-suggested rename). The slug is never touched.
 
-## 4. Verify the full user flow
- a. Test the BUGTEST campaign at the Campaign-Level Messaging Overrides card, where you reported the issue.
- b. Confirm that clicking Generate creates a real draft in the field instead of returning the red toast.
- c. Verify both one-off generation and the bulk generate flow, because they share the same path.
- d. Re-check the published site after the fix, since that is the environment you are using.
+### 2. Wizard UX (a new component, mounted inside `CampaignWizard` step 1)
 
-## 5. Technical details
- a. The current evidence points to a browser-side block, not an AI-model failure: the preflight succeeds, but the real generation request never reaches the backend.
- b. The most likely causes are a CORS header mismatch or a client-side request failure inside the browser SDK call.
- c. If the browser is sending newer platform/runtime headers, I will align this function with the broader allow-list already used by other working backend functions in this project.
- d. I will keep the fix scoped to the AI drafting path only; I will not change unrelated campaign logic.
+a. The current free-text Description textarea is replaced by a "Build campaign brief" panel showing a stepper with the fields above.
+b. Each field has:
+   - A short helper line explaining what makes a good answer
+   - A textarea for the user's input
+   - A small `✨ Suggest` button that calls AI to draft just that field from whatever's already filled in (campaign name + any prior answers). User can accept, edit, or ignore.
+c. The final step is a **Preview** screen showing:
+   - The synthesized description paragraph (editable)
+   - A "Regenerate description" button
+   - A "Suggest a better campaign name" button — if user accepts, the campaign `title` updates (slug stays locked)
+d. The wizard can be skipped: users can leave fields blank and just type a plain description like before.
 
-## 6. Deliverables
- a. A backend fix so the request can reach the AI drafting service from the published site.
- b. A UI fix so errors say what actually went wrong.
- c. End-to-end verification in the browser showing the draft appears correctly.
- d. A decision document update saved as a new plan record for this bug fix, or an update to the existing AI drafting controls decision if that is the better fit.
+### 3. AI plumbing
 
-## 7. Questions
- a. No more answers are required from you right now — I have enough to implement this plan.
+a. Rename the existing edge function `draft-campaign-message` stays as-is for SMS/email drafting, but its prompt is upgraded: when a `brief` is present on the campaign, the function pulls `what / why / ask / key_facts / do_not_say / tone` into the prompt instead of just the loose description. This is the "downstream wiring" benefit — drafts get noticeably more specific.
+b. A new edge function `draft-campaign-brief` handles three modes via a `mode` param:
+   - `suggest_field` — drafts one field (e.g. "why") from current partial brief
+   - `synthesize_description` — turns the full brief into the polished paragraph
+   - `suggest_title` — proposes a refined campaign name from the brief
+c. All three modes use Lovable AI Gateway (`google/gemini-3-flash-preview`) with the same hardened CORS headers we just fixed.
+
+### 4. Data model change
+
+a. New migration: `ALTER TABLE public.campaigns ADD COLUMN brief jsonb;`
+b. No RLS changes needed — `campaigns` policies already cover the new column.
+c. `description` column stays. Old campaigns without a brief keep working; the wizard is also reachable from Campaign Detail later (out of scope for this round per your answer — wizard lives only in CampaignWizard for now).
+
+### 5. Files touched
+
+a. New: `supabase/migrations/<ts>_campaigns_brief.sql`
+b. New: `supabase/functions/draft-campaign-brief/index.ts`
+c. New: `src/components/CampaignBriefWizard.tsx` (the stepper panel)
+d. Edit: `src/components/CampaignWizard.tsx` — step 1 now embeds `CampaignBriefWizard`; on submit, both `description` and `brief` are saved
+e. Edit: `supabase/functions/draft-campaign-message/index.ts` — prompt upgraded to read structured brief when present
+f. New decision doc: `docs/decisions/messaging/2026-06-04_campaign-brief-wizard_feature-doc_lovable.md`
+
+### 6. Out of scope (explicitly)
+
+- Adding the wizard to the Campaign Detail page for existing campaigns (deferred to a follow-up)
+- Editing the brief after campaign creation (deferred)
+- Backfilling briefs for existing campaigns
+- Changing how narratives consume the description — they continue reading `campaigns.description` and benefit automatically from the better synthesized paragraph
+
+### 7. Open questions before I build
+
+a. Should "Suggest a better campaign name" only show when the *current* name is short/generic, or always be available?
+b. Should there be a hard length cap on `key_facts[]` / `do_not_say[]` (e.g. max 5 each) so AI prompts stay tight?
+c. Tone is currently per-message in step 2. Do you want the brief's `tone` to become the *default* for the message drafter (user can still override)?
+
+Reply with answers to 7a–7c (or "go ahead with sensible defaults") and I'll implement.

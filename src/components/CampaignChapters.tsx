@@ -127,15 +127,18 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     setLoading(false);
   };
 
+  const [campaignBrief, setCampaignBrief] = useState<any>(null);
+
   const fetchCampaignInfo = async () => {
     const { data } = await supabase
       .from("campaigns")
-      .select("title, description")
+      .select("title, description, brief")
       .eq("id", campaignId)
       .single();
     if (data) {
       setCampaignTitle(data.title || "");
       setCampaignDescription(data.description || "");
+      setCampaignBrief((data as any).brief || null);
     }
   };
 
@@ -153,6 +156,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           tone,
           channel: meta.channel,
           level: meta.level,
+          brief: campaignBrief || undefined,
         },
       });
       if (error) {

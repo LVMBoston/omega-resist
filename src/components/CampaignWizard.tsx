@@ -39,6 +39,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Loader2, SkipForward, Sparkles } from "lucide-react";
 import ChapterForm from "@/components/ChapterForm";
+import CampaignBriefWizard, { type CampaignBrief, type Tone as BriefTone } from "@/components/CampaignBriefWizard";
 
 const codeSchema = z
   .string()
@@ -86,6 +87,9 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
   const [generatingField, setGeneratingField] = useState<FieldKey | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<FieldKey | null>(null);
 
+  // Structured campaign brief
+  const [brief, setBrief] = useState<CampaignBrief>({ tone: "informative" });
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState({
     emailL00: "",
@@ -106,6 +110,7 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
       setCreatedCampaignId(null);
       setCreating(false);
       setTone("informative");
+      setBrief({ tone: "informative" });
       setGeneratingField(null);
       setPendingOverwrite(null);
       fetchGlobalDefaults();
@@ -157,6 +162,7 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
           tone,
           channel: meta.channel,
           level: meta.level,
+          brief,
         },
       });
 
@@ -257,10 +263,18 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
         return null;
       }
 
+      // Only include brief if user entered any data
+      const hasBriefData = Object.entries(brief).some(([k, v]) => {
+        if (k === "tone") return false; // tone alone doesn't count
+        if (Array.isArray(v)) return v.some((x) => x && x.trim());
+        return typeof v === "string" && v.trim().length > 0;
+      });
+      const briefPayload = hasBriefData ? brief : null;
+
       // Insert campaign
       const { data: newCampaign, error: campError } = await supabase
         .from("campaigns")
-        .insert({ code, title, description: description || null, campaign_type: "samizdat" })
+        .insert({ code, title, description: description || null, campaign_type: "samizdat", brief: briefPayload as any })
         .select()
         .single();
       if (campError) throw campError;
@@ -344,7 +358,7 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Create Campaign — Step {step} of 3</DialogTitle>
           <DialogDescription>{stepLabels[step - 1]}</DialogDescription>
@@ -371,15 +385,29 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
                 {codeError && <p className="text-sm text-destructive mt-1">{codeError}</p>}
                 <p className="text-xs text-muted-foreground mt-1">Only lowercase a-z, 0-9, "-", "_". Cannot be changed once tokens exist.</p>
               </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description..." />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tip: a clear description here lets AI draft the messages in Step 2.
+              <div className="space-y-2">
+                <Label>Campaign Brief & Description</Label>
+                <p className="text-xs text-muted-foreground">
+                  Build a structured brief. Each field has an AI <span className="font-medium">Suggest</span> button. The brief feeds AI message drafts, narratives, and reports.
                 </p>
+                <CampaignBriefWizard
+                  campaignTitle={title}
+                  onTitleChange={setTitle}
+                  brief={brief}
+                  onBriefChange={setBrief}
+                  description={description}
+                  onDescriptionChange={setDescription}
+                />
               </div>
               <div className="flex justify-end">
-                <Button onClick={() => setStep(2)} disabled={!canAdvanceStep1}>
+                <Button
+                  onClick={() => {
+                    // Use brief.tone as default for messaging step
+                    if (brief.tone) setTone(brief.tone as Tone);
+                    setStep(2);
+                  }}
+                  disabled={!canAdvanceStep1}
+                >
                   Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
