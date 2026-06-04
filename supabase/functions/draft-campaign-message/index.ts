@@ -11,12 +11,25 @@ type Channel = "sms" | "email";
 type Level = "l00" | "l01";
 type Tone = "urgent" | "informative" | "hopeful" | "defiant";
 
+interface Brief {
+  what?: string;
+  why?: string;
+  when?: string;
+  where?: string;
+  who?: string;
+  ask?: string;
+  key_facts?: string[];
+  do_not_say?: string[];
+  tone?: Tone;
+}
+
 interface Body {
   campaignTitle: string;
   campaignDescription: string;
   tone: Tone;
   channel: Channel;
   level: Level;
+  brief?: Brief;
 }
 
 const TONE_GUIDANCE: Record<Tone, string> = {
@@ -25,6 +38,20 @@ const TONE_GUIDANCE: Record<Tone, string> = {
   hopeful: "Hopeful — warm, encouraging, agency-affirming; light use of emoji is OK (1 max).",
   defiant: "Defiant — confident, plainspoken, refuses the regime's framing; principled, not angry.",
 };
+
+function briefBlock(b: Brief | undefined): string | null {
+  if (!b) return null;
+  const lines: string[] = [];
+  if (b.what) lines.push(`What: ${b.what}`);
+  if (b.why) lines.push(`Why it matters: ${b.why}`);
+  if (b.when) lines.push(`When: ${b.when}`);
+  if (b.where) lines.push(`Where: ${b.where}`);
+  if (b.who) lines.push(`Audience: ${b.who}`);
+  if (b.ask) lines.push(`The ask: ${b.ask}`);
+  if (b.key_facts?.length) lines.push(`Key facts to include:\n- ${b.key_facts.join("\n- ")}`);
+  if (b.do_not_say?.length) lines.push(`Do NOT say:\n- ${b.do_not_say.join("\n- ")}`);
+  return lines.length ? lines.join("\n") : null;
+}
 
 function buildPrompt(b: Body): { system: string; user: string } {
   const isSMS = b.channel === "sms";
@@ -48,8 +75,14 @@ function buildPrompt(b: Body): { system: string; user: string } {
     `Return ONLY the message body. Do not add commentary, quotes, or labels like "SMS:".`,
   ].join("\n");
 
-  const user = `Campaign name: ${b.campaignTitle}\n\nCampaign description:\n${b.campaignDescription}\n\nDraft the message now.`;
-  return { system, user };
+  const brief = briefBlock(b.brief);
+  const userParts = [`Campaign name: ${b.campaignTitle}`];
+  if (brief) {
+    userParts.push(`\nStructured brief (authoritative — use these facts, follow the guardrails):\n${brief}`);
+  }
+  userParts.push(`\nCampaign description (for tone/context):\n${b.campaignDescription}`);
+  userParts.push(`\nDraft the message now.`);
+  return { system, user: userParts.join("\n") };
 }
 
 serve(async (req) => {
