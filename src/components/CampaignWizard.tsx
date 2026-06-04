@@ -87,6 +87,9 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
   const [generatingField, setGeneratingField] = useState<FieldKey | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<FieldKey | null>(null);
 
+  // Structured campaign brief
+  const [brief, setBrief] = useState<CampaignBrief>({ tone: "informative" });
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState({
     emailL00: "",
@@ -107,6 +110,7 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
       setCreatedCampaignId(null);
       setCreating(false);
       setTone("informative");
+      setBrief({ tone: "informative" });
       setGeneratingField(null);
       setPendingOverwrite(null);
       fetchGlobalDefaults();
