@@ -549,27 +549,67 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+interface GenProps {
+  scope: string | null;
+  onGenerate: (scope: string | null, field: GenField, currentValue: string) => void;
+  generatingField: string | null;
+  canGenerate: boolean;
+}
+
+function GenerateButton({ field, value, gen }: { field: GenField; value: string; gen?: GenProps }) {
+  if (!gen) return null;
+  const key = `${gen.scope ?? "campaign"}:${field}`;
+  const isBusy = gen.generatingField === key;
+  const disabled = !gen.canGenerate || gen.generatingField !== null;
+  const btn = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-7 px-2 text-xs"
+      disabled={disabled}
+      onClick={() => gen.onGenerate(gen.scope, field, value)}
+    >
+      {isBusy ? (
+        <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Generating…</>
+      ) : (
+        <><Sparkles className="mr-1 h-3 w-3" />Generate</>
+      )}
+    </Button>
+  );
+  if (gen.canGenerate) return btn;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild><span>{btn}</span></TooltipTrigger>
+        <TooltipContent>Add a campaign name and description first.</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function renderOverrideFields(
   values: OverrideValues,
   onChange: (field: keyof OverrideValues, value: string) => void,
-  getPlaceholder: (field: keyof OverrideValues) => string
+  getPlaceholder: (field: keyof OverrideValues) => string,
+  gen?: GenProps
 ) {
+  const bodyRow = (field: GenField, label: string) => (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex items-center gap-1">
+          <GenerateButton field={field} value={values[field]} gen={gen} />
+          <CopyButton text={values[field] || getPlaceholder(field)} />
+        </div>
+      </div>
+      <Textarea value={values[field]} onChange={(e) => onChange(field, e.target.value)} placeholder={getPlaceholder(field)} rows={4} className="whitespace-pre-wrap" />
+    </div>
+  );
   return (
     <>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">SMS L00 Template</Label>
-          <CopyButton text={values.smsL00 || getPlaceholder("smsL00")} />
-        </div>
-        <Textarea value={values.smsL00} onChange={(e) => onChange("smsL00", e.target.value)} placeholder={getPlaceholder("smsL00")} rows={4} className="whitespace-pre-wrap" />
-      </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">SMS L01 Template</Label>
-          <CopyButton text={values.smsL01 || getPlaceholder("smsL01")} />
-        </div>
-        <Textarea value={values.smsL01} onChange={(e) => onChange("smsL01", e.target.value)} placeholder={getPlaceholder("smsL01")} rows={4} className="whitespace-pre-wrap" />
-      </div>
+      {bodyRow("smsL00", "SMS L00 Template")}
+      {bodyRow("smsL01", "SMS L01 Template")}
       <div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Email L00 Subject</Label>
@@ -577,13 +617,7 @@ function renderOverrideFields(
         </div>
         <Input value={values.emailL00Subject} onChange={(e) => onChange("emailL00Subject", e.target.value)} placeholder={getPlaceholder("emailL00Subject")} />
       </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Email L00 Body</Label>
-          <CopyButton text={values.emailL00 || getPlaceholder("emailL00")} />
-        </div>
-        <Textarea value={values.emailL00} onChange={(e) => onChange("emailL00", e.target.value)} placeholder={getPlaceholder("emailL00")} rows={4} className="whitespace-pre-wrap" />
-      </div>
+      {bodyRow("emailL00", "Email L00 Body")}
       <div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Email L01 Subject</Label>
@@ -591,13 +625,7 @@ function renderOverrideFields(
         </div>
         <Input value={values.emailL01Subject} onChange={(e) => onChange("emailL01Subject", e.target.value)} placeholder={getPlaceholder("emailL01Subject")} />
       </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Email L01 Body</Label>
-          <CopyButton text={values.emailL01 || getPlaceholder("emailL01")} />
-        </div>
-        <Textarea value={values.emailL01} onChange={(e) => onChange("emailL01", e.target.value)} placeholder={getPlaceholder("emailL01")} rows={4} className="whitespace-pre-wrap" />
-      </div>
+      {bodyRow("emailL01", "Email L01 Body")}
     </>
   );
 }
