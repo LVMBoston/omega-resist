@@ -263,10 +263,18 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
         return null;
       }
 
+      // Only include brief if user entered any data
+      const hasBriefData = Object.entries(brief).some(([k, v]) => {
+        if (k === "tone") return false; // tone alone doesn't count
+        if (Array.isArray(v)) return v.some((x) => x && x.trim());
+        return typeof v === "string" && v.trim().length > 0;
+      });
+      const briefPayload = hasBriefData ? brief : null;
+
       // Insert campaign
       const { data: newCampaign, error: campError } = await supabase
         .from("campaigns")
-        .insert({ code, title, description: description || null, campaign_type: "samizdat" })
+        .insert({ code, title, description: description || null, campaign_type: "samizdat", brief: briefPayload })
         .select()
         .single();
       if (campError) throw campError;
