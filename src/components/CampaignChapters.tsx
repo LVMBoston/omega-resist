@@ -98,6 +98,16 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
 
+  // Campaign info (for AI generation prompt context)
+  const [campaignTitle, setCampaignTitle] = useState("");
+  const [campaignDescription, setCampaignDescription] = useState("");
+
+  // AI generation
+  const [tone, setTone] = useState<Tone>("informative");
+  const [generatingField, setGeneratingField] = useState<string | null>(null); // e.g. "campaign:smsL00" or "<mobilize_code>:smsL00"
+  const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
+  const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
+
   useEffect(() => {
     fetchData();
   }, [campaignId]);
