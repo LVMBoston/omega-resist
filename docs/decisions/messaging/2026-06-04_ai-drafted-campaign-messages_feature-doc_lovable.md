@@ -1,6 +1,6 @@
 # AI-Assisted Message Drafting in Campaign Wizard Step 2
 
-**Status: Proposed (new plan)** — Date: 2026-06-04
+**Status: Approved & Implemented** — Date: 2026-06-04
 
 This is a **new** feature plan; it does not update any prior decision doc. On approval, archive at `docs/decisions/messaging/2026-06-04_ai-drafted-campaign-messages_feature-doc_lovable.md`.
 
