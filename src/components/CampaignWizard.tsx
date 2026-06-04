@@ -39,6 +39,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Loader2, SkipForward, Sparkles } from "lucide-react";
 import ChapterForm from "@/components/ChapterForm";
+import CampaignBriefWizard, { type CampaignBrief, type Tone as BriefTone } from "@/components/CampaignBriefWizard";
 
 const codeSchema = z
   .string()
