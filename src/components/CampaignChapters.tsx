@@ -184,6 +184,32 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     runGenerate(scope, field);
   };
 
+  const ALL_GEN_FIELDS: GenField[] = ["smsL00", "smsL01", "emailL00", "emailL01"];
+
+  const runBulkGenerate = async (scope: string | null, fields: GenField[]) => {
+    const scopeKey = scope ?? "campaign";
+    setBulkGenerating(scopeKey);
+    try {
+      for (const field of fields) {
+        await runGenerate(scope, field);
+      }
+      toast({ title: "AI drafts ready", description: `Generated ${fields.length} message${fields.length === 1 ? "" : "s"}.` });
+    } finally {
+      setBulkGenerating(null);
+    }
+  };
+
+  const handleBulkGenerateClick = (scope: string | null) => {
+    const current = scope === null ? campaignOverrides : (chapterOverrides[scope] || { ...EMPTY_OVERRIDES });
+    const fieldsToOverwrite = ALL_GEN_FIELDS.filter((f) => (current[f] || "").trim().length > 0);
+    if (fieldsToOverwrite.length > 0) {
+      setPendingBulkOverwrite({ scope, fieldsToOverwrite });
+      return;
+    }
+    runBulkGenerate(scope, ALL_GEN_FIELDS);
+  };
+
+
   const fetchChapters = async () => {
     const { data: eoas } = await supabase
       .from("events_actions")
