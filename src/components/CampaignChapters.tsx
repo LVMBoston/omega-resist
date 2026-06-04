@@ -545,6 +545,23 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={pendingOverwrite !== null} onOpenChange={(o) => { if (!o) setPendingOverwrite(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing draft?</AlertDialogTitle>
+            <AlertDialogDescription>This will replace your current draft with a new AI-generated version.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingOverwrite(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const p = pendingOverwrite;
+              setPendingOverwrite(null);
+              if (p) runGenerate(p.scope, p.field);
+            }}>Replace</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
