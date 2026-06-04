@@ -596,9 +596,31 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={pendingBulkOverwrite !== null} onOpenChange={(o) => { if (!o) setPendingBulkOverwrite(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing drafts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBulkOverwrite
+                ? `This will replace your current draft${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} in ${pendingBulkOverwrite.fieldsToOverwrite.length} field${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} (${pendingBulkOverwrite.fieldsToOverwrite.map(f => GEN_FIELD_LABELS[f]).join(", ")}) with new AI-generated versions.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingBulkOverwrite(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const p = pendingBulkOverwrite;
+              setPendingBulkOverwrite(null);
+              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS);
+            }}>Replace all</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
 
 function CopyButton({ text }: { text: string }) {
   const handleCopy = () => {
