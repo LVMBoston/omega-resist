@@ -274,7 +274,7 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
       // Insert campaign
       const { data: newCampaign, error: campError } = await supabase
         .from("campaigns")
-        .insert({ code, title, description: description || null, campaign_type: "samizdat", brief: briefPayload })
+        .insert({ code, title, description: description || null, campaign_type: "samizdat", brief: briefPayload as any })
         .select()
         .single();
       if (campError) throw campError;
