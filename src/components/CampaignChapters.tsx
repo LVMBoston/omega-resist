@@ -157,9 +157,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       });
       if (error) {
         const status = (error as any).context?.status;
-        let message = "Couldn't generate message. Please try again.";
+        const serverMsg = (error as any).context?.body?.error || (error as any).message;
+        let message = serverMsg || "Couldn't generate message. Please try again.";
         if (status === 429) message = "Too many requests — please wait a moment and try again.";
         else if (status === 402) message = "AI credits exhausted. Add credits in workspace settings.";
+        else if (!status) message = `Request blocked before reaching server (${serverMsg || "network/CORS"}). Try a hard refresh.`;
+        console.error("[draft-campaign-message] error", { status, error });
         toast({ variant: "destructive", title: "Generation failed", description: message });
         return;
       }
