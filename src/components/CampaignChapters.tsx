@@ -662,13 +662,14 @@ function GenerateButton({ field, value, gen }: { field: GenField; value: string;
   const key = `${gen.scope ?? "campaign"}:${field}`;
   const isBusy = gen.generatingField === key;
   const disabled = !gen.canGenerate || gen.generatingField !== null;
-  const btn = (
+  return (
     <Button
       type="button"
-      variant="ghost"
+      variant="outline"
       size="sm"
       className="h-7 px-2 text-xs"
       disabled={disabled}
+      title={!gen.canGenerate ? "Add a campaign name and description first" : "Generate this message with AI"}
       onClick={() => gen.onGenerate(gen.scope, field, value)}
     >
       {isBusy ? (
@@ -678,18 +679,66 @@ function GenerateButton({ field, value, gen }: { field: GenField; value: string;
       )}
     </Button>
   );
-  if (gen.canGenerate) return btn;
+}
+
+interface BulkGenerateBarProps {
+  scope: string | null;
+  tone: Tone;
+  setTone: (t: Tone) => void;
+  canGenerate: boolean;
+  bulkGenerating: boolean;
+  anyFieldGenerating: boolean;
+  onBulkGenerate: () => void;
+}
+
+function BulkGenerateBar({ scope, tone, setTone, canGenerate, bulkGenerating, anyFieldGenerating, onBulkGenerate }: BulkGenerateBarProps) {
+  const disabled = !canGenerate || anyFieldGenerating;
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild><span>{btn}</span></TooltipTrigger>
-        <TooltipContent>Add a campaign name and description first.</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Sparkles className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-sm font-medium">AI message drafting</span>
+        <span className={`ml-1 inline-flex items-center gap-1 text-xs ${canGenerate ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+          <span className={`h-2 w-2 rounded-full ${canGenerate ? "bg-emerald-500" : "bg-amber-500"}`} />
+          {canGenerate ? "Ready" : "Needs campaign description"}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Label className="text-xs">Tone</Label>
+        <Select value={tone} onValueChange={(v) => setTone(v as Tone)}>
+          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="urgent">Urgent</SelectItem>
+            <SelectItem value="informative">Informative</SelectItem>
+            <SelectItem value="hopeful">Hopeful</SelectItem>
+            <SelectItem value="defiant">Defiant</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          size="sm"
+          onClick={onBulkGenerate}
+          disabled={disabled}
+          className="ml-auto"
+        >
+          {bulkGenerating ? (
+            <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Generating all 4…</>
+          ) : (
+            <><Sparkles className="mr-2 h-3 w-3" />Generate all 4 drafts</>
+          )}
+        </Button>
+      </div>
+      {!canGenerate && (
+        <p className="text-xs text-muted-foreground">
+          Add a title and description to this campaign (Campaign Manager → edit campaign) to enable AI drafting.
+        </p>
+      )}
+    </div>
   );
 }
 
 function renderOverrideFields(
+
   values: OverrideValues,
   onChange: (field: keyof OverrideValues, value: string) => void,
   getPlaceholder: (field: keyof OverrideValues) => string,
