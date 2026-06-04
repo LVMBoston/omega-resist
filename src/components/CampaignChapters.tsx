@@ -113,8 +113,72 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchChapters(), fetchOverrides(), fetchGlobalDefaults()]);
+    await Promise.all([fetchChapters(), fetchOverrides(), fetchGlobalDefaults(), fetchCampaignInfo()]);
     setLoading(false);
+  };
+
+  const fetchCampaignInfo = async () => {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("title, description")
+      .eq("id", campaignId)
+      .single();
+    if (data) {
+      setCampaignTitle(data.title || "");
+      setCampaignDescription(data.description || "");
+    }
+  };
+
+  const canGenerate = campaignTitle.trim().length > 0 && campaignDescription.trim().length > 0;
+
+  const runGenerate = async (scope: string | null, field: GenField) => {
+    const key = `${scope ?? "campaign"}:${field}`;
+    setGeneratingField(key);
+    try {
+      const meta = GEN_FIELD_META[field];
+      const { data, error } = await supabase.functions.invoke("draft-campaign-message", {
+        body: {
+          campaignTitle,
+          campaignDescription,
+          tone,
+          channel: meta.channel,
+          level: meta.level,
+        },
+      });
+      if (error) {
+        const status = (error as any).context?.status;
+        let message = "Couldn't generate message. Please try again.";
+        if (status === 429) message = "Too many requests — please wait a moment and try again.";
+        else if (status === 402) message = "AI credits exhausted. Add credits in workspace settings.";
+        toast({ variant: "destructive", title: "Generation failed", description: message });
+        return;
+      }
+      const text = (data as any)?.text as string | undefined;
+      if (!text) {
+        toast({ variant: "destructive", title: "Generation failed", description: "Empty response. Please try again." });
+        return;
+      }
+      if (scope === null) {
+        setCampaignOverrides((prev) => ({ ...prev, [field]: text }));
+      } else {
+        setChapterOverrides((prev) => ({
+          ...prev,
+          [scope]: { ...(prev[scope] || { ...EMPTY_OVERRIDES }), [field]: text },
+        }));
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Generation failed", description: e?.message || "Unexpected error." });
+    } finally {
+      setGeneratingField(null);
+    }
+  };
+
+  const handleGenerateClick = (scope: string | null, field: GenField, currentValue: string) => {
+    if (currentValue.trim().length > 0) {
+      setPendingOverwrite({ scope, field });
+      return;
+    }
+    runGenerate(scope, field);
   };
 
   const fetchChapters = async () => {
