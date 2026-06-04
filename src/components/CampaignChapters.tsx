@@ -460,27 +460,22 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           <CollapsibleContent>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">These override global defaults for all chapters in this campaign unless a chapter has its own override.</p>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs">AI tone</Label>
-                <Select value={tone} onValueChange={(v) => setTone(v as Tone)}>
-                  <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="informative">Informative</SelectItem>
-                    <SelectItem value="hopeful">Hopeful</SelectItem>
-                    <SelectItem value="defiant">Defiant</SelectItem>
-                  </SelectContent>
-                </Select>
-                {!canGenerate && (
-                  <span className="text-xs text-muted-foreground">Add a campaign title & description to enable Generate.</span>
-                )}
-              </div>
+              <BulkGenerateBar
+                scope={null}
+                tone={tone}
+                setTone={setTone}
+                canGenerate={canGenerate}
+                bulkGenerating={bulkGenerating === "campaign"}
+                anyFieldGenerating={generatingField !== null}
+                onBulkGenerate={() => handleBulkGenerateClick(null)}
+              />
               {renderOverrideFields(
                 campaignOverrides,
                 (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })),
                 (field) => getPlaceholder(field),
                 { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate }
               )}
+
               <div className="flex gap-2 pt-2">
                 <Button size="sm" onClick={handleSaveCampaignOverrides} disabled={!hasCampaignChanges || savingCampaign}>
                   {savingCampaign ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
