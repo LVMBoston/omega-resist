@@ -1,61 +1,38 @@
-## What you're seeing
+# Plan: Fix AI Draft Generation Failure
 
-On the campaign you opened (BUGTEST), the small "Generate" buttons next to each message field aren't appearing at all in the **Campaign-Level Messaging Overrides** card. On "Autocratic Framing and Response" they do appear.
+## 1. Confirm the exact failure path
+ a. Reproduce the bug on the published site for BUGTEST, not just in preview, because you already hard-reset and published.
+ b. Capture the browser-side failure from Console and Network so I can confirm whether the request is being blocked before it leaves the page.
+ c. Compare the request headers the page is sending with the headers the AI drafting backend currently allows.
 
-## What I checked
+## 2. Fix the backend request handling
+ a. Update the AI drafting backend function to use the standard browser-safe CORS setup used elsewhere in this project.
+ b. Expand the allowed request headers if the browser is sending headers that the current function does not allow.
+ c. Make sure the preflight response and every success/error response return the same CORS headers, so the browser does not block the real POST.
+ d. Re-test until the POST reaches the backend and the function logs show an actual invocation.
 
-1. The edge function (`draft-campaign-message`) works — I can call it directly and it returns a draft.
-2. The Generate-button code in `src/components/CampaignChapters.tsx` is wired the same way for every campaign — there's no campaign-specific branch.
-3. The campaign description for BUGTEST is populated in the database, so the "missing description" path shouldn't apply.
+## 3. Fix the client-side error handling
+ a. Improve the generate action so it surfaces the real failure reason instead of always showing the generic red "try again" toast.
+ b. Distinguish between these cases in the UI: blocked request, network failure, backend validation error, rate limit, credit exhaustion, and empty AI response.
+ c. Add temporary diagnostic logging while testing so I can prove whether the failure is happening in the page, in transit, or in the backend.
 
-Because nothing in the code should hide the button per-campaign, the most likely real-world causes are:
-   a. The small per-field button is genuinely there but visually lost (it's a tiny ghost button to the right of the field label, easy to miss).
-   b. A stale cached bundle is being served on that tab, and the button literally isn't in the DOM yet.
-   c. An edge case in the render (e.g. `gen` prop dropped somewhere) is silently skipping the button on cards where overrides already exist.
+## 4. Verify the full user flow
+ a. Test the BUGTEST campaign at the Campaign-Level Messaging Overrides card, where you reported the issue.
+ b. Confirm that clicking Generate creates a real draft in the field instead of returning the red toast.
+ c. Verify both one-off generation and the bulk generate flow, because they share the same path.
+ d. Re-check the published site after the fix, since that is the environment you are using.
 
-## The plan — make Generate impossible to miss and self-diagnosing
+## 5. Technical details
+ a. The current evidence points to a browser-side block, not an AI-model failure: the preflight succeeds, but the real generation request never reaches the backend.
+ b. The most likely causes are a CORS header mismatch or a client-side request failure inside the browser SDK call.
+ c. If the browser is sending newer platform/runtime headers, I will align this function with the broader allow-list already used by other working backend functions in this project.
+ d. I will keep the fix scoped to the AI drafting path only; I will not change unrelated campaign logic.
 
-### 1. Add a prominent "Generate AI drafts" action bar at the top of every overrides card
+## 6. Deliverables
+ a. A backend fix so the request can reach the AI drafting service from the published site.
+ b. A UI fix so errors say what actually went wrong.
+ c. End-to-end verification in the browser showing the draft appears correctly.
+ d. A decision document update saved as a new plan record for this bug fix, or an update to the existing AI drafting controls decision if that is the better fit.
 
-a. In `src/components/CampaignChapters.tsx`, add a clearly visible primary-styled button row at the top of both the **Campaign-Level Messaging Overrides** card and each **Chapter** card, labeled "Generate AI drafts" with the Sparkles icon.
-b. Clicking it opens a small inline panel with: tone selector, four checkboxes (SMS L00, SMS L01, Email L00, Email L01) pre-checked, and a "Generate selected" button.
-c. The panel runs each selected field through the existing `runGenerate` flow sequentially, showing per-field progress.
-d. Keep the existing tiny per-field Generate buttons as a secondary affordance.
-
-### 2. Always render the per-field Generate button, never conditionally
-
-a. Audit `renderOverrideFields` / `GenerateButton` so the button element is always in the DOM for sms/email body fields, regardless of `gen` truthiness or `canGenerate` state.
-b. When `canGenerate` is false, render the button visibly disabled with an inline reason ("Campaign needs a title and description") next to it — not as a tooltip-only hint.
-
-### 3. Show the live "ready/not ready" state at the top of the card
-
-a. Add a one-line status under the card title: "AI drafting: ready" (green dot) or "AI drafting: needs campaign description" (amber dot), pulled from the same `canGenerate` value.
-b. If not ready, include a one-click link "Edit campaign description" that opens the campaign edit dialog/page so the user can fix it without navigating.
-
-### 4. Mirror the same prominent action bar in the Create Campaign wizard (Step 2)
-
-a. `src/components/CampaignWizard.tsx` already has per-field Generate; add the same top-of-card "Generate AI drafts" action bar so the experience is consistent between creation and editing.
-
-### 5. Force a fresh bundle so cached views update
-
-a. No code change required, but after deploying I will ask you to hard-reload (Cmd-Shift-R) the campaign page once to rule out a stale bundle, and confirm the new action bar shows on BUGTEST.
-
-## What does not change
-
-- The edge function `draft-campaign-message` and its prompts.
-- Database schema or message storage.
-- The Overwrite confirmation dialog.
-- The global-defaults fallback behavior.
-
-## Files touched
-
-- `src/components/CampaignChapters.tsx` (primary changes for items 1, 2, 3)
-- `src/components/CampaignWizard.tsx` (item 4)
-- New decision doc: `docs/decisions/messaging/2026-06-04_ai-drafts-prominent-controls_feature-doc_lovable.md` (per the Decision Log rule — this updates the existing 2026-06-04 AI-drafts plan in the same folder).
-
-## Verification (per Visual Bug Debugging Rule)
-
-a. Open BUGTEST campaign → Campaign-Level Messaging Overrides → confirm "Generate AI drafts" action bar is visible at the top.
-b. Click it, generate all four fields, confirm text appears in each field.
-c. Repeat on a campaign with no description: confirm the amber "needs campaign description" status shows and buttons are disabled-but-visible with the reason inline.
-d. Confirm the same on a chapter card and in the Create Campaign wizard.
+## 7. Questions
+ a. No more answers are required from you right now — I have enough to implement this plan.
