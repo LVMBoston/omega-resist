@@ -522,6 +522,15 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                 </CardHeader>
                 {isExpanded && (
                   <CardContent className="space-y-3">
+                    <BulkGenerateBar
+                      scope={chapter.mobilize_code}
+                      tone={tone}
+                      setTone={setTone}
+                      canGenerate={canGenerate}
+                      bulkGenerating={bulkGenerating === chapter.mobilize_code}
+                      anyFieldGenerating={generatingField !== null}
+                      onBulkGenerate={() => handleBulkGenerateClick(chapter.mobilize_code)}
+                    />
                     {renderOverrideFields(
                       ovr,
                       (field, value) => setChapterOverrides((prev) => ({
@@ -531,6 +540,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                       (field) => getPlaceholder(field, chapter.mobilize_code),
                       { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate }
                     )}
+
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" onClick={() => handleSaveChapterOverrides(chapter.mobilize_code)} disabled={!hasChanges || savingChapter === chapter.mobilize_code}>
                         {savingChapter === chapter.mobilize_code ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
