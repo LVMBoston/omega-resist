@@ -103,6 +103,9 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [tone, setTone] = useState<Tone>("informative");
   const [generatingField, setGeneratingField] = useState<string | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
+  const [bulkGenerating, setBulkGenerating] = useState<string | null>(null); // scope key while bulk running
+  const [pendingBulkOverwrite, setPendingBulkOverwrite] = useState<{ scope: string | null; fieldsToOverwrite: GenField[] } | null>(null);
+
 
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
