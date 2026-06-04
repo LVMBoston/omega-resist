@@ -156,6 +156,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           tone,
           channel: meta.channel,
           level: meta.level,
+          brief: campaignBrief || undefined,
         },
       });
       if (error) {
