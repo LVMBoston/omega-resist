@@ -53,6 +53,13 @@ const GEN_FIELD_META: Record<GenField, { channel: "sms" | "email"; level: "l00" 
   emailL00: { channel: "email", level: "l00" },
   emailL01: { channel: "email", level: "l01" },
 };
+const GEN_FIELD_LABELS: Record<GenField, string> = {
+  smsL00: "SMS L00",
+  smsL01: "SMS L01",
+  emailL00: "Email L00",
+  emailL01: "Email L01",
+};
+
 
 interface CampaignChaptersProps {
   campaignId: string;
@@ -103,6 +110,9 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [tone, setTone] = useState<Tone>("informative");
   const [generatingField, setGeneratingField] = useState<string | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
+  const [bulkGenerating, setBulkGenerating] = useState<string | null>(null); // scope key while bulk running
+  const [pendingBulkOverwrite, setPendingBulkOverwrite] = useState<{ scope: string | null; fieldsToOverwrite: GenField[] } | null>(null);
+
 
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
@@ -180,6 +190,32 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     }
     runGenerate(scope, field);
   };
+
+  const ALL_GEN_FIELDS: GenField[] = ["smsL00", "smsL01", "emailL00", "emailL01"];
+
+  const runBulkGenerate = async (scope: string | null, fields: GenField[]) => {
+    const scopeKey = scope ?? "campaign";
+    setBulkGenerating(scopeKey);
+    try {
+      for (const field of fields) {
+        await runGenerate(scope, field);
+      }
+      toast({ title: "AI drafts ready", description: `Generated ${fields.length} message${fields.length === 1 ? "" : "s"}.` });
+    } finally {
+      setBulkGenerating(null);
+    }
+  };
+
+  const handleBulkGenerateClick = (scope: string | null) => {
+    const current = scope === null ? campaignOverrides : (chapterOverrides[scope] || { ...EMPTY_OVERRIDES });
+    const fieldsToOverwrite = ALL_GEN_FIELDS.filter((f) => (current[f] || "").trim().length > 0);
+    if (fieldsToOverwrite.length > 0) {
+      setPendingBulkOverwrite({ scope, fieldsToOverwrite });
+      return;
+    }
+    runBulkGenerate(scope, ALL_GEN_FIELDS);
+  };
+
 
   const fetchChapters = async () => {
     const { data: eoas } = await supabase
@@ -431,27 +467,22 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           <CollapsibleContent>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">These override global defaults for all chapters in this campaign unless a chapter has its own override.</p>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs">AI tone</Label>
-                <Select value={tone} onValueChange={(v) => setTone(v as Tone)}>
-                  <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="informative">Informative</SelectItem>
-                    <SelectItem value="hopeful">Hopeful</SelectItem>
-                    <SelectItem value="defiant">Defiant</SelectItem>
-                  </SelectContent>
-                </Select>
-                {!canGenerate && (
-                  <span className="text-xs text-muted-foreground">Add a campaign title & description to enable Generate.</span>
-                )}
-              </div>
+              <BulkGenerateBar
+                scope={null}
+                tone={tone}
+                setTone={setTone}
+                canGenerate={canGenerate}
+                bulkGenerating={bulkGenerating === "campaign"}
+                anyFieldGenerating={generatingField !== null}
+                onBulkGenerate={() => handleBulkGenerateClick(null)}
+              />
               {renderOverrideFields(
                 campaignOverrides,
                 (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })),
                 (field) => getPlaceholder(field),
                 { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate }
               )}
+
               <div className="flex gap-2 pt-2">
                 <Button size="sm" onClick={handleSaveCampaignOverrides} disabled={!hasCampaignChanges || savingCampaign}>
                   {savingCampaign ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
@@ -498,6 +529,15 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                 </CardHeader>
                 {isExpanded && (
                   <CardContent className="space-y-3">
+                    <BulkGenerateBar
+                      scope={chapter.mobilize_code}
+                      tone={tone}
+                      setTone={setTone}
+                      canGenerate={canGenerate}
+                      bulkGenerating={bulkGenerating === chapter.mobilize_code}
+                      anyFieldGenerating={generatingField !== null}
+                      onBulkGenerate={() => handleBulkGenerateClick(chapter.mobilize_code)}
+                    />
                     {renderOverrideFields(
                       ovr,
                       (field, value) => setChapterOverrides((prev) => ({
@@ -507,6 +547,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                       (field) => getPlaceholder(field, chapter.mobilize_code),
                       { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate }
                     )}
+
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" onClick={() => handleSaveChapterOverrides(chapter.mobilize_code)} disabled={!hasChanges || savingChapter === chapter.mobilize_code}>
                         {savingChapter === chapter.mobilize_code ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Save className="mr-2 h-3 w-3" />} Save
@@ -562,9 +603,31 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={pendingBulkOverwrite !== null} onOpenChange={(o) => { if (!o) setPendingBulkOverwrite(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing drafts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBulkOverwrite
+                ? `This will replace your current draft${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} in ${pendingBulkOverwrite.fieldsToOverwrite.length} field${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} (${pendingBulkOverwrite.fieldsToOverwrite.map(f => GEN_FIELD_LABELS[f]).join(", ")}) with new AI-generated versions.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingBulkOverwrite(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const p = pendingBulkOverwrite;
+              setPendingBulkOverwrite(null);
+              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS);
+            }}>Replace all</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
 
 function CopyButton({ text }: { text: string }) {
   const handleCopy = () => {
@@ -599,13 +662,14 @@ function GenerateButton({ field, value, gen }: { field: GenField; value: string;
   const key = `${gen.scope ?? "campaign"}:${field}`;
   const isBusy = gen.generatingField === key;
   const disabled = !gen.canGenerate || gen.generatingField !== null;
-  const btn = (
+  return (
     <Button
       type="button"
-      variant="ghost"
+      variant="outline"
       size="sm"
       className="h-7 px-2 text-xs"
       disabled={disabled}
+      title={!gen.canGenerate ? "Add a campaign name and description first" : "Generate this message with AI"}
       onClick={() => gen.onGenerate(gen.scope, field, value)}
     >
       {isBusy ? (
@@ -615,18 +679,66 @@ function GenerateButton({ field, value, gen }: { field: GenField; value: string;
       )}
     </Button>
   );
-  if (gen.canGenerate) return btn;
+}
+
+interface BulkGenerateBarProps {
+  scope: string | null;
+  tone: Tone;
+  setTone: (t: Tone) => void;
+  canGenerate: boolean;
+  bulkGenerating: boolean;
+  anyFieldGenerating: boolean;
+  onBulkGenerate: () => void;
+}
+
+function BulkGenerateBar({ scope, tone, setTone, canGenerate, bulkGenerating, anyFieldGenerating, onBulkGenerate }: BulkGenerateBarProps) {
+  const disabled = !canGenerate || anyFieldGenerating;
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild><span>{btn}</span></TooltipTrigger>
-        <TooltipContent>Add a campaign name and description first.</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Sparkles className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-sm font-medium">AI message drafting</span>
+        <span className={`ml-1 inline-flex items-center gap-1 text-xs ${canGenerate ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+          <span className={`h-2 w-2 rounded-full ${canGenerate ? "bg-emerald-500" : "bg-amber-500"}`} />
+          {canGenerate ? "Ready" : "Needs campaign description"}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Label className="text-xs">Tone</Label>
+        <Select value={tone} onValueChange={(v) => setTone(v as Tone)}>
+          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="urgent">Urgent</SelectItem>
+            <SelectItem value="informative">Informative</SelectItem>
+            <SelectItem value="hopeful">Hopeful</SelectItem>
+            <SelectItem value="defiant">Defiant</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          size="sm"
+          onClick={onBulkGenerate}
+          disabled={disabled}
+          className="ml-auto"
+        >
+          {bulkGenerating ? (
+            <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Generating all 4…</>
+          ) : (
+            <><Sparkles className="mr-2 h-3 w-3" />Generate all 4 drafts</>
+          )}
+        </Button>
+      </div>
+      {!canGenerate && (
+        <p className="text-xs text-muted-foreground">
+          Add a title and description to this campaign (Campaign Manager → edit campaign) to enable AI drafting.
+        </p>
+      )}
+    </div>
   );
 }
 
 function renderOverrideFields(
+
   values: OverrideValues,
   onChange: (field: keyof OverrideValues, value: string) => void,
   getPlaceholder: (field: keyof OverrideValues) => string,
