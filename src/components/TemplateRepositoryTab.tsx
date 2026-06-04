@@ -880,6 +880,7 @@ export function TemplateRepositoryTab() {
                     <FullResolutionHotspotEditor
                       imageUrl={formData.image_url}
                       initialHotspots={formData.hotspots}
+                      onChange={(hotspots) => setFormData(prev => ({ ...prev, hotspots }))}
                       onSave={(hotspots) => setFormData(prev => ({ ...prev, hotspots }))}
                     />
                   </div>
