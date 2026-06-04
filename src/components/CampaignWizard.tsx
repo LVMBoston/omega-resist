@@ -162,6 +162,7 @@ export default function CampaignWizard({ open, onOpenChange, onSuccess }: Campai
           tone,
           channel: meta.channel,
           level: meta.level,
+          brief,
         },
       });
 
