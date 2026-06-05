@@ -356,11 +356,16 @@ export default function DeckViewer() {
     logViewEvent();
   }, [activeToken, searchParams, loading, eventLogged, instanceTokenProcessed]);
 
-  // Auto-detect deck orientation from first image slide
+  // Auto-detect deck orientation from first image slide.
+  // Vimeo / interactive slides have no measurable image — assume landscape (Vimeo is 16:9 by default).
   useEffect(() => {
     if (slides.length === 0) return;
     const firstImage = slides.find(s => s.type === 'image');
-    if (!firstImage) return;
+    if (!firstImage) {
+      // No image to measure — default video/interactive decks to landscape
+      setOrientation('landscape');
+      return;
+    }
     const img = new Image();
     img.onload = () => {
       if (img.naturalWidth > img.naturalHeight) {
