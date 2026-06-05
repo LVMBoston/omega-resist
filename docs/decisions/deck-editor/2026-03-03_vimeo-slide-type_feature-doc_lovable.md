@@ -138,3 +138,25 @@ d. Replaced direct `vimeoPlayerState` usage in the IntersectionObserver callback
 ## Out of scope
 
 - MP4 direct upload, GIF restart logic, link slide type.
+
+## Update — 2026-06-05
+
+### 11. iOS fullscreen fix: native Vimeo controls + privacy hash preservation
+
+**Status:** Approved & Implemented
+
+**Problem:** Tapping a Vimeo video on iPhone did not enter fullscreen. Earlier attempt to add `webkitallowfullscreen`/`mozallowfullscreen` attributes had no effect — modern iOS Safari ignores those legacy hints.
+
+**Root cause:** The embed URL used `controls=0` + `background=0`, which hides Vimeo's native player UI. iOS only triggers native fullscreen when the user taps the player's own fullscreen button (or via the Player API). With no controls visible and the iframe set to `pointer-events: none` behind a custom center tap-zone, viewers had no way to invoke fullscreen.
+
+**Fix (option a from plan, recommended):** Switch to Vimeo's standard player controls and let users tap the built-in fullscreen icon.
+
+a. `getVimeoEmbedUrl` in both `src/components/VimeoSlide.tsx` and `src/components/InteractiveSlideOverlay.tsx`:
+   - Preserve the `h=<hash>` privacy token from the source URL (required for unlisted videos).
+   - Changed query string to `?h=<hash>&autoplay=1&muted=1&controls=1&playsinline=1&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`.
+b. Removed `pointer-events: none` from the iframe's inline style in both files.
+c. Removed the vendor-prefixed `webkitallowfullscreen`/`mozallowfullscreen` attributes — `allow="autoplay; fullscreen; picture-in-picture"` plus `allowfullscreen` is sufficient.
+d. Replaced the custom 70% center tap-zone `<button>` with a `pointer-events: none` div in both files so taps reach Vimeo's native controls. Edge 15% swipe-passthrough zones for Embla remain unchanged.
+e. Removed the `pointer-events-none` class from the video container div so the iframe receives pointer events.
+
+**Trade-off:** Lost the custom "tap center → unmute → pause → resume" gesture. Users now interact via Vimeo's standard play/pause/scrub/volume/fullscreen UI. Autoplay-muted on entry and pause-on-swipe-away still work via the existing postMessage state machine.
