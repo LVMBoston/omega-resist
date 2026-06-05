@@ -912,14 +912,36 @@ const InteractiveSlideOverlay = ({
               <X size={24} />
             </button>
 
-            {/* Center 60% × 60% tap zone: pause/resume/unmute. Surrounding 20% margins
-                stay transparent so the native player's control bar and corner controls
-                (incl. fullscreen) receive taps. */}
+            {/* Full-frame tap/swipe zone (excludes bottom 15% so the native
+                player's control bar and fullscreen button remain reachable).
+                - Tap anywhere → pause/resume/unmute toggle.
+                - Horizontal swipe → close the video overlay. */}
             <div
-              className="absolute top-[20%] left-[20%] w-[60%] h-[60%] z-[10000] cursor-pointer"
-              onClick={handleVimeoCenterTap}
+              className="absolute top-0 left-0 right-0 bottom-[15%] z-[10000] cursor-pointer"
+              onClick={(e) => {
+                if ((e.currentTarget as any)._swiped) {
+                  (e.currentTarget as any)._swiped = false;
+                  return;
+                }
+                handleVimeoCenterTap();
+              }}
+              onTouchStart={(e) => {
+                const t = e.touches[0];
+                (e.currentTarget as any)._tx = t.clientX;
+                (e.currentTarget as any)._ty = t.clientY;
+              }}
+              onTouchEnd={(e) => {
+                const el = e.currentTarget as any;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - (el._tx ?? t.clientX);
+                const dy = t.clientY - (el._ty ?? t.clientY);
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                  el._swiped = true;
+                  closeVideo();
+                }
+              }}
               role="button"
-              aria-label="Tap to pause or resume video"
+              aria-label="Tap to pause/resume, swipe to close video"
             />
 
 
