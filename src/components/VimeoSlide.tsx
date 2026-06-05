@@ -191,13 +191,8 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
           >
             <div className="absolute inset-y-0 left-0 w-[15%] z-30 pointer-events-none" />
 
-            <button
-              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCenterTap(); }}
-              onClick={(e) => { e.stopPropagation(); handleCenterTap(); }}
-              className="absolute inset-y-0 left-[15%] w-[70%] z-30 bg-transparent border-none cursor-pointer pointer-events-auto"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-              aria-label="Toggle sound or pause"
-            />
+            {/* Center zone left as pointer-events-none so Vimeo's native controls (incl. fullscreen) receive taps */}
+            <div className="absolute inset-y-0 left-[15%] w-[70%] z-30 pointer-events-none" />
 
             <div className="absolute inset-y-0 right-0 w-[15%] z-30 pointer-events-none" />
 
