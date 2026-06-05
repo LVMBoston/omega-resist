@@ -573,7 +573,7 @@ export default function DeckViewer() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="relative flex items-center justify-center bg-black overflow-hidden" style={{ height: '100dvh' }}>
         {isPreviewer && (
           <Button
