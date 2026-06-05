@@ -914,19 +914,14 @@ const InteractiveSlideOverlay = ({
 
             <div className="absolute inset-y-0 left-0 w-[15%] z-[10000] pointer-events-none" />
 
-            <button
-              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleVimeoCenterTap(); }}
-              onClick={(e) => { e.stopPropagation(); handleVimeoCenterTap(); }}
-              className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer pointer-events-auto"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-              aria-label="Toggle sound or pause"
-            />
+            {/* Center zone left as pointer-events-none so Vimeo's native controls (incl. fullscreen) receive taps */}
+            <div className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] pointer-events-none" />
 
             <div className="absolute inset-y-0 right-0 w-[15%] z-[10000] pointer-events-none" />
 
             <div
               ref={videoContainerRef}
-              className="absolute inset-0 w-full h-full bg-black pointer-events-none"
+              className="absolute inset-0 w-full h-full bg-black"
               style={{ zIndex: 1 }}
             />
 

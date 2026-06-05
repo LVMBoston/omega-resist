@@ -198,7 +198,7 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
 
             <div
               ref={videoContainerRef}
-              className="absolute inset-0 w-full h-full bg-black pointer-events-none"
+              className="absolute inset-0 w-full h-full bg-black"
               style={{ zIndex: 1 }}
             />
 
