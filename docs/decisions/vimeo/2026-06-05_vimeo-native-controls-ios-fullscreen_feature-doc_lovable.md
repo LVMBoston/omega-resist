@@ -61,3 +61,14 @@ To be confirmed on a physical iPhone in Safari:
 - Vimeo deck slide: autoplay muted → tap center → audio on → tap center → pauses → swipe to next slide → swipe back → still paused → tap center → resumes at same frame → native fullscreen still reachable via Vimeo's own button.
 - Vimeo hotspot video: same flow.
 - YouTube hotspot video: same flow (hotspot YouTube embeds have `controls: 0`, so no native bar exists — tap-zone is the only control surface, consistent with prior behavior).
+
+## Update — 2026-06-05 (full-frame tap + swipe)
+
+Status: Approved & Implemented
+
+User reported that during playback (a) swipe-away didn't work because the fullscreen video portal sits above the carousel and absorbs gestures, and (b) the 20% left/right margins didn't toggle pause/play.
+
+Change:
+- `VimeoSlide.tsx` and `InteractiveSlideOverlay.tsx`: replaced the 60%×60% center tap-zone with a full-frame zone that excludes only the bottom 15% (so Vimeo's native control bar / fullscreen button stay reachable).
+- Added `onTouchStart`/`onTouchEnd` swipe detection (>50px horizontal, > vertical). On swipe, `VimeoSlide` dispatches a click on `[data-carousel-prev]`/`[data-carousel-next]` to drive the Embla carousel; the hotspot overlay version closes the video instead.
+- A `_swiped` flag on the element suppresses the trailing synthetic click so a swipe doesn't also pause/resume.
