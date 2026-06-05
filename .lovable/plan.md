@@ -1,70 +1,48 @@
-## Campaign Brief Wizard — Plan
+## What was different
 
-Status: Proposed — replaces the plain Description textarea in `CampaignWizard` step 1 and upgrades the AI message drafter to consume the new structured brief.
+**My approach** kept the existing custom inline player and just added two extra attributes to the iframe:
+- `webkitallowfullscreen=""`
+- `mozallowfullscreen=""`
 
-### 1. What it produces
+These are legacy vendor-prefixed hints. Modern iOS Safari largely ignores them — it decides fullscreen eligibility based on the `allow` permission policy and on whether the iframe is actually allowed to request it, not on those old attributes. So adding them changed essentially nothing on iPhone.
 
-a. A **structured brief** stored on `campaigns.brief` (new `jsonb` column) with these fields:
-   - `what` — one-sentence description of the event/action
-   - `why` — why it matters, the stakes
-   - `when` — date/time or "ongoing / nationwide"
-   - `where` — locations or scope
-   - `who` — audience the ask is aimed at
-   - `ask` — the concrete call to action
-   - `key_facts[]` — bullet facts the AI must include
-   - `do_not_say[]` — guardrails the AI must avoid
-   - `tone` — urgent | informative | hopeful | defiant
-b. A **synthesized human description** saved to the existing `campaigns.description` field. Downstream code that reads `description` keeps working unchanged.
-c. An **optional refined campaign title** (the user can accept an AI-suggested rename). The slug is never touched.
+**Gemini's approach** is a cleaner, standards-first embed:
 
-### 2. Wizard UX (a new component, mounted inside `CampaignWizard` step 1)
+```html
+<iframe
+  src="https://player.vimeo.com/video/<ID>?h=<HASH>"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen>
+</iframe>
+```
 
-a. The current free-text Description textarea is replaced by a "Build campaign brief" panel showing a stepper with the fields above.
-b. Each field has:
-   - A short helper line explaining what makes a good answer
-   - A textarea for the user's input
-   - A small `✨ Suggest` button that calls AI to draft just that field from whatever's already filled in (campaign name + any prior answers). User can accept, edit, or ignore.
-c. The final step is a **Preview** screen showing:
-   - The synthesized description paragraph (editable)
-   - A "Regenerate description" button
-   - A "Suggest a better campaign name" button — if user accepts, the campaign `title` updates (slug stays locked)
-d. The wizard can be skipped: users can leave fields blank and just type a plain description like before.
+The meaningful differences vs. what we have today:
 
-### 3. AI plumbing
+1. **`allow="... fullscreen ..."` permission policy** — this is the modern mechanism iOS actually checks. We already set this, so it stays.
+2. **No `controls=0`** — our current embed strips Vimeo's native controls so the user has no built-in fullscreen button. iOS only enters fullscreen when the user taps the player's own fullscreen control (or via the Vimeo Player API). With controls hidden, there is no way for the viewer to trigger it.
+3. **No `background=0` / minimal query string** — Gemini's URL keeps the standard player intact instead of the stripped-down "kiosk" mode we use.
+4. **Preserves the `h=<hash>` privacy token** in the URL — required for unlisted videos; we currently drop it when we rebuild the embed URL from the video ID.
 
-a. Rename the existing edge function `draft-campaign-message` stays as-is for SMS/email drafting, but its prompt is upgraded: when a `brief` is present on the campaign, the function pulls `what / why / ask / key_facts / do_not_say / tone` into the prompt instead of just the loose description. This is the "downstream wiring" benefit — drafts get noticeably more specific.
-b. A new edge function `draft-campaign-brief` handles three modes via a `mode` param:
-   - `suggest_field` — drafts one field (e.g. "why") from current partial brief
-   - `synthesize_description` — turns the full brief into the polished paragraph
-   - `suggest_title` — proposes a refined campaign name from the brief
-c. All three modes use Lovable AI Gateway (`google/gemini-3-flash-preview`) with the same hardened CORS headers we just fixed.
+So the real reason fullscreen doesn't work on iOS isn't the missing prefixed attributes — it's that we hide the controls and strip the privacy hash, leaving the user no UI to invoke fullscreen.
 
-### 4. Data model change
+## Plan
 
-a. New migration: `ALTER TABLE public.campaigns ADD COLUMN brief jsonb;`
-b. No RLS changes needed — `campaigns` policies already cover the new column.
-c. `description` column stays. Old campaigns without a brief keep working; the wizard is also reachable from Campaign Detail later (out of scope for this round per your answer — wizard lives only in CampaignWizard for now).
+1. **Update `getVimeoEmbedUrl` in `src/components/VimeoSlide.tsx`**
+   a. Preserve the `h=<hash>` query parameter from the original Vimeo URL when present.
+   b. Change the embed query string to enable native controls: `?h=<hash>&autoplay=1&muted=1&playsinline=1&controls=1&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1` (keep autoplay-muted so our existing state machine still works on entry, but allow the user to tap Vimeo's built-in fullscreen button).
+   c. Keep `allowfullscreen` and `allow="autoplay; fullscreen; picture-in-picture"`. Drop the vendor-prefixed attributes — they don't help.
 
-### 5. Files touched
+2. **Mirror the same change in `src/components/InteractiveSlideOverlay.tsx`** for the Vimeo hotspot iframe so behavior is identical whether the video is a slide or a hotspot.
 
-a. New: `supabase/migrations/<ts>_campaigns_brief.sql`
-b. New: `supabase/functions/draft-campaign-brief/index.ts`
-c. New: `src/components/CampaignBriefWizard.tsx` (the stepper panel)
-d. Edit: `src/components/CampaignWizard.tsx` — step 1 now embeds `CampaignBriefWizard`; on submit, both `description` and `brief` are saved
-e. Edit: `supabase/functions/draft-campaign-message/index.ts` — prompt upgraded to read structured brief when present
-f. New decision doc: `docs/decisions/messaging/2026-06-04_campaign-brief-wizard_feature-doc_lovable.md`
+3. **Remove the `pointer-events: none` on the iframe and the custom center tap-zone overlay** in both files, OR keep them but only over the swipe edges — otherwise the user can't reach Vimeo's fullscreen button. Recommended: keep the 15% edge swipe-passthrough zones, drop the 70% center tap-zone, and let Vimeo's own controls handle play/pause/mute/fullscreen. This is the trade-off Gemini's embed implies.
 
-### 6. Out of scope (explicitly)
+4. **Verify on iPhone** by loading a deck with a Vimeo slide, confirming: (a) video autoplays muted, (b) Vimeo controls are visible, (c) tapping the fullscreen icon enters iOS native fullscreen, (d) swiping the left/right edges still navigates the carousel.
 
-- Adding the wizard to the Campaign Detail page for existing campaigns (deferred to a follow-up)
-- Editing the brief after campaign creation (deferred)
-- Backfilling briefs for existing campaigns
-- Changing how narratives consume the description — they continue reading `campaigns.description` and benefit automatically from the better synthesized paragraph
+## Trade-off you should weigh before I build
 
-### 7. Open questions before I build
+Switching to native Vimeo controls gives you working fullscreen on iOS, but you lose the custom "tap center to unmute → pause → resume" gesture we built. You'd get Vimeo's standard play/pause/scrub/volume/fullscreen UI instead.
 
-a. Should "Suggest a better campaign name" only show when the *current* name is short/generic, or always be available?
-b. Should there be a hard length cap on `key_facts[]` / `do_not_say[]` (e.g. max 5 each) so AI prompts stay tight?
-c. Tone is currently per-message in step 2. Do you want the brief's `tone` to become the *default* for the message drafter (user can still override)?
+**a.** Accept the trade-off — native controls, working fullscreen, simpler code. (Recommended.)
+**b.** Keep the custom tap-zone and instead add a dedicated fullscreen button in our own overlay UI that calls the Vimeo Player API's `requestFullscreen()`. More code, preserves current UX.
 
-Reply with answers to 7a–7c (or "go ahead with sensible defaults") and I'll implement.
+Tell me a or b and I'll implement. This plan is a **new plan** (not an update to the 2026-03-03 Vimeo slide doc — I'll append it as an `## Update` section there once implemented).

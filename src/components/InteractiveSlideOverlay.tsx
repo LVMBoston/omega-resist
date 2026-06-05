@@ -521,10 +521,13 @@ const InteractiveSlideOverlay = ({
       /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,
       /player\.vimeo\.com\/video\/(\d+)/,
     ];
+    // Preserve privacy hash (h=...) required for unlisted videos
+    const hashMatch = url.match(/[?&]h=([\w-]+)/);
+    const hashParam = hashMatch ? `h=${hashMatch[1]}&` : "";
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) {
-        return `https://player.vimeo.com/video/${match[1]}?autoplay=0&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&api=1`;
+        return `https://player.vimeo.com/video/${match[1]}?${hashParam}autoplay=1&muted=1&controls=1&playsinline=1&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
       }
     }
     return url;
@@ -602,10 +605,8 @@ const InteractiveSlideOverlay = ({
       const iframe = document.createElement('iframe');
       iframe.src = getVimeoEmbedUrl(videoUrl);
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-      iframe.style.cssText = 'width:100%;height:100%;border:none;background:#000;display:block;pointer-events:none';
+      iframe.style.cssText = 'width:100%;height:100%;border:none;background:#000;display:block';
       iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('webkitallowfullscreen', '');
-      iframe.setAttribute('mozallowfullscreen', '');
       videoContainerRef.current.appendChild(iframe);
       vimeoPlayerRef.current = iframe;
 
@@ -913,19 +914,14 @@ const InteractiveSlideOverlay = ({
 
             <div className="absolute inset-y-0 left-0 w-[15%] z-[10000] pointer-events-none" />
 
-            <button
-              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleVimeoCenterTap(); }}
-              onClick={(e) => { e.stopPropagation(); handleVimeoCenterTap(); }}
-              className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] bg-transparent border-none cursor-pointer pointer-events-auto"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-              aria-label="Toggle sound or pause"
-            />
+            {/* Center zone left as pointer-events-none so Vimeo's native controls (incl. fullscreen) receive taps */}
+            <div className="absolute inset-y-0 left-[15%] w-[70%] z-[10000] pointer-events-none" />
 
             <div className="absolute inset-y-0 right-0 w-[15%] z-[10000] pointer-events-none" />
 
             <div
               ref={videoContainerRef}
-              className="absolute inset-0 w-full h-full bg-black pointer-events-none"
+              className="absolute inset-0 w-full h-full bg-black"
               style={{ zIndex: 1 }}
             />
 
