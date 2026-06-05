@@ -189,14 +189,38 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
             className="fixed inset-0 z-[9999] bg-black"
             style={{ width: "100vw", height: "100dvh" }}
           >
-            {/* Center 60% × 60% tap zone: pause/resume/unmute. Surrounding 20% margins
-                stay transparent so Vimeo's native control bar (bottom) and corner
-                controls (incl. fullscreen) receive taps. */}
+            {/* Full-frame tap/swipe zone (excludes bottom 15% so Vimeo's native
+                control bar and fullscreen button remain reachable).
+                - Tap anywhere → pause/resume/unmute toggle.
+                - Horizontal swipe → navigate carousel prev/next. */}
             <div
-              className="absolute top-[20%] left-[20%] w-[60%] h-[60%] z-30 cursor-pointer"
-              onClick={handleCenterTap}
+              className="absolute top-0 left-0 right-0 bottom-[15%] z-30 cursor-pointer"
+              onClick={(e) => {
+                // Suppress click if it followed a swipe
+                if ((e.currentTarget as any)._swiped) {
+                  (e.currentTarget as any)._swiped = false;
+                  return;
+                }
+                handleCenterTap();
+              }}
+              onTouchStart={(e) => {
+                const t = e.touches[0];
+                (e.currentTarget as any)._tx = t.clientX;
+                (e.currentTarget as any)._ty = t.clientY;
+              }}
+              onTouchEnd={(e) => {
+                const el = e.currentTarget as any;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - (el._tx ?? t.clientX);
+                const dy = t.clientY - (el._ty ?? t.clientY);
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                  el._swiped = true;
+                  const sel = dx < 0 ? '[data-carousel-next]' : '[data-carousel-prev]';
+                  document.querySelector<HTMLButtonElement>(sel)?.click();
+                }
+              }}
               role="button"
-              aria-label="Tap to pause or resume video"
+              aria-label="Tap to pause/resume, swipe to change slide"
             />
 
 
