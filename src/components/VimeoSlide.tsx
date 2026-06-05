@@ -15,10 +15,13 @@ const getVimeoEmbedUrl = (url: string): string => {
     /vimeo\.com\/(?:channels\/[\w-]+\/)?(\d+)(?:\/[\w-]+)?/,
     /player\.vimeo\.com\/video\/(\d+)/,
   ];
+  // Preserve privacy hash (h=...) required for unlisted videos
+  const hashMatch = url.match(/[?&]h=([\w-]+)/);
+  const hashParam = hashMatch ? `h=${hashMatch[1]}&` : "";
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match?.[1]) {
-      return `https://player.vimeo.com/video/${match[1]}?autoplay=0&controls=0&playsinline=1&background=0&loop=0&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
+      return `https://player.vimeo.com/video/${match[1]}?${hashParam}autoplay=1&muted=1&controls=1&playsinline=1&title=0&byline=0&portrait=0&badge=0&autopause=0&api=1`;
     }
   }
   return url;
@@ -65,10 +68,8 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
     const iframe = document.createElement("iframe");
     iframe.src = getVimeoEmbedUrl(mediaUrl);
     iframe.allow = "autoplay; fullscreen; picture-in-picture";
-    iframe.style.cssText = "width:100%;height:100%;border:none;background:#000;display:block;pointer-events:none";
+    iframe.style.cssText = "width:100%;height:100%;border:none;background:#000;display:block";
     iframe.setAttribute("allowfullscreen", "");
-    iframe.setAttribute("webkitallowfullscreen", "");
-    iframe.setAttribute("mozallowfullscreen", "");
 
     videoContainerRef.current.appendChild(iframe);
     iframeRef.current = iframe;
