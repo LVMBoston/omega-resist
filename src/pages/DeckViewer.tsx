@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
-import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, X } from "lucide-react";
 import { VimeoSlide } from "@/components/VimeoSlide";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlideV2";
@@ -555,9 +555,30 @@ export default function DeckViewer() {
   // iPhone (portrait): fill width, height scales naturally
   // PC/iPad (landscape): fit to height with letterboxing (pillarboxing)
   
+  const isPreviewer = userRole === "admin" || userRole === "manager";
+  const handleExitPreview = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/campaigns");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <main className="flex items-center justify-center bg-black overflow-hidden" style={{ height: '100dvh' }}>
+      <main className="relative flex items-center justify-center bg-black overflow-hidden" style={{ height: '100dvh' }}>
+        {isPreviewer && (
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={handleExitPreview}
+            className="absolute top-4 left-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background/90 shadow-md"
+            title="Exit preview"
+            aria-label="Exit preview"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
         {slides.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
