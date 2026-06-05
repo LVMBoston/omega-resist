@@ -391,12 +391,20 @@ export default function DeckViewer() {
         document.querySelectorAll('.deck-slide-container, .deck-slide-landscape').forEach((el) => {
           void (el as HTMLElement).offsetHeight;
         });
+        // Embla retains stale viewport measurements after rotation — force remeasure
+        carouselApi?.reInit();
       }, 100);
     };
 
     window.addEventListener('orientationchange', handleOrientationChange);
     return () => window.removeEventListener('orientationchange', handleOrientationChange);
-  }, []);
+  }, [carouselApi]);
+
+  // Re-measure Embla when orientation is detected async (after first image loads)
+  useEffect(() => {
+    carouselApi?.reInit();
+  }, [carouselApi, orientation]);
+
 
   // Keyboard navigation
   useEffect(() => {
@@ -565,7 +573,7 @@ export default function DeckViewer() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="relative flex items-center justify-center bg-black overflow-hidden" style={{ height: '100dvh' }}>
         {isPreviewer && (
           <Button
