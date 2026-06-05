@@ -32,7 +32,7 @@ export default function DeckViewer() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const viralToken = searchParams.get("t");
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   
   console.log("🎯 Component initialization:", { slug, viralToken, allParams: Object.fromEntries(searchParams) });
   
@@ -555,7 +555,7 @@ export default function DeckViewer() {
   // iPhone (portrait): fill width, height scales naturally
   // PC/iPad (landscape): fit to height with letterboxing (pillarboxing)
   
-  const isPreviewer = userRole === "admin" || userRole === "manager";
+  const isPreviewer = !!user || userRole !== null || searchParams.get("preview") === "1";
   const handleExitPreview = () => {
     if (window.history.length > 1) {
       navigate(-1);
