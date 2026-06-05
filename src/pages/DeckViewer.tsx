@@ -370,8 +370,32 @@ export default function DeckViewer() {
     img.src = firstImage.content_url;
   }, [slides]);
 
-  // Removed auto-fullscreen on load - must be triggered by user gesture
-  // Users can press 'f' key to toggle fullscreen manually
+  // Auto-fullscreen on first user gesture (browsers require a user-initiated event).
+  // Desktop/Android: use Fullscreen API. iOS Safari: fall back to CSS pseudo-fullscreen.
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+    const enterFullscreen = () => {
+      if (isIOS || !document.documentElement.requestFullscreen) {
+        setIOSFullscreen(true);
+      } else if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {
+          // Permission denied or unsupported — fall back to CSS pseudo-fullscreen
+          setIOSFullscreen(true);
+        });
+      }
+      window.removeEventListener("pointerdown", enterFullscreen);
+      window.removeEventListener("keydown", enterFullscreen);
+    };
+
+    window.addEventListener("pointerdown", enterFullscreen, { once: false });
+    window.addEventListener("keydown", enterFullscreen, { once: false });
+
+    return () => {
+      window.removeEventListener("pointerdown", enterFullscreen);
+      window.removeEventListener("keydown", enterFullscreen);
+    };
+  }, []);
 
   // Track fullscreen state
   useEffect(() => {
@@ -382,6 +406,7 @@ export default function DeckViewer() {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
 
   // Force relayout on orientation change (iOS Safari keeps stale dimensions after rotation)
   useEffect(() => {
