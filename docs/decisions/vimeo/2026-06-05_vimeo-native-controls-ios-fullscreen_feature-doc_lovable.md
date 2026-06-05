@@ -32,3 +32,32 @@ Gained: Vimeo's standard play/pause/scrub/volume/**fullscreen** UI works on iPho
 
 - `src/components/VimeoSlide.tsx`
 - `src/components/InteractiveSlideOverlay.tsx`
+
+## Update — 2026-06-05
+
+Status: Approved & Implemented
+
+Restored the older carousel gesture for Vimeo and YouTube videos while preserving the native iOS fullscreen behavior added earlier today.
+
+### What changed
+
+1. **Center tap zone** — A 60% × 60% tap-zone is now rendered over the center of the video. Tapping it:
+   a. First tap on a muted autoplaying video → unmutes.
+   b. Tap on a playing, unmuted video → pauses.
+   c. Tap on a paused video → resumes from the exact timestamp it was paused at (Vimeo and YouTube both retain playhead on pause, so no manual seek is needed).
+
+2. **Swipe-away / swipe-back resume** — Existing `isActive` effect already pauses the player when the slide swipes out of view and resumes it on return. With the new tap-zone the user can now manually pause first, then swipe, then swipe back and tap to resume — same end state.
+
+3. **Native controls preserved** — The surrounding 20% margins (top, bottom, left, right) remain `pointer-events: none` so the player's own control bar (scrub, volume, captions, fullscreen) keeps receiving taps. No custom "summon controls", CC, or fullscreen button was added.
+
+### Files touched
+
+- `src/components/VimeoSlide.tsx` — replaced the inert center divs with a single `onClick={handleCenterTap}` 60%×60% tap-zone. The 3-state handler was already defined and is now wired up.
+- `src/components/InteractiveSlideOverlay.tsx` — same change for the hotspot-launched video overlay. Handler `handleVimeoCenterTap` already covered both Vimeo and YouTube branches.
+
+### Verification
+
+To be confirmed on a physical iPhone in Safari:
+- Vimeo deck slide: autoplay muted → tap center → audio on → tap center → pauses → swipe to next slide → swipe back → still paused → tap center → resumes at same frame → native fullscreen still reachable via Vimeo's own button.
+- Vimeo hotspot video: same flow.
+- YouTube hotspot video: same flow (hotspot YouTube embeds have `controls: 0`, so no native bar exists — tap-zone is the only control surface, consistent with prior behavior).
