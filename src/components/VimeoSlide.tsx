@@ -189,12 +189,16 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
             className="fixed inset-0 z-[9999] bg-black"
             style={{ width: "100vw", height: "100dvh" }}
           >
-            <div className="absolute inset-y-0 left-0 w-[15%] z-30 pointer-events-none" />
+            {/* Center 60% × 60% tap zone: pause/resume/unmute. Surrounding 20% margins
+                stay transparent so Vimeo's native control bar (bottom) and corner
+                controls (incl. fullscreen) receive taps. */}
+            <div
+              className="absolute top-[20%] left-[20%] w-[60%] h-[60%] z-30 cursor-pointer"
+              onClick={handleCenterTap}
+              role="button"
+              aria-label="Tap to pause or resume video"
+            />
 
-            {/* Center zone left as pointer-events-none so Vimeo's native controls (incl. fullscreen) receive taps */}
-            <div className="absolute inset-y-0 left-[15%] w-[70%] z-30 pointer-events-none" />
-
-            <div className="absolute inset-y-0 right-0 w-[15%] z-30 pointer-events-none" />
 
             <div
               ref={videoContainerRef}
