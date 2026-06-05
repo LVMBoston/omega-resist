@@ -604,6 +604,8 @@ const InteractiveSlideOverlay = ({
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
       iframe.style.cssText = 'width:100%;height:100%;border:none;background:#000;display:block;pointer-events:none';
       iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('webkitallowfullscreen', '');
+      iframe.setAttribute('mozallowfullscreen', '');
       videoContainerRef.current.appendChild(iframe);
       vimeoPlayerRef.current = iframe;
 
