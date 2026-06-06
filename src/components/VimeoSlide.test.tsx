@@ -110,8 +110,9 @@ describe("VimeoSlide — embed URL", () => {
 describe("VimeoSlide — tap state machine", () => {
   async function mountAndReady() {
     render(<VimeoSlide contentUrl="poster.jpg" mediaUrl={VIMEO_URL} isActive />);
+    // Allow rAF -> createPlayer to run
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 30));
     });
     const spy = spyOnIframePost();
     await act(async () => {
@@ -126,12 +127,10 @@ describe("VimeoSlide — tap state machine", () => {
     await act(async () => {
       fireEvent.click(getTapZone());
     });
-    const methods = methodsSent(spy);
-    expect(methods).toContain("setMuted");
-    // setMuted(false) + setVolume(1)
     const setMutedCall = spy.mock.calls
       .map(([d]) => JSON.parse(d as string))
       .find((m) => m.method === "setMuted");
+    expect(setMutedCall).toBeTruthy();
     expect(setMutedCall.value).toBe(false);
   });
 
@@ -149,14 +148,10 @@ describe("VimeoSlide — tap state machine", () => {
 
   it("tap 3 resumes from paused with audio on", async () => {
     const spy = await mountAndReady();
-    await act(async () => {
-      fireEvent.click(getTapZone()); // unmute
-      fireEvent.click(getTapZone()); // pause
-    });
+    await act(async () => { fireEvent.click(getTapZone()); }); // unmute
+    await act(async () => { fireEvent.click(getTapZone()); }); // pause
     spy.mockClear();
-    await act(async () => {
-      fireEvent.click(getTapZone()); // resume
-    });
+    await act(async () => { fireEvent.click(getTapZone()); }); // resume
     const methods = methodsSent(spy);
     expect(methods).toContain("play");
     const setMutedCall = spy.mock.calls
