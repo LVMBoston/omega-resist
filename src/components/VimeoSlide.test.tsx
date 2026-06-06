@@ -102,7 +102,7 @@ describe("VimeoSlide — embed URL", () => {
     expect(src).toContain("muted=1");
     expect(src).toContain("controls=1");
     expect(src).toContain("playsinline=1");
-    expect(iframe!.getAttribute("allow")).toContain("fullscreen");
+    expect(iframe!.allow).toContain("fullscreen");
     expect(iframe!.hasAttribute("allowfullscreen")).toBe(true);
   });
 });
