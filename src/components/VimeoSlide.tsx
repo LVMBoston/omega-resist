@@ -181,9 +181,12 @@ export const VimeoSlide = ({ contentUrl, mediaUrl, isActive }: VimeoSlideProps) 
   }, []);
 
   const isShowingVideo = playerState !== "idle";
+  // Mount the portal whenever the slide is active (not just once playing) so
+  // videoContainerRef is attached when createPlayer runs on first activation.
+  const shouldMountPortal = isActive || isShowingVideo;
 
   const videoOverlay =
-    isShowingVideo && typeof document !== "undefined"
+    shouldMountPortal && typeof document !== "undefined"
       ? createPortal(
           <div
             className="fixed inset-0 z-[9999] bg-black"
