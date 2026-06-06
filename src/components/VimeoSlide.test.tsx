@@ -91,7 +91,7 @@ describe("VimeoSlide — embed URL", () => {
     render(<VimeoSlide contentUrl="poster.jpg" mediaUrl={VIMEO_URL} isActive />);
     // requestAnimationFrame fires on next tick in our setup shim
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 30));
     });
     const iframe = getIframe();
     expect(iframe).not.toBeNull();
@@ -165,7 +165,7 @@ describe("VimeoSlide — swipe gestures", () => {
   async function mountAndReady() {
     render(<VimeoSlide contentUrl="poster.jpg" mediaUrl={VIMEO_URL} isActive />);
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 30));
     });
     await act(async () => {
       fireVimeoReady();
@@ -234,7 +234,7 @@ describe("VimeoSlide — isActive transitions (swipe away / back)", () => {
       <VimeoSlide contentUrl="poster.jpg" mediaUrl={VIMEO_URL} isActive />,
     );
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 30));
     });
     await act(async () => {
       fireVimeoReady();
@@ -269,7 +269,7 @@ describe("VimeoSlide — Escape key", () => {
   it("Escape destroys the iframe", async () => {
     render(<VimeoSlide contentUrl="poster.jpg" mediaUrl={VIMEO_URL} isActive />);
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 30));
     });
     await act(async () => {
       fireVimeoReady();
@@ -286,7 +286,7 @@ describe("VimeoSlide — native-controls reachability", () => {
   it("tap-zone leaves the bottom 15% uncovered (Vimeo controls reachable)", async () => {
     render(<VimeoSlide contentUrl="poster.jpg" mediaUrl={VIMEO_URL} isActive />);
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 30));
     });
     await act(async () => {
       fireVimeoReady();
