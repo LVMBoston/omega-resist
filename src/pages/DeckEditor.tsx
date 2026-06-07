@@ -954,27 +954,36 @@ export default function DeckEditor() {
   };
 
   const handleSaveHotspots = async (hotspots: any[]) => {
-    if (!selectedSlide) return;
+    // Use the LOCKED editor target, not selectedSlide — the user may have clicked
+    // a different slide in the sidebar while the dialog was open.
+    const target = hotspotEditorSlide ?? selectedSlide;
+    if (!target) return;
 
     // Store hotspot changes for later
-    setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: hotspots });
-    
+    setHotspotChanges({ ...hotspotChanges, [target.id]: hotspots });
+
     // Auto-classify and update draft slide type
     const { slideType } = classifyHotspots(hotspots);
-    setSlides(prev => prev.map(s => 
-      s.id === selectedSlide.id ? { ...s, type: slideType } : s
+    setSlides(prev => prev.map(s =>
+      s.id === target.id ? { ...s, type: slideType } : s
     ));
-    
-    // Update preview hotspots immediately
-    setPreviewHotspots(hotspots as Hotspot[]);
-    
+
+    // Update preview hotspots immediately (only if the preview still shows this slide)
+    if (selectedSlide?.id === target.id) {
+      setPreviewHotspots(hotspots as Hotspot[]);
+    }
+
     setHasChanges(true);
     setHotspotEditorOpen(false);
+    setHotspotEditorSlide(null);
     toast.success('Hotspot changes staged');
 
-    // Auto-capture thumbnail after overlay renders
+    // Auto-capture thumbnail after overlay renders. The guard inside
+    // handleCaptureThumbnail will defer this if the slide is still on a
+    // shared template (no per-slide config yet) — capture will run after
+    // global Save Changes creates the per-slide config row.
     if (slideType === 'spread-word' && hotspots.length > 0) {
-      const slideForCapture = { ...selectedSlide, type: slideType };
+      const slideForCapture = { ...target, type: slideType };
       setTimeout(() => {
         handleCaptureThumbnail(slideForCapture);
       }, 600);
