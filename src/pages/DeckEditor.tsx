@@ -1783,7 +1783,7 @@ export default function DeckEditor() {
               onClick={handleCancel}
               disabled={saving}
             >
-              Cancel/Exit
+              {hasChanges ? 'Cancel/Exit' : 'Exit'}
             </Button>
             <Button
               variant="outline"
