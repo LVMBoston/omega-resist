@@ -789,6 +789,47 @@ export const FullResolutionHotspotEditor = ({
       );
     }
 
+    if (hotspot.type === "image") {
+      return (
+        <div
+          key={hotspot.id}
+          className={`absolute select-none transition-shadow cursor-move ${
+            isActive ? "ring-2 ring-emerald-500 ring-offset-2" : ""
+          } ${dragging ? "z-50 shadow-2xl" : "z-10"}`}
+          style={{
+            left: `${hotspot.x}%`,
+            top: `${hotspot.y}%`,
+            width: `${hotspot.width}%`,
+            height: `${hotspot.height}%`,
+          }}
+          onMouseDown={(e) => handleMouseDown(e, hotspot)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isDragging) setSelectedHotspot(hotspot.id);
+          }}
+        >
+          {hotspot.imageSrc ? (
+            <img
+              src={hotspot.imageSrc}
+              alt={hotspot.label || "Image hotspot"}
+              className="w-full h-full object-contain pointer-events-none"
+              draggable={false}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-muted/50 text-emerald-600 border-2 border-dashed border-emerald-500/50 rounded">
+              <ImageIcon className="w-8 h-8" />
+            </div>
+          )}
+          {/* Index badge */}
+          <div className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+            isActive ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+          }`}>
+            {hotspots.indexOf(hotspot) + 1}
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
 
