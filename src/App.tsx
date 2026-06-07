@@ -38,6 +38,7 @@ import MapDebugTest from "./pages/MapDebugTest";
 import TemplateEditorPage from "./pages/TemplateEditorPage";
 import EdgeFunctionHealth from "./pages/EdgeFunctionHealth";
 import RepointQrTool from "./pages/RepointQrTool";
+import RegressionTests from "./pages/RegressionTests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
