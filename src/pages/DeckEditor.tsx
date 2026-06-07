@@ -1423,6 +1423,22 @@ export default function DeckEditor() {
                 .from('slide_items')
                 .update({ template_id: newConfig.id })
                 .eq('id', realSlideId);
+
+              // If a thumbnail capture was deferred (because the slide was on
+              // a shared template), run it now against the new per-slide config.
+              if (pendingThumbnailCaptureIds.has(realSlideId) && selectedSlide?.id === realSlideId) {
+                const slideForCapture = {
+                  ...selectedSlide,
+                  template_id: newConfig.id,
+                  type: 'spread-word' as const,
+                };
+                setTimeout(() => handleCaptureThumbnail(slideForCapture as Slide), 400);
+                setPendingThumbnailCaptureIds(prev => {
+                  const next = new Set(prev);
+                  next.delete(realSlideId);
+                  return next;
+                });
+              }
             }
           }
         }
