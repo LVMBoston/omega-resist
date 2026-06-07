@@ -6,16 +6,16 @@
 // NOTE: This re-runs the SAME assertions as the .test.ts files. Keep them
 // in sync. The .test.ts files remain the source of truth for CI/local runs.
 
-import {
-  zoomForBounds,
-  lngToWorldX,
-  latToWorldY,
-} from "../render-stats-snapshot/geo.ts";
+// NOTE: geo.ts and canvas.ts here are exact copies of the files in
+// ../render-stats-snapshot/. Edge functions can't import across function
+// folders, so if you edit one, edit the other. The .test.ts suites
+// import the originals and remain the source of truth.
+import { zoomForBounds, lngToWorldX, latToWorldY } from "./geo.ts";
 import {
   deriveCanvasFromImage,
   defaultSolidCanvas,
   MAX_CANVAS_SIDE,
-} from "../render-stats-snapshot/canvas.ts";
+} from "./canvas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
