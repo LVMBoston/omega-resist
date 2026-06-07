@@ -272,6 +272,7 @@ export const FullResolutionHotspotEditor = ({
     live_number: "Number",
     chart: "Chart",
     map: "Map",
+    image: "Image",
   };
 
   const isDataType = (type: string) => DATA_HOTSPOT_TYPES.has(type);
