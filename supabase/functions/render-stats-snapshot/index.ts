@@ -81,7 +81,65 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
-// Render a static map image for a map hotspot using Mapbox Static Images API
+// ---------- Web Mercator helpers ----------
+const TILE_SIZE = 256;
+function lngToWorldX(lng: number, z: number): number {
+  return ((lng + 180) / 360) * TILE_SIZE * Math.pow(2, z);
+}
+function latToWorldY(lat: number, z: number): number {
+  const s = Math.sin((lat * Math.PI) / 180);
+  return (
+    (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) *
+    TILE_SIZE *
+    Math.pow(2, z)
+  );
+}
+
+// Approximate zoom that fits the bounding box into pixelWidth x pixelHeight.
+function zoomForBounds(
+  north: number, south: number, east: number, west: number,
+  pixelWidth: number, pixelHeight: number,
+): number {
+  const WORLD = TILE_SIZE;
+  const latRad = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const latFraction = (latRad(north) - latRad(south)) / (2 * Math.PI);
+  const lngDiff = east - west;
+  const lngFraction = ((lngDiff < 0 ? lngDiff + 360 : lngDiff)) / 360;
+  const latZoom = Math.log2(pixelHeight / WORLD / latFraction);
+  const lngZoom = Math.log2(pixelWidth / WORLD / lngFraction);
+  return Math.max(0, Math.min(18, Math.floor(Math.min(latZoom, lngZoom))));
+}
+
+async function fetchCartoTile(
+  z: number, x: number, y: number, subdomain: string, slug: string,
+): Promise<Uint8Array | null> {
+  const url = `https://${subdomain}.basemaps.cartocdn.com/${slug}/${z}/${x}/${y}.png`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      console.warn(`[render-stats-snapshot] Tile ${z}/${x}/${y} failed: ${r.status}`);
+      return null;
+    }
+    return new Uint8Array(await r.arrayBuffer());
+  } catch (e) {
+    console.warn(`[render-stats-snapshot] Tile fetch error:`, e);
+    return null;
+  }
+}
+
+const MEDIUM_COLORS_HEX: Record<string, [number, number, number]> = {
+  qr: [0x00, 0x00, 0x99],
+  em: [0x00, 0x66, 0xff],
+  sms: [0x99, 0xcc, 0xff],
+  tx: [0x99, 0xcc, 0xff],
+};
+const DEFAULT_COLOR_HEX: [number, number, number] = [0x64, 0x74, 0x8b];
+const SPAWN_STROKE: [number, number, number] = [0x22, 0xc5, 0x5e];
+const DEFAULT_STROKE: [number, number, number] = [0xff, 0xff, 0xff];
+
+// Render a static map image by stitching CartoDB Positron tiles server-side.
+// Matches the live editor (MapHotspotRenderer.tsx) — no Mapbox dependency,
+// honoring the project rule that Mapbox is forbidden anywhere in the stack.
 async function renderStaticMap(
   supabase: any,
   campaignCode: string,
@@ -89,14 +147,10 @@ async function renderStaticMap(
   pixelWidth: number,
   pixelHeight: number,
 ): Promise<string | null> {
-  const mapboxToken = Deno.env.get("MAPBOX_PUBLIC_TOKEN");
-  if (!mapboxToken) {
-    console.warn("[render-stats-snapshot] MAPBOX_PUBLIC_TOKEN not set, skipping map hotspot");
-    return null;
-  }
-
   try {
-    // Fetch event points for this campaign (mirrors MapHotspotRenderer logic)
+    const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
+
+    // ---- Fetch event points (mirrors MapHotspotRenderer logic) ----
     const { data: campaign } = await supabase
       .from("campaigns").select("id").eq("code", campaignCode).maybeSingle();
     if (!campaign) return null;
@@ -111,67 +165,149 @@ async function renderStaticMap(
       .in("eoa_id", eoaIds).eq("is_simulated", false);
     if (!tokens || tokens.length === 0) return null;
 
+    const tokenMap = new Map<string, any>(tokens.map((t: any) => [t.token, t]));
+    const rootTokensWithChildren = new Set<string>();
+    for (const t of tokens) {
+      if (t.root_token && t.root_token !== t.token) {
+        rootTokensWithChildren.add(t.root_token);
+      }
+    }
+
     const tokenIds = tokens.map((t: any) => t.token);
     const { data: events } = await supabase
-      .from("url_events").select("id, token, latitude, longitude, event_type")
+      .from("url_events").select("token, latitude, longitude")
       .in("token", tokenIds).eq("event_type", "view").eq("is_simulated", false)
       .not("latitude", "is", null).not("longitude", "is", null);
     if (!events || events.length === 0) return null;
 
-    // Build pin overlay for Mapbox Static API
-    // Increase cap to 200 (each pin ~30 chars, well within URL limits)
-    const points = events.slice(0, 200);
+    // ---- Resolve viewport (savedCenter+savedZoom is source of truth) ----
+    const imgW = Math.max(64, Math.round(pixelWidth));
+    const imgH = Math.max(64, Math.round(pixelHeight));
 
-    // Clamp image dimensions (Mapbox max 1280x1280) while preserving aspect ratio
-    let imgW = Math.round(pixelWidth);
-    let imgH = Math.round(pixelHeight);
-    if (imgW > 1280 || imgH > 1280) {
-      const scale = Math.min(1280 / imgW, 1280 / imgH);
-      imgW = Math.round(imgW * scale);
-      imgH = Math.round(imgH * scale);
-    }
-
-    // Use pin-s (small pins) overlay - compact URL format
-    const pinOverlay = points
-      .map((p: any) => `pin-s+3b82f6(${p.longitude.toFixed(4)},${p.latitude.toFixed(4)})`)
-      .join(",");
-
-    // Prefer explicit center+zoom from editor (exact match to Leaflet view).
-    // Fall back to savedBounds bbox, then 'auto' to fit all pins.
-    let viewport = "auto";
     const savedCenter = mapConfig?.savedCenter;
     const savedZoom = mapConfig?.savedZoom;
     const savedBounds = mapConfig?.savedBounds;
+
+    let centerLat: number;
+    let centerLng: number;
+    let zoom: number;
+
     if (
-      savedCenter && typeof savedCenter.lat === "number" && typeof savedCenter.lng === "number" &&
-      typeof savedZoom === "number"
+      savedCenter && typeof savedCenter.lat === "number" &&
+      typeof savedCenter.lng === "number" && typeof savedZoom === "number"
     ) {
-      // Mapbox accepts fractional zoom. Clamp to valid range.
-      const z = Math.max(0, Math.min(22, savedZoom));
-      viewport = `${savedCenter.lng.toFixed(5)},${savedCenter.lat.toFixed(5)},${z.toFixed(2)}`;
-      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom viewport: ${viewport}`);
-    } else if (savedBounds && savedBounds.north && savedBounds.south && savedBounds.east && savedBounds.west) {
-      viewport = `[${savedBounds.west},${savedBounds.south},${savedBounds.east},${savedBounds.north}]`;
-      console.log(`[render-stats-snapshot] Using savedBounds bbox viewport: ${viewport}`);
+      centerLat = savedCenter.lat;
+      centerLng = savedCenter.lng;
+      zoom = Math.max(0, Math.min(18, Math.round(savedZoom)));
+      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom (${centerLat}, ${centerLng}) z=${zoom}`);
+    } else if (
+      savedBounds && typeof savedBounds.north === "number" &&
+      typeof savedBounds.south === "number" &&
+      typeof savedBounds.east === "number" && typeof savedBounds.west === "number"
+    ) {
+      centerLat = (savedBounds.north + savedBounds.south) / 2;
+      centerLng = (savedBounds.east + savedBounds.west) / 2;
+      zoom = zoomForBounds(
+        savedBounds.north, savedBounds.south, savedBounds.east, savedBounds.west,
+        imgW, imgH,
+      );
+      console.log(`[render-stats-snapshot] Using savedBounds, computed z=${zoom}`);
+    } else {
+      // Default to US center
+      centerLat = 39.5; centerLng = -98.35; zoom = 4;
+      console.log(`[render-stats-snapshot] No saved viewport, defaulting to US`);
     }
-    // Mapbox only allows padding with 'auto' viewport
-    const paddingParam = viewport === "auto" ? "&padding=40" : "";
-    const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${viewport}/${imgW}x${imgH}@2x?access_token=${mapboxToken}${paddingParam}`;
 
-    console.log(`[render-stats-snapshot] Fetching static map: ${imgW}x${imgH}, ${points.length} markers`);
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      console.error(`[render-stats-snapshot] Static map fetch failed: ${resp.status} ${await resp.text()}`);
-      return null;
+    // ---- Determine tile slug (label density) ----
+    const labelDensity = mapConfig?.labelDensity ?? "auto";
+    const hideLabels =
+      labelDensity === "no_labels" || (labelDensity === "auto" && imgW < 500);
+    const slug = hideLabels ? "light_nolabels" : "light_all";
+
+    // ---- Tile math: world-pixel of center, then compute tile range ----
+    const centerWorldX = lngToWorldX(centerLng, zoom);
+    const centerWorldY = latToWorldY(centerLat, zoom);
+    const originWorldX = centerWorldX - imgW / 2;
+    const originWorldY = centerWorldY - imgH / 2;
+
+    const tileMinX = Math.floor(originWorldX / TILE_SIZE);
+    const tileMinY = Math.floor(originWorldY / TILE_SIZE);
+    const tileMaxX = Math.floor((originWorldX + imgW - 1) / TILE_SIZE);
+    const tileMaxY = Math.floor((originWorldY + imgH - 1) / TILE_SIZE);
+
+    const worldTiles = Math.pow(2, zoom);
+    const canvas = new Image(imgW, imgH);
+    // Fill with light grey in case some tiles fail
+    canvas.fill(0xe8e8e8ff);
+
+    const tileJobs: Promise<void>[] = [];
+    const subdomains = ["a", "b", "c"];
+    for (let ty = tileMinY; ty <= tileMaxY; ty++) {
+      if (ty < 0 || ty >= worldTiles) continue;
+      for (let tx = tileMinX; tx <= tileMaxX; tx++) {
+        const wrappedX = ((tx % worldTiles) + worldTiles) % worldTiles;
+        const sub = subdomains[(tx + ty) % 3];
+        tileJobs.push((async () => {
+          const bytes = await fetchCartoTile(zoom, wrappedX, ty, sub, slug);
+          if (!bytes) return;
+          try {
+            const tileImg = await Image.decode(bytes);
+            const dx = tx * TILE_SIZE - originWorldX;
+            const dy = ty * TILE_SIZE - originWorldY;
+            canvas.composite(tileImg, Math.round(dx), Math.round(dy));
+          } catch (e) {
+            console.warn(`[render-stats-snapshot] Tile decode failed`, e);
+          }
+        })());
+      }
+    }
+    await Promise.all(tileJobs);
+
+    // ---- Draw markers ----
+    const radius = 5;
+    const cap = Math.min(events.length, 500);
+    for (let i = 0; i < cap; i++) {
+      const ev: any = events[i];
+      const token = tokenMap.get(ev.token);
+      const medium = (token?.utm_medium || "").toLowerCase();
+      const fill = MEDIUM_COLORS_HEX[medium] || DEFAULT_COLOR_HEX;
+      const hasSpawns = token ? rootTokensWithChildren.has(token.token) : false;
+      const stroke = hasSpawns ? SPAWN_STROKE : DEFAULT_STROKE;
+
+      const wx = lngToWorldX(ev.longitude, zoom);
+      const wy = latToWorldY(ev.latitude, zoom);
+      const px = Math.round(wx - originWorldX);
+      const py = Math.round(wy - originWorldY);
+      if (px < -radius || py < -radius || px >= imgW + radius || py >= imgH + radius) continue;
+
+      // Filled circle + 1px stroke ring
+      const rOuter = radius + 1;
+      for (let dy = -rOuter; dy <= rOuter; dy++) {
+        for (let dx = -rOuter; dx <= rOuter; dx++) {
+          const d2 = dx * dx + dy * dy;
+          if (d2 > rOuter * rOuter) continue;
+          const x = px + dx, y = py + dy;
+          if (x < 0 || y < 0 || x >= imgW || y >= imgH) continue;
+          if (d2 > radius * radius) {
+            // stroke ring
+            const c = (stroke[0] << 24) | (stroke[1] << 16) | (stroke[2] << 8) | 0xff;
+            canvas.setPixelAt(x + 1, y + 1, c >>> 0);
+          } else {
+            const c = (fill[0] << 24) | (fill[1] << 16) | (fill[2] << 8) | 0xff;
+            canvas.setPixelAt(x + 1, y + 1, c >>> 0);
+          }
+        }
+      }
     }
 
-    const buf = new Uint8Array(await resp.arrayBuffer());
+    const png = await canvas.encode();
     let binary = "";
     const chunkSize = 8192;
-    for (let i = 0; i < buf.length; i += chunkSize) {
-      const chunk = buf.subarray(i, Math.min(i + chunkSize, buf.length));
+    for (let i = 0; i < png.length; i += chunkSize) {
+      const chunk = png.subarray(i, Math.min(i + chunkSize, png.length));
       binary += String.fromCharCode(...chunk);
     }
+    console.log(`[render-stats-snapshot] CartoDB map rendered: ${imgW}x${imgH}, ${cap} markers, z=${zoom}`);
     return `data:image/png;base64,${btoa(binary)}`;
   } catch (e) {
     console.error("[render-stats-snapshot] Static map error:", e);
