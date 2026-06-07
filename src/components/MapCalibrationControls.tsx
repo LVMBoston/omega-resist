@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Save, Trash2, Hand, Lock, Unlock } from "lucide-react";
 import { SliderWithButtons } from "@/components/ui/slider-with-buttons";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MapCalibrationControlsProps {
   hotspot: Hotspot;
