@@ -2042,23 +2042,34 @@ Add Slide(s)
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Hotspot Editor Dialog */}
-      {selectedSlide && hotspotEditorOpen && (
-        <Dialog open={hotspotEditorOpen} onOpenChange={setHotspotEditorOpen}>
+      {/* Hotspot Editor Dialog — bound to hotspotEditorSlide (locked target), not selectedSlide */}
+      {hotspotEditorSlide && hotspotEditorOpen && (
+        <Dialog
+          open={hotspotEditorOpen}
+          onOpenChange={(open) => {
+            setHotspotEditorOpen(open);
+            if (!open) setHotspotEditorSlide(null);
+          }}
+        >
           <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Interactive Hotspots</DialogTitle>
             </DialogHeader>
             <FullResolutionHotspotEditor
-              imageUrl={selectedSlide.content_url}
+              imageUrl={hotspotEditorSlide.content_url}
               initialHotspots={initialHotspots}
               onChange={(hotspots) => {
-                setPreviewHotspots(hotspots as Hotspot[]);
+                if (selectedSlide?.id === hotspotEditorSlide.id) {
+                  setPreviewHotspots(hotspots as Hotspot[]);
+                }
               }}
               onSave={handleSaveHotspots}
               onCancel={() => {
-                setPreviewHotspots(initialHotspots as Hotspot[]);
+                if (selectedSlide?.id === hotspotEditorSlide.id) {
+                  setPreviewHotspots(initialHotspots as Hotspot[]);
+                }
                 setHotspotEditorOpen(false);
+                setHotspotEditorSlide(null);
               }}
             />
           </DialogContent>
