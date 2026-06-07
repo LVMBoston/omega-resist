@@ -25,6 +25,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
 import { MapCalibrationControls } from "@/components/MapCalibrationControls";
+import { ImageCalibrationControls } from "@/components/ImageCalibrationControls";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
