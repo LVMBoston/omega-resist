@@ -938,6 +938,7 @@ Deno.serve(async (req) => {
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   ${bgSolidColor ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${bgSolidColor}"/>` : `<image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`}
   ${mapSvgElements.join("\n  ")}
+  ${imageSvgElements.join("\n  ")}
   ${hotspotSvgElements}
 </svg>`;
 
