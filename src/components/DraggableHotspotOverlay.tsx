@@ -376,7 +376,7 @@ export function DraggableHotspotOverlay({
         const imageBounds = imageRef.current?.getBoundingClientRect();
         const baseWidth = 1080; // Reference width for calibration
         const scaleFactor = imageBounds ? imageBounds.width / baseWidth : 1;
-        const baseFontSize = parseInt(style.fontSize || "56") || 56;
+        const baseFontSize = parseInt(style.fontSize || "25") || 25;
         const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor));
 
         return (

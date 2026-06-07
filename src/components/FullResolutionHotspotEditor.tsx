@@ -319,7 +319,7 @@ export const FullResolutionHotspotEditor = ({
       ...(selectedIconPreset.type === "live_number" && {
         metricKey: "seeds",
         liveNumberStyle: {
-          fontSize: "56",
+          fontSize: "25",
           fontWeight: "700",
           color: "#1a1a1a",
           backgroundColor: "#e8dcc8",
@@ -467,7 +467,7 @@ export const FullResolutionHotspotEditor = ({
       const imageBounds = imageRef.current?.getBoundingClientRect();
       const baseWidth = 1080;
       const scaleFactor = imageBounds ? imageBounds.width / baseWidth : 1;
-      const baseFontSize = parseInt(style.fontSize || "56") || 56;
+      const baseFontSize = parseInt(style.fontSize || "25") || 25;
       const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor));
       const justifyContent =
         style.textAlign === 'left' ? 'flex-start' :
