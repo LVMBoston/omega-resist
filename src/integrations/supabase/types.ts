@@ -281,26 +281,32 @@ export type Database = {
       }
       decks: {
         Row: {
+          aspect_ratio: number | null
           created_at: string
           display_order: number
           last_deployed_at: string | null
           last_modified_at: string | null
+          orientation: string | null
           slug: string
           updated_at: string
         }
         Insert: {
+          aspect_ratio?: number | null
           created_at?: string
           display_order?: number
           last_deployed_at?: string | null
           last_modified_at?: string | null
+          orientation?: string | null
           slug: string
           updated_at?: string
         }
         Update: {
+          aspect_ratio?: number | null
           created_at?: string
           display_order?: number
           last_deployed_at?: string | null
           last_modified_at?: string | null
+          orientation?: string | null
           slug?: string
           updated_at?: string
         }

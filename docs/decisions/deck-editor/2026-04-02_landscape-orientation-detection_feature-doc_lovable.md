@@ -43,3 +43,10 @@ Added `.deck-slide-landscape` with inverted 16:9 formulas alongside the existing
 
 - `src/index.css` — added `.deck-slide-landscape` class
 - `src/pages/DeckViewer.tsx` — orientation state, detection useEffect, dynamic class application, reflow handler update
+
+## Update — 2026-06-07
+
+Runtime-only detection was replaced with a persisted aspect ratio on the
+`decks` row plus an upload-time aspect-ratio match check. See
+`2026-06-07_deck-aspect-ratio-persistence_feature-doc_lovable.md` for the
+current behavior.

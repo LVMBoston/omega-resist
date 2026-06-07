@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { captureSlideThumbnail } from "@/lib/snapshotCapture";
+import { fetchDeckShape, persistDeckShape, probeFirstDims, ratioToOrientation, ratiosMatch, loadImageDims } from "@/lib/deckAspectRatio";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -306,59 +307,54 @@ export default function DeckEditor() {
   const [loadingHotspots, setLoadingHotspots] = useState(false);
   const [capturingThumbnail, setCapturingThumbnail] = useState(false);
   const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
-  const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape' | 'square'>('portrait');
+  const [deckAspectRatio, setDeckAspectRatio] = useState<number | null>(null);
 
-  // Detect deck orientation from the first image we can actually load.
-  // Walks every slide's content_url, thumbnail_url, and (when available) the
-  // template's image_url. The first image to successfully decode decides the
-  // orientation, so a single broken / solid-color slide can't strand us in
-  // portrait mode for a landscape deck.
+  // Resolve deck shape (aspect ratio + orientation) ONCE from the deck row.
+  // If the row has no recorded value yet, probe the first available image and
+  // persist it back so every subsequent load is deterministic.
   useEffect(() => {
+    if (!slug) return;
     if (!slides || slides.length === 0) return;
     let cancelled = false;
 
-    const candidates: string[] = [];
-    const seen = new Set<string>();
-    const push = (url?: string | null) => {
-      if (!url) return;
-      if (url.startsWith('solid:')) return;
-      const lower = url.toLowerCase();
-      if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return;
-      if (seen.has(url)) return;
-      seen.add(url);
-      candidates.push(url);
-    };
-    for (const s of slides) {
-      push(s.content_url);
-      push(s.thumbnail_url);
-      if (s.template_id) {
-        const t = templates.find(t => t.id === s.template_id);
-        push(t?.image_url);
-      }
-    }
-    if (candidates.length === 0) return;
-
-    const tryUrl = (url: string) => new Promise<{ w: number; h: number } | null>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-
     (async () => {
-      for (const url of candidates) {
-        const dims = await tryUrl(url);
-        if (cancelled) return;
-        if (dims && dims.w > 0 && dims.h > 0) {
-          setDeckOrientation(dims.w > dims.h ? 'landscape' : 'portrait');
-          return;
+      const stored = await fetchDeckShape(slug);
+      if (cancelled) return;
+      if (stored) {
+        setDeckAspectRatio(stored.aspectRatio);
+        setDeckOrientation(stored.orientation === 'square' ? 'landscape' : stored.orientation);
+        return;
+      }
+
+      // No stored shape — probe the first slide in display order.
+      const ordered = [...slides].sort((a, b) => a.position - b.position);
+      const urls: (string | null | undefined)[] = [];
+      for (const s of ordered) {
+        urls.push(s.content_url);
+        urls.push(s.thumbnail_url);
+        if (s.template_id) {
+          const t = templates.find(t => t.id === s.template_id);
+          urls.push(t?.image_url);
         }
       }
+      const dims = await probeFirstDims(urls);
+      if (cancelled || !dims) return;
+      const ratio = dims.w / dims.h;
+      const orientation = ratioToOrientation(ratio);
+      setDeckAspectRatio(ratio);
+      setDeckOrientation(orientation === 'square' ? 'landscape' : orientation);
+      // Fire-and-forget persist; ignore errors (e.g. anon viewer).
+      persistDeckShape(slug, { aspectRatio: ratio, orientation }).catch(() => {});
     })();
 
     return () => { cancelled = true; };
-  }, [slides, templates]);
-  const aspectClass = deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]';
+  }, [slug, slides, templates]);
+  // Use the deck's exact aspect ratio when known; otherwise approximate from orientation.
+  const aspectClass = deckAspectRatio
+    ? '' // inline style handles it below
+    : (deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]');
+  const aspectStyle = deckAspectRatio ? { aspectRatio: String(deckAspectRatio) } : undefined;
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -616,40 +612,38 @@ export default function DeckEditor() {
       return { valid: false, error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 5MB limit` };
     }
 
-    // Dimension validation with aspect ratio tolerance
+    // Dimension validation: enforce ASPECT RATIO match against the deck's recorded shape.
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = async () => {
+        const imgRatio = img.width / img.height;
+
+        // If the deck already has a recorded aspect ratio, reject anything that doesn't match (±2%).
+        if (deckAspectRatio) {
+          if (!ratiosMatch(imgRatio, deckAspectRatio, 2)) {
+            const deckLabel = deckAspectRatio.toFixed(3);
+            const imgLabel = imgRatio.toFixed(3);
+            resolve({
+              valid: false,
+              error: `This slide is ${img.width}×${img.height} (ratio ${imgLabel}) but the deck is ratio ${deckLabel}. All slides in a deck must share the same aspect ratio.`,
+            });
+            return;
+          }
+        }
+
+        // Pixel-level resize against an existing reference (kept for backward compatibility).
         if (referenceDimensions) {
           const widthTolerance = referenceDimensions.width * 0.01;
           const heightTolerance = referenceDimensions.height * 0.01;
-          
           const widthInRange = Math.abs(img.width - referenceDimensions.width) <= widthTolerance;
           const heightInRange = Math.abs(img.height - referenceDimensions.height) <= heightTolerance;
-          
           if (widthInRange && heightInRange) {
             resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
             return;
           }
 
-          // TEMPORARILY DISABLED: Aspect ratio validation check
-          // Check aspect ratio tolerance (7%)
-          // const imageAspectRatio = img.width / img.height;
-          // const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
-          // const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
-          
-          // console.log('🔍 Aspect Ratio Validation:', {
-          //   imageAspectRatio: imageAspectRatio.toFixed(4),
-          //   referenceAspectRatio: referenceAspectRatio.toFixed(4),
-          //   difference: (aspectRatioDiff * 100).toFixed(2) + '%',
-          //   tolerance: '7%',
-          //   willPass: aspectRatioDiff <= 0.07
-          // });
-          
-          // Bypass aspect ratio check - resize automatically regardless of ratio
           // Skip resize for GIFs to preserve animation
           if (file.type === 'image/gif') {
-            console.log('🎬 Skipping resize for GIF to preserve animation');
             const animated = await isAnimatedGif(file);
             if (!animated) {
               console.warn('⚠️ Static GIF detected - consider using PNG for better compression');
@@ -659,15 +653,13 @@ export default function DeckEditor() {
           }
           try {
             const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
-            resolve({ 
-              valid: true, 
+            resolve({
+              valid: true,
               dimensions: { width: referenceDimensions.width, height: referenceDimensions.height },
-              resizedFile
+              resizedFile,
             });
           } catch (error) {
             console.error('Error resizing image:', error);
-            // Even if resize fails, allow the image through
-            console.warn('⚠️ Resize failed, using original image');
             resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
           }
         } else {
@@ -1778,7 +1770,7 @@ Add Slide(s)
                     {(() => {
                       const contentUrl = selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
-                        return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
+                        return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', ''), ...(aspectStyle || {}) }} />;
                       }
                       const templateImageUrl = selectedSlide.template_id
                         ? templates.find(t => t.id === selectedSlide.template_id)?.image_url
