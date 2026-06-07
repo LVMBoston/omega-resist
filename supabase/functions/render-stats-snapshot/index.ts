@@ -700,6 +700,10 @@ Deno.serve(async (req) => {
     const imageUrl = template.image_url as string;
     let bgDataUrl: string | null = null;
     let bgSolidColor: string | null = null;
+    // Default canvas if we can't derive aspect ratio from a background image.
+    // Landscape 16:9 matches the default deck orientation.
+    let width = 1920;
+    let height = 1080;
 
     if (imageUrl.startsWith("solid:")) {
       bgSolidColor = imageUrl.replace("solid:", "");
@@ -712,6 +716,28 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      // Derive canvas dimensions from the background image's natural aspect
+      // ratio. The editor renders hotspots over the image with object-contain,
+      // so the snapshot canvas must match the image shape — otherwise a
+      // landscape template renders into a portrait canvas (or vice versa) and
+      // hotspot percentages land in the wrong places and at the wrong sizes.
+      try {
+        const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
+        // Strip data URL prefix to get raw bytes
+        const b64 = bgDataUrl.split(",")[1] || "";
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const img = await Image.decode(bytes);
+        // Cap the longest side at 1920 to keep snapshots reasonable.
+        const MAX_SIDE = 1920;
+        const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+        width = Math.round(img.width * scale);
+        height = Math.round(img.height * scale);
+        console.log(`[render-stats-snapshot] Canvas derived from image: ${img.width}x${img.height} -> ${width}x${height}`);
+      } catch (e) {
+        console.warn(`[render-stats-snapshot] Could not derive canvas from image, falling back to ${width}x${height}:`, e);
+      }
     }
 
     // Parse hotspots from template
@@ -720,11 +746,7 @@ Deno.serve(async (req) => {
     const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
     const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots`);
-
-    // Target dimensions (portrait for mobile)
-    const width = 1080;
-    const height = 1920;
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots at ${width}x${height}`);
 
     // Render static map images for map hotspots
     const mapSvgElements: string[] = [];
