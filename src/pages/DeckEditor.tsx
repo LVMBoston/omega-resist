@@ -95,7 +95,7 @@ const SlidePreviewImage = ({
       : "This slide's background image is missing from storage and no fallback is available.";
 
     return (
-      <div className="w-full aspect-[9/16] rounded-lg border bg-muted/30 flex flex-col items-center justify-center gap-4 p-6 text-center">
+      <div className={`w-full ${aspectClass} rounded-lg border bg-muted/30 flex flex-col items-center justify-center gap-4 p-6 text-center`}>
         <ImageIcon className="h-16 w-16 text-muted-foreground" />
         <div className="space-y-2">
           <p className="font-semibold text-foreground">Slide cannot be rendered</p>
