@@ -1,53 +1,90 @@
-# Fix: Edits made on Slide 2 appear on Slide 1 after "Save & Close" + "Save changes"
+# Promote Slide → Reusable Template (with swappable background)
 
-## 1. What you see, in plain language
+**Status:** Proposed
+**Date:** 2026-06-07
 
-a. You open Slide 2, edit its hotspots, click **Save & Close**.
-b. You navigate to another slide (say Slide 1) and click the global **Save changes** button.
-c. Slide 1 now shows what looks like Slide 2's edits — most visibly, Slide 1's thumbnail starts displaying Slide 2's hotspots overlaid.
+## 1. What the user gets
 
-## 2. What I'm checking, in plain language
+a. A new **"Save as Template"** button on the selected slide's properties panel in DeckEditor. It turns the current PNG (and any hotspots) into a shared entry in the Template Repository.
+b. The current slide is automatically re-linked to the new template, so future template edits also update this slide.
+c. **Background swap in two places:**
+   - In the Template Repository editor — changes the default background for every slide using the template.
+   - On the individual slide in DeckEditor — overrides only this slide's background while keeping the template's hotspots and layout.
 
-There are two slides involved and two pieces of data that can move between them:
+## 2. UI changes
 
-a. **Hotspot data** — the positions, labels, and types of the dots on each slide. Stored per slide.
-b. **Thumbnail image** — the little preview image of the slide. Stored on the *template* the slide uses.
+### 2a. DeckEditor — properties panel (right sidebar)
+- New button **"Save as Template…"** shown when the selected slide has no `template_id` yet. Opens a small dialog asking for **Name**, **Slug** (auto-suggested from name), and optional **Description**.
+- New section **"Background"** shown when the slide *is* linked to a template:
+  - Thumbnail of the currently rendered background (override if set, else template default).
+  - **Upload override** button — uploads a new image and stores it as a per-slide override.
+  - **Reset to template default** button — clears the override.
+  - Small caption: *"Hotspots come from the template. Background is specific to this slide."*
+  - **Guardrail:** when the linked template's `template_type` is `stats_page` or `hybrid`, disable the upload button and show tooltip: *"Background override isn't available yet for slides with live metrics — the pre-rendered snapshot would still show the template's default background."* This keeps the feature safe for the common (display-only / interactive_share) case and defers the snapshot-pipeline work until it's actually needed.
 
-The bug is in (b), not (a). Many slides can share the same template. When a slide hasn't been customized yet, it just points at the shared template and reuses its thumbnail. If we overwrite that shared template's thumbnail, every slide pointing at it changes preview at once — which is exactly what looks like "Slide 2's edits leaked onto Slide 1".
+### 2b. Template Repository editor
+- No new UI. The existing "Replace Template Image, preserve hotspots" control already swaps the template's default background.
 
-## 3. Why it happens (technical)
+## 3. Data model
 
-In `src/pages/DeckEditor.tsx`:
+a. **New column on `slide_items`:** `image_url_override text null`.
+   - When null → renderer falls back to `viral_slide_configs.image_url` (template default).
+   - When set → renderer uses this value (supports normal URLs and the existing `solid:#hex` convention).
+b. No schema change to `viral_slide_configs`. Promoted slides become regular shared templates (`slide_id IS NULL`).
+c. `slide_items.template_id` is repointed to the newly-created template row at promotion time, and `slide_items.type` becomes `spread-word`.
 
-a. Slides start out with `template_id` pointing at a **shared template** (a `viral_slide_configs` row with `slide_id IS NULL`). Several slides can share one template.
-b. `handleSaveHotspots` (lines 926-952) stages the new hotspots correctly under `selectedSlide.id`. That part is fine. The staged change is never applied to the wrong slide's hotspots.
-c. Immediately after staging, lines 946-950 auto-fire `handleCaptureThumbnail(slideForCapture)` where `slideForCapture.template_id` is **still the shared template's id** — because the per-slide `viral_slide_configs` row isn't created until you later click global Save Changes (that happens in lines 1339-1389).
-d. `handleCaptureThumbnail` (lines 873-924) uses `slide.template_id` first as the `configId` it uploads the thumbnail to (line 880). So the new thumbnail (which shows Slide 2's preview with its new hotspots) gets written to the **shared template** row.
-e. Every other slide that points to that same shared template — including Slide 1 — now displays the new thumbnail. From your perspective, Slide 1 "got" Slide 2's edits.
-f. After global Save Changes runs, Slide 2 gets its own per-slide config and eventually its own thumbnail, but Slide 1's thumbnail on the shared template stays polluted until something rewrites it.
+## 4. Rendering rule
 
-There is also a smaller, separate risk on top of this: if the hotspot editor dialog is left open and you click another slide in the sidebar, `selectedSlide` changes and a subsequent save would key the hotspots to the wrong slide. Worth fixing in the same pass.
+In `ViralSlideV2` (and any path that resolves a slide's background), the effective image is:
 
-## 4. Fix
+```text
+effectiveImageUrl =
+  slide_items.image_url_override        // per-slide override (new)
+  ?? viral_slide_configs.image_url      // template default
+```
 
-a. **Never write thumbnails to a shared template from the editor.** In `handleCaptureThumbnail`, if `configId` resolves to a row whose `slide_id IS NULL` (a shared template), skip the upload and log a notice. Thumbnails for shared templates should only be set from the template editor, not from a deck slide edit.
-b. **Defer the auto-thumbnail capture until a per-slide config exists.** In `handleSaveHotspots`, do not call `handleCaptureThumbnail` inline. Instead, mark the slide as "needs thumbnail capture" and run capture only after the per-slide `viral_slide_configs` row is created in the global Save Changes flow (after line 1387). At that point `configId` is guaranteed to be the slide's own per-slide config, not the shared one.
-c. **Lock the editor to the slide it was opened for.** Add a `hotspotEditorSlide` state, set it in `handleOpenHotspotEditor`, and use *it* (not `selectedSlide`) inside `handleSaveHotspots` and in the dialog JSX at lines 1991-2010. This prevents a second class of bug where changing sidebar selection mid-edit retargets the save.
-d. **Repair already-polluted shared template thumbnails.** A one-time check: if the user reports a wrong-looking thumbnail on Slide 1, re-capturing Slide 1 from its own (clean) state will overwrite the shared template's thumbnail back to something correct. Document this in the post-mortem; we don't need a migration.
+Override is presentation-only — hotspots, template_type, snapshots and analytics are unchanged.
 
-## 5. How I'll verify
+## 5. Promotion flow (Save as Template)
 
-a. Reproduce on the current build first with the exact steps in section 1 and confirm Slide 1's thumbnail changes.
-b. After the fix, repeat the same steps and confirm Slide 1's thumbnail is untouched and Slide 2 gets its own thumbnail once global Save Changes runs.
-c. Bonus check for 4c: open Slide 2's hotspot editor, click Slide 1 in the sidebar while it's open, save — confirm Slide 2 receives the hotspots, not Slide 1.
-d. Add both cases to the regression suite backlog in `docs/REGRESSION_TESTS.md`.
+1. User clicks **Save as Template…** on a plain image slide.
+2. Dialog collects name + slug + description.
+3. Insert new row into `viral_slide_configs` with:
+   - `image_url` = the slide's current image
+   - `hotspots` = current staged hotspots (empty array OK)
+   - `template_type` = classified from hotspots (`display_only` when none, else existing `classifyHotspots()` rules)
+   - `slide_id` = NULL (shared template, not per-slide config)
+4. Update `slide_items` for the current slide: `template_id = <new id>`, `type = 'spread-word'`, leave `image_url_override` null.
+5. Toast confirms and links to the Template Repository entry.
 
-## 6. Files touched
+## 6. Background-override flow (per slide)
 
-a. `src/pages/DeckEditor.tsx` — guard in `handleCaptureThumbnail`, defer auto-capture in `handleSaveHotspots`, add `hotspotEditorSlide` state and thread it through the dialog.
-b. `docs/REGRESSION_TESTS.md` — two new backlog entries.
-c. `docs/decisions/deck-editor/2026-06-07_hotspot-edits-leaking-to-other-slides_bug-fix_lovable.md` — new decision doc per the Decision Log Rule (this is a new plan, not an update to an existing one).
+1. User uploads a new image from the slide's **Background** section.
+2. Image is uploaded to the existing `slides` storage bucket.
+3. `slide_items.image_url_override` is set to the new URL.
+4. Preview re-renders immediately using the override.
+5. **Reset** clears `image_url_override` back to null and the template default takes over again.
 
-## 7. One thing I want to confirm before building
+## 7. Files that change
 
-The symptom I'm betting on is **Slide 1's thumbnail starts looking like Slide 2**. If instead you mean the actual hotspots on Slide 1 (when you open its editor or view it in the deck) became Slide 2's hotspots, that's a different code path and I'd want to look once more before I implement. Can you tell me which of the two it is?
+a. **Migration** — add `image_url_override text` column to `slide_items` (nullable, no default, no RLS change).
+b. `src/pages/DeckEditor.tsx` — properties panel: add "Save as Template…" button + dialog; add Background section for template-linked slides; wire upload + reset; apply guardrail for stats_page/hybrid.
+c. `src/components/ViralSlideV2.tsx` — when resolving `image_url`, prefer `slide_items.image_url_override` if present (fetched alongside the existing slide query).
+d. Renderers (`DisplayOnlySlide`, `HybridSlide`, `StatsPageSlide`, `InteractiveShareSlide`) — no changes; they receive `imageUrl` as a prop from `ViralSlideV2`.
+
+## 8. Things that do **not** change
+
+- `viral_slide_configs` schema
+- Template Repository UI and `DataTemplateEditor`
+- Hotspot editor, analytics, token minting, snapshot pipeline
+- Auto-demote / auto-promote logic in `handleSaveChanges`
+- `render-stats-snapshot` and `refresh-all-snapshots` edge functions
+
+## 9. Deferred (revisit if/when needed)
+
+Per-slide background overrides on **stats_page / hybrid** slides require teaching the snapshot pipeline about overrides (per-slide snapshot files, per-slide staleness columns). Today's plan blocks this case at the UI to keep scope small. When a real need shows up, we open a follow-up plan to extend snapshots.
+
+## 10. Decision log
+
+This is a **new** plan. After implementation it will be saved as:
+`docs/decisions/decks/2026-06-07_promote-slide-to-template-and-background-swap_feature-doc_lovable.md`
