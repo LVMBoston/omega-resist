@@ -1621,11 +1621,44 @@ export default function DeckEditor() {
         );
       }
 
+      // Remember which slides had hotspot edits so we can refresh their
+      // thumbnails after fetchSlides() reloads the per-slide config rows.
+      // Only the currently-selected slide is rendered in the preview DOM,
+      // so we can only auto-capture that one — but that covers the common
+      // case of editing a slide and immediately saving.
+      const editedSlideIds = new Set(
+        Object.keys(hotspotChanges).map((sid) =>
+          sid.startsWith('temp-') ? tempSlideIdMap[sid] : sid
+        ).filter(Boolean)
+      );
+      const selectedSlideEdited = selectedSlide && editedSlideIds.has(selectedSlide.id);
+
       setPendingUploads([]);
       setPendingDeletes([]);
       setHotspotChanges({});
       setHasChanges(false);
       await fetchSlides();
+
+      // Post-save thumbnail refresh: re-capture the currently-selected slide
+      // if its hotspots were edited. Guarantees the sidebar thumbnail matches
+      // the freshly-saved hotspot data, even when the in-editor auto-capture
+      // missed (e.g. user staged changes earlier and saved later).
+      if (selectedSlideEdited && selectedSlide) {
+        // Look up the now-current slide row (fetchSlides may have refreshed template_id)
+        setTimeout(async () => {
+          const { data: refreshed } = await supabase
+            .from('slide_items')
+            .select('id, type, template_id, content_url, position')
+            .eq('id', selectedSlide.id)
+            .maybeSingle();
+          if (refreshed && refreshed.type === 'spread-word') {
+            handleCaptureThumbnail({
+              ...selectedSlide,
+              ...refreshed,
+            } as Slide);
+          }
+        }, 800);
+      }
     } catch (error: any) {
       console.error('Error saving changes:', error);
       toast.error('Failed to save some changes');
