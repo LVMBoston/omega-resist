@@ -277,6 +277,12 @@ export default function DeckEditor() {
   const [slideToDelete, setSlideToDelete] = useState<Slide | null>(null);
   const [referenceDimensions, setReferenceDimensions] = useState<{ width: number; height: number } | null>(null);
   const [hotspotEditorOpen, setHotspotEditorOpen] = useState(false);
+  // Locked target slide for the hotspot editor — separate from selectedSlide so
+  // navigating slides (or auto-capture races) can't retarget a save.
+  const [hotspotEditorSlide, setHotspotEditorSlide] = useState<Slide | null>(null);
+  // Slide ids that need a thumbnail capture once their per-slide config exists
+  // (set when auto-capture would otherwise write to a shared template row).
+  const [pendingThumbnailCaptureIds, setPendingThumbnailCaptureIds] = useState<Set<string>>(new Set());
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [eoaCount, setEoaCount] = useState(0);
@@ -866,6 +872,7 @@ export default function DeckEditor() {
 
   const handleOpenHotspotEditor = async (slide: Slide) => {
     setSelectedSlide(slide);
+    setHotspotEditorSlide(slide);
     await loadHotspotsForSlide(slide);
     setHotspotEditorOpen(true);
   };
@@ -888,6 +895,29 @@ export default function DeckEditor() {
     }
     if (!configId) {
       console.log('Skipping thumbnail capture — no template config yet for this slide');
+      return;
+    }
+
+    // Guard: never overwrite a SHARED template's thumbnail from a deck slide edit.
+    // Shared templates (viral_slide_configs rows with slide_id IS NULL) are used by
+    // many slides — writing here would make every sibling slide display this slide's
+    // preview. Per-slide configs always have slide_id set.
+    const { data: configRow } = await supabase
+      .from('viral_slide_configs')
+      .select('slide_id')
+      .eq('id', configId)
+      .maybeSingle();
+    if (configRow && configRow.slide_id === null) {
+      console.log(
+        `Skipping thumbnail capture — config ${configId} is a shared template ` +
+        `(slide_id IS NULL). Capture will run after a per-slide config is created.`
+      );
+      // Mark slide as needing capture once its per-slide config exists.
+      setPendingThumbnailCaptureIds(prev => {
+        const next = new Set(prev);
+        next.add(slide.id);
+        return next;
+      });
       return;
     }
 
@@ -924,27 +954,36 @@ export default function DeckEditor() {
   };
 
   const handleSaveHotspots = async (hotspots: any[]) => {
-    if (!selectedSlide) return;
+    // Use the LOCKED editor target, not selectedSlide — the user may have clicked
+    // a different slide in the sidebar while the dialog was open.
+    const target = hotspotEditorSlide ?? selectedSlide;
+    if (!target) return;
 
     // Store hotspot changes for later
-    setHotspotChanges({ ...hotspotChanges, [selectedSlide.id]: hotspots });
-    
+    setHotspotChanges({ ...hotspotChanges, [target.id]: hotspots });
+
     // Auto-classify and update draft slide type
     const { slideType } = classifyHotspots(hotspots);
-    setSlides(prev => prev.map(s => 
-      s.id === selectedSlide.id ? { ...s, type: slideType } : s
+    setSlides(prev => prev.map(s =>
+      s.id === target.id ? { ...s, type: slideType } : s
     ));
-    
-    // Update preview hotspots immediately
-    setPreviewHotspots(hotspots as Hotspot[]);
-    
+
+    // Update preview hotspots immediately (only if the preview still shows this slide)
+    if (selectedSlide?.id === target.id) {
+      setPreviewHotspots(hotspots as Hotspot[]);
+    }
+
     setHasChanges(true);
     setHotspotEditorOpen(false);
+    setHotspotEditorSlide(null);
     toast.success('Hotspot changes staged');
 
-    // Auto-capture thumbnail after overlay renders
+    // Auto-capture thumbnail after overlay renders. The guard inside
+    // handleCaptureThumbnail will defer this if the slide is still on a
+    // shared template (no per-slide config yet) — capture will run after
+    // global Save Changes creates the per-slide config row.
     if (slideType === 'spread-word' && hotspots.length > 0) {
-      const slideForCapture = { ...selectedSlide, type: slideType };
+      const slideForCapture = { ...target, type: slideType };
       setTimeout(() => {
         handleCaptureThumbnail(slideForCapture);
       }, 600);
@@ -1384,6 +1423,22 @@ export default function DeckEditor() {
                 .from('slide_items')
                 .update({ template_id: newConfig.id })
                 .eq('id', realSlideId);
+
+              // If a thumbnail capture was deferred (because the slide was on
+              // a shared template), run it now against the new per-slide config.
+              if (pendingThumbnailCaptureIds.has(realSlideId) && selectedSlide?.id === realSlideId) {
+                const slideForCapture = {
+                  ...selectedSlide,
+                  template_id: newConfig.id,
+                  type: 'spread-word' as const,
+                };
+                setTimeout(() => handleCaptureThumbnail(slideForCapture as Slide), 400);
+                setPendingThumbnailCaptureIds(prev => {
+                  const next = new Set(prev);
+                  next.delete(realSlideId);
+                  return next;
+                });
+              }
             }
           }
         }
@@ -1987,23 +2042,34 @@ Add Slide(s)
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Hotspot Editor Dialog */}
-      {selectedSlide && hotspotEditorOpen && (
-        <Dialog open={hotspotEditorOpen} onOpenChange={setHotspotEditorOpen}>
+      {/* Hotspot Editor Dialog — bound to hotspotEditorSlide (locked target), not selectedSlide */}
+      {hotspotEditorSlide && hotspotEditorOpen && (
+        <Dialog
+          open={hotspotEditorOpen}
+          onOpenChange={(open) => {
+            setHotspotEditorOpen(open);
+            if (!open) setHotspotEditorSlide(null);
+          }}
+        >
           <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Interactive Hotspots</DialogTitle>
             </DialogHeader>
             <FullResolutionHotspotEditor
-              imageUrl={selectedSlide.content_url}
+              imageUrl={hotspotEditorSlide.content_url}
               initialHotspots={initialHotspots}
               onChange={(hotspots) => {
-                setPreviewHotspots(hotspots as Hotspot[]);
+                if (selectedSlide?.id === hotspotEditorSlide.id) {
+                  setPreviewHotspots(hotspots as Hotspot[]);
+                }
               }}
               onSave={handleSaveHotspots}
               onCancel={() => {
-                setPreviewHotspots(initialHotspots as Hotspot[]);
+                if (selectedSlide?.id === hotspotEditorSlide.id) {
+                  setPreviewHotspots(initialHotspots as Hotspot[]);
+                }
                 setHotspotEditorOpen(false);
+                setHotspotEditorSlide(null);
               }}
             />
           </DialogContent>
