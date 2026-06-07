@@ -32,3 +32,9 @@ c. Confirm `labelDensity = no_labels` produces a label-free basemap.
 ## 5. Files touched
 
 - `supabase/functions/render-stats-snapshot/index.ts` — `renderStaticMap()` rewritten.
+
+## Update — 2026-06-07
+
+a. **Fractional zoom honored.** `savedZoom` is no longer rounded to the nearest integer. Tiles are fetched at `tileZ = round(zoom)` and resized by `2^(zoom - tileZ)` before compositing, so a zoom of 4.5 renders correctly instead of snapping to 4 or 5.
+b. **Literal fontSize for text hotspots.** Removed the `width / 960` silent rescaling. Each hotspot's `liveNumberStyle.fontSize` is now used verbatim so text matches the editor's stored value.
+
