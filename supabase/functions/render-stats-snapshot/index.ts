@@ -745,8 +745,21 @@ Deno.serve(async (req) => {
           `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
           `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`
         );
-      }
     }
+
+    // Image hotspots — bake pasted images into the SVG.
+    const imageSvgElements: string[] = [];
+    for (const imgHotspot of imageHotspots) {
+      if (!imgHotspot.imageSrc) continue;
+      const ix = (imgHotspot.x / 100) * width;
+      const iy = (imgHotspot.y / 100) * height;
+      const iw = ((imgHotspot.width || 30) / 100) * width;
+      const ih = ((imgHotspot.height || 30) / 100) * height;
+      imageSvgElements.push(
+        `<image href="${escapeXml(imgHotspot.imageSrc)}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`
+      );
+    }
+
 
     // Helper: word-wrap a line to fit within maxChars
     function wordWrap(text: string, maxChars: number): string[] {
