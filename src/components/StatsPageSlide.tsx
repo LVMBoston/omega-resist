@@ -499,6 +499,31 @@ export const StatsPageSlide = ({
           </div>
         );
       })}
+
+      {/* Image hotspots — static pasted images */}
+      {imageLoaded && imageDimensions.width > 0 && imageHotspots.map((hotspot) => {
+        if (!hotspot.imageSrc) return null;
+        const left = imageDimensions.offsetX + (hotspot.x / 100) * imageDimensions.width;
+        const top = imageDimensions.offsetY + (hotspot.y / 100) * imageDimensions.height;
+        const width = (hotspot.width / 100) * imageDimensions.width;
+        const height = (hotspot.height / 100) * imageDimensions.height;
+        return (
+          <img
+            key={hotspot.id}
+            src={hotspot.imageSrc}
+            alt={hotspot.label || ""}
+            className="absolute pointer-events-none"
+            style={{
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${width}px`,
+              height: `${height}px`,
+              objectFit: "contain",
+            }}
+            draggable={false}
+          />
+        );
+      })}
     </div>
   );
 };
