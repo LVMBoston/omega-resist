@@ -38,3 +38,11 @@ c. Confirm `labelDensity = no_labels` produces a label-free basemap.
 a. **Fractional zoom honored.** `savedZoom` is no longer rounded to the nearest integer. Tiles are fetched at `tileZ = round(zoom)` and resized by `2^(zoom - tileZ)` before compositing, so a zoom of 4.5 renders correctly instead of snapping to 4 or 5.
 b. **Literal fontSize for text hotspots.** Removed the `width / 960` silent rescaling. Each hotspot's `liveNumberStyle.fontSize` is now used verbatim so text matches the editor's stored value.
 
+## Update — 2026-06-07 (orientation + viewport fix)
+
+a. **Canvas matches the background image.** The renderer no longer forces every snapshot to a hard-coded 1080x1920 portrait. It decodes the template background image, reads its natural width/height, and sizes the SVG canvas to that aspect ratio (longest side capped at 1920). A landscape template now produces a landscape snapshot.
+b. **Bounds beat zoom for the map viewport.** `savedBounds` is now the primary source of truth for the static map; `savedZoom` is only a fallback when no bounds are saved. `savedZoom` is captured at the editor's preview pixel width, so reusing it verbatim at a different canvas size widened or narrowed the view incorrectly. Re-deriving zoom from bounds keeps the same geographic region inside the map hotspot regardless of canvas size.
+c. **Fractional fit zoom.** `zoomForBounds` no longer floors to an integer; it returns the exact fractional zoom that fits the bounds, which combines with the tile-stitching scale factor to produce a pixel-faithful match to the editor.
+d. **Solid-background fallback.** When a template uses a `solid:#hex` background (no image to measure), the canvas defaults to 1920x1080 landscape, matching the default deck orientation.
+e. **Verified end-to-end.** Re-rendered template `91cc3329…` for the `framing` campaign; the resulting SVG is 1404x783 landscape with a US-centered map and correctly sized header labels, matching the live editor.
+

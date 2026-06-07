@@ -107,7 +107,7 @@ function zoomForBounds(
   const lngFraction = ((lngDiff < 0 ? lngDiff + 360 : lngDiff)) / 360;
   const latZoom = Math.log2(pixelHeight / WORLD / latFraction);
   const lngZoom = Math.log2(pixelWidth / WORLD / lngFraction);
-  return Math.max(0, Math.min(18, Math.floor(Math.min(latZoom, lngZoom))));
+  return Math.max(0, Math.min(18, Math.min(latZoom, lngZoom)));
 }
 
 async function fetchCartoTile(
@@ -180,11 +180,12 @@ async function renderStaticMap(
       .not("latitude", "is", null).not("longitude", "is", null);
     if (!events || events.length === 0) return null;
 
-    // ---- Resolve viewport (savedCenter+savedZoom is source of truth) ----
-    // Honor fractional zoom: Leaflet supports it, so the editor often saves
-    // values like 4.5 or 6.3. We fetch tiles at an integer `tileZ` near `zoom`
-    // and scale them by `2^(zoom - tileZ)` before compositing, so the snapshot
-    // matches the editor exactly instead of snapping to the nearest integer.
+    // ---- Resolve viewport ----
+    // savedBounds is the source of truth because it is pixel-size-independent.
+    // savedZoom is captured at the editor's preview pixel width, so reusing it
+    // verbatim at a different canvas size (the snapshot's) produces a wider or
+    // narrower view than the editor showed. We re-derive zoom from bounds so
+    // the same geographic region fills the hotspot regardless of canvas size.
     const imgW = Math.max(64, Math.round(pixelWidth));
     const imgH = Math.max(64, Math.round(pixelHeight));
 
@@ -197,14 +198,6 @@ async function renderStaticMap(
     let zoom: number; // fractional allowed
 
     if (
-      savedCenter && typeof savedCenter.lat === "number" &&
-      typeof savedCenter.lng === "number" && typeof savedZoom === "number"
-    ) {
-      centerLat = savedCenter.lat;
-      centerLng = savedCenter.lng;
-      zoom = Math.max(0, Math.min(18, savedZoom));
-      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom (${centerLat}, ${centerLng}) z=${zoom}`);
-    } else if (
       savedBounds && typeof savedBounds.north === "number" &&
       typeof savedBounds.south === "number" &&
       typeof savedBounds.east === "number" && typeof savedBounds.west === "number"
@@ -215,7 +208,15 @@ async function renderStaticMap(
         savedBounds.north, savedBounds.south, savedBounds.east, savedBounds.west,
         imgW, imgH,
       );
-      console.log(`[render-stats-snapshot] Using savedBounds, computed z=${zoom}`);
+      console.log(`[render-stats-snapshot] Using savedBounds, computed z=${zoom} for ${imgW}x${imgH}`);
+    } else if (
+      savedCenter && typeof savedCenter.lat === "number" &&
+      typeof savedCenter.lng === "number" && typeof savedZoom === "number"
+    ) {
+      centerLat = savedCenter.lat;
+      centerLng = savedCenter.lng;
+      zoom = Math.max(0, Math.min(18, savedZoom));
+      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom (${centerLat}, ${centerLng}) z=${zoom}`);
     } else {
       centerLat = 39.5; centerLng = -98.35; zoom = 4;
       console.log(`[render-stats-snapshot] No saved viewport, defaulting to US`);
@@ -700,6 +701,10 @@ Deno.serve(async (req) => {
     const imageUrl = template.image_url as string;
     let bgDataUrl: string | null = null;
     let bgSolidColor: string | null = null;
+    // Default canvas if we can't derive aspect ratio from a background image.
+    // Landscape 16:9 matches the default deck orientation.
+    let width = 1920;
+    let height = 1080;
 
     if (imageUrl.startsWith("solid:")) {
       bgSolidColor = imageUrl.replace("solid:", "");
@@ -712,6 +717,28 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      // Derive canvas dimensions from the background image's natural aspect
+      // ratio. The editor renders hotspots over the image with object-contain,
+      // so the snapshot canvas must match the image shape — otherwise a
+      // landscape template renders into a portrait canvas (or vice versa) and
+      // hotspot percentages land in the wrong places and at the wrong sizes.
+      try {
+        const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
+        // Strip data URL prefix to get raw bytes
+        const b64 = bgDataUrl.split(",")[1] || "";
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const img = await Image.decode(bytes);
+        // Cap the longest side at 1920 to keep snapshots reasonable.
+        const MAX_SIDE = 1920;
+        const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+        width = Math.round(img.width * scale);
+        height = Math.round(img.height * scale);
+        console.log(`[render-stats-snapshot] Canvas derived from image: ${img.width}x${img.height} -> ${width}x${height}`);
+      } catch (e) {
+        console.warn(`[render-stats-snapshot] Could not derive canvas from image, falling back to ${width}x${height}:`, e);
+      }
     }
 
     // Parse hotspots from template
@@ -720,11 +747,7 @@ Deno.serve(async (req) => {
     const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
     const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots`);
-
-    // Target dimensions (portrait for mobile)
-    const width = 1080;
-    const height = 1920;
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots at ${width}x${height}`);
 
     // Render static map images for map hotspots
     const mapSvgElements: string[] = [];
