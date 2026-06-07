@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { captureSlideThumbnail } from "@/lib/snapshotCapture";
+import { fetchDeckShape, persistDeckShape, probeFirstDims, ratioToOrientation, ratiosMatch, loadImageDims } from "@/lib/deckAspectRatio";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DialogDescription, DialogFooter } from "@/components/ui/dialog";
