@@ -862,8 +862,8 @@ export const FullResolutionHotspotEditor = ({
                     })}
                   </div>
                   <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Data</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["live_number", "chart", "map"] as IconCategory[]).map((category) => {
+                  <div className="grid grid-cols-4 gap-2">
+                    {(["live_number", "chart", "map", "image"] as IconCategory[]).map((category) => {
                       const CategoryIcon = categoryIcons[category];
                       return (
                         <Button
