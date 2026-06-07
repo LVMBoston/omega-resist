@@ -1,112 +1,54 @@
 ## Goal
 
-Create a single, friendly **Explainer** that someone with no technical background — a curious visitor or a prospective volunteer — can read end-to-end in 5–8 minutes and walk away understanding what Samizdat/Omega is, what it feels like to use, and why it can be trusted.
+Stop guessing the deck's orientation at render time. Record the aspect ratio of the deck's first slide once, store it on the deck, and use that as the single source of truth in the editor and viewer. Block uploads/imports of slides whose aspect ratio doesn't match.
 
-Primary surface: a new public page at **`/explainer`**. Secondary surface: a **downloadable PDF** generated from the same content so people can email or print it.
+## 1. Database
 
-**No screenshots.** All visuals are drawn (inline SVG diagrams, simple illustrations) so the doc never goes stale when the UI changes and we don't expose any real campaign content.
+a. Add two columns to `public.decks`:
+   - `aspect_ratio numeric` — the canonical W/H ratio (e.g. 1.7778 for 16:9, 0.5625 for 9:16). Nullable until first slide is added.
+   - `orientation text` — derived convenience field, `'landscape' | 'portrait' | 'square'`. Nullable.
+b. No backfill in SQL — backfill happens lazily on first load (see §3a) so we use the real first-slide image rather than guessing from data we don't have at migration time.
+c. No new RLS/grants needed; existing `decks` policies already cover update by admin/manager.
 
-## Audience & voice
+## 2. Shared helper
 
-1. **Reader profile**
-   a. Curious public, prospective volunteers, friends-of-organizers.
-   b. Assumes no knowledge of campaigns, analytics, or what a QR code does beyond "you point your phone at it."
-   c. Reading level: general newspaper. Short paragraphs. One idea per section.
+a. New `src/lib/deckAspectRatio.ts` exporting:
+   - `loadImageDims(url: string): Promise<{w:number;h:number} | null>` (extracted from current DeckEditor logic).
+   - `ratioToOrientation(r: number): 'landscape' | 'portrait' | 'square'` (square only when |r−1| < 0.02).
+   - `ratiosMatch(a: number, b: number, tolerancePct = 2): boolean` — relative tolerance so a 1404×783 (1.793) image still matches a 16:9 (1.778) deck.
 
-2. **Voice rules**
-   a. Plain language. Concrete nouns. ("A card with a QR code", not "an L00 placement.")
-   b. Show with a story or a diagram, then explain.
-   c. No jargon in the body (no L00 / L01 / EoA / utm_content). "Trust chain" is defined once, then used sparingly.
-   d. Honest about what's tracked and what isn't — privacy is a feature, not a footnote.
+## 3. DeckEditor changes (`src/pages/DeckEditor.tsx`)
 
-## What the Explainer covers (4 sections, mid-depth)
+a. Replace the existing orientation `useEffect` (lines 316-360) with logic that:
+   - Reads `deck.aspect_ratio` / `deck.orientation` from the loaded deck row.
+   - If present → use them, skip image probing entirely.
+   - If absent → probe the first slide in display order (its `content_url`, then `thumbnail_url`, then template `image_url`), persist `aspect_ratio` and `orientation` back to `decks` via Supabase update, and use them.
+b. Pass the canonical aspect ratio (not just orientation) down to the preview container so the frame matches the deck exactly (e.g. 1.793 letterboxed cleanly instead of forced 16:9).
+c. On any slide add/upload/Vimeo-poster/import flow, before accepting the file:
+   - Probe the new image's dimensions.
+   - If the deck already has `aspect_ratio` and the new image's ratio doesn't match within tolerance, reject with a toast: "This slide is {WxH, ratio} but the deck is {WxH, ratio}. All slides in a deck must share the same aspect ratio." Do not upload, do not stage.
+   - If the deck has no `aspect_ratio` yet and this is the first slide, accept and persist the ratio after upload succeeds.
+d. Solid-color and video slides are exempt from the check (no intrinsic ratio); they inherit the deck ratio.
 
-3. **Why this exists — the samizdat story** (~1 page)
-   a. The historical practice in 2–3 short paragraphs: hand-copied texts, trust, no broadcast.
-   b. The one thing old samizdat could never do: *know whether the message was actually spreading*.
-   c. One-line bridge: "Omega keeps the trust, adds the feedback — without surveilling anyone."
+## 4. DeckViewer changes (`src/pages/DeckViewer.tsx`)
 
-4. **What it feels like to receive one** (the viewer journey, ~1.5 pages)
-   a. Written as a short narrative: someone hands you a card, you scan, a deck opens on your phone, you tap something interesting, you watch a video, you decide to share it with one friend.
-   b. A simple inline SVG illustration alongside the narrative: card → phone → two more phones.
-   c. End with "what you didn't have to do": no signup, no app, no account, no email.
+a. Read `deck.aspect_ratio` / `deck.orientation` from the deck row instead of probing the first image.
+b. If the column is null (older decks not yet opened in editor), fall back to current probe logic and write the result back to `decks`.
+c. Apply `.deck-slide-container` (portrait) or `.deck-slide-landscape` (landscape) based on the stored orientation. Square decks use `.deck-slide-landscape` as the closest fit.
 
-5. **How an organizer uses it** (the producer side, ~1.5 pages)
-   a. A clean campaign-anatomy diagram (Campaign → Chapters → Actions → Cards & links), drawn as inline SVG. Style-aligned with the existing `CampaignStructureDiagram`.
-   b. Three short illustrated steps: *build a deck → mint cards and links for each chapter → watch the map fill in*.
-   c. What organizers see, in plain words: a live map, a story of how the message traveled, simple counts. No metric jargon.
+## 5. Behavior summary
 
-6. **Privacy & trust** (~1 page)
-   a. What we never collect: names, emails, phone numbers from viewers.
-   b. What we do see: rough location (city/region), how a share traveled hop to hop, what channel it used (text, email, QR).
-   c. The IP-purge promise in one sentence: "We use your IP only to figure out your approximate zip code, then we delete it."
-   d. Why this is deliberate — tie back to the samizdat trust principle.
+- First time any deck is opened (editor or viewer) after this lands, its aspect ratio is recorded permanently.
+- From then on, orientation is deterministic and instant — no race between image loads, no chance of the wrong slide winning.
+- Editors cannot accidentally introduce mismatched slides; the upload is blocked with a clear message.
+- Existing "thomas-luttig" deck will be recorded as ratio 1.793 / landscape on its next load, and slide #2's data preview will use that 1.793 frame instead of falling through to portrait.
 
-7. **Glossary & "tell me more"**
-   a. 6–8 plain-English definitions a curious reader might hear from an organizer (deck, chapter, action, trust chain, share, hotspot, feedback form).
-   b. Quiet links to the existing public landing page and the deeper `SAMIZDAT_NARRATIVE.md`.
+## 6. Out of scope
 
-## Format & delivery
+- No tool to "convert" or letterbox existing mismatched slides — none exist in current decks per the rule above.
+- No UI to manually override a deck's aspect ratio (can be added later if needed).
+- No changes to `viral_slide_configs`, hotspot rendering, or map controls.
 
-8. **Web page at `/explainer`**
-   a. New public route in `src/App.tsx`, no auth, no sidebar — mirrors `/landing`.
-   b. Long-scroll layout, sticky table of contents on desktop, in-page anchor menu on mobile.
-   c. Uses existing semantic tokens (dark theme, current typography). Rhythm: short text → diagram → short text.
-   d. "Download PDF" button in the header.
-   e. Section-numbered headings (1, 2, 3…) so the printed PDF reads cleanly.
+## 7. Decision log
 
-9. **PDF version**
-   a. Generated from the same source content (a single markdown file under `src/content/explainer/`) so we never maintain two copies.
-   b. Approach: client-side render-to-PDF (e.g. `html2pdf`/`react-to-print`) of the explainer page. Avoids a new edge function. Fall back to a small `generate-explainer-pdf` edge function (same pattern as `generate-campaign-pdf`) only if quality is poor.
-   c. Letter-size, sans-serif, generous margins, page numbers, "Last updated" date in the footer.
-
-## Visual assets
-
-10. **Reuse**
-    a. Samizdat narrative copy from `docs/SAMIZDAT_NARRATIVE.md`, rewritten in plain voice (the current version is aimed at partners).
-    b. Visual styling from `FeatureGrid` and `CampaignStructureDiagram` in `src/components/landing/`.
-
-11. **New (all inline SVG, no photography, no UI screenshots)**
-    a. A "how a message travels" illustration: a card → an arrow to a phone → arrows to two more phones.
-    b. A campaign-anatomy diagram (Campaign → Chapters → Actions → Cards & links).
-    c. A small "privacy" diagram showing what enters the system (a scan) and what gets discarded (the IP).
-
-## What this Explainer is NOT
-
-12. **Out of scope (intentionally)**
-    a. Setup instructions, admin walkthroughs, how-to-build-a-campaign tutorials — those belong in organizer docs.
-    b. Technical architecture, database, security internals, token hierarchy details.
-    c. Roadmap or feature backlog.
-    d. Anything that would alarm a casual reader (threat models, edge cases, error states).
-
-## Build sequence
-
-13. **Phase 1 — Content first (no code)**
-    a. Draft the four sections plus glossary as plain markdown in `src/content/explainer/explainer.md`.
-    b. Review pass focused only on jargon, sentence length, and "would my aunt understand this?"
-
-14. **Phase 2 — Page**
-    a. Create `src/pages/Explainer.tsx`, render the markdown, wire `/explainer` route.
-    b. Build the three inline-SVG diagrams as small React components.
-    c. Add anchor TOC + section numbering.
-
-15. **Phase 3 — PDF**
-    a. Add "Download PDF" using client-side rendering of the same page.
-    b. QA the PDF page-by-page (no clipped diagrams, no orphan headings, footer present).
-
-16. **Phase 4 — Polish & link from existing surfaces**
-    a. Quiet link from the public landing page footer: "New here? Read the Explainer."
-    b. Link from the in-app sidebar footer so organizers can share it with friends.
-
-## Decision doc
-
-17. **Filing**
-    a. This is a new plan. On approval, archive as `docs/decisions/explainer/2026-06-06_public-explainer_feature-doc_lovable.md` with `Status: Approved & Implemented` once Phase 4 is done.
-
-## Open questions worth answering before Phase 1
-
-18. **Naming**: Call it "Explainer", "What is Samizdat?", "About", or something else? Affects the URL and the headline.
-
-19. **Tone for section 3 (samizdat history)**: *historical/sober* or *warm/storytelling*? Same facts, very different feel.
-
-20. **Do we want a "for organizers" call-to-action** at the very end (e.g. "Interested in running a campaign? Get in touch") or keep the doc purely informational?
+This is a new plan: `docs/decisions/deck-editor/2026-06-07_deck-aspect-ratio-persistence_feature-doc_lovable.md`. It supersedes the runtime-only approach documented in `docs/decisions/deck-editor/2026-04-02_landscape-orientation-detection_feature-doc_lovable.md`; that file will get an `## Update — 2026-06-07` section pointing at the new doc.
