@@ -98,9 +98,10 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "live-number", label: "Live Number", type: "live_number", icon: Hash as any, width: 20, height: 8 },
   { id: "chart-stacked", label: "Chart", type: "chart", icon: BarChart3 as any, width: 40, height: 30 },
   { id: "map-activity", label: "Map", type: "map", icon: MapIcon as any, width: 50, height: 40 },
+  { id: "image-paste", label: "Image", type: "image", icon: ImageIcon as any, width: 30, height: 30 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map" | "image";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
