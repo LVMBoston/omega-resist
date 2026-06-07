@@ -1003,6 +1003,7 @@ export const FullResolutionHotspotEditor = ({
                       setSelectedCategory(null);
                       setSelectedIconPreset(null);
                       setIsPlacing(false);
+                      setImagePasteMode(false);
                     }} 
                     variant="ghost" 
                     size="sm"
