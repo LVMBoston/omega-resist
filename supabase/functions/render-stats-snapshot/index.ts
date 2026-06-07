@@ -739,6 +739,11 @@ Deno.serve(async (req) => {
       // Vertical center
       const textY = y + hsHeight / 2 + scaledFontSize * 0.35;
 
+      // Clip text to hotspot bounding box (matches client-side overflow:hidden)
+      const clipId = `clip-hs-${Math.random().toString(36).slice(2, 8)}`;
+      svgParts += `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs>`;
+      svgParts += `<g clip-path="url(#${clipId})">`;
+
       // Text - support line breaks (\n) with multiple tspan elements
       const lines = metricValue.split("\n");
       if (lines.length <= 1) {
@@ -753,6 +758,8 @@ Deno.serve(async (req) => {
         });
         svgParts += `</text>`;
       }
+
+      svgParts += `</g>`;
 
       return svgParts;
     }).join("\n    ");
