@@ -468,6 +468,118 @@ export const FullResolutionHotspotEditor = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDragging, hotspots]);
 
+  // === Image paste flow ===
+  // While in paste mode, listen for clipboard paste, upload the image,
+  // read its natural dimensions, and insert an image hotspot centered on the
+  // canvas at a default 30% width — height locked to natural aspect ratio
+  // translated into percent space via the canvas aspect ratio.
+  const insertImageHotspot = useCallback(
+    async (publicUrl: string, naturalWidth: number, naturalHeight: number) => {
+      const imgEl = imageRef.current;
+      const canvasW = imgEl?.getBoundingClientRect().width || 1;
+      const canvasH = imgEl?.getBoundingClientRect().height || 1;
+      const canvasRatio = canvasW / canvasH;
+      const imageRatio = naturalWidth / Math.max(1, naturalHeight); // pixel w/h
+
+      // Default 30% width; height in % so the rendered box matches natural ratio.
+      let widthPct = 30;
+      let heightPct = (widthPct * canvasRatio) / imageRatio;
+
+      // If too tall for the canvas, shrink width until height fits within 80%.
+      if (heightPct > 80) {
+        heightPct = 80;
+        widthPct = (heightPct * imageRatio) / canvasRatio;
+      }
+
+      const newHotspot: Hotspot = {
+        id: `hotspot-${Date.now()}`,
+        iconId: "image-paste",
+        type: "image",
+        label: "",
+        x: Math.max(0, 50 - widthPct / 2),
+        y: Math.max(0, 50 - heightPct / 2),
+        width: widthPct,
+        height: heightPct,
+        labelPosition: "bottom",
+        imageSrc: publicUrl,
+        imageNaturalRatio: imageRatio,
+      };
+      const updatedHotspots = [...hotspots, newHotspot];
+      setHotspots(updatedHotspots);
+      onChange?.(updatedHotspots);
+      setSelectedHotspot(newHotspot.id);
+      setImagePasteMode(false);
+      setIsPlacing(false);
+      setSelectedCategory(null);
+      setSelectedIconPreset(null);
+      toast({ title: "Image added", description: "Drag to reposition; W/H sliders preserve aspect ratio." });
+    },
+    [hotspots, onChange, toast]
+  );
+
+  const uploadPastedImage = useCallback(
+    async (file: File): Promise<{ url: string; w: number; h: number } | null> => {
+      try {
+        setImageUploading(true);
+        // Read natural dimensions client-side first.
+        const objectUrl = URL.createObjectURL(file);
+        const { w, h } = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+          const probe = new Image();
+          probe.onload = () => {
+            resolve({ w: probe.naturalWidth, h: probe.naturalHeight });
+            URL.revokeObjectURL(objectUrl);
+          };
+          probe.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("Could not decode pasted image"));
+          };
+          probe.src = objectUrl;
+        });
+
+        const ext = (file.type.split("/")[1] || "png").replace("jpeg", "jpg");
+        const path = `hotspot-images/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("slides")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (uploadErr) throw uploadErr;
+        const { data: pub } = supabase.storage.from("slides").getPublicUrl(path);
+        return { url: pub.publicUrl, w, h };
+      } catch (err: any) {
+        console.error("[image-hotspot] upload failed", err);
+        toast({
+          title: "Image upload failed",
+          description: err?.message || "Could not upload pasted image.",
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setImageUploading(false);
+      }
+    },
+    [toast]
+  );
+
+  useEffect(() => {
+    if (!imagePasteMode) return;
+    const handler = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          e.preventDefault();
+          const result = await uploadPastedImage(file);
+          if (result) await insertImageHotspot(result.url, result.w, result.h);
+          return;
+        }
+      }
+    };
+    window.addEventListener("paste", handler);
+    return () => window.removeEventListener("paste", handler);
+  }, [imagePasteMode, uploadPastedImage, insertImageHotspot]);
+
+
   // Render a data hotspot on the canvas
   const renderDataHotspot = (hotspot: Hotspot) => {
     const isActive = selectedHotspot === hotspot.id;
