@@ -144,6 +144,10 @@ export const FullResolutionHotspotEditor = ({
   const [mapControls, setMapControls] = useState<Record<string, MapControls>>({});
   const [mapZooms, setMapZooms] = useState<Record<string, number>>({});
 
+  // Image-paste mode state
+  const [imagePasteMode, setImagePasteMode] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+
   // Check if any data hotspots exist
   const hasDataHotspots = useMemo(() => hotspots.some(h => DATA_HOTSPOT_TYPES.has(h.type)), [hotspots]);
 
