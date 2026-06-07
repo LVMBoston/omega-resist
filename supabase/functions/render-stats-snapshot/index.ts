@@ -796,8 +796,8 @@ Deno.serve(async (req) => {
         const parsed = parseInt(String(style.fontSize), 10);
         if (!isNaN(parsed)) fontSize = parsed;
       }
-      // Scale for 1080px canvas (designed for ~960px)
-      const scaledFontSize = Math.round(fontSize * (width / 960));
+      // Honor the editor's fontSize literally — no silent rescaling.
+      const scaledFontSize = fontSize;
 
       const fontWeight = style.fontWeight === "bold" || style.fontWeight === "700" ? "bold" : "normal";
       const color = style.color || "#000000";
