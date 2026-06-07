@@ -357,24 +357,34 @@ export default function DeckViewer() {
     logViewEvent();
   }, [activeToken, searchParams, loading, eventLogged, instanceTokenProcessed]);
 
-  // Auto-detect deck orientation from first image slide.
-  // Vimeo / interactive slides have no measurable image — assume landscape (Vimeo is 16:9 by default).
+  // Resolve deck orientation from the persisted aspect ratio on the deck row.
+  // Falls back to probing the first image only when the deck has no recorded shape yet,
+  // then writes the result back so every subsequent load is deterministic.
   useEffect(() => {
-    if (slides.length === 0) return;
-    const firstImage = slides.find(s => s.type === 'image');
-    if (!firstImage) {
-      // No image to measure — default video/interactive decks to landscape
-      setOrientation('landscape');
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      if (img.naturalWidth > img.naturalHeight) {
-        setOrientation('landscape');
+    if (!slug || slides.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const stored = await fetchDeckShape(slug);
+      if (cancelled) return;
+      if (stored) {
+        setOrientation(stored.orientation === 'portrait' ? 'portrait' : 'landscape');
+        return;
       }
-    };
-    img.src = firstImage.content_url;
-  }, [slides]);
+      const firstImage = slides.find(s => s.type === 'image');
+      if (!firstImage) {
+        // No image to measure — default video/interactive decks to landscape (Vimeo is 16:9)
+        setOrientation('landscape');
+        return;
+      }
+      const dims = await loadImageDims(firstImage.content_url);
+      if (cancelled || !dims) return;
+      const ratio = dims.w / dims.h;
+      const orientation = ratioToOrientation(ratio);
+      setOrientation(orientation === 'portrait' ? 'portrait' : 'landscape');
+      persistDeckShape(slug, { aspectRatio: ratio, orientation }).catch(() => {});
+    })();
+    return () => { cancelled = true; };
+  }, [slug, slides]);
 
   // Auto-fullscreen on first user gesture (browsers require a user-initiated event).
   // Desktop/Android: use Fullscreen API. iOS Safari: fall back to CSS pseudo-fullscreen.
