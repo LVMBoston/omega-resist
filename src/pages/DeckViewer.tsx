@@ -43,6 +43,7 @@ export default function DeckViewer() {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [deckAspectRatio, setDeckAspectRatio] = useState<number | null>(null);
 
   // Track active slide index via Embla API for Vimeo pause-on-swipe
   useEffect(() => {
@@ -367,12 +368,14 @@ export default function DeckViewer() {
       const stored = await fetchDeckShape(slug);
       if (cancelled) return;
       if (stored) {
+        setDeckAspectRatio(stored.aspectRatio);
         setOrientation(stored.orientation === 'portrait' ? 'portrait' : 'landscape');
         return;
       }
       const firstImage = slides.find(s => s.type === 'image');
       if (!firstImage) {
         // No image to measure — default video/interactive decks to landscape (Vimeo is 16:9)
+        setDeckAspectRatio(16 / 9);
         setOrientation('landscape');
         return;
       }
@@ -380,11 +383,21 @@ export default function DeckViewer() {
       if (cancelled || !dims) return;
       const ratio = dims.w / dims.h;
       const orientation = ratioToOrientation(ratio);
+      setDeckAspectRatio(ratio);
       setOrientation(orientation === 'portrait' ? 'portrait' : 'landscape');
       persistDeckShape(slug, { aspectRatio: ratio, orientation }).catch(() => {});
     })();
     return () => { cancelled = true; };
   }, [slug, slides]);
+
+  const slideFrameStyle = deckAspectRatio
+    ? {
+        width: `min(100vw, calc(100dvh * ${deckAspectRatio}))`,
+        height: `min(100dvh, calc(100vw / ${deckAspectRatio}))`,
+        maxWidth: '100%',
+        maxHeight: '100dvh',
+      }
+    : undefined;
 
   // Auto-fullscreen on first user gesture (browsers require a user-initiated event).
   // Desktop/Android: use Fullscreen API. iOS Safari: fall back to CSS pseudo-fullscreen.
@@ -444,7 +457,7 @@ export default function DeckViewer() {
   // Re-measure Embla when orientation is detected async (after first image loads)
   useEffect(() => {
     carouselApi?.reInit();
-  }, [carouselApi, orientation]);
+  }, [carouselApi, orientation, deckAspectRatio]);
 
 
   // Keyboard navigation
@@ -649,7 +662,10 @@ export default function DeckViewer() {
                   <Card className="h-full w-full border-0 rounded-none bg-black">
                     <CardContent className="p-0 h-full w-full flex items-center justify-center">
                       {/* Portrait slide (9:16): fill height on landscape viewports (letterbox), fill width on portrait viewports */}
-                      <div className={`relative bg-black flex items-center justify-center ${orientation === 'landscape' ? 'deck-slide-landscape' : 'deck-slide-container'}`}>
+                      <div
+                        className={`relative bg-black flex items-center justify-center ${deckAspectRatio ? '' : (orientation === 'landscape' ? 'deck-slide-landscape' : 'deck-slide-container')}`}
+                        style={slideFrameStyle}
+                      >
                         {slide.type === "spread-word" ? (
                           <ViralSlide 
                             key={`viral-${slide.id}`}
