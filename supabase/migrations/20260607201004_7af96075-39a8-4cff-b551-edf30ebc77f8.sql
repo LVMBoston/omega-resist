@@ -1,0 +1,1 @@
+ALTER TABLE public.slide_items ADD COLUMN image_url_override text;

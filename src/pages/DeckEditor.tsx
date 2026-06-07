@@ -42,6 +42,7 @@ interface Slide {
   skip_deploy: boolean;
   media_url?: string;
   thumbnail_url?: string; // Captured thumbnail showing hotspot overlays
+  image_url_override?: string | null; // Per-slide background override (wins over template default)
 }
 
 interface Template {
@@ -315,6 +316,15 @@ export default function DeckEditor() {
   const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
   const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape' | 'square'>('portrait');
   const [deckAspectRatio, setDeckAspectRatio] = useState<number | null>(null);
+  // "Save as Template" dialog state
+  const [saveAsTemplateDialogOpen, setSaveAsTemplateDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateSlugInput, setNewTemplateSlugInput] = useState('');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  // Background override state
+  const [overrideUploading, setOverrideUploading] = useState(false);
+  const overrideFileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve deck shape (aspect ratio + orientation) ONCE from the deck row.
   // If the row has no recorded value yet, probe the first available image and
@@ -1035,6 +1045,159 @@ export default function DeckEditor() {
       toast.error('Failed to add interactive slide');
     }
   };
+
+  // === Save current slide as a reusable Template ===
+  const openSaveAsTemplateDialog = () => {
+    if (!selectedSlide) return;
+    // Suggest a name from the slide's filename
+    let suggested = `Slide ${selectedSlide.position}`;
+    try {
+      const url = new URL(selectedSlide.content_url);
+      const filename = url.pathname.split('/').pop() || '';
+      const cleaned = decodeURIComponent(filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')).trim();
+      if (cleaned) suggested = cleaned;
+    } catch {}
+    setNewTemplateName(suggested);
+    setNewTemplateSlugInput(
+      suggested.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+        || `slide-${Date.now()}`
+    );
+    setNewTemplateDescription('');
+    setSaveAsTemplateDialogOpen(true);
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!selectedSlide || !slug) return;
+    const name = newTemplateName.trim();
+    const templateSlug = newTemplateSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    if (!name || !templateSlug) {
+      toast.error('Name and slug are required');
+      return;
+    }
+    if (!selectedSlide.content_url) {
+      toast.error('Slide has no background image to promote');
+      return;
+    }
+    if (selectedSlide.id.startsWith('temp-')) {
+      toast.error('Save the deck first, then promote this slide to a template');
+      return;
+    }
+
+    setCreatingTemplate(true);
+    try {
+      // Check slug uniqueness
+      const { data: existing } = await supabase
+        .from('viral_slide_configs')
+        .select('id')
+        .eq('slug', templateSlug)
+        .maybeSingle();
+      if (existing) {
+        toast.error('A template with this slug already exists');
+        setCreatingTemplate(false);
+        return;
+      }
+
+      const stagedHotspots = (hotspotChanges[selectedSlide.id] ?? []) as any[];
+      const { templateType } = classifyHotspots(stagedHotspots);
+
+      const { data: created, error: insertError } = await supabase
+        .from('viral_slide_configs')
+        .insert({
+          name,
+          slug: templateSlug,
+          description: newTemplateDescription.trim() || null,
+          image_url: selectedSlide.content_url,
+          hotspots: stagedHotspots as any,
+          template_type: templateType,
+          slide_id: null, // shared template, not a per-slide config
+        })
+        .select('id, name, slug, image_url, hotspots, is_default, template_type, thumbnail_url')
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Link this slide to the new template
+      const { error: updateError } = await supabase
+        .from('slide_items')
+        .update({ template_id: created.id, type: 'spread-word' })
+        .eq('id', selectedSlide.id);
+      if (updateError) throw updateError;
+
+      // Update local state
+      setTemplates(prev => [...prev, created as any]);
+      setSlides(prev => prev.map(s =>
+        s.id === selectedSlide.id
+          ? { ...s, template_id: created.id, type: 'spread-word' }
+          : s
+      ));
+      setSelectedSlide({ ...selectedSlide, template_id: created.id, type: 'spread-word' });
+      setSaveAsTemplateDialogOpen(false);
+      toast.success(`Saved "${name}" to the Template Repository`);
+    } catch (err: any) {
+      console.error('Save as Template failed:', err);
+      toast.error(err?.message || 'Failed to save template');
+    } finally {
+      setCreatingTemplate(false);
+    }
+  };
+
+  // === Per-slide background override ===
+  const handleUploadBackgroundOverride = async (file: File) => {
+    if (!selectedSlide || !slug) return;
+    if (selectedSlide.id.startsWith('temp-')) {
+      toast.error('Save the deck first, then override this slide\'s background');
+      return;
+    }
+    setOverrideUploading(true);
+    try {
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'jpg';
+      const fileName = `${slug}/override-${selectedSlide.id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('slides')
+        .upload(fileName, file, { contentType: file.type, upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('slides').getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('slide_items')
+        .update({ image_url_override: publicUrl })
+        .eq('id', selectedSlide.id);
+      if (updateError) throw updateError;
+
+      setSlides(prev => prev.map(s =>
+        s.id === selectedSlide.id ? { ...s, image_url_override: publicUrl } : s
+      ));
+      setSelectedSlide({ ...selectedSlide, image_url_override: publicUrl });
+      toast.success('Background override saved');
+    } catch (err: any) {
+      console.error('Background override upload failed:', err);
+      toast.error(err?.message || 'Failed to upload background override');
+    } finally {
+      setOverrideUploading(false);
+      if (overrideFileInputRef.current) overrideFileInputRef.current.value = '';
+    }
+  };
+
+  const handleResetBackgroundOverride = async () => {
+    if (!selectedSlide) return;
+    if (!selectedSlide.image_url_override) return;
+    try {
+      const { error } = await supabase
+        .from('slide_items')
+        .update({ image_url_override: null })
+        .eq('id', selectedSlide.id);
+      if (error) throw error;
+      setSlides(prev => prev.map(s =>
+        s.id === selectedSlide.id ? { ...s, image_url_override: null } : s
+      ));
+      setSelectedSlide({ ...selectedSlide, image_url_override: null });
+      toast.success('Background reset to template default');
+    } catch (err: any) {
+      console.error('Reset override failed:', err);
+      toast.error(err?.message || 'Failed to reset background');
+    }
+  };
+
 
   const openSaveAsDialog = () => {
     setNewDeckSlug(`${slug}-copy`);
@@ -1823,7 +1986,10 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
                     {(() => {
-                      const contentUrl = selectedSlide.content_url;
+                      // Per-slide background override takes precedence over both
+                      // the slide's own content_url and the linked template's image.
+                      const overrideUrl = selectedSlide.image_url_override || undefined;
+                      const contentUrl = overrideUrl || selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
                         return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', ''), ...(aspectStyle || {}) }} />;
                       }
@@ -1968,6 +2134,99 @@ Add Slide(s)
                       </Button>
                     </div>
                   )}
+
+                  {/* Save as Template — only for plain image slides not yet linked to a template */}
+                  {!selectedSlide.template_id
+                    && selectedSlide.type !== 'vimeo'
+                    && selectedSlide.type !== 'video'
+                    && selectedSlide.type !== 'spread-word'
+                    && !selectedSlide.id.startsWith('temp-')
+                    && !selectedSlide.content_url?.startsWith('solid:') && (
+                    <div className="pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={openSaveAsTemplateDialog}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Save as Template…
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Promote this slide into the Template Repository so other decks can reuse it.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Background — per-slide override for template-linked slides */}
+                  {selectedSlide.template_id && !selectedSlide.id.startsWith('temp-') && (() => {
+                    const linkedTemplate = templates.find(t => t.id === selectedSlide.template_id);
+                    const templateType = linkedTemplate?.template_type;
+                    const isSnapshotType = templateType === 'stats_page' || templateType === 'hybrid';
+                    const hasOverride = !!selectedSlide.image_url_override;
+                    return (
+                      <div className="pt-3 border-t space-y-2">
+                        <div className="text-muted-foreground font-medium">Background</div>
+                        <p className="text-xs text-muted-foreground">
+                          Hotspots come from the template. Background is specific to this slide.
+                        </p>
+                        {hasOverride && (
+                          <div className="rounded border p-2 bg-muted/30">
+                            <div className="text-xs text-muted-foreground mb-1">Current override:</div>
+                            <img
+                              src={selectedSlide.image_url_override!}
+                              alt="Background override"
+                              className="w-full max-h-32 object-contain rounded"
+                            />
+                          </div>
+                        )}
+                        <input
+                          ref={overrideFileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadBackgroundOverride(f);
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={overrideUploading || isSnapshotType}
+                          title={isSnapshotType
+                            ? "Background override isn't available yet for slides with live metrics — the pre-rendered snapshot would still show the template's default background."
+                            : undefined}
+                          onClick={() => overrideFileInputRef.current?.click()}
+                        >
+                          {overrideUploading ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4 mr-2" />
+                          )}
+                          {hasOverride ? 'Replace override' : 'Upload override'}
+                        </Button>
+                        {hasOverride && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            disabled={overrideUploading}
+                            onClick={handleResetBackgroundOverride}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Reset to template default
+                          </Button>
+                        )}
+                        {isSnapshotType && (
+                          <p className="text-xs text-muted-foreground">
+                            Live-metrics templates don't support per-slide background overrides yet.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
@@ -2056,7 +2315,7 @@ Add Slide(s)
               <DialogTitle>Edit Interactive Hotspots</DialogTitle>
             </DialogHeader>
             <FullResolutionHotspotEditor
-              imageUrl={hotspotEditorSlide.content_url}
+              imageUrl={hotspotEditorSlide.image_url_override || hotspotEditorSlide.content_url}
               initialHotspots={initialHotspots}
               onChange={(hotspots) => {
                 if (selectedSlide?.id === hotspotEditorSlide.id) {
@@ -2222,6 +2481,71 @@ Add Slide(s)
                 </>
               ) : (
                 'Duplicate Deck'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save as Template Dialog */}
+      <Dialog open={saveAsTemplateDialogOpen} onOpenChange={(open) => { if (!creatingTemplate) setSaveAsTemplateDialogOpen(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Slide as Template</DialogTitle>
+            <DialogDescription>
+              This adds the slide's current background (and any hotspots) to the Template Repository, and links this slide to the new template so future template edits also update this slide.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-template-name">Name</Label>
+              <Input
+                id="new-template-name"
+                value={newTemplateName}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setNewTemplateName(v);
+                  // Keep slug in sync until the user has manually edited it
+                  setNewTemplateSlugInput(prev => {
+                    const auto = v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+                    return auto;
+                  });
+                }}
+                placeholder="e.g. Thomas Luttig Intro"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-template-slug">Slug</Label>
+              <Input
+                id="new-template-slug"
+                value={newTemplateSlugInput}
+                onChange={(e) => setNewTemplateSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                placeholder="thomas-luttig-intro"
+              />
+              <p className="text-xs text-muted-foreground">Lowercase, alphanumeric and hyphens only. Must be unique.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-template-desc">Description (optional)</Label>
+              <Input
+                id="new-template-desc"
+                value={newTemplateDescription}
+                onChange={(e) => setNewTemplateDescription(e.target.value)}
+                placeholder="Where and how this template is meant to be used"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveAsTemplateDialogOpen(false)} disabled={creatingTemplate}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAsTemplate} disabled={creatingTemplate || !newTemplateName.trim() || !newTemplateSlugInput.trim()}>
+              {creatingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Save Template'
               )}
             </Button>
           </DialogFooter>

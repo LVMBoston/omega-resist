@@ -60,7 +60,7 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
       // First get the slide_items to find the template_id
       const { data: slideData, error: slideError } = await supabase
         .from("slide_items")
-        .select("template_id, type, deck_slug")
+        .select("template_id, type, deck_slug, image_url_override")
         .eq("id", slideId)
         .maybeSingle();
 
@@ -217,7 +217,8 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
         }
         
         setConfig({
-          image_url: templateData.image_url,
+          // Per-slide background override wins over the template's default image.
+          image_url: (slideData as any).image_url_override || templateData.image_url,
           hotspots: mappedHotspots,
           template_type: templateType,
           config: templateData.config || {},
