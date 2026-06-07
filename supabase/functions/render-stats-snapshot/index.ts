@@ -706,11 +706,9 @@ Deno.serve(async (req) => {
         const bytes = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         const img = await Image.decode(bytes);
-        // Cap the longest side at 1920 to keep snapshots reasonable.
-        const MAX_SIDE = 1920;
-        const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
-        width = Math.round(img.width * scale);
-        height = Math.round(img.height * scale);
+        const derived = deriveCanvasFromImage(img.width, img.height);
+        width = derived.width;
+        height = derived.height;
         console.log(`[render-stats-snapshot] Canvas derived from image: ${img.width}x${img.height} -> ${width}x${height}`);
       } catch (e) {
         console.warn(`[render-stats-snapshot] Could not derive canvas from image, falling back to ${width}x${height}:`, e);
