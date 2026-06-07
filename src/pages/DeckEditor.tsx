@@ -66,12 +66,14 @@ const SlidePreviewImage = ({
   fallbackUrl,
   altText,
   onDelete,
+  aspectClass = 'aspect-[9/16]',
 }: {
   contentUrl: string;
   templateImageUrl?: string;
   fallbackUrl?: string;
   altText: string;
   onDelete: () => void;
+  aspectClass?: string;
 }) => {
   const [failed, setFailed] = useState(false);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
