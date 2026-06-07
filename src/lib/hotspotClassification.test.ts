@@ -30,6 +30,13 @@ describe("classifyHotspots", () => {
     });
   });
 
+  it("image hotspot counts as data -> stats_page", () => {
+    expect(classifyHotspots([{ type: "image" }])).toEqual({
+      slideType: "spread-word",
+      templateType: "stats_page",
+    });
+  });
+
   it("ignores unknown hotspot types when classifying", () => {
     // Unknown types are neither action nor data, so it falls through to
     // the action-only branch (interactive_share).

@@ -9,7 +9,7 @@ export const ACTION_HOTSPOT_TYPES = new Set([
 ]);
 
 export const DATA_HOTSPOT_TYPES = new Set([
-  'live_number', 'chart', 'map'
+  'live_number', 'chart', 'map', 'image'
 ]);
 
 export interface ClassificationResult {

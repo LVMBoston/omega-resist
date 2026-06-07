@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Card, CardContent } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock } from "lucide-react";
+import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock, Image as ImageIcon } from "lucide-react";
 import { fetchOEmbed, type OEmbedResult } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } fr
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
 import { MapCalibrationControls } from "@/components/MapCalibrationControls";
+import { ImageCalibrationControls } from "@/components/ImageCalibrationControls";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
@@ -35,7 +36,7 @@ import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   icon?: React.ComponentType<{ className?: string; size?: number }>;
   imageUrl?: string;
   width: number;
@@ -45,7 +46,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   label: string;
   x: number;
   y: number;
@@ -65,6 +66,9 @@ interface Hotspot {
   liveNumberStyle?: Record<string, any>;
   chartConfig?: any;
   mapConfig?: any;
+  // Image hotspot fields
+  imageSrc?: string;
+  imageNaturalRatio?: number;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
@@ -94,9 +98,10 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "live-number", label: "Live Number", type: "live_number", icon: Hash as any, width: 20, height: 8 },
   { id: "chart-stacked", label: "Chart", type: "chart", icon: BarChart3 as any, width: 40, height: 30 },
   { id: "map-activity", label: "Map", type: "map", icon: MapIcon as any, width: 50, height: 40 },
+  { id: "image-paste", label: "Image", type: "image", icon: ImageIcon as any, width: 30, height: 30 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map" | "image";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -138,6 +143,10 @@ export const FullResolutionHotspotEditor = ({
   const [mapBounds, setMapBounds] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
   const [mapControls, setMapControls] = useState<Record<string, MapControls>>({});
   const [mapZooms, setMapZooms] = useState<Record<string, number>>({});
+
+  // Image-paste mode state
+  const [imagePasteMode, setImagePasteMode] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Check if any data hotspots exist
   const hasDataHotspots = useMemo(() => hotspots.some(h => DATA_HOTSPOT_TYPES.has(h.type)), [hotspots]);
@@ -241,6 +250,7 @@ export const FullResolutionHotspotEditor = ({
     live_number: null,
     chart: null,
     map: null,
+    image: null,
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
@@ -253,6 +263,7 @@ export const FullResolutionHotspotEditor = ({
     live_number: Hash,
     chart: BarChart3,
     map: MapIcon,
+    image: ImageIcon,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
@@ -265,6 +276,7 @@ export const FullResolutionHotspotEditor = ({
     live_number: "Number",
     chart: "Chart",
     map: "Map",
+    image: "Image",
   };
 
   const isDataType = (type: string) => DATA_HOTSPOT_TYPES.has(type);
@@ -273,7 +285,7 @@ export const FullResolutionHotspotEditor = ({
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     // Check if a hotspot of this type already exists (allow multiple for some types)
-    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map'];
+    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map', 'image'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
@@ -455,6 +467,118 @@ export const FullResolutionHotspotEditor = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDragging, hotspots]);
+
+  // === Image paste flow ===
+  // While in paste mode, listen for clipboard paste, upload the image,
+  // read its natural dimensions, and insert an image hotspot centered on the
+  // canvas at a default 30% width — height locked to natural aspect ratio
+  // translated into percent space via the canvas aspect ratio.
+  const insertImageHotspot = useCallback(
+    async (publicUrl: string, naturalWidth: number, naturalHeight: number) => {
+      const imgEl = imageRef.current;
+      const canvasW = imgEl?.getBoundingClientRect().width || 1;
+      const canvasH = imgEl?.getBoundingClientRect().height || 1;
+      const canvasRatio = canvasW / canvasH;
+      const imageRatio = naturalWidth / Math.max(1, naturalHeight); // pixel w/h
+
+      // Default 30% width; height in % so the rendered box matches natural ratio.
+      let widthPct = 30;
+      let heightPct = (widthPct * canvasRatio) / imageRatio;
+
+      // If too tall for the canvas, shrink width until height fits within 80%.
+      if (heightPct > 80) {
+        heightPct = 80;
+        widthPct = (heightPct * imageRatio) / canvasRatio;
+      }
+
+      const newHotspot: Hotspot = {
+        id: `hotspot-${Date.now()}`,
+        iconId: "image-paste",
+        type: "image",
+        label: "",
+        x: Math.max(0, 50 - widthPct / 2),
+        y: Math.max(0, 50 - heightPct / 2),
+        width: widthPct,
+        height: heightPct,
+        labelPosition: "bottom",
+        imageSrc: publicUrl,
+        imageNaturalRatio: imageRatio,
+      };
+      const updatedHotspots = [...hotspots, newHotspot];
+      setHotspots(updatedHotspots);
+      onChange?.(updatedHotspots);
+      setSelectedHotspot(newHotspot.id);
+      setImagePasteMode(false);
+      setIsPlacing(false);
+      setSelectedCategory(null);
+      setSelectedIconPreset(null);
+      toast({ title: "Image added", description: "Drag to reposition; W/H sliders preserve aspect ratio." });
+    },
+    [hotspots, onChange, toast]
+  );
+
+  const uploadPastedImage = useCallback(
+    async (file: File): Promise<{ url: string; w: number; h: number } | null> => {
+      try {
+        setImageUploading(true);
+        // Read natural dimensions client-side first.
+        const objectUrl = URL.createObjectURL(file);
+        const { w, h } = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+          const probe = new Image();
+          probe.onload = () => {
+            resolve({ w: probe.naturalWidth, h: probe.naturalHeight });
+            URL.revokeObjectURL(objectUrl);
+          };
+          probe.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("Could not decode pasted image"));
+          };
+          probe.src = objectUrl;
+        });
+
+        const ext = (file.type.split("/")[1] || "png").replace("jpeg", "jpg");
+        const path = `hotspot-images/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("slides")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (uploadErr) throw uploadErr;
+        const { data: pub } = supabase.storage.from("slides").getPublicUrl(path);
+        return { url: pub.publicUrl, w, h };
+      } catch (err: any) {
+        console.error("[image-hotspot] upload failed", err);
+        toast({
+          title: "Image upload failed",
+          description: err?.message || "Could not upload pasted image.",
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setImageUploading(false);
+      }
+    },
+    [toast]
+  );
+
+  useEffect(() => {
+    if (!imagePasteMode) return;
+    const handler = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          e.preventDefault();
+          const result = await uploadPastedImage(file);
+          if (result) await insertImageHotspot(result.url, result.w, result.h);
+          return;
+        }
+      }
+    };
+    window.addEventListener("paste", handler);
+    return () => window.removeEventListener("paste", handler);
+  }, [imagePasteMode, uploadPastedImage, insertImageHotspot]);
+
 
   // Render a data hotspot on the canvas
   const renderDataHotspot = (hotspot: Hotspot) => {
@@ -665,6 +789,47 @@ export const FullResolutionHotspotEditor = ({
       );
     }
 
+    if (hotspot.type === "image") {
+      return (
+        <div
+          key={hotspot.id}
+          className={`absolute select-none transition-shadow cursor-move ${
+            isActive ? "ring-2 ring-emerald-500 ring-offset-2" : ""
+          } ${dragging ? "z-50 shadow-2xl" : "z-10"}`}
+          style={{
+            left: `${hotspot.x}%`,
+            top: `${hotspot.y}%`,
+            width: `${hotspot.width}%`,
+            height: `${hotspot.height}%`,
+          }}
+          onMouseDown={(e) => handleMouseDown(e, hotspot)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isDragging) setSelectedHotspot(hotspot.id);
+          }}
+        >
+          {hotspot.imageSrc ? (
+            <img
+              src={hotspot.imageSrc}
+              alt={hotspot.label || "Image hotspot"}
+              className="w-full h-full object-contain pointer-events-none"
+              draggable={false}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-muted/50 text-emerald-600 border-2 border-dashed border-emerald-500/50 rounded">
+              <ImageIcon className="w-8 h-8" />
+            </div>
+          )}
+          {/* Index badge */}
+          <div className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+            isActive ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+          }`}>
+            {hotspots.indexOf(hotspot) + 1}
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -711,6 +876,26 @@ export const FullResolutionHotspotEditor = ({
             onZoomIn={mapControls[selectedHotspotData.id]?.zoomIn}
             onZoomOut={mapControls[selectedHotspotData.id]?.zoomOut}
             currentZoom={mapZooms[selectedHotspotData.id]}
+          />
+        </div>
+      );
+    }
+
+    if (selectedHotspotData.type === "image") {
+      const rect = imageRef.current?.getBoundingClientRect();
+      const canvasAspectRatio = rect && rect.height > 0 ? rect.width / rect.height : 16 / 9;
+      return (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm text-emerald-600">Image Controls</h4>
+          <ImageCalibrationControls
+            hotspot={selectedHotspotData as unknown as ViralHotspot}
+            onUpdate={(updates) => updateHotspot(selectedHotspotData.id, updates as Partial<Hotspot>)}
+            canvasAspectRatio={canvasAspectRatio}
+            onReplaceImage={() => {
+              setSelectedCategory("image");
+              setImagePasteMode(true);
+              toast({ title: "Paste replacement image", description: "Press ⌘V / Ctrl+V to paste a new image." });
+            }}
           />
         </div>
       );
@@ -818,6 +1003,7 @@ export const FullResolutionHotspotEditor = ({
                       setSelectedCategory(null);
                       setSelectedIconPreset(null);
                       setIsPlacing(false);
+                      setImagePasteMode(false);
                     }} 
                     variant="ghost" 
                     size="sm"
@@ -854,13 +1040,19 @@ export const FullResolutionHotspotEditor = ({
                     })}
                   </div>
                   <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Data</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["live_number", "chart", "map"] as IconCategory[]).map((category) => {
+                  <div className="grid grid-cols-4 gap-2">
+                    {(["live_number", "chart", "map", "image"] as IconCategory[]).map((category) => {
                       const CategoryIcon = categoryIcons[category];
                       return (
                         <Button
                           key={category}
-                          onClick={() => setSelectedCategory(category)}
+                          onClick={() => {
+                            setSelectedCategory(category);
+                            if (category === "image") {
+                              setImagePasteMode(true);
+                              setIsPlacing(false);
+                            }
+                          }}
                           variant="outline"
                           className="flex flex-col items-center gap-1.5 h-auto py-3 px-2 border-dashed"
                         >
@@ -870,6 +1062,25 @@ export const FullResolutionHotspotEditor = ({
                       );
                     })}
                   </div>
+                </div>
+              ) : selectedCategory === "image" ? (
+                // Image: paste-from-clipboard flow (no icon variants)
+                <div className="rounded-lg border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-2">
+                  {imageUploading ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-emerald-700">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading image…
+                    </div>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-8 h-8 mx-auto text-emerald-600" />
+                      <div className="text-sm font-medium">Paste an image to place it</div>
+                      <div className="text-xs text-muted-foreground">
+                        Copy an image to your clipboard, then press <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">⌘V</kbd> /{" "}
+                        <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">Ctrl+V</kbd>. Aspect ratio is locked to the image.
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 // Step 2: Icon variant selection

@@ -1,90 +1,72 @@
-# Promote Slide → Reusable Template (with swappable background)
+## Plan: Image Data Hotspot
 
-**Status:** Proposed
-**Date:** 2026-06-07
+A new **Image** data category alongside Live Number, Chart, and Map. Editors paste an image from their clipboard onto the slide; the hotspot locks to the image's natural aspect ratio and can be repositioned and resized (resizing one side auto-adjusts the other). The image renders both in the live viewer and in static snapshots.
 
-## 1. What the user gets
+### 1. New hotspot type `image`
 
-a. A new **"Save as Template"** button on the selected slide's properties panel in DeckEditor. It turns the current PNG (and any hotspots) into a shared entry in the Template Repository.
-b. The current slide is automatically re-linked to the new template, so future template edits also update this slide.
-c. **Background swap in two places:**
-   - In the Template Repository editor — changes the default background for every slide using the template.
-   - On the individual slide in DeckEditor — overrides only this slide's background while keeping the template's hotspots and layout.
+a. Add `'image'` to `HotspotActionType` in `src/types/viralTemplates.ts` and to the inline union in `FullResolutionHotspotEditor.tsx`.
+b. Extend `Hotspot` with two optional fields:
+   - `imageSrc?: string` — public URL of the uploaded image.
+   - `imageNaturalRatio?: number` — width / height, used to lock resizing.
+c. Add `'image'` to `DATA_HOTSPOT_TYPES` in `src/lib/hotspotClassification.ts` so classification, overlap-skipping, and the existing "data" UI grouping pick it up automatically. Update `hotspotClassification.test.ts`.
 
-## 2. UI changes
+### 2. Editor: paste-to-add flow
 
-### 2a. DeckEditor — properties panel (right sidebar)
-- New button **"Save as Template…"** shown when the selected slide has no `template_id` yet. Opens a small dialog asking for **Name**, **Slug** (auto-suggested from name), and optional **Description**.
-- New section **"Background"** shown when the slide *is* linked to a template:
-  - Thumbnail of the currently rendered background (override if set, else template default).
-  - **Upload override** button — uploads a new image and stores it as a per-slide override.
-  - **Reset to template default** button — clears the override.
-  - Small caption: *"Hotspots come from the template. Background is specific to this slide."*
-  - **Guardrail:** when the linked template's `template_type` is `stats_page` or `hybrid`, disable the upload button and show tooltip: *"Background override isn't available yet for slides with live metrics — the pre-rendered snapshot would still show the template's default background."* This keeps the feature safe for the common (display-only / interactive_share) case and defers the snapshot-pipeline work until it's actually needed.
+a. Add a new Data category tile **Image** (icon: `ImageIcon` from lucide) next to Live Number / Chart / Map in `FullResolutionHotspotEditor.tsx`.
+b. Selecting the tile does **not** drop a placeholder. Instead it puts the editor into "awaiting paste" mode and shows a single-line hint: "Paste an image (⌘V / Ctrl+V) to place it."
+c. A window-level `paste` listener (active only while the Image tile is selected) reads the first `image/*` item from `e.clipboardData.items`, uploads it (see §3), then inserts a new hotspot with:
+   - `type: 'image'`, `iconId: 'image-paste'`
+   - `imageSrc`, `imageNaturalRatio` from the decoded blob
+   - Default size: 30% width, height computed from the ratio so the box matches the image
+   - Centered on the canvas (`x = 50 - width/2`, `y = 50 - height/2`)
+d. After insertion, the category auto-resets to neutral so a second paste does not duplicate.
 
-### 2b. Template Repository editor
-- No new UI. The existing "Replace Template Image, preserve hotspots" control already swaps the template's default background.
+### 3. Upload to existing `slides` bucket
 
-## 3. Data model
+a. Reuse the public `slides` bucket (already used for slide backgrounds) under path prefix `hotspot-images/{deckSlug or 'standalone'}/{uuid}.{ext}`.
+b. Upload via `supabase.storage.from('slides').upload(...)` then `getPublicUrl(...)`; store the public URL in `imageSrc`. No DB schema change — the hotspot record lives inside the slide's existing `hotspots` JSON.
+c. Decode the blob with `URL.createObjectURL` + `new Image()` to read `naturalWidth` / `naturalHeight` and compute `imageNaturalRatio` before placement.
+d. Surface upload errors via the existing `useToast`.
 
-a. **New column on `slide_items`:** `image_url_override text null`.
-   - When null → renderer falls back to `viral_slide_configs.image_url` (template default).
-   - When set → renderer uses this value (supports normal URLs and the existing `solid:#hex` convention).
-b. No schema change to `viral_slide_configs`. Promoted slides become regular shared templates (`slide_id IS NULL`).
-c. `slide_items.template_id` is repointed to the newly-created template row at promotion time, and `slide_items.type` becomes `spread-word`.
+### 4. Canvas rendering in the editor
 
-## 4. Rendering rule
+a. In the hotspot render switch inside `FullResolutionHotspotEditor.tsx`, add a branch for `type === 'image'`: render an `<img>` filling the hotspot box with `object-fit: contain` and `pointer-events: none` (drag/resize handled by the standard wrapper).
+b. Because the box itself is sized from the locked ratio, `contain` and `fill` look identical — using `contain` is safer against rounding drift.
 
-In `ViralSlideV2` (and any path that resolves a slide's background), the effective image is:
+### 5. Locked aspect-ratio resize
 
-```text
-effectiveImageUrl =
-  slide_items.image_url_override        // per-slide override (new)
-  ?? viral_slide_configs.image_url      // template default
-```
+a. New `ImageCalibrationControls` component (mirrors `ChartCalibrationControls` layout — X, Y, W, H sliders, plus a read-only "Aspect ratio" pill and a **Replace image** button that re-arms paste mode).
+b. When W changes, H is recomputed as `W / ratio * canvasRatio` (in percent space, accounting for canvas aspect so the on-screen box stays visually proportional). Same for H → W. This matches how `MapCalibrationControls` constrains its bounds today.
+c. Drag-corner resize in the draggable wrapper: intercept the resize handler for `image` hotspots and project the user's drag onto the locked-ratio diagonal so freehand resizing also preserves the ratio.
 
-Override is presentation-only — hotspots, template_type, snapshots and analytics are unchanged.
+### 6. Live viewer rendering
 
-## 5. Promotion flow (Save as Template)
+a. `HybridSlide` / `StatsPageSlide` (whichever currently iterates over data hotspots) gain an `'image'` branch that renders an `<img src={h.imageSrc}>` at the hotspot's percent coords with `object-fit: contain`.
+b. No metric subscription, no live data — it's a static image, just like a background but scoped to a hotspot box.
 
-1. User clicks **Save as Template…** on a plain image slide.
-2. Dialog collects name + slug + description.
-3. Insert new row into `viral_slide_configs` with:
-   - `image_url` = the slide's current image
-   - `hotspots` = current staged hotspots (empty array OK)
-   - `template_type` = classified from hotspots (`display_only` when none, else existing `classifyHotspots()` rules)
-   - `slide_id` = NULL (shared template, not per-slide config)
-4. Update `slide_items` for the current slide: `template_id = <new id>`, `type = 'spread-word'`, leave `image_url_override` null.
-5. Toast confirms and links to the Template Repository entry.
+### 7. Snapshot rendering (`supabase/functions/render-stats-snapshot/index.ts`)
 
-## 6. Background-override flow (per slide)
+a. Add an `image` case to the per-hotspot renderer that emits an `<image>` SVG element with `href={imageSrc}`, `preserveAspectRatio="xMidYMid meet"`, and the percent-derived x/y/width/height.
+b. Because images are baked into the SVG via a URL reference (the same pattern used for the slide background), no additional fetching is required.
 
-1. User uploads a new image from the slide's **Background** section.
-2. Image is uploaded to the existing `slides` storage bucket.
-3. `slide_items.image_url_override` is set to the new URL.
-4. Preview re-renders immediately using the override.
-5. **Reset** clears `image_url_override` back to null and the template default takes over again.
+### 8. Classification & validation
 
-## 7. Files that change
+a. Auto-classification already promotes a slide to `hybrid` / `stats_page` whenever a `DATA_HOTSPOT_TYPES` member is present — adding `image` to that set is sufficient.
+b. Overlap detection already skips data hotspots (see `2026-04-07_skip-data-hotspot-overlap`), so an image hotspot freely overlaps anything.
 
-a. **Migration** — add `image_url_override text` column to `slide_items` (nullable, no default, no RLS change).
-b. `src/pages/DeckEditor.tsx` — properties panel: add "Save as Template…" button + dialog; add Background section for template-linked slides; wire upload + reset; apply guardrail for stats_page/hybrid.
-c. `src/components/ViralSlideV2.tsx` — when resolving `image_url`, prefer `slide_items.image_url_override` if present (fetched alongside the existing slide query).
-d. Renderers (`DisplayOnlySlide`, `HybridSlide`, `StatsPageSlide`, `InteractiveShareSlide`) — no changes; they receive `imageUrl` as a prop from `ViralSlideV2`.
+### 9. Decision doc
 
-## 8. Things that do **not** change
+a. Save the plan to `docs/decisions/hotspots/2026-06-07_image-data-hotspot_feature-doc_lovable.md` with `Status: Approved & Implemented` and today's date. This is a **new** plan (not an update to an existing one).
 
-- `viral_slide_configs` schema
-- Template Repository UI and `DataTemplateEditor`
-- Hotspot editor, analytics, token minting, snapshot pipeline
-- Auto-demote / auto-promote logic in `handleSaveChanges`
-- `render-stats-snapshot` and `refresh-all-snapshots` edge functions
+### Out of scope
 
-## 9. Deferred (revisit if/when needed)
+- Drag-and-drop file picker (paste only, per your direction).
+- Image cropping / filters.
+- Multi-image galleries.
+- Cropping the upload bucket — files persist with the slide.
 
-Per-slide background overrides on **stats_page / hybrid** slides require teaching the snapshot pipeline about overrides (per-slide snapshot files, per-slide staleness columns). Today's plan blocks this case at the UI to keep scope small. When a real need shows up, we open a follow-up plan to extend snapshots.
+### Technical notes
 
-## 10. Decision log
-
-This is a **new** plan. After implementation it will be saved as:
-`docs/decisions/decks/2026-06-07_promote-slide-to-template-and-background-swap_feature-doc_lovable.md`
+- Reusing the public `slides` bucket avoids a migration and storage policy work; access is already public-read.
+- The natural-ratio lock is purely client-side math; the saved hotspot stays in the same `hotspots` JSON column the editor already writes, so no schema change is needed.
+- Snapshot renderer reads `imageSrc` as a normal URL — SVG `<image href>` handles cross-origin public URLs without extra CORS work.

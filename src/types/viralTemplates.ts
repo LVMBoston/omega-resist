@@ -137,6 +137,9 @@ export interface Hotspot {
   emailLinksSubject?: string;      // Subject line for mailto
   emailLinksShowLabels?: boolean;  // Show label text on overlay at runtime
   isTransparent?: boolean;         // Hide icon — transparent tap target over slide image
+  // Image hotspot properties
+  imageSrc?: string;               // Public URL of pasted/uploaded image
+  imageNaturalRatio?: number;      // naturalWidth / naturalHeight — used to lock aspect ratio
 }
 
 // Live number style configuration
@@ -195,4 +198,5 @@ export type HotspotActionType =
   | 'email_links'      // Bundle sibling external_link URLs into mailto
   | 'video'            // Unified video player (auto-detects YouTube or Vimeo from URL)
   | 'vimeo'            // @deprecated — use 'video'; kept for backward compat with existing data
-  | 'youtube';         // @deprecated — use 'video'; kept for backward compat with existing data
+  | 'youtube'          // @deprecated — use 'video'; kept for backward compat with existing data
+  | 'image';           // Pasted image overlay (locked to natural aspect ratio)

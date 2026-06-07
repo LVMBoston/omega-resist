@@ -719,9 +719,10 @@ Deno.serve(async (req) => {
     const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
     // Exclude action hotspots from SVG baking — they remain as client-side interactive overlays
     const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
-    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && !ACTION_TYPES.has(h.type));
+    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && h.type !== "image" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots at ${width}x${height}`);
+    const imageHotspots = hotspots.filter((h: any) => h.type === "image");
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots at ${width}x${height}`);
 
     // Render static map images for map hotspots
     const mapSvgElements: string[] = [];
@@ -744,8 +745,21 @@ Deno.serve(async (req) => {
           `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
           `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`
         );
-      }
     }
+
+    // Image hotspots — bake pasted images into the SVG.
+    const imageSvgElements: string[] = [];
+    for (const imgHotspot of imageHotspots) {
+      if (!imgHotspot.imageSrc) continue;
+      const ix = (imgHotspot.x / 100) * width;
+      const iy = (imgHotspot.y / 100) * height;
+      const iw = ((imgHotspot.width || 30) / 100) * width;
+      const ih = ((imgHotspot.height || 30) / 100) * height;
+      imageSvgElements.push(
+        `<image href="${escapeXml(imgHotspot.imageSrc)}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`
+      );
+    }
+
 
     // Helper: word-wrap a line to fit within maxChars
     function wordWrap(text: string, maxChars: number): string[] {
@@ -924,6 +938,7 @@ Deno.serve(async (req) => {
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   ${bgSolidColor ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${bgSolidColor}"/>` : `<image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`}
   ${mapSvgElements.join("\n  ")}
+  ${imageSvgElements.join("\n  ")}
   ${hotspotSvgElements}
 </svg>`;
 
