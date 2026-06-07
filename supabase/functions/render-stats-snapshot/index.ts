@@ -82,33 +82,10 @@ function escapeXml(str: string): string {
 }
 
 // ---------- Web Mercator helpers ----------
-const TILE_SIZE = 256;
-function lngToWorldX(lng: number, z: number): number {
-  return ((lng + 180) / 360) * TILE_SIZE * Math.pow(2, z);
-}
-function latToWorldY(lat: number, z: number): number {
-  const s = Math.sin((lat * Math.PI) / 180);
-  return (
-    (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) *
-    TILE_SIZE *
-    Math.pow(2, z)
-  );
-}
-
-// Approximate zoom that fits the bounding box into pixelWidth x pixelHeight.
-function zoomForBounds(
-  north: number, south: number, east: number, west: number,
-  pixelWidth: number, pixelHeight: number,
-): number {
-  const WORLD = TILE_SIZE;
-  const latRad = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-  const latFraction = (latRad(north) - latRad(south)) / (2 * Math.PI);
-  const lngDiff = east - west;
-  const lngFraction = ((lngDiff < 0 ? lngDiff + 360 : lngDiff)) / 360;
-  const latZoom = Math.log2(pixelHeight / WORLD / latFraction);
-  const lngZoom = Math.log2(pixelWidth / WORLD / lngFraction);
-  return Math.max(0, Math.min(18, Math.min(latZoom, lngZoom)));
-}
+// Pure geometry/canvas helpers live in sibling modules so they can be
+// unit-tested without the Supabase client. See geo.test.ts / canvas.test.ts.
+import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
+import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
@@ -703,8 +680,7 @@ Deno.serve(async (req) => {
     let bgSolidColor: string | null = null;
     // Default canvas if we can't derive aspect ratio from a background image.
     // Landscape 16:9 matches the default deck orientation.
-    let width = 1920;
-    let height = 1080;
+    let { width, height } = defaultSolidCanvas();
 
     if (imageUrl.startsWith("solid:")) {
       bgSolidColor = imageUrl.replace("solid:", "");
@@ -730,11 +706,9 @@ Deno.serve(async (req) => {
         const bytes = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         const img = await Image.decode(bytes);
-        // Cap the longest side at 1920 to keep snapshots reasonable.
-        const MAX_SIDE = 1920;
-        const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
-        width = Math.round(img.width * scale);
-        height = Math.round(img.height * scale);
+        const derived = deriveCanvasFromImage(img.width, img.height);
+        width = derived.width;
+        height = derived.height;
         console.log(`[render-stats-snapshot] Canvas derived from image: ${img.width}x${img.height} -> ${width}x${height}`);
       } catch (e) {
         console.warn(`[render-stats-snapshot] Could not derive canvas from image, falling back to ${width}x${height}:`, e);
