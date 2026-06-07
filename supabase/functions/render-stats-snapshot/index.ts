@@ -719,9 +719,10 @@ Deno.serve(async (req) => {
     const hotspots = Array.isArray(template.hotspots) ? template.hotspots : [];
     // Exclude action hotspots from SVG baking — they remain as client-side interactive overlays
     const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
-    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && !ACTION_TYPES.has(h.type));
+    const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && h.type !== "image" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots at ${width}x${height}`);
+    const imageHotspots = hotspots.filter((h: any) => h.type === "image");
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots at ${width}x${height}`);
 
     // Render static map images for map hotspots
     const mapSvgElements: string[] = [];
