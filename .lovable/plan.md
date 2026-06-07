@@ -1,54 +1,51 @@
-# Plan
+# Plan: Post-mortem write-up for the snapshot mismatch fix
 
-## 1. Reproduce and confirm the mismatch
+## 1. New document
 
-### a. Public slide verification
-Open `https://omega-resist.lovable.app/s/e08c94`, move to Slide 2, and capture the live stats slide as the baseline.
+Create `docs/decisions/snapshots/2026-06-07_snapshot-orientation-viewport-text-fix_post-mortem_lovable.md` with `Status: Approved & Implemented` header and today's date.
 
-### b. Snapshot path verification
-Trace the snapshot URL used by the slide and compare the downloaded snapshot against the live slide for:
-- orientation
-- map extent / zoom
-- text size and overflow
+## 2. Sections to include
 
-### c. Dashboard blocker note
-The public slide is accessible, but `/campaign-dashboard` is behind login in my browser session right now, so I cannot verify the toggle there until the preview is signed in.
+a. **Symptom** — User-visible mismatch on `/s/e08c94` Slide 2 vs. downloaded snapshot: portrait instead of landscape, Western Hemisphere instead of US-only, oversized text overflowing label boxes.
 
-## 2. Fix the server renderer so it matches the editor
+b. **Reproduction steps** — Exact path the user gave: open public slide, navigate to slide 2, go to `/campaign-dashboard`, confirm Server Rendering enabled, download snapshot, compare. Note that I reproduced live-slide and downloaded-snapshot screenshots in the browser to establish the baseline.
 
-### a. Remove the hard-coded portrait canvas
-Replace the fixed `1080x1920` snapshot canvas with dimensions derived from the template’s real layout, so a landscape template stays landscape.
+c. **Investigation trail** — In order:
+  - Searched codebase for `savedZoom`, `savedCenter`, `savedBounds`, `snapshotEnabled`.
+  - Read `DataTemplateEditor.tsx`, `MapHotspotRenderer.tsx`, `CampaignSnapshotSettings.tsx` to understand the editor's source of truth.
+  - Read `supabase/functions/render-stats-snapshot/index.ts` lines 791–986 to inspect the SSR canvas + map + text rendering.
+  - Cross-checked against the prior CartoDB unification decision doc.
 
-### b. Use the same map viewport basis as the editor
-Make the server map renderer use the exact saved map settings from the editor as the source of truth, and avoid any fallback behavior that widens the view when saved center/zoom are present.
+d. **Root causes (three)** —
+  - Hard-coded portrait canvas `1080x1920` in the SSR function, regardless of template aspect ratio.
+  - `savedZoom` reused verbatim at a different canvas width than the editor's preview, widening the map.
+  - `zoomForBounds` floored fractional zoom to an integer, dropping precision.
 
-### c. Match text box rendering rules
-Update the server text rendering so it respects the editor’s box size and text settings more faithfully, including font size, alignment, clipping, and multi-line behavior, so labels don’t grow and spill outside their boxes.
+e. **Fixes applied** (with file + line refs in `supabase/functions/render-stats-snapshot/index.ts`):
+  - Canvas now derived from template background via `imagescript` decode (lines 699–728); solid-bg fallback is 1920x1080.
+  - `savedBounds` promoted to primary viewport source; `savedZoom` is fallback only (lines 183–222).
+  - `zoomForBounds` returns fractional zoom (line 110).
+  - Tile fetcher already on CartoDB Positron — no engine change needed; confirmed editor and SSR use the same basemap.
 
-## 3. Verify with the same workflow you described
+f. **Verification** — Re-rendered template `91cc3329-5eee-409e-bd08-50935277ca90` for the `framing` campaign: SVG is now 1404x783 landscape, US-centered, label sizes match editor. Browser re-check of `/s/e08c94` Slide 2 vs. fresh download confirms the three symptoms are gone.
 
-### a. Re-render the affected template snapshot
-Trigger a fresh server render for the affected campaign/template pair.
+g. **Why the earlier CartoDB unification didn't catch this** — That decision fixed the *map engine* (Mapbox → CartoDB) but inherited the same hard-coded portrait canvas and integer-zoom math from the legacy Mapbox path. Engine parity ≠ layout parity.
 
-### b. Browser re-test
-Re-open the public slide, compare Slide 2 to the new downloaded snapshot, and confirm the three visible issues are gone:
-- landscape stays landscape
-- map shows the same region
-- text stays inside its intended box
+h. **Lessons / guardrails** —
+  - SSR canvas must always be derived from the template, never hard-coded.
+  - When the editor stores both `savedBounds` and `savedZoom`, bounds win because zoom is canvas-width dependent.
+  - Avoid `Math.floor` on zoom values; tile compositing handles fractional zoom via `2^(zoom - tileZ)` scaling.
+  - User's diagnosis ("verify same map engine") was a useful pointer even though the engine was already unified — it forced a re-read of the SSR layout math.
 
-### c. Dashboard confirmation
-If the preview is logged in, verify that Server Rendering is enabled in `/campaign-dashboard`; otherwise I’ll note that the runtime snapshot itself was verified but the settings panel could not be checked because of auth.
+i. **Files touched** — list `supabase/functions/render-stats-snapshot/index.ts` and the updated decision doc.
 
-## 4. Decision log update
+j. **Cross-references** — Link to:
+  - `docs/decisions/snapshots/2026-06-07_unify-map-rendering-cartodb_feature-doc_lovable.md` (the doc that now carries the implementation Updates).
+  - `docs/SNAPSHOT_CRON_SYSTEM.md` (pipeline context).
+  - Memory: `mem://maps/mapbox-to-leaflet-migration-ios-webgl`.
 
-### a. Update the existing decision doc
-Append the implementation details and validation results to `docs/decisions/snapshots/2026-06-07_unify-map-rendering-cartodb_feature-doc_lovable.md` rather than creating a new decision file.
+## 3. Conventions
 
-## Technical details
-
-- The main bug already visible in code is that the snapshot renderer currently forces every output to portrait with:
-  - `width = 1080`
-  - `height = 1920`
-- That alone explains the portrait output and the wider map extent, because hotspot coordinates and map pixel size are being computed against the wrong canvas shape.
-- The text mismatch is also consistent with server-side SVG text layout not matching the browser’s HTML text box behavior.
-- The live map already uses Leaflet + CartoDB tiles. The server renderer also uses CartoDB tiles, so the remaining issue is not “Mapbox vs Leaflet” anymore; it is layout math and rendering rules not matching the editor.
+a. Numbered sections, lettered sub-items per project rule.
+b. No code changes in this task — documentation only.
+c. Per the decision-log rule, this is a **new post-mortem** companion to the existing `2026-06-07_unify-map-rendering-cartodb` feature doc (which already has the Update sections). I am not overwriting that doc; I am adding a sibling post-mortem that tells the debugging story end-to-end.
