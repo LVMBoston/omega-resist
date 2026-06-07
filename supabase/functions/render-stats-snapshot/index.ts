@@ -180,11 +180,12 @@ async function renderStaticMap(
       .not("latitude", "is", null).not("longitude", "is", null);
     if (!events || events.length === 0) return null;
 
-    // ---- Resolve viewport (savedCenter+savedZoom is source of truth) ----
-    // Honor fractional zoom: Leaflet supports it, so the editor often saves
-    // values like 4.5 or 6.3. We fetch tiles at an integer `tileZ` near `zoom`
-    // and scale them by `2^(zoom - tileZ)` before compositing, so the snapshot
-    // matches the editor exactly instead of snapping to the nearest integer.
+    // ---- Resolve viewport ----
+    // savedBounds is the source of truth because it is pixel-size-independent.
+    // savedZoom is captured at the editor's preview pixel width, so reusing it
+    // verbatim at a different canvas size (the snapshot's) produces a wider or
+    // narrower view than the editor showed. We re-derive zoom from bounds so
+    // the same geographic region fills the hotspot regardless of canvas size.
     const imgW = Math.max(64, Math.round(pixelWidth));
     const imgH = Math.max(64, Math.round(pixelHeight));
 
@@ -197,14 +198,6 @@ async function renderStaticMap(
     let zoom: number; // fractional allowed
 
     if (
-      savedCenter && typeof savedCenter.lat === "number" &&
-      typeof savedCenter.lng === "number" && typeof savedZoom === "number"
-    ) {
-      centerLat = savedCenter.lat;
-      centerLng = savedCenter.lng;
-      zoom = Math.max(0, Math.min(18, savedZoom));
-      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom (${centerLat}, ${centerLng}) z=${zoom}`);
-    } else if (
       savedBounds && typeof savedBounds.north === "number" &&
       typeof savedBounds.south === "number" &&
       typeof savedBounds.east === "number" && typeof savedBounds.west === "number"
@@ -215,7 +208,15 @@ async function renderStaticMap(
         savedBounds.north, savedBounds.south, savedBounds.east, savedBounds.west,
         imgW, imgH,
       );
-      console.log(`[render-stats-snapshot] Using savedBounds, computed z=${zoom}`);
+      console.log(`[render-stats-snapshot] Using savedBounds, computed z=${zoom} for ${imgW}x${imgH}`);
+    } else if (
+      savedCenter && typeof savedCenter.lat === "number" &&
+      typeof savedCenter.lng === "number" && typeof savedZoom === "number"
+    ) {
+      centerLat = savedCenter.lat;
+      centerLng = savedCenter.lng;
+      zoom = Math.max(0, Math.min(18, savedZoom));
+      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom (${centerLat}, ${centerLng}) z=${zoom}`);
     } else {
       centerLat = 39.5; centerLng = -98.35; zoom = 4;
       console.log(`[render-stats-snapshot] No saved viewport, defaulting to US`);
