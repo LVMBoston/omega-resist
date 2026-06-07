@@ -74,6 +74,7 @@ export const HybridSlide = ({
   const liveNumberHotspots = dataHotspots.filter((h) => h.type === "live_number");
   const chartHotspots = dataHotspots.filter((h) => h.type === "chart");
   const mapHotspots = dataHotspots.filter((h) => h.type === "map");
+  const imageHotspots = dataHotspots.filter((h) => h.type === "image");
 
   // Campaign resolution
   const [campaignCode, setCampaignCode] = useState("");
