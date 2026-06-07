@@ -1046,6 +1046,159 @@ export default function DeckEditor() {
     }
   };
 
+  // === Save current slide as a reusable Template ===
+  const openSaveAsTemplateDialog = () => {
+    if (!selectedSlide) return;
+    // Suggest a name from the slide's filename
+    let suggested = `Slide ${selectedSlide.position}`;
+    try {
+      const url = new URL(selectedSlide.content_url);
+      const filename = url.pathname.split('/').pop() || '';
+      const cleaned = decodeURIComponent(filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')).trim();
+      if (cleaned) suggested = cleaned;
+    } catch {}
+    setNewTemplateName(suggested);
+    setNewTemplateSlugInput(
+      suggested.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
+        || `slide-${Date.now()}`
+    );
+    setNewTemplateDescription('');
+    setSaveAsTemplateDialogOpen(true);
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!selectedSlide || !slug) return;
+    const name = newTemplateName.trim();
+    const templateSlug = newTemplateSlugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    if (!name || !templateSlug) {
+      toast.error('Name and slug are required');
+      return;
+    }
+    if (!selectedSlide.content_url) {
+      toast.error('Slide has no background image to promote');
+      return;
+    }
+    if (selectedSlide.id.startsWith('temp-')) {
+      toast.error('Save the deck first, then promote this slide to a template');
+      return;
+    }
+
+    setCreatingTemplate(true);
+    try {
+      // Check slug uniqueness
+      const { data: existing } = await supabase
+        .from('viral_slide_configs')
+        .select('id')
+        .eq('slug', templateSlug)
+        .maybeSingle();
+      if (existing) {
+        toast.error('A template with this slug already exists');
+        setCreatingTemplate(false);
+        return;
+      }
+
+      const stagedHotspots = (hotspotChanges[selectedSlide.id] ?? []) as any[];
+      const { templateType } = classifyHotspots(stagedHotspots);
+
+      const { data: created, error: insertError } = await supabase
+        .from('viral_slide_configs')
+        .insert({
+          name,
+          slug: templateSlug,
+          description: newTemplateDescription.trim() || null,
+          image_url: selectedSlide.content_url,
+          hotspots: stagedHotspots as any,
+          template_type: templateType,
+          slide_id: null, // shared template, not a per-slide config
+        })
+        .select('id, name, slug, image_url, hotspots, is_default, template_type, thumbnail_url')
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Link this slide to the new template
+      const { error: updateError } = await supabase
+        .from('slide_items')
+        .update({ template_id: created.id, type: 'spread-word' })
+        .eq('id', selectedSlide.id);
+      if (updateError) throw updateError;
+
+      // Update local state
+      setTemplates(prev => [...prev, created as any]);
+      setSlides(prev => prev.map(s =>
+        s.id === selectedSlide.id
+          ? { ...s, template_id: created.id, type: 'spread-word' }
+          : s
+      ));
+      setSelectedSlide({ ...selectedSlide, template_id: created.id, type: 'spread-word' });
+      setSaveAsTemplateDialogOpen(false);
+      toast.success(`Saved "${name}" to the Template Repository`);
+    } catch (err: any) {
+      console.error('Save as Template failed:', err);
+      toast.error(err?.message || 'Failed to save template');
+    } finally {
+      setCreatingTemplate(false);
+    }
+  };
+
+  // === Per-slide background override ===
+  const handleUploadBackgroundOverride = async (file: File) => {
+    if (!selectedSlide || !slug) return;
+    if (selectedSlide.id.startsWith('temp-')) {
+      toast.error('Save the deck first, then override this slide\'s background');
+      return;
+    }
+    setOverrideUploading(true);
+    try {
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'jpg';
+      const fileName = `${slug}/override-${selectedSlide.id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('slides')
+        .upload(fileName, file, { contentType: file.type, upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('slides').getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('slide_items')
+        .update({ image_url_override: publicUrl })
+        .eq('id', selectedSlide.id);
+      if (updateError) throw updateError;
+
+      setSlides(prev => prev.map(s =>
+        s.id === selectedSlide.id ? { ...s, image_url_override: publicUrl } : s
+      ));
+      setSelectedSlide({ ...selectedSlide, image_url_override: publicUrl });
+      toast.success('Background override saved');
+    } catch (err: any) {
+      console.error('Background override upload failed:', err);
+      toast.error(err?.message || 'Failed to upload background override');
+    } finally {
+      setOverrideUploading(false);
+      if (overrideFileInputRef.current) overrideFileInputRef.current.value = '';
+    }
+  };
+
+  const handleResetBackgroundOverride = async () => {
+    if (!selectedSlide) return;
+    if (!selectedSlide.image_url_override) return;
+    try {
+      const { error } = await supabase
+        .from('slide_items')
+        .update({ image_url_override: null })
+        .eq('id', selectedSlide.id);
+      if (error) throw error;
+      setSlides(prev => prev.map(s =>
+        s.id === selectedSlide.id ? { ...s, image_url_override: null } : s
+      ));
+      setSelectedSlide({ ...selectedSlide, image_url_override: null });
+      toast.success('Background reset to template default');
+    } catch (err: any) {
+      console.error('Reset override failed:', err);
+      toast.error(err?.message || 'Failed to reset background');
+    }
+  };
+
+
   const openSaveAsDialog = () => {
     setNewDeckSlug(`${slug}-copy`);
     setSaveAsError('');
