@@ -281,7 +281,7 @@ export const FullResolutionHotspotEditor = ({
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     // Check if a hotspot of this type already exists (allow multiple for some types)
-    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map'];
+    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map', 'image'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
