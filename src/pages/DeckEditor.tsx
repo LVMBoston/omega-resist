@@ -612,40 +612,38 @@ export default function DeckEditor() {
       return { valid: false, error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 5MB limit` };
     }
 
-    // Dimension validation with aspect ratio tolerance
+    // Dimension validation: enforce ASPECT RATIO match against the deck's recorded shape.
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = async () => {
+        const imgRatio = img.width / img.height;
+
+        // If the deck already has a recorded aspect ratio, reject anything that doesn't match (±2%).
+        if (deckAspectRatio) {
+          if (!ratiosMatch(imgRatio, deckAspectRatio, 2)) {
+            const deckLabel = deckAspectRatio.toFixed(3);
+            const imgLabel = imgRatio.toFixed(3);
+            resolve({
+              valid: false,
+              error: `This slide is ${img.width}×${img.height} (ratio ${imgLabel}) but the deck is ratio ${deckLabel}. All slides in a deck must share the same aspect ratio.`,
+            });
+            return;
+          }
+        }
+
+        // Pixel-level resize against an existing reference (kept for backward compatibility).
         if (referenceDimensions) {
           const widthTolerance = referenceDimensions.width * 0.01;
           const heightTolerance = referenceDimensions.height * 0.01;
-          
           const widthInRange = Math.abs(img.width - referenceDimensions.width) <= widthTolerance;
           const heightInRange = Math.abs(img.height - referenceDimensions.height) <= heightTolerance;
-          
           if (widthInRange && heightInRange) {
             resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
             return;
           }
 
-          // TEMPORARILY DISABLED: Aspect ratio validation check
-          // Check aspect ratio tolerance (7%)
-          // const imageAspectRatio = img.width / img.height;
-          // const referenceAspectRatio = referenceDimensions.width / referenceDimensions.height;
-          // const aspectRatioDiff = Math.abs(imageAspectRatio - referenceAspectRatio) / referenceAspectRatio;
-          
-          // console.log('🔍 Aspect Ratio Validation:', {
-          //   imageAspectRatio: imageAspectRatio.toFixed(4),
-          //   referenceAspectRatio: referenceAspectRatio.toFixed(4),
-          //   difference: (aspectRatioDiff * 100).toFixed(2) + '%',
-          //   tolerance: '7%',
-          //   willPass: aspectRatioDiff <= 0.07
-          // });
-          
-          // Bypass aspect ratio check - resize automatically regardless of ratio
           // Skip resize for GIFs to preserve animation
           if (file.type === 'image/gif') {
-            console.log('🎬 Skipping resize for GIF to preserve animation');
             const animated = await isAnimatedGif(file);
             if (!animated) {
               console.warn('⚠️ Static GIF detected - consider using PNG for better compression');
@@ -655,15 +653,13 @@ export default function DeckEditor() {
           }
           try {
             const resizedFile = await resizeImage(file, referenceDimensions.width, referenceDimensions.height);
-            resolve({ 
-              valid: true, 
+            resolve({
+              valid: true,
               dimensions: { width: referenceDimensions.width, height: referenceDimensions.height },
-              resizedFile
+              resizedFile,
             });
           } catch (error) {
             console.error('Error resizing image:', error);
-            // Even if resize fails, allow the image through
-            console.warn('⚠️ Resize failed, using original image');
             resolve({ valid: true, dimensions: { width: img.width, height: img.height } });
           }
         } else {
