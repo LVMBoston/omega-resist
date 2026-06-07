@@ -18,6 +18,7 @@ import {
   Map,
   TestTube,
   HeartPulse,
+  ShieldCheck,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import {
