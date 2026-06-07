@@ -198,4 +198,5 @@ export type HotspotActionType =
   | 'email_links'      // Bundle sibling external_link URLs into mailto
   | 'video'            // Unified video player (auto-detects YouTube or Vimeo from URL)
   | 'vimeo'            // @deprecated — use 'video'; kept for backward compat with existing data
-  | 'youtube';         // @deprecated — use 'video'; kept for backward compat with existing data
+  | 'youtube'          // @deprecated — use 'video'; kept for backward compat with existing data
+  | 'image';           // Pasted image overlay (locked to natural aspect ratio)
