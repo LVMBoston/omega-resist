@@ -898,6 +898,29 @@ export default function DeckEditor() {
       return;
     }
 
+    // Guard: never overwrite a SHARED template's thumbnail from a deck slide edit.
+    // Shared templates (viral_slide_configs rows with slide_id IS NULL) are used by
+    // many slides — writing here would make every sibling slide display this slide's
+    // preview. Per-slide configs always have slide_id set.
+    const { data: configRow } = await supabase
+      .from('viral_slide_configs')
+      .select('slide_id')
+      .eq('id', configId)
+      .maybeSingle();
+    if (configRow && configRow.slide_id === null) {
+      console.log(
+        `Skipping thumbnail capture — config ${configId} is a shared template ` +
+        `(slide_id IS NULL). Capture will run after a per-slide config is created.`
+      );
+      // Mark slide as needing capture once its per-slide config exists.
+      setPendingThumbnailCaptureIds(prev => {
+        const next = new Set(prev);
+        next.add(slide.id);
+        return next;
+      });
+      return;
+    }
+
     // Find the preview image element's parent container
     const previewContainer = document.querySelector('[data-slide-preview]') as HTMLElement;
     if (!previewContainer) {
