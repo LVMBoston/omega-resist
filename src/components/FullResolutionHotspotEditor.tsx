@@ -1045,7 +1045,13 @@ export const FullResolutionHotspotEditor = ({
                       return (
                         <Button
                           key={category}
-                          onClick={() => setSelectedCategory(category)}
+                          onClick={() => {
+                            setSelectedCategory(category);
+                            if (category === "image") {
+                              setImagePasteMode(true);
+                              setIsPlacing(false);
+                            }
+                          }}
                           variant="outline"
                           className="flex flex-col items-center gap-1.5 h-auto py-3 px-2 border-dashed"
                         >
