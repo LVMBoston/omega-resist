@@ -113,6 +113,7 @@ export function MapHotspotRenderer({
   const isEditorModeRef = useRef(isEditorMode);
   const savedBoundsRef = useRef(config.savedBounds);
   const showClusteringRef = useRef(config.showClustering ?? false);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Fetch event data for the campaign
   useEffect(() => {
