@@ -2339,11 +2339,17 @@ Add Slide(s)
         <Dialog
           open={hotspotEditorOpen}
           onOpenChange={(open) => {
+            // Block dismissal — user must click Save & Close or Discard Changes
+            if (!open) return;
             setHotspotEditorOpen(open);
-            if (!open) setHotspotEditorSlide(null);
           }}
         >
-          <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            className="max-w-[90vw] max-h-[90vh] overflow-y-auto [&>button.absolute]:hidden"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>Edit Interactive Hotspots</DialogTitle>
             </DialogHeader>
