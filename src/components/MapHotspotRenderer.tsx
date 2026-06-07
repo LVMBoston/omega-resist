@@ -246,6 +246,18 @@ export function MapHotspotRenderer({
     isEditorModeRef.current = isEditorMode;
   }, [isEditorMode]);
 
+  // Swap basemap tile layer when label density preference or rendered width
+  // changes (auto mode hides labels on small displays).
+  useEffect(() => {
+    if (!mapRef.current || !tileLayerRef.current) return;
+    const nextUrl = resolveTileUrl(config.labelDensity, width);
+    const currentUrl = (tileLayerRef.current as any)._url as string | undefined;
+    if (currentUrl === nextUrl) return;
+    mapRef.current.removeLayer(tileLayerRef.current);
+    const newLayer = L.tileLayer(nextUrl, { maxZoom: 19 }).addTo(mapRef.current);
+    tileLayerRef.current = newLayer;
+  }, [config.labelDensity, width]);
+
   // Initialize map ONCE - no dependencies to prevent reinit
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
