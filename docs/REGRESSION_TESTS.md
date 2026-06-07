@@ -56,6 +56,8 @@ Tests proposed but not yet written (see chat decision log):
 - **5a** Template deletion blocked when `slide_items.template_id` references it
 - **6c** Campaign clone copies full structure but not analytics events
 - **7c** `useLiveMetrics` saves both `savedBounds` and `savedZoom` together
+- **8a** Deck editor: editing hotspots on Slide 2 then clicking global Save Changes must NOT alter Slide 1's thumbnail (shared-template thumbnail pollution — fixed 2026-06-07)
+- **8b** Deck editor: clicking a different slide in the sidebar while the hotspot editor dialog is open must not retarget the eventual save (editor must stay locked to `hotspotEditorSlide`)
 
 ## Adding a new test
 
