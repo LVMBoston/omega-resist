@@ -316,6 +316,15 @@ export default function DeckEditor() {
   const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
   const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape' | 'square'>('portrait');
   const [deckAspectRatio, setDeckAspectRatio] = useState<number | null>(null);
+  // "Save as Template" dialog state
+  const [saveAsTemplateDialogOpen, setSaveAsTemplateDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateSlugInput, setNewTemplateSlugInput] = useState('');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  // Background override state
+  const [overrideUploading, setOverrideUploading] = useState(false);
+  const overrideFileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve deck shape (aspect ratio + orientation) ONCE from the deck row.
   // If the row has no recorded value yet, probe the first available image and
