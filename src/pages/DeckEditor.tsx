@@ -304,6 +304,24 @@ export default function DeckEditor() {
   const [loadingHotspots, setLoadingHotspots] = useState(false);
   const [capturingThumbnail, setCapturingThumbnail] = useState(false);
   const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
+  const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape'>('portrait');
+
+  // Detect deck orientation from first usable image slide so previews
+  // (solid-color, broken-image) match the deck's true aspect ratio.
+  useEffect(() => {
+    if (!slides || slides.length === 0) return;
+    const candidate = slides.find(s => {
+      const url = s.content_url || '';
+      return url && !url.startsWith('solid:') && !url.endsWith('.mp4');
+    });
+    if (!candidate) return;
+    const img = new Image();
+    img.onload = () => {
+      setDeckOrientation(img.naturalWidth > img.naturalHeight ? 'landscape' : 'portrait');
+    };
+    img.src = candidate.content_url;
+  }, [slides]);
+  const aspectClass = deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]';
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
