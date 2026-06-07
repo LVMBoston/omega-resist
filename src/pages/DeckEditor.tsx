@@ -42,6 +42,7 @@ interface Slide {
   skip_deploy: boolean;
   media_url?: string;
   thumbnail_url?: string; // Captured thumbnail showing hotspot overlays
+  image_url_override?: string | null; // Per-slide background override (wins over template default)
 }
 
 interface Template {
