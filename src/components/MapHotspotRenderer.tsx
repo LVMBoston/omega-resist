@@ -266,10 +266,11 @@ export function MapHotspotRenderer({
       ...interactiveOptions,
     });
 
-    // CartoDB Positron tiles
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    // CartoDB Positron tiles — initial URL respects labelDensity
+    const tileLayer = L.tileLayer(resolveTileUrl(config.labelDensity, width), {
       maxZoom: 19,
     }).addTo(map);
+    tileLayerRef.current = tileLayer;
 
     // Apply saved bounds if configured (use ref for initial value)
     if (savedBoundsRef.current) {
