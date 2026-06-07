@@ -1,51 +1,53 @@
-# Plan: Post-mortem write-up for the snapshot mismatch fix
+# Fix: Edits made on Slide 2 appear on Slide 1 after "Save & Close" + "Save changes"
 
-## 1. New document
+## 1. What you see, in plain language
 
-Create `docs/decisions/snapshots/2026-06-07_snapshot-orientation-viewport-text-fix_post-mortem_lovable.md` with `Status: Approved & Implemented` header and today's date.
+a. You open Slide 2, edit its hotspots, click **Save & Close**.
+b. You navigate to another slide (say Slide 1) and click the global **Save changes** button.
+c. Slide 1 now shows what looks like Slide 2's edits — most visibly, Slide 1's thumbnail starts displaying Slide 2's hotspots overlaid.
 
-## 2. Sections to include
+## 2. What I'm checking, in plain language
 
-a. **Symptom** — User-visible mismatch on `/s/e08c94` Slide 2 vs. downloaded snapshot: portrait instead of landscape, Western Hemisphere instead of US-only, oversized text overflowing label boxes.
+There are two slides involved and two pieces of data that can move between them:
 
-b. **Reproduction steps** — Exact path the user gave: open public slide, navigate to slide 2, go to `/campaign-dashboard`, confirm Server Rendering enabled, download snapshot, compare. Note that I reproduced live-slide and downloaded-snapshot screenshots in the browser to establish the baseline.
+a. **Hotspot data** — the positions, labels, and types of the dots on each slide. Stored per slide.
+b. **Thumbnail image** — the little preview image of the slide. Stored on the *template* the slide uses.
 
-c. **Investigation trail** — In order:
-  - Searched codebase for `savedZoom`, `savedCenter`, `savedBounds`, `snapshotEnabled`.
-  - Read `DataTemplateEditor.tsx`, `MapHotspotRenderer.tsx`, `CampaignSnapshotSettings.tsx` to understand the editor's source of truth.
-  - Read `supabase/functions/render-stats-snapshot/index.ts` lines 791–986 to inspect the SSR canvas + map + text rendering.
-  - Cross-checked against the prior CartoDB unification decision doc.
+The bug is in (b), not (a). Many slides can share the same template. When a slide hasn't been customized yet, it just points at the shared template and reuses its thumbnail. If we overwrite that shared template's thumbnail, every slide pointing at it changes preview at once — which is exactly what looks like "Slide 2's edits leaked onto Slide 1".
 
-d. **Root causes (three)** —
-  - Hard-coded portrait canvas `1080x1920` in the SSR function, regardless of template aspect ratio.
-  - `savedZoom` reused verbatim at a different canvas width than the editor's preview, widening the map.
-  - `zoomForBounds` floored fractional zoom to an integer, dropping precision.
+## 3. Why it happens (technical)
 
-e. **Fixes applied** (with file + line refs in `supabase/functions/render-stats-snapshot/index.ts`):
-  - Canvas now derived from template background via `imagescript` decode (lines 699–728); solid-bg fallback is 1920x1080.
-  - `savedBounds` promoted to primary viewport source; `savedZoom` is fallback only (lines 183–222).
-  - `zoomForBounds` returns fractional zoom (line 110).
-  - Tile fetcher already on CartoDB Positron — no engine change needed; confirmed editor and SSR use the same basemap.
+In `src/pages/DeckEditor.tsx`:
 
-f. **Verification** — Re-rendered template `91cc3329-5eee-409e-bd08-50935277ca90` for the `framing` campaign: SVG is now 1404x783 landscape, US-centered, label sizes match editor. Browser re-check of `/s/e08c94` Slide 2 vs. fresh download confirms the three symptoms are gone.
+a. Slides start out with `template_id` pointing at a **shared template** (a `viral_slide_configs` row with `slide_id IS NULL`). Several slides can share one template.
+b. `handleSaveHotspots` (lines 926-952) stages the new hotspots correctly under `selectedSlide.id`. That part is fine. The staged change is never applied to the wrong slide's hotspots.
+c. Immediately after staging, lines 946-950 auto-fire `handleCaptureThumbnail(slideForCapture)` where `slideForCapture.template_id` is **still the shared template's id** — because the per-slide `viral_slide_configs` row isn't created until you later click global Save Changes (that happens in lines 1339-1389).
+d. `handleCaptureThumbnail` (lines 873-924) uses `slide.template_id` first as the `configId` it uploads the thumbnail to (line 880). So the new thumbnail (which shows Slide 2's preview with its new hotspots) gets written to the **shared template** row.
+e. Every other slide that points to that same shared template — including Slide 1 — now displays the new thumbnail. From your perspective, Slide 1 "got" Slide 2's edits.
+f. After global Save Changes runs, Slide 2 gets its own per-slide config and eventually its own thumbnail, but Slide 1's thumbnail on the shared template stays polluted until something rewrites it.
 
-g. **Why the earlier CartoDB unification didn't catch this** — That decision fixed the *map engine* (Mapbox → CartoDB) but inherited the same hard-coded portrait canvas and integer-zoom math from the legacy Mapbox path. Engine parity ≠ layout parity.
+There is also a smaller, separate risk on top of this: if the hotspot editor dialog is left open and you click another slide in the sidebar, `selectedSlide` changes and a subsequent save would key the hotspots to the wrong slide. Worth fixing in the same pass.
 
-h. **Lessons / guardrails** —
-  - SSR canvas must always be derived from the template, never hard-coded.
-  - When the editor stores both `savedBounds` and `savedZoom`, bounds win because zoom is canvas-width dependent.
-  - Avoid `Math.floor` on zoom values; tile compositing handles fractional zoom via `2^(zoom - tileZ)` scaling.
-  - User's diagnosis ("verify same map engine") was a useful pointer even though the engine was already unified — it forced a re-read of the SSR layout math.
+## 4. Fix
 
-i. **Files touched** — list `supabase/functions/render-stats-snapshot/index.ts` and the updated decision doc.
+a. **Never write thumbnails to a shared template from the editor.** In `handleCaptureThumbnail`, if `configId` resolves to a row whose `slide_id IS NULL` (a shared template), skip the upload and log a notice. Thumbnails for shared templates should only be set from the template editor, not from a deck slide edit.
+b. **Defer the auto-thumbnail capture until a per-slide config exists.** In `handleSaveHotspots`, do not call `handleCaptureThumbnail` inline. Instead, mark the slide as "needs thumbnail capture" and run capture only after the per-slide `viral_slide_configs` row is created in the global Save Changes flow (after line 1387). At that point `configId` is guaranteed to be the slide's own per-slide config, not the shared one.
+c. **Lock the editor to the slide it was opened for.** Add a `hotspotEditorSlide` state, set it in `handleOpenHotspotEditor`, and use *it* (not `selectedSlide`) inside `handleSaveHotspots` and in the dialog JSX at lines 1991-2010. This prevents a second class of bug where changing sidebar selection mid-edit retargets the save.
+d. **Repair already-polluted shared template thumbnails.** A one-time check: if the user reports a wrong-looking thumbnail on Slide 1, re-capturing Slide 1 from its own (clean) state will overwrite the shared template's thumbnail back to something correct. Document this in the post-mortem; we don't need a migration.
 
-j. **Cross-references** — Link to:
-  - `docs/decisions/snapshots/2026-06-07_unify-map-rendering-cartodb_feature-doc_lovable.md` (the doc that now carries the implementation Updates).
-  - `docs/SNAPSHOT_CRON_SYSTEM.md` (pipeline context).
-  - Memory: `mem://maps/mapbox-to-leaflet-migration-ios-webgl`.
+## 5. How I'll verify
 
-## 3. Conventions
+a. Reproduce on the current build first with the exact steps in section 1 and confirm Slide 1's thumbnail changes.
+b. After the fix, repeat the same steps and confirm Slide 1's thumbnail is untouched and Slide 2 gets its own thumbnail once global Save Changes runs.
+c. Bonus check for 4c: open Slide 2's hotspot editor, click Slide 1 in the sidebar while it's open, save — confirm Slide 2 receives the hotspots, not Slide 1.
+d. Add both cases to the regression suite backlog in `docs/REGRESSION_TESTS.md`.
 
-a. Numbered sections, lettered sub-items per project rule.
-b. No code changes in this task — documentation only.
-c. Per the decision-log rule, this is a **new post-mortem** companion to the existing `2026-06-07_unify-map-rendering-cartodb` feature doc (which already has the Update sections). I am not overwriting that doc; I am adding a sibling post-mortem that tells the debugging story end-to-end.
+## 6. Files touched
+
+a. `src/pages/DeckEditor.tsx` — guard in `handleCaptureThumbnail`, defer auto-capture in `handleSaveHotspots`, add `hotspotEditorSlide` state and thread it through the dialog.
+b. `docs/REGRESSION_TESTS.md` — two new backlog entries.
+c. `docs/decisions/deck-editor/2026-06-07_hotspot-edits-leaking-to-other-slides_bug-fix_lovable.md` — new decision doc per the Decision Log Rule (this is a new plan, not an update to an existing one).
+
+## 7. One thing I want to confirm before building
+
+The symptom I'm betting on is **Slide 1's thumbnail starts looking like Slide 2**. If instead you mean the actual hotspots on Slide 1 (when you open its editor or view it in the deck) became Slide 2's hotspots, that's a different code path and I'd want to look once more before I implement. Can you tell me which of the two it is?
