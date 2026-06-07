@@ -350,7 +350,11 @@ export default function DeckEditor() {
 
     return () => { cancelled = true; };
   }, [slug, slides, templates]);
-  const aspectClass = deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]';
+  // Use the deck's exact aspect ratio when known; otherwise approximate from orientation.
+  const aspectClass = deckAspectRatio
+    ? '' // inline style handles it below
+    : (deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]');
+  const aspectStyle = deckAspectRatio ? { aspectRatio: String(deckAspectRatio) } : undefined;
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
