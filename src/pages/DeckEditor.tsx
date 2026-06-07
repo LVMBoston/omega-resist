@@ -2134,6 +2134,99 @@ Add Slide(s)
                       </Button>
                     </div>
                   )}
+
+                  {/* Save as Template — only for plain image slides not yet linked to a template */}
+                  {!selectedSlide.template_id
+                    && selectedSlide.type !== 'vimeo'
+                    && selectedSlide.type !== 'video'
+                    && selectedSlide.type !== 'spread-word'
+                    && !selectedSlide.id.startsWith('temp-')
+                    && !selectedSlide.content_url?.startsWith('solid:') && (
+                    <div className="pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={openSaveAsTemplateDialog}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Save as Template…
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Promote this slide into the Template Repository so other decks can reuse it.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Background — per-slide override for template-linked slides */}
+                  {selectedSlide.template_id && !selectedSlide.id.startsWith('temp-') && (() => {
+                    const linkedTemplate = templates.find(t => t.id === selectedSlide.template_id);
+                    const templateType = linkedTemplate?.template_type;
+                    const isSnapshotType = templateType === 'stats_page' || templateType === 'hybrid';
+                    const hasOverride = !!selectedSlide.image_url_override;
+                    return (
+                      <div className="pt-3 border-t space-y-2">
+                        <div className="text-muted-foreground font-medium">Background</div>
+                        <p className="text-xs text-muted-foreground">
+                          Hotspots come from the template. Background is specific to this slide.
+                        </p>
+                        {hasOverride && (
+                          <div className="rounded border p-2 bg-muted/30">
+                            <div className="text-xs text-muted-foreground mb-1">Current override:</div>
+                            <img
+                              src={selectedSlide.image_url_override!}
+                              alt="Background override"
+                              className="w-full max-h-32 object-contain rounded"
+                            />
+                          </div>
+                        )}
+                        <input
+                          ref={overrideFileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadBackgroundOverride(f);
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={overrideUploading || isSnapshotType}
+                          title={isSnapshotType
+                            ? "Background override isn't available yet for slides with live metrics — the pre-rendered snapshot would still show the template's default background."
+                            : undefined}
+                          onClick={() => overrideFileInputRef.current?.click()}
+                        >
+                          {overrideUploading ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4 mr-2" />
+                          )}
+                          {hasOverride ? 'Replace override' : 'Upload override'}
+                        </Button>
+                        {hasOverride && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            disabled={overrideUploading}
+                            onClick={handleResetBackgroundOverride}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Reset to template default
+                          </Button>
+                        )}
+                        {isSnapshotType && (
+                          <p className="text-xs text-muted-foreground">
+                            Live-metrics templates don't support per-slide background overrides yet.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Select a slide to view properties</div>
