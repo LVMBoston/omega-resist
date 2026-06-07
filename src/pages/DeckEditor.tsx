@@ -308,21 +308,56 @@ export default function DeckEditor() {
   const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
   const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
-  // Detect deck orientation from first usable image slide so previews
-  // (solid-color, broken-image) match the deck's true aspect ratio.
+  // Detect deck orientation from the first image we can actually load.
+  // Walks every slide's content_url, thumbnail_url, and (when available) the
+  // template's image_url. The first image to successfully decode decides the
+  // orientation, so a single broken / solid-color slide can't strand us in
+  // portrait mode for a landscape deck.
   useEffect(() => {
     if (!slides || slides.length === 0) return;
-    const candidate = slides.find(s => {
-      const url = s.content_url || '';
-      return url && !url.startsWith('solid:') && !url.endsWith('.mp4');
-    });
-    if (!candidate) return;
-    const img = new Image();
-    img.onload = () => {
-      setDeckOrientation(img.naturalWidth > img.naturalHeight ? 'landscape' : 'portrait');
+    let cancelled = false;
+
+    const candidates: string[] = [];
+    const seen = new Set<string>();
+    const push = (url?: string | null) => {
+      if (!url) return;
+      if (url.startsWith('solid:')) return;
+      const lower = url.toLowerCase();
+      if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov')) return;
+      if (seen.has(url)) return;
+      seen.add(url);
+      candidates.push(url);
     };
-    img.src = candidate.content_url;
-  }, [slides]);
+    for (const s of slides) {
+      push(s.content_url);
+      push(s.thumbnail_url);
+      if (s.template_id) {
+        const t = templates.find(t => t.id === s.template_id);
+        push(t?.image_url);
+      }
+    }
+    if (candidates.length === 0) return;
+
+    const tryUrl = (url: string) => new Promise<{ w: number; h: number } | null>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+
+    (async () => {
+      for (const url of candidates) {
+        const dims = await tryUrl(url);
+        if (cancelled) return;
+        if (dims && dims.w > 0 && dims.h > 0) {
+          setDeckOrientation(dims.w > dims.h ? 'landscape' : 'portrait');
+          return;
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [slides, templates]);
   const aspectClass = deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]';
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
