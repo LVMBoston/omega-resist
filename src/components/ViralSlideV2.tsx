@@ -217,7 +217,8 @@ export const ViralSlide = ({ slideId, deckSlug, viralToken, templateId: propTemp
         }
         
         setConfig({
-          image_url: templateData.image_url,
+          // Per-slide background override wins over the template's default image.
+          image_url: (slideData as any).image_url_override || templateData.image_url,
           hotspots: mappedHotspots,
           template_type: templateType,
           config: templateData.config || {},
