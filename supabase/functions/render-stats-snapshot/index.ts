@@ -136,15 +136,25 @@ async function renderStaticMap(
       .map((p: any) => `pin-s+3b82f6(${p.longitude.toFixed(4)},${p.latitude.toFixed(4)})`)
       .join(",");
 
-    // Use savedBounds for viewport if available, otherwise 'auto'
+    // Prefer explicit center+zoom from editor (exact match to Leaflet view).
+    // Fall back to savedBounds bbox, then 'auto' to fit all pins.
     let viewport = "auto";
+    const savedCenter = mapConfig?.savedCenter;
+    const savedZoom = mapConfig?.savedZoom;
     const savedBounds = mapConfig?.savedBounds;
-    if (savedBounds && savedBounds.north && savedBounds.south && savedBounds.east && savedBounds.west) {
-      // Use Mapbox bounding box viewport for exact match with Leaflet's savedBounds
+    if (
+      savedCenter && typeof savedCenter.lat === "number" && typeof savedCenter.lng === "number" &&
+      typeof savedZoom === "number"
+    ) {
+      // Mapbox accepts fractional zoom. Clamp to valid range.
+      const z = Math.max(0, Math.min(22, savedZoom));
+      viewport = `${savedCenter.lng.toFixed(5)},${savedCenter.lat.toFixed(5)},${z.toFixed(2)}`;
+      console.log(`[render-stats-snapshot] Using savedCenter/savedZoom viewport: ${viewport}`);
+    } else if (savedBounds && savedBounds.north && savedBounds.south && savedBounds.east && savedBounds.west) {
       viewport = `[${savedBounds.west},${savedBounds.south},${savedBounds.east},${savedBounds.north}]`;
       console.log(`[render-stats-snapshot] Using savedBounds bbox viewport: ${viewport}`);
     }
-    // Mapbox only allows padding with 'auto' viewport, not explicit coordinates
+    // Mapbox only allows padding with 'auto' viewport
     const paddingParam = viewport === "auto" ? "&padding=40" : "";
     const url = `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${pinOverlay}/${viewport}/${imgW}x${imgH}@2x?access_token=${mapboxToken}${paddingParam}`;
 
