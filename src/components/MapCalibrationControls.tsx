@@ -251,6 +251,29 @@ export function MapCalibrationControls({
         <p className="text-xs text-muted-foreground -mt-1">
           Highlight seeds that generated engaged shares with a green border.
         </p>
+
+        {/* Basemap Labels */}
+        <div className="space-y-1">
+          <Label htmlFor="label-density" className="text-sm">
+            Place name labels
+          </Label>
+          <Select
+            value={mapConfig.labelDensity ?? 'auto'}
+            onValueChange={(v) => updateMapConfig({ labelDensity: v as MapConfig['labelDensity'] })}
+          >
+            <SelectTrigger id="label-density" className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto (hide on small screens)</SelectItem>
+              <SelectItem value="labels">Always show</SelectItem>
+              <SelectItem value="no_labels">Always hide</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Auto hides country, state, and city names when the map renders under ~500px wide (e.g. iPhone), and shows them on larger screens.
+          </p>
+        </div>
       </div>
     </div>
   );
