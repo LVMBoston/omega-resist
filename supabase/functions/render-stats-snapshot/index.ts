@@ -680,8 +680,7 @@ Deno.serve(async (req) => {
     let bgSolidColor: string | null = null;
     // Default canvas if we can't derive aspect ratio from a background image.
     // Landscape 16:9 matches the default deck orientation.
-    let width = 1920;
-    let height = 1080;
+    let { width, height } = defaultSolidCanvas();
 
     if (imageUrl.startsWith("solid:")) {
       bgSolidColor = imageUrl.replace("solid:", "");
