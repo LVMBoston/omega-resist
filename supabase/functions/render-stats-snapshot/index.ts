@@ -107,7 +107,7 @@ function zoomForBounds(
   const lngFraction = ((lngDiff < 0 ? lngDiff + 360 : lngDiff)) / 360;
   const latZoom = Math.log2(pixelHeight / WORLD / latFraction);
   const lngZoom = Math.log2(pixelWidth / WORLD / lngFraction);
-  return Math.max(0, Math.min(18, Math.floor(Math.min(latZoom, lngZoom))));
+  return Math.max(0, Math.min(18, Math.min(latZoom, lngZoom)));
 }
 
 async function fetchCartoTile(
