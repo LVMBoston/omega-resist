@@ -872,6 +872,7 @@ export default function DeckEditor() {
 
   const handleOpenHotspotEditor = async (slide: Slide) => {
     setSelectedSlide(slide);
+    setHotspotEditorSlide(slide);
     await loadHotspotsForSlide(slide);
     setHotspotEditorOpen(true);
   };
