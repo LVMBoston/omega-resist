@@ -2487,6 +2487,71 @@ Add Slide(s)
         </DialogContent>
       </Dialog>
 
+      {/* Save as Template Dialog */}
+      <Dialog open={saveAsTemplateDialogOpen} onOpenChange={(open) => { if (!creatingTemplate) setSaveAsTemplateDialogOpen(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Slide as Template</DialogTitle>
+            <DialogDescription>
+              This adds the slide's current background (and any hotspots) to the Template Repository, and links this slide to the new template so future template edits also update this slide.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-template-name">Name</Label>
+              <Input
+                id="new-template-name"
+                value={newTemplateName}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setNewTemplateName(v);
+                  // Keep slug in sync until the user has manually edited it
+                  setNewTemplateSlugInput(prev => {
+                    const auto = v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+                    return auto;
+                  });
+                }}
+                placeholder="e.g. Thomas Luttig Intro"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-template-slug">Slug</Label>
+              <Input
+                id="new-template-slug"
+                value={newTemplateSlugInput}
+                onChange={(e) => setNewTemplateSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                placeholder="thomas-luttig-intro"
+              />
+              <p className="text-xs text-muted-foreground">Lowercase, alphanumeric and hyphens only. Must be unique.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-template-desc">Description (optional)</Label>
+              <Input
+                id="new-template-desc"
+                value={newTemplateDescription}
+                onChange={(e) => setNewTemplateDescription(e.target.value)}
+                placeholder="Where and how this template is meant to be used"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveAsTemplateDialogOpen(false)} disabled={creatingTemplate}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAsTemplate} disabled={creatingTemplate || !newTemplateName.trim() || !newTemplateSlugInput.trim()}>
+              {creatingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Save Template'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Vimeo Dialog */}
       <Dialog open={vimeoDialogOpen} onOpenChange={(open) => {
         setVimeoDialogOpen(open);
