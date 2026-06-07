@@ -91,18 +91,18 @@ export function MapCalibrationControls({
             <button
               type="button"
               className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
-              onClick={() => onZoomIn?.(0.25)}
+              onClick={() => onZoomIn?.(0.1)}
               tabIndex={-1}
-              title="Zoom in (fine)"
+              title="Zoom in (fine, +0.1)"
             >
               <ChevronUp className="h-3 w-3" />
             </button>
             <button
               type="button"
               className="h-4 w-6 p-0 flex items-center justify-center hover:bg-muted rounded"
-              onClick={() => onZoomOut?.(0.25)}
+              onClick={() => onZoomOut?.(0.1)}
               tabIndex={-1}
-              title="Zoom out (fine)"
+              title="Zoom out (fine, -0.1)"
             >
               <ChevronDown className="h-3 w-3" />
             </button>
