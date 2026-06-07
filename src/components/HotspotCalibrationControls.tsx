@@ -67,7 +67,7 @@ export function HotspotCalibrationControls({
     });
   };
 
-  const fontSize = parseInt(style.fontSize || "56") || 56;
+  const fontSize = parseInt(style.fontSize || "25") || 25;
   const fontWeight = style.fontWeight || "700";
   const fontFamily = style.fontFamily || "Calibri, sans-serif";
   const textColor = style.color || "#1a1a1a";
