@@ -66,12 +66,14 @@ const SlidePreviewImage = ({
   fallbackUrl,
   altText,
   onDelete,
+  aspectClass = 'aspect-[9/16]',
 }: {
   contentUrl: string;
   templateImageUrl?: string;
   fallbackUrl?: string;
   altText: string;
   onDelete: () => void;
+  aspectClass?: string;
 }) => {
   const [failed, setFailed] = useState(false);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -93,7 +95,7 @@ const SlidePreviewImage = ({
       : "This slide's background image is missing from storage and no fallback is available.";
 
     return (
-      <div className="w-full aspect-[9/16] rounded-lg border bg-muted/30 flex flex-col items-center justify-center gap-4 p-6 text-center">
+      <div className={`w-full ${aspectClass} rounded-lg border bg-muted/30 flex flex-col items-center justify-center gap-4 p-6 text-center`}>
         <ImageIcon className="h-16 w-16 text-muted-foreground" />
         <div className="space-y-2">
           <p className="font-semibold text-foreground">Slide cannot be rendered</p>
@@ -304,6 +306,24 @@ export default function DeckEditor() {
   const [loadingHotspots, setLoadingHotspots] = useState(false);
   const [capturingThumbnail, setCapturingThumbnail] = useState(false);
   const [previewHotspots, setPreviewHotspots] = useState<Hotspot[]>([]);
+  const [deckOrientation, setDeckOrientation] = useState<'portrait' | 'landscape'>('portrait');
+
+  // Detect deck orientation from first usable image slide so previews
+  // (solid-color, broken-image) match the deck's true aspect ratio.
+  useEffect(() => {
+    if (!slides || slides.length === 0) return;
+    const candidate = slides.find(s => {
+      const url = s.content_url || '';
+      return url && !url.startsWith('solid:') && !url.endsWith('.mp4');
+    });
+    if (!candidate) return;
+    const img = new Image();
+    img.onload = () => {
+      setDeckOrientation(img.naturalWidth > img.naturalHeight ? 'landscape' : 'portrait');
+    };
+    img.src = candidate.content_url;
+  }, [slides]);
+  const aspectClass = deckOrientation === 'landscape' ? 'aspect-video' : 'aspect-[9/16]';
   const previewRef = useRef<HTMLImageElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1723,7 +1743,7 @@ Add Slide(s)
                     {(() => {
                       const contentUrl = selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
-                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
+                        return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
                       }
                       const templateImageUrl = selectedSlide.template_id
                         ? templates.find(t => t.id === selectedSlide.template_id)?.image_url
@@ -1734,6 +1754,7 @@ Add Slide(s)
                           templateImageUrl={templateImageUrl}
                           fallbackUrl={selectedSlide.thumbnail_url}
                           altText={`Slide ${selectedSlide.position}`}
+                          aspectClass={aspectClass}
                           onDelete={() => {
                             setSlideToDelete(selectedSlide);
                             setDeleteDialogOpen(true);
