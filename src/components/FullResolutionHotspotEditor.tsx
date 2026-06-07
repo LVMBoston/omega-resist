@@ -881,6 +881,26 @@ export const FullResolutionHotspotEditor = ({
       );
     }
 
+    if (selectedHotspotData.type === "image") {
+      const rect = imageRef.current?.getBoundingClientRect();
+      const canvasAspectRatio = rect && rect.height > 0 ? rect.width / rect.height : 16 / 9;
+      return (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-sm text-emerald-600">Image Controls</h4>
+          <ImageCalibrationControls
+            hotspot={selectedHotspotData as unknown as ViralHotspot}
+            onUpdate={(updates) => updateHotspot(selectedHotspotData.id, updates as Partial<Hotspot>)}
+            canvasAspectRatio={canvasAspectRatio}
+            onReplaceImage={() => {
+              setSelectedCategory("image");
+              setImagePasteMode(true);
+              toast({ title: "Paste replacement image", description: "Press ⌘V / Ctrl+V to paste a new image." });
+            }}
+          />
+        </div>
+      );
+    }
+
     return null;
   };
 
