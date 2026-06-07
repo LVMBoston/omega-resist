@@ -277,6 +277,12 @@ export default function DeckEditor() {
   const [slideToDelete, setSlideToDelete] = useState<Slide | null>(null);
   const [referenceDimensions, setReferenceDimensions] = useState<{ width: number; height: number } | null>(null);
   const [hotspotEditorOpen, setHotspotEditorOpen] = useState(false);
+  // Locked target slide for the hotspot editor — separate from selectedSlide so
+  // navigating slides (or auto-capture races) can't retarget a save.
+  const [hotspotEditorSlide, setHotspotEditorSlide] = useState<Slide | null>(null);
+  // Slide ids that need a thumbnail capture once their per-slide config exists
+  // (set when auto-capture would otherwise write to a shared template row).
+  const [pendingThumbnailCaptureIds, setPendingThumbnailCaptureIds] = useState<Set<string>>(new Set());
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [eoaCount, setEoaCount] = useState(0);
