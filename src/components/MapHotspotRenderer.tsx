@@ -70,6 +70,20 @@ const getMarkerSVG = (fillColor: string, size: number = 12, hasSpawns: boolean =
 
 const DEFAULT_COLOR = "#64748b"; // slate-500
 
+// Resolve the CartoDB Positron tile URL based on label density preference.
+// 'auto' hides labels on small displays (rendered width < 500px) and shows
+// them otherwise. 'labels' / 'no_labels' force the choice.
+function resolveTileUrl(
+  labelDensity: 'auto' | 'labels' | 'no_labels' | undefined,
+  width: number,
+): string {
+  const density = labelDensity ?? 'auto';
+  const hideLabels =
+    density === 'no_labels' || (density === 'auto' && width > 0 && width < 500);
+  const slug = hideLabels ? 'light_nolabels' : 'light_all';
+  return `https://{s}.basemaps.cartocdn.com/${slug}/{z}/{x}/{y}{r}.png`;
+}
+
 export function MapHotspotRenderer({
   campaignCode,
   config,
