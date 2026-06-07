@@ -35,6 +35,7 @@ export interface MapControls {
   zoomOut: (delta?: number) => void;
   resetView: () => void;
   getZoom: () => number;
+  getCenter: () => { lat: number; lng: number };
 }
 
 
