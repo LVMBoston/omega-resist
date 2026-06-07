@@ -70,6 +70,20 @@ const getMarkerSVG = (fillColor: string, size: number = 12, hasSpawns: boolean =
 
 const DEFAULT_COLOR = "#64748b"; // slate-500
 
+// Resolve the CartoDB Positron tile URL based on label density preference.
+// 'auto' hides labels on small displays (rendered width < 500px) and shows
+// them otherwise. 'labels' / 'no_labels' force the choice.
+function resolveTileUrl(
+  labelDensity: 'auto' | 'labels' | 'no_labels' | undefined,
+  width: number,
+): string {
+  const density = labelDensity ?? 'auto';
+  const hideLabels =
+    density === 'no_labels' || (density === 'auto' && width > 0 && width < 500);
+  const slug = hideLabels ? 'light_nolabels' : 'light_all';
+  return `https://{s}.basemaps.cartocdn.com/${slug}/{z}/{x}/{y}{r}.png`;
+}
+
 export function MapHotspotRenderer({
   campaignCode,
   config,
@@ -99,6 +113,7 @@ export function MapHotspotRenderer({
   const isEditorModeRef = useRef(isEditorMode);
   const savedBoundsRef = useRef(config.savedBounds);
   const showClusteringRef = useRef(config.showClustering ?? false);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Fetch event data for the campaign
   useEffect(() => {
@@ -231,6 +246,18 @@ export function MapHotspotRenderer({
     isEditorModeRef.current = isEditorMode;
   }, [isEditorMode]);
 
+  // Swap basemap tile layer when label density preference or rendered width
+  // changes (auto mode hides labels on small displays).
+  useEffect(() => {
+    if (!mapRef.current || !tileLayerRef.current) return;
+    const nextUrl = resolveTileUrl(config.labelDensity, width);
+    const currentUrl = (tileLayerRef.current as any)._url as string | undefined;
+    if (currentUrl === nextUrl) return;
+    mapRef.current.removeLayer(tileLayerRef.current);
+    const newLayer = L.tileLayer(nextUrl, { maxZoom: 19 }).addTo(mapRef.current);
+    tileLayerRef.current = newLayer;
+  }, [config.labelDensity, width]);
+
   // Initialize map ONCE - no dependencies to prevent reinit
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -266,10 +293,11 @@ export function MapHotspotRenderer({
       ...interactiveOptions,
     });
 
-    // CartoDB Positron tiles
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    // CartoDB Positron tiles — initial URL respects labelDensity
+    const tileLayer = L.tileLayer(resolveTileUrl(config.labelDensity, width), {
       maxZoom: 19,
     }).addTo(map);
+    tileLayerRef.current = tileLayer;
 
     // Apply saved bounds if configured (use ref for initial value)
     if (savedBoundsRef.current) {

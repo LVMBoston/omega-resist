@@ -95,6 +95,10 @@ export interface MapConfig {
   showClustering: boolean;
   showSpawnHighlight?: boolean;  // Show green border on seeds with spawns
   isLocked?: boolean;  // Lock map positioning in editor
+  // Basemap label density. 'auto' = labels on desktop, hidden on small screens
+  // (rendered width < 500px); 'labels' = always show; 'no_labels' = always hide.
+  // Defaults to 'auto' when unset.
+  labelDensity?: 'auto' | 'labels' | 'no_labels';
   savedBounds?: {
     north: number;
     south: number;
