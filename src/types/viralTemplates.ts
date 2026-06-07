@@ -137,6 +137,9 @@ export interface Hotspot {
   emailLinksSubject?: string;      // Subject line for mailto
   emailLinksShowLabels?: boolean;  // Show label text on overlay at runtime
   isTransparent?: boolean;         // Hide icon — transparent tap target over slide image
+  // Image hotspot properties
+  imageSrc?: string;               // Public URL of pasted/uploaded image
+  imageNaturalRatio?: number;      // naturalWidth / naturalHeight — used to lock aspect ratio
 }
 
 // Live number style configuration
