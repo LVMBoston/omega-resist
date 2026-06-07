@@ -70,6 +70,7 @@ const navigation = [
       { title: "Map Debug", url: "/map-debug", icon: Map },
       { title: "Simulator", url: "/simulator", icon: FlaskConical },
       { title: "System Health", url: "/edge-health", icon: HeartPulse },
+      { title: "Regression Tests", url: "/regression-tests", icon: ShieldCheck },
     ],
   },
 ]
