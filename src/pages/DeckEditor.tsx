@@ -2315,7 +2315,7 @@ Add Slide(s)
               <DialogTitle>Edit Interactive Hotspots</DialogTitle>
             </DialogHeader>
             <FullResolutionHotspotEditor
-              imageUrl={hotspotEditorSlide.content_url}
+              imageUrl={hotspotEditorSlide.image_url_override || hotspotEditorSlide.content_url}
               initialHotspots={initialHotspots}
               onChange={(hotspots) => {
                 if (selectedSlide?.id === hotspotEditorSlide.id) {
