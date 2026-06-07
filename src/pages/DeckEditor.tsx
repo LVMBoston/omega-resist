@@ -1986,7 +1986,10 @@ Add Slide(s)
                 <div className="space-y-4">
                   <div className="relative" data-slide-preview>
                     {(() => {
-                      const contentUrl = selectedSlide.content_url;
+                      // Per-slide background override takes precedence over both
+                      // the slide's own content_url and the linked template's image.
+                      const overrideUrl = selectedSlide.image_url_override || undefined;
+                      const contentUrl = overrideUrl || selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
                         return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', ''), ...(aspectStyle || {}) }} />;
                       }
