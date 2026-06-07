@@ -1774,7 +1774,7 @@ Add Slide(s)
                     {(() => {
                       const contentUrl = selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
-                        return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
+                        return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', ''), ...(aspectStyle || {}) }} />;
                       }
                       const templateImageUrl = selectedSlide.template_id
                         ? templates.find(t => t.id === selectedSlide.template_id)?.image_url
