@@ -181,6 +181,10 @@ async function renderStaticMap(
     if (!events || events.length === 0) return null;
 
     // ---- Resolve viewport (savedCenter+savedZoom is source of truth) ----
+    // Honor fractional zoom: Leaflet supports it, so the editor often saves
+    // values like 4.5 or 6.3. We fetch tiles at an integer `tileZ` near `zoom`
+    // and scale them by `2^(zoom - tileZ)` before compositing, so the snapshot
+    // matches the editor exactly instead of snapping to the nearest integer.
     const imgW = Math.max(64, Math.round(pixelWidth));
     const imgH = Math.max(64, Math.round(pixelHeight));
 
@@ -190,7 +194,7 @@ async function renderStaticMap(
 
     let centerLat: number;
     let centerLng: number;
-    let zoom: number;
+    let zoom: number; // fractional allowed
 
     if (
       savedCenter && typeof savedCenter.lat === "number" &&
@@ -198,7 +202,7 @@ async function renderStaticMap(
     ) {
       centerLat = savedCenter.lat;
       centerLng = savedCenter.lng;
-      zoom = Math.max(0, Math.min(18, Math.round(savedZoom)));
+      zoom = Math.max(0, Math.min(18, savedZoom));
       console.log(`[render-stats-snapshot] Using savedCenter/savedZoom (${centerLat}, ${centerLng}) z=${zoom}`);
     } else if (
       savedBounds && typeof savedBounds.north === "number" &&
@@ -213,7 +217,6 @@ async function renderStaticMap(
       );
       console.log(`[render-stats-snapshot] Using savedBounds, computed z=${zoom}`);
     } else {
-      // Default to US center
       centerLat = 39.5; centerLng = -98.35; zoom = 4;
       console.log(`[render-stats-snapshot] No saved viewport, defaulting to US`);
     }
@@ -224,37 +227,47 @@ async function renderStaticMap(
       labelDensity === "no_labels" || (labelDensity === "auto" && imgW < 500);
     const slug = hideLabels ? "light_nolabels" : "light_all";
 
-    // ---- Tile math: world-pixel of center, then compute tile range ----
+    // ---- Tile math at fractional zoom ----
+    const tileZ = Math.max(0, Math.min(18, Math.round(zoom)));
+    const scale = Math.pow(2, zoom - tileZ); // <1 = shrink, >1 = stretch
+    const scaledTileSize = TILE_SIZE * scale;
+
+    // World pixel coords at FRACTIONAL zoom (where the canvas lives)
     const centerWorldX = lngToWorldX(centerLng, zoom);
     const centerWorldY = latToWorldY(centerLat, zoom);
     const originWorldX = centerWorldX - imgW / 2;
     const originWorldY = centerWorldY - imgH / 2;
 
-    const tileMinX = Math.floor(originWorldX / TILE_SIZE);
-    const tileMinY = Math.floor(originWorldY / TILE_SIZE);
-    const tileMaxX = Math.floor((originWorldX + imgW - 1) / TILE_SIZE);
-    const tileMaxY = Math.floor((originWorldY + imgH - 1) / TILE_SIZE);
+    // Tile grid is indexed at tileZ; each tile spans `scaledTileSize` in
+    // fractional-zoom world pixels.
+    const tileMinX = Math.floor(originWorldX / scaledTileSize);
+    const tileMinY = Math.floor(originWorldY / scaledTileSize);
+    const tileMaxX = Math.floor((originWorldX + imgW - 1) / scaledTileSize);
+    const tileMaxY = Math.floor((originWorldY + imgH - 1) / scaledTileSize);
 
-    const worldTiles = Math.pow(2, zoom);
+    const worldTiles = Math.pow(2, tileZ);
     const canvas = new Image(imgW, imgH);
-    // Fill with light grey in case some tiles fail
     canvas.fill(0xe8e8e8ff);
 
     const tileJobs: Promise<void>[] = [];
     const subdomains = ["a", "b", "c"];
+    const renderTilePx = Math.max(1, Math.round(scaledTileSize));
     for (let ty = tileMinY; ty <= tileMaxY; ty++) {
       if (ty < 0 || ty >= worldTiles) continue;
       for (let tx = tileMinX; tx <= tileMaxX; tx++) {
         const wrappedX = ((tx % worldTiles) + worldTiles) % worldTiles;
-        const sub = subdomains[(tx + ty) % 3];
+        const sub = subdomains[(((tx % 3) + (ty % 3)) % 3 + 3) % 3];
         tileJobs.push((async () => {
-          const bytes = await fetchCartoTile(zoom, wrappedX, ty, sub, slug);
+          const bytes = await fetchCartoTile(tileZ, wrappedX, ty, sub, slug);
           if (!bytes) return;
           try {
-            const tileImg = await Image.decode(bytes);
-            const dx = tx * TILE_SIZE - originWorldX;
-            const dy = ty * TILE_SIZE - originWorldY;
-            canvas.composite(tileImg, Math.round(dx), Math.round(dy));
+            let tileImg = await Image.decode(bytes);
+            if (renderTilePx !== TILE_SIZE) {
+              tileImg = tileImg.resize(renderTilePx, renderTilePx);
+            }
+            const dx = Math.round(tx * scaledTileSize - originWorldX);
+            const dy = Math.round(ty * scaledTileSize - originWorldY);
+            canvas.composite(tileImg, dx, dy);
           } catch (e) {
             console.warn(`[render-stats-snapshot] Tile decode failed`, e);
           }
