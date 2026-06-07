@@ -105,6 +105,8 @@ export interface MapConfig {
     east: number;
     west: number;
   };
+  savedCenter?: { lat: number; lng: number };
+  savedZoom?: number;
 }
 
 // Hotspot interface
