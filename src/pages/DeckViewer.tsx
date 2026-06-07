@@ -8,6 +8,7 @@ import { ChevronLeft, Loader2, Trash2, X } from "lucide-react";
 import { VimeoSlide } from "@/components/VimeoSlide";
 import { toast } from "sonner";
 import { ViralSlide } from "@/components/ViralSlideV2";
+import { fetchDeckShape, persistDeckShape, ratioToOrientation, loadImageDims } from "@/lib/deckAspectRatio";
 import { logEvent, instantiateL00Token, maybeReinstantiateL00, fetchGeolocation } from "@/lib/virality/mint";
 import { useAuth } from "@/contexts/AuthContext";
 
