@@ -489,6 +489,7 @@ export type Database = {
           created_at: string
           deck_slug: string
           id: string
+          image_url_override: string | null
           import_source: string | null
           is_compressed: boolean | null
           media_url: string | null
@@ -502,6 +503,7 @@ export type Database = {
           created_at?: string
           deck_slug: string
           id?: string
+          image_url_override?: string | null
           import_source?: string | null
           is_compressed?: boolean | null
           media_url?: string | null
@@ -515,6 +517,7 @@ export type Database = {
           created_at?: string
           deck_slug?: string
           id?: string
+          image_url_override?: string | null
           import_source?: string | null
           is_compressed?: boolean | null
           media_url?: string | null
