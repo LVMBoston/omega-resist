@@ -84,11 +84,11 @@ export function HotspotCalibrationControls({
         <div className="space-y-2">
           <Label className="text-xs">Metric</Label>
           <Select
-            value={hotspot.metricKey || "seeds"}
+            value={hotspot.metricKey || undefined}
             onValueChange={(val) => onUpdate({ metricKey: val as LiveMetricKey })}
           >
             <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
+              <SelectValue placeholder="Select Metric" />
             </SelectTrigger>
             <SelectContent>
               {METRIC_OPTIONS.map((opt) => (
