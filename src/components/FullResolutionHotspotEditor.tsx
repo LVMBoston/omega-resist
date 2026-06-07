@@ -1063,6 +1063,25 @@ export const FullResolutionHotspotEditor = ({
                     })}
                   </div>
                 </div>
+              ) : selectedCategory === "image" ? (
+                // Image: paste-from-clipboard flow (no icon variants)
+                <div className="rounded-lg border-2 border-dashed border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-2">
+                  {imageUploading ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-emerald-700">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading image…
+                    </div>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-8 h-8 mx-auto text-emerald-600" />
+                      <div className="text-sm font-medium">Paste an image to place it</div>
+                      <div className="text-xs text-muted-foreground">
+                        Copy an image to your clipboard, then press <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">⌘V</kbd> /{" "}
+                        <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">Ctrl+V</kbd>. Aspect ratio is locked to the image.
+                      </div>
+                    </>
+                  )}
+                </div>
               ) : (
                 // Step 2: Icon variant selection
                 <div className="grid grid-cols-2 gap-2">
