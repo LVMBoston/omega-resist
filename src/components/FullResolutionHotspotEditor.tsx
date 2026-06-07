@@ -36,7 +36,7 @@ import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   icon?: React.ComponentType<{ className?: string; size?: number }>;
   imageUrl?: string;
   width: number;
@@ -46,7 +46,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   label: string;
   x: number;
   y: number;
@@ -66,6 +66,9 @@ interface Hotspot {
   liveNumberStyle?: Record<string, any>;
   chartConfig?: any;
   mapConfig?: any;
+  // Image hotspot fields
+  imageSrc?: string;
+  imageNaturalRatio?: number;
 }
 
 // Simple placeholder base64 PNG for social icons (blue circle)
