@@ -129,7 +129,7 @@ export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {
             // Scale fontSize proportionally — preview is ~1/3 of actual slide
             const scaledStyle = { ...liveStyle };
             if (scaledStyle.fontSize) {
-              const rawPx = parseInt(String(scaledStyle.fontSize)) || 56;
+              const rawPx = parseInt(String(scaledStyle.fontSize)) || 25;
               scaledStyle.fontSize = `${Math.max(8, Math.round(rawPx * 0.33))}px`;
             }
             return (
