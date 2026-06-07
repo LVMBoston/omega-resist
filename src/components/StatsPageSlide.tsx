@@ -286,6 +286,7 @@ export const StatsPageSlide = ({
   const liveNumberHotspots = hotspots.filter(h => h.type === 'live_number');
   const chartHotspots = hotspots.filter(h => h.type === 'chart');
   const mapHotspots = hotspots.filter(h => h.type === 'map');
+  const imageHotspots = hotspots.filter(h => h.type === 'image');
 
   // === EARLY RETURNS (all hooks above this line) ===
 
