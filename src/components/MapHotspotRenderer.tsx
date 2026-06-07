@@ -260,6 +260,9 @@ export function MapHotspotRenderer({
       zoom: 4,
       zoomControl: false,
       attributionControl: false,
+      zoomSnap: 0.25, // allow fractional zoom so the ±0.25 fine-tune buttons work
+      zoomDelta: 1,   // keep default +/- step at 1 for the main zoom buttons
+      wheelPxPerZoomLevel: 60,
       ...interactiveOptions,
     });
 
