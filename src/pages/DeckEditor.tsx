@@ -1743,7 +1743,7 @@ Add Slide(s)
                     {(() => {
                       const contentUrl = selectedSlide.content_url;
                       if (contentUrl?.startsWith('solid:')) {
-                        return <div className="w-full aspect-[9/16] rounded-lg border" style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
+                        return <div className={`w-full ${aspectClass} rounded-lg border`} style={{ backgroundColor: contentUrl.replace('solid:', '') }} />;
                       }
                       const templateImageUrl = selectedSlide.template_id
                         ? templates.find(t => t.id === selectedSlide.template_id)?.image_url
@@ -1754,6 +1754,7 @@ Add Slide(s)
                           templateImageUrl={templateImageUrl}
                           fallbackUrl={selectedSlide.thumbnail_url}
                           altText={`Slide ${selectedSlide.position}`}
+                          aspectClass={aspectClass}
                           onDelete={() => {
                             setSlideToDelete(selectedSlide);
                             setDeleteDialogOpen(true);
