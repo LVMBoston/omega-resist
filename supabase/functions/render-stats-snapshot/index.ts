@@ -82,33 +82,10 @@ function escapeXml(str: string): string {
 }
 
 // ---------- Web Mercator helpers ----------
-const TILE_SIZE = 256;
-function lngToWorldX(lng: number, z: number): number {
-  return ((lng + 180) / 360) * TILE_SIZE * Math.pow(2, z);
-}
-function latToWorldY(lat: number, z: number): number {
-  const s = Math.sin((lat * Math.PI) / 180);
-  return (
-    (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) *
-    TILE_SIZE *
-    Math.pow(2, z)
-  );
-}
-
-// Approximate zoom that fits the bounding box into pixelWidth x pixelHeight.
-function zoomForBounds(
-  north: number, south: number, east: number, west: number,
-  pixelWidth: number, pixelHeight: number,
-): number {
-  const WORLD = TILE_SIZE;
-  const latRad = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-  const latFraction = (latRad(north) - latRad(south)) / (2 * Math.PI);
-  const lngDiff = east - west;
-  const lngFraction = ((lngDiff < 0 ? lngDiff + 360 : lngDiff)) / 360;
-  const latZoom = Math.log2(pixelHeight / WORLD / latFraction);
-  const lngZoom = Math.log2(pixelWidth / WORLD / lngFraction);
-  return Math.max(0, Math.min(18, Math.min(latZoom, lngZoom)));
-}
+// Pure geometry/canvas helpers live in sibling modules so they can be
+// unit-tested without the Supabase client. See geo.test.ts / canvas.test.ts.
+import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
+import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
