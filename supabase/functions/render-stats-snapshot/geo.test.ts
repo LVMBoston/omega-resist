@@ -13,12 +13,19 @@ Deno.test("zoomForBounds returns a fractional zoom (no Math.floor)", () => {
   assert(z % 1 !== 0, `zoom must be fractional, got integer ${z}`);
 });
 
-Deno.test("zoomForBounds picks the limiting dimension (min of lat/lng)", () => {
-  // A very wide, short box should be limited by longitude.
-  const wide = zoomForBounds(40, 39, 0, -180, 1000, 1000);
-  // A very tall, narrow box should be limited by latitude.
-  const tall = zoomForBounds(80, -80, 0.5, -0.5, 1000, 1000);
-  assert(wide < tall, `expected wide box to need a smaller zoom: wide=${wide} tall=${tall}`);
+Deno.test("zoomForBounds returns the smaller of the lat- and lng-fitting zooms", () => {
+  // A tall, narrow box: lat-fitting zoom should be the binding constraint.
+  // Re-derive both manually and confirm the helper returns the min.
+  const WORLD = 256;
+  const north = 60, south = -60, east = 0.5, west = -0.5;
+  const pixelWidth = 1000, pixelHeight = 1000;
+  const latRad = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const latFraction = (latRad(north) - latRad(south)) / (2 * Math.PI);
+  const lngFraction = (east - west) / 360;
+  const latZoom = Math.log2(pixelHeight / WORLD / latFraction);
+  const lngZoom = Math.log2(pixelWidth / WORLD / lngFraction);
+  const z = zoomForBounds(north, south, east, west, pixelWidth, pixelHeight);
+  assertAlmostEquals(z, Math.min(latZoom, lngZoom), 1e-9);
 });
 
 Deno.test("zoomForBounds at different canvas widths produces different zooms", () => {
