@@ -211,6 +211,16 @@ const App = () => (
                 </LayoutWithSidebar>
               } 
             />
+            <Route 
+              path="/regression-tests"
+              element={
+                <LayoutWithSidebar>
+                  <ProtectedRoute requiredRole="admin">
+                    <RegressionTests />
+                  </ProtectedRoute>
+                </LayoutWithSidebar>
+              } 
+            />
             <Route path="*" element={<LayoutWithSidebar><NotFound /></LayoutWithSidebar>} />
           </Routes>
         </AuthProvider>
