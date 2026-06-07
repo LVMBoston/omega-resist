@@ -35,6 +35,7 @@ export interface MapControls {
   zoomOut: (delta?: number) => void;
   resetView: () => void;
   getZoom: () => number;
+  getCenter: () => { lat: number; lng: number };
 }
 
 
@@ -429,6 +430,10 @@ export function MapHotspotRenderer({
       },
       resetView: () => map.setView([39.8283, -98.5795], 4),
       getZoom: () => map.getZoom(),
+      getCenter: () => {
+        const c = map.getCenter();
+        return { lat: c.lat, lng: c.lng };
+      },
     });
   }, [mapReady, onMapReady]);
 

@@ -434,6 +434,9 @@ export function DataTemplateEditor({
       const hotspotsWithBounds = hotspots.map(h => {
         if (h.type === 'map' && mapBoundsMap[h.id]) {
           const bounds = mapBoundsMap[h.id];
+          const controls = mapControlsMap[h.id];
+          const center = controls?.getCenter ? controls.getCenter() : undefined;
+          const zoom = controls?.getZoom ? controls.getZoom() : undefined;
           return {
             ...h,
             mapConfig: {
@@ -444,6 +447,8 @@ export function DataTemplateEditor({
                 east: bounds.east,
                 west: bounds.west,
               },
+              ...(center ? { savedCenter: center } : {}),
+              ...(typeof zoom === 'number' ? { savedZoom: zoom } : {}),
             },
           };
         }
