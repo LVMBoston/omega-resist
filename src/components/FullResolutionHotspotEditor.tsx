@@ -317,7 +317,6 @@ export const FullResolutionHotspotEditor = ({
       ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
       // Data hotspot defaults
       ...(selectedIconPreset.type === "live_number" && {
-        metricKey: "seeds",
         liveNumberStyle: {
           fontSize: "25",
           fontWeight: "700",
