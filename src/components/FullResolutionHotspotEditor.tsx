@@ -246,6 +246,7 @@ export const FullResolutionHotspotEditor = ({
     live_number: null,
     chart: null,
     map: null,
+    image: null,
   };
 
   const categoryIcons: Record<IconCategory, React.ComponentType<{ className?: string }> | null> = {
@@ -258,6 +259,7 @@ export const FullResolutionHotspotEditor = ({
     live_number: Hash,
     chart: BarChart3,
     map: MapIcon,
+    image: ImageIcon,
   };
 
   const categoryLabels: Record<IconCategory, string> = {
