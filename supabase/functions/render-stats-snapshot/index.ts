@@ -1004,7 +1004,7 @@ Deno.serve(async (req) => {
     function renderManualHtml(
       html: string,
       box: { x: number; y: number; w: number; h: number },
-      style: { baseFontSize: number; color: string; align: "left" | "center" | "right"; bg?: string }
+      style: { baseFontSize: number; color: string; align: "left" | "center" | "right"; bg?: string; verticalAlign?: "top" | "middle" | "bottom" }
     ): string {
       const blocks = parseManualHtml(html);
       const padding = 10;
