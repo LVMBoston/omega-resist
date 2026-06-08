@@ -263,7 +263,6 @@ export function renderManualHtml(
 
   for (let scale = 1.0; scale >= MANUAL_HTML_MIN_SCALE - 1e-6; scale -= MANUAL_HTML_STEP) {
     const fs = style.baseFontSize * scale;
-    const charW = fs * 0.55;
     const lineH = fs * 1.3;
     const paraGap = fs * 0.4;
     const bulletIndent = fs * 1.4;
@@ -273,9 +272,8 @@ export function renderManualHtml(
     for (const block of blocks) {
       const isList = block.kind !== "paragraph";
       const availW = innerW - (isList ? bulletIndent : 0);
-      const maxChars = Math.max(4, Math.floor(availW / charW));
       for (let li = 0; li < block.lines.length; li++) {
-        const visualLines = wrapRuns(block.lines[li], maxChars);
+        const visualLines = wrapRunsByWidth(block.lines[li], availW, fs);
         for (let vi = 0; vi < visualLines.length; vi++) {
           const runs = visualLines[vi];
           let lineX: number;
