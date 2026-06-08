@@ -661,6 +661,12 @@ export default function Admin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RecomputeUtmMediumDialog
+        open={fixChannelsOpen}
+        onOpenChange={setFixChannelsOpen}
+        campaignCode={null}
+      />
     </div>
   );
 }
