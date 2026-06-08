@@ -102,6 +102,13 @@ export function ManualEntryRenderer({
 
   return (
     <div ref={containerRef} style={wrapperStyle} className="manual-entry-box">
+      <style>{`
+        .manual-entry-box ul { list-style: disc; padding-left: 1.4em; margin: 0; }
+        .manual-entry-box ol { list-style: decimal; padding-left: 1.6em; margin: 0; }
+        .manual-entry-box li { margin: 0; }
+        .manual-entry-box p { margin: 0 0 0.4em 0; }
+        .manual-entry-box p:last-child { margin-bottom: 0; }
+      `}</style>
       <div
         ref={contentRef}
         style={contentStyle}
