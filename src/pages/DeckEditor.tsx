@@ -470,7 +470,15 @@ export default function DeckEditor() {
       setOriginalSlides(slidesWithThumbnails);
       setSlides(slidesWithThumbnails);
       if (slidesWithThumbnails.length > 0) {
-        setSelectedSlide(slidesWithThumbnails[0]);
+        // Preserve the user's current selection across reloads. Resetting to
+        // the first slide here silently switched the preview DOM mid-flight,
+        // which caused the post-save thumbnail capture to write slide 1's
+        // preview into the previously-selected slide's thumbnail file.
+        setSelectedSlide((prev) => {
+          if (!prev) return slidesWithThumbnails[0];
+          const stillThere = slidesWithThumbnails.find((s: any) => s.id === prev.id);
+          return stillThere || slidesWithThumbnails[0];
+        });
         // Get reference dimensions from first slide
         const img = new Image();
         img.onload = () => {
@@ -928,6 +936,17 @@ export default function DeckEditor() {
         next.add(slide.id);
         return next;
       });
+      return;
+    }
+
+    // Safety guard: the preview DOM only renders selectedSlide. If we'd
+    // capture a DIFFERENT slide than what the preview is showing, we'd
+    // upload the wrong image into this slide's thumbnail file.
+    if (selectedSlide?.id !== slide.id) {
+      console.warn(
+        `[thumbnail capture] Aborting — preview shows ${selectedSlide?.id}, ` +
+        `but capture was requested for ${slide.id}.`
+      );
       return;
     }
 
