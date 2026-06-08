@@ -939,6 +939,17 @@ export default function DeckEditor() {
       return;
     }
 
+    // Safety guard: the preview DOM only renders selectedSlide. If we'd
+    // capture a DIFFERENT slide than what the preview is showing, we'd
+    // upload the wrong image into this slide's thumbnail file.
+    if (selectedSlide?.id !== slide.id) {
+      console.warn(
+        `[thumbnail capture] Aborting — preview shows ${selectedSlide?.id}, ` +
+        `but capture was requested for ${slide.id}.`
+      );
+      return;
+    }
+
     // Find the preview image element's parent container
     const previewContainer = document.querySelector('[data-slide-preview]') as HTMLElement;
     if (!previewContainer) {
