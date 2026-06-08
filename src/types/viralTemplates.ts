@@ -127,7 +127,8 @@ export interface Hotspot {
   fallbackUrl?: string;   // Desktop/other fallback link
   // Live number hotspot properties
   metricKey?: LiveMetricKey;
-  manualLabel?: string;  // For manual_entry metric type
+  manualLabel?: string;  // For manual_entry metric type — plain text fallback
+  manualHtml?: string;   // For manual_entry metric type — sanitized rich-text HTML (preferred when present)
   liveNumberStyle?: LiveNumberStyle;
   // Chart hotspot properties
   chartConfig?: ChartConfig;

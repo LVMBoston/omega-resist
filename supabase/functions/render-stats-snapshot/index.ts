@@ -843,6 +843,258 @@ Deno.serve(async (req) => {
     // Emoji regex for detecting emoji-prefixed lines
     const emojiPrefixRe = /^([\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2702}-\u{27B0}]\uFE0F?\s?)/u;
 
+    // === Manual-entry rich text rendering ===
+    // Mirrors src/components/ManualEntryRenderer.tsx + src/lib/manualEntryHtml.ts.
+    // Same auto-fit constants so the chosen scale matches within one step.
+    const MANUAL_HTML_MIN_SCALE = 0.4;
+    const MANUAL_HTML_STEP = 0.05;
+
+    type ManualRun = { text: string; bold: boolean; italic: boolean };
+    type ManualBlock = {
+      kind: "paragraph" | "li_bullet" | "li_number";
+      lines: ManualRun[][]; // logical lines (split by <br>); wrapping happens later
+      align: "left" | "center" | "right";
+      number?: number; // for ordered lists
+    };
+
+    function parseManualHtml(html: string): ManualBlock[] {
+      const blocks: ManualBlock[] = [];
+      // Normalize: collapse whitespace between tags
+      const src = html.replace(/>\s+</g, "><").trim();
+      // Match top-level <p>, <ul>, <ol>
+      const blockRe = /<(p|ul|ol)([^>]*)>([\s\S]*?)<\/\1>/gi;
+      let m: RegExpExecArray | null;
+      while ((m = blockRe.exec(src)) !== null) {
+        const tag = m[1].toLowerCase();
+        const attrs = m[2] || "";
+        const inner = m[3] || "";
+        if (tag === "p") {
+          blocks.push({
+            kind: "paragraph",
+            lines: parseInline(inner),
+            align: readAlign(attrs),
+          });
+        } else if (tag === "ul" || tag === "ol") {
+          const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+          let li: RegExpExecArray | null;
+          let n = 1;
+          while ((li = liRe.exec(inner)) !== null) {
+            blocks.push({
+              kind: tag === "ul" ? "li_bullet" : "li_number",
+              lines: parseInline(li[1] || ""),
+              align: "left",
+              number: tag === "ol" ? n : undefined,
+            });
+            n++;
+          }
+        }
+      }
+      if (blocks.length === 0) {
+        // Treat as a single paragraph of plain text.
+        blocks.push({
+          kind: "paragraph",
+          lines: parseInline(src),
+          align: "left",
+        });
+      }
+      return blocks;
+    }
+
+    function readAlign(attrs: string): "left" | "center" | "right" {
+      const m = attrs.match(/text-align\s*:\s*(left|center|right)/i);
+      return (m?.[1]?.toLowerCase() as any) || "left";
+    }
+
+    function parseInline(html: string): ManualRun[][] {
+      // Split logical lines on <br>
+      const lineHtmls = html.split(/<br\s*\/?>/i);
+      return lineHtmls.map((lineHtml) => {
+        const runs: ManualRun[] = [];
+        let i = 0;
+        const stack: { bold: boolean; italic: boolean }[] = [
+          { bold: false, italic: false },
+        ];
+        const peek = () => stack[stack.length - 1];
+        let buf = "";
+        const flush = () => {
+          if (!buf) return;
+          const s = peek();
+          runs.push({
+            text: decodeEntities(buf),
+            bold: s.bold,
+            italic: s.italic,
+          });
+          buf = "";
+        };
+        while (i < lineHtml.length) {
+          if (lineHtml[i] === "<") {
+            const end = lineHtml.indexOf(">", i);
+            if (end < 0) break;
+            const tag = lineHtml.slice(i + 1, end).toLowerCase();
+            flush();
+            if (tag === "strong" || tag === "b") {
+              stack.push({ ...peek(), bold: true });
+            } else if (tag === "em" || tag === "i") {
+              stack.push({ ...peek(), italic: true });
+            } else if (
+              tag === "/strong" || tag === "/b" ||
+              tag === "/em" || tag === "/i"
+            ) {
+              if (stack.length > 1) stack.pop();
+            }
+            // ignore other tags (e.g. spans)
+            i = end + 1;
+          } else {
+            buf += lineHtml[i];
+            i++;
+          }
+        }
+        flush();
+        if (runs.length === 0) runs.push({ text: "", bold: false, italic: false });
+        return runs;
+      });
+    }
+
+    function decodeEntities(s: string): string {
+      return s
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, " ");
+    }
+
+    /** Wrap a list of runs into visual lines that fit within maxChars. */
+    function wrapRuns(runs: ManualRun[], maxChars: number): ManualRun[][] {
+      const out: ManualRun[][] = [];
+      let current: ManualRun[] = [];
+      let currentLen = 0;
+      const pushCurrent = () => {
+        if (current.length > 0) {
+          out.push(current);
+          current = [];
+          currentLen = 0;
+        }
+      };
+      for (const run of runs) {
+        const tokens = run.text.split(/(\s+)/);
+        for (const tok of tokens) {
+          if (!tok) continue;
+          if (currentLen + tok.length > maxChars && currentLen > 0) {
+            pushCurrent();
+            if (/^\s+$/.test(tok)) continue;
+          }
+          current.push({ text: tok, bold: run.bold, italic: run.italic });
+          currentLen += tok.length;
+        }
+      }
+      pushCurrent();
+      if (out.length === 0) out.push([{ text: "", bold: false, italic: false }]);
+      return out;
+    }
+
+    function renderManualHtml(
+      html: string,
+      box: { x: number; y: number; w: number; h: number },
+      style: { baseFontSize: number; color: string; align: "left" | "center" | "right"; bg?: string }
+    ): string {
+      const blocks = parseManualHtml(html);
+      const padding = 10;
+      const innerW = box.w - padding * 2;
+
+      // Auto-fit: try scales high → low, pick first that fits height.
+      let chosenScale = 1.0;
+      let chosenLayout: { lines: { runs: ManualRun[]; x: number; y: number; bullet?: string }[]; totalH: number } | null = null;
+
+      for (let scale = 1.0; scale >= MANUAL_HTML_MIN_SCALE - 1e-6; scale -= MANUAL_HTML_STEP) {
+        const fs = style.baseFontSize * scale;
+        const charW = fs * 0.55;
+        const lineH = fs * 1.3;
+        const paraGap = fs * 0.4;
+        const bulletIndent = fs * 1.4;
+
+        const placed: { runs: ManualRun[]; x: number; y: number; bullet?: string }[] = [];
+        let cursorY = padding + fs; // baseline of first line
+        for (const block of blocks) {
+          const isList = block.kind !== "paragraph";
+          const availW = innerW - (isList ? bulletIndent : 0);
+          const maxChars = Math.max(4, Math.floor(availW / charW));
+          for (let li = 0; li < block.lines.length; li++) {
+            const visualLines = wrapRuns(block.lines[li], maxChars);
+            for (let vi = 0; vi < visualLines.length; vi++) {
+              const runs = visualLines[vi];
+              // x based on alignment
+              let lineX: number;
+              const baseX = padding + (isList ? bulletIndent : 0);
+              if (block.align === "center") {
+                lineX = box.w / 2;
+              } else if (block.align === "right") {
+                lineX = box.w - padding;
+              } else {
+                lineX = baseX;
+              }
+              const bullet =
+                vi === 0 && isList
+                  ? block.kind === "li_bullet"
+                    ? "•"
+                    : `${block.number}.`
+                  : undefined;
+              placed.push({ runs, x: lineX, y: cursorY, bullet });
+              cursorY += lineH;
+            }
+          }
+          cursorY += paraGap;
+        }
+        const totalH = cursorY;
+        if (totalH <= box.h - padding || scale <= MANUAL_HTML_MIN_SCALE + 1e-6) {
+          chosenScale = scale;
+          chosenLayout = { lines: placed, totalH };
+          break;
+        }
+      }
+
+      if (!chosenLayout) return "";
+
+      const fs = style.baseFontSize * chosenScale;
+      let svg = "";
+      if (style.bg && style.bg !== "transparent") {
+        svg += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="${escapeXml(style.bg)}" rx="2"/>`;
+      }
+      const clipId = `clip-mh-${Math.random().toString(36).slice(2, 8)}`;
+      svg += `<defs><clipPath id="${clipId}"><rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></clipPath></defs>`;
+      svg += `<g clip-path="url(#${clipId})">`;
+
+      for (const line of chosenLayout.lines) {
+        const anchor =
+          line.x === box.w / 2
+            ? "middle"
+            : line.x >= box.w - 1
+              ? "end"
+              : "start";
+        const absX = box.x + line.x;
+        const absY = box.y + line.y;
+
+        if (line.bullet) {
+          // Render bullet just to the left of the text line.
+          const bulletX = box.x + 10; // padding
+          svg += `<text x="${bulletX}" y="${absY}" font-family="Inter, sans-serif" font-size="${fs}" fill="${escapeXml(style.color)}" text-anchor="start">${escapeXml(line.bullet)}</text>`;
+        }
+
+        svg += `<text x="${absX}" y="${absY}" font-family="Inter, sans-serif" font-size="${fs}" fill="${escapeXml(style.color)}" text-anchor="${anchor}">`;
+        for (const run of line.runs) {
+          const weight = run.bold ? "bold" : "normal";
+          const style2 = run.italic ? "italic" : "normal";
+          svg += `<tspan font-weight="${weight}" font-style="${style2}">${escapeXml(run.text)}</tspan>`;
+        }
+        svg += `</text>`;
+      }
+
+      svg += `</g>`;
+      return svg;
+    }
+
+
     // Build SVG with embedded background image and text hotspots
     const hotspotSvgElements = textHotspots.map((hotspot: any) => {
       // Resolve metric value
@@ -878,6 +1130,27 @@ Deno.serve(async (req) => {
       // Background rect
       if (bgColor && bgColor !== "transparent") {
         svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
+      }
+
+      // === Manual entry with rich-text HTML (preferred over manualLabel) ===
+      if (
+        hotspot.metricKey === "manual_entry" &&
+        typeof hotspot.manualHtml === "string" &&
+        hotspot.manualHtml.replace(/<[^>]+>/g, "").trim().length > 0
+      ) {
+        return (
+          svgParts +
+          renderManualHtml(
+            hotspot.manualHtml,
+            { x, y, w: hsWidth, h: hsHeight },
+            {
+              baseFontSize: scaledFontSize,
+              color,
+              align: (textAlign as "left" | "center" | "right") || "left",
+              bg: bgColor,
+            }
+          )
+        );
       }
 
       // === Special rendering for campaign_story ===
