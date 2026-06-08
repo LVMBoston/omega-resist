@@ -1133,6 +1133,27 @@ Deno.serve(async (req) => {
         svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
       }
 
+      // === Manual entry with rich-text HTML (preferred over manualLabel) ===
+      if (
+        hotspot.metricKey === "manual_entry" &&
+        typeof hotspot.manualHtml === "string" &&
+        hotspot.manualHtml.replace(/<[^>]+>/g, "").trim().length > 0
+      ) {
+        return (
+          svgParts +
+          renderManualHtml(
+            hotspot.manualHtml,
+            { x, y, w: hsWidth, h: hsHeight },
+            {
+              baseFontSize: scaledFontSize,
+              color,
+              align: (textAlign as "left" | "center" | "right") || "left",
+              bg: bgColor,
+            }
+          )
+        );
+      }
+
       // === Special rendering for campaign_story ===
       if (hotspot.metricKey === "campaign_story") {
         // Story text is rendered smaller than other live numbers so the whole
