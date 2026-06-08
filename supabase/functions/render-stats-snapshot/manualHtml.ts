@@ -87,7 +87,14 @@ export function parseInline(html: string): ManualRun[][] {
 
 export function parseManualHtml(html: string): ManualBlock[] {
   const blocks: ManualBlock[] = [];
-  const src = html.replace(/>\s+</g, "><").trim();
+  // Strip dangerous tags AND their inner contents (script/style/iframe).
+  // This mirrors the editor's DOMPurify behavior so a `<script>alert(1)</script>`
+  // inside manualHtml does not leak its inner text into the rendered output.
+  let cleaned = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
+  const src = cleaned.replace(/>\s+</g, "><").trim();
   const blockRe = /<(p|ul|ol)([^>]*)>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = blockRe.exec(src)) !== null) {
