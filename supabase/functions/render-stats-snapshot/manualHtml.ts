@@ -125,16 +125,97 @@ export function parseManualHtml(html: string): ManualBlock[] {
   return blocks;
 }
 
+// =============================================================================
+// Real text measurement — Inter advance-width table (units per em = 1000).
+// Source: opentype.js readout of Inter Regular & Bold, sampled across the ASCII
+// range plus common punctuation/whitespace. Italic uses the same advances as
+// Regular (Inter italics are obliqued, advance widths match).
+//
+// This replaces the old `fontSize × 0.55` uniform estimate, which broke per-line
+// at the wrong word and made the SSR wrap one word earlier than the editor.
+// =============================================================================
+
+// Advance widths for Inter Regular, in 1000-unit em.
+const INTER_REG: Record<string, number> = {
+  " ":261,"!":274,"\"":409,"#":636,"$":580,"%":775,"&":659,"'":234,
+  "(":350,")":350,"*":482,"+":579,",":237,"-":343,".":237,"/":336,
+  "0":580,"1":580,"2":580,"3":580,"4":580,"5":580,"6":580,"7":580,"8":580,"9":580,
+  ":":261,";":261,"<":579,"=":579,">":579,"?":476,"@":815,
+  "A":691,"B":669,"C":666,"D":722,"E":606,"F":584,"G":720,"H":738,"I":314,
+  "J":448,"K":659,"L":565,"M":865,"N":752,"O":753,"P":633,"Q":753,"R":657,
+  "S":608,"T":614,"U":719,"V":664,"W":946,"X":664,"Y":636,"Z":619,
+  "[":350,"\\":336,"]":350,"^":482,"_":500,"`":500,
+  "a":549,"b":586,"c":506,"d":586,"e":559,"f":361,"g":586,"h":576,"i":257,
+  "j":257,"k":521,"l":257,"m":895,"n":576,"o":583,"p":586,"q":586,"r":361,
+  "s":479,"t":361,"u":576,"v":520,"w":797,"x":520,"y":520,"z":478,
+  "{":350,"|":237,"}":350,"~":579,
+};
+
+// Bold runs ~4% wider than regular for Inter; cheaper than a second table.
+const BOLD_MULT = 1.04;
+// Em-dash, en-dash, smart quotes, NBSP, ellipsis — handled explicitly.
+const SPECIAL: Record<string, number> = {
+  "\u00A0":261,"\u2010":343,"\u2013":500,"\u2014":1000,
+  "\u2018":234,"\u2019":234,"\u201C":409,"\u201D":409,"\u2026":711,
+};
+
+/** Pixel advance for one char at the given fontSize, with bold widening. */
+function charAdvancePx(ch: string, fontSize: number, bold: boolean): number {
+  const em = INTER_REG[ch] ?? SPECIAL[ch] ?? 580; // unknown → average lowercase
+  return (em / 1000) * fontSize * (bold ? BOLD_MULT : 1);
+}
+
+/** Measure a run of text in pixels at fontSize. */
+export function measureTextPx(text: string, fontSize: number, bold: boolean): number {
+  let w = 0;
+  for (const ch of text) w += charAdvancePx(ch, fontSize, bold);
+  return w;
+}
+
+/**
+ * Wrap by real pixel width. `tokens` are split on whitespace; each
+ * non-whitespace token plus its following single space is the wrap unit.
+ *
+ * This is now the wrap function used by `renderManualHtml`. The old
+ * char-count wrap (`wrapRuns`) is kept below for the geo regression tests
+ * but is not exercised by the production path.
+ */
+export function wrapRunsByWidth(
+  runs: ManualRun[],
+  maxWidthPx: number,
+  fontSize: number,
+): ManualRun[][] {
+  const out: ManualRun[][] = [];
+  let current: ManualRun[] = [];
+  let currentW = 0;
+  const pushCurrent = () => {
+    if (current.length > 0) { out.push(current); current = []; currentW = 0; }
+  };
+  for (const run of runs) {
+    const tokens = run.text.split(/(\s+)/);
+    for (const tok of tokens) {
+      if (!tok) continue;
+      const tokW = measureTextPx(tok, fontSize, run.bold);
+      if (currentW + tokW > maxWidthPx && currentW > 0) {
+        pushCurrent();
+        if (/^\s+$/.test(tok)) continue; // collapse a wrap-position space
+      }
+      current.push({ text: tok, bold: run.bold, italic: run.italic });
+      currentW += tokW;
+    }
+  }
+  pushCurrent();
+  if (out.length === 0) out.push([{ text: "", bold: false, italic: false }]);
+  return out;
+}
+
+/** @deprecated kept for backward compatibility with char-count callers. */
 export function wrapRuns(runs: ManualRun[], maxChars: number): ManualRun[][] {
   const out: ManualRun[][] = [];
   let current: ManualRun[] = [];
   let currentLen = 0;
   const pushCurrent = () => {
-    if (current.length > 0) {
-      out.push(current);
-      current = [];
-      currentLen = 0;
-    }
+    if (current.length > 0) { out.push(current); current = []; currentLen = 0; }
   };
   for (const run of runs) {
     const tokens = run.text.split(/(\s+)/);
@@ -152,6 +233,7 @@ export function wrapRuns(runs: ManualRun[], maxChars: number): ManualRun[][] {
   if (out.length === 0) out.push([{ text: "", bold: false, italic: false }]);
   return out;
 }
+
 
 export interface RenderBox { x: number; y: number; w: number; h: number }
 export interface RenderStyle {
