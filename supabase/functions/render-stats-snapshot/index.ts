@@ -802,7 +802,9 @@ Deno.serve(async (req) => {
           `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
           `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`
         );
+      }
     }
+
 
     // Image hotspots — bake pasted images into the SVG.
     const imageSvgElements: string[] = [];
