@@ -86,6 +86,7 @@ function escapeXml(str: string): string {
 // unit-tested without the Supabase client. See geo.test.ts / canvas.test.ts.
 import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
+import { renderManualHtml } from "./manualHtml.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
