@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserCog, LogOut, Trash2, Database, Share2, Copy, ExternalLink } from "lucide-react";
+import { Loader2, UserCog, LogOut, Trash2, Database, Share2, Copy, ExternalLink, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { RecomputeUtmMediumDialog } from "@/components/RecomputeUtmMediumDialog";
 
 interface UserWithRole {
   user_id: string;
@@ -39,6 +40,7 @@ export default function Admin() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: string; value: string } | null>(null);
   const [newShare, setNewShare] = useState({ campaign_id: "", expires_days: "90" });
+  const [fixChannelsOpen, setFixChannelsOpen] = useState(false);
   const { user, userRole, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -500,6 +502,20 @@ export default function Admin() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-2">Fix Channel Labels (utm_medium)</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Scans every campaign's organizer seed (L00) tokens and rewrites
+                      mislabeled channels (e.g. an email link stored as "qr") based on
+                      each event's <code>utm_id</code>. Token strings stay the same —
+                      QR codes and short links keep working.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => setFixChannelsOpen(true)}>
+                      <Wrench className="w-4 h-4 mr-2" />
+                      Fix channels across all campaigns
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -645,6 +661,12 @@ export default function Admin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RecomputeUtmMediumDialog
+        open={fixChannelsOpen}
+        onOpenChange={setFixChannelsOpen}
+        campaignCode={null}
+      />
     </div>
   );
 }
