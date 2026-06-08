@@ -76,6 +76,11 @@ export function ManualEntryRenderer({
     setScale(next);
   }, [safeHtml, width, height, baseFontSize, noAutoFit]);
 
+  // NOTE: We intentionally do NOT apply fontWeight or fontStyle to the wrapper.
+  // The Live Number style is typically bold/italic, which would override the
+  // editor's <strong>/<em> intent and make every paragraph look bold-italic.
+  // Rich-text formatting is driven entirely by the sanitized HTML.
+  void fontWeight;
   const wrapperStyle: CSSProperties = {
     width: `${width}px`,
     height: `${height}px`,
@@ -83,7 +88,8 @@ export function ManualEntryRenderer({
     backgroundColor: backgroundColor || "transparent",
     color,
     fontFamily: fontFamily || "system-ui, -apple-system, sans-serif",
-    fontWeight: fontWeight ?? 400,
+    fontWeight: 400,
+    fontStyle: "normal",
     pointerEvents: "none",
   };
 
