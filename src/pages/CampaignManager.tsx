@@ -764,11 +764,12 @@ export default function CampaignManager() {
           try {
             // Import mintL00 function
             const { mintL00 } = await import("@/lib/virality/mint");
+            const { deriveUtmMedium } = await import("@/lib/virality/deriveUtmMedium");
             await mintL00(
               {
                 eoaId: eoa.id,
                 deckSlug: eoa.assigned_deck_slug!,
-                utmMedium: "qr"
+                utmMedium: deriveUtmMedium(eoa)
               },
               { lazy: false }
             );
@@ -822,11 +823,22 @@ export default function CampaignManager() {
       }
       setDeploying(true);
       try {
+        const { deriveUtmMedium } = await import("@/lib/virality/deriveUtmMedium");
+        // Fetch utm_id for every EoA so we can derive the correct channel medium.
+        const { data: eoaRows } = await supabase
+          .from("events_actions")
+          .select("id, utm_id")
+          .in("id", eoaIds);
+        const utmIdById = new Map<string, string | null>(
+          (eoaRows ?? []).map((r: any) => [r.id, r.utm_id])
+        );
+
         let successCount = 0;
         let errorCount = 0;
         for (const eoaId of eoaIds) {
           try {
-            await mintL00({ eoaId, deckSlug, utmMedium: "qr" }, { lazy: false });
+            const medium = deriveUtmMedium({ utm_id: utmIdById.get(eoaId) });
+            await mintL00({ eoaId, deckSlug, utmMedium: medium }, { lazy: false });
             successCount++;
           } catch (err) {
             console.error(`Failed to mint L00 for EoA ${eoaId} on deck ${deckSlug}:`, err);

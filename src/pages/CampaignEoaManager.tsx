@@ -20,6 +20,7 @@ import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, 
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
+import { deriveUtmMedium } from "@/lib/virality/deriveUtmMedium";
 import { shortenUrlsBatch } from "@/lib/virality/shortener";
 import { TokenDisplay } from "@/components/TokenDisplay";
 import { QrDefaultsDialog } from "@/components/QrDefaultsDialog";
@@ -551,7 +552,7 @@ export default function CampaignEoaManager() {
         {
           eoaId: eoa.id,
           deckSlug: eoa.assigned_deck_slug,
-          utmMedium: "qr"
+          utmMedium: deriveUtmMedium(eoa)
         },
         {
           lazy: true,
@@ -657,7 +658,7 @@ export default function CampaignEoaManager() {
           {
             eoaId: eoa.id,
             deckSlug: eoa.assigned_deck_slug!,
-            utmMedium: "qr"
+            utmMedium: deriveUtmMedium(eoa)
           },
           { lazy: false } // Don't shorten yet, batch it later
         );
@@ -745,7 +746,7 @@ export default function CampaignEoaManager() {
           {
             eoaId: eoa.id,
             deckSlug: eoa.assigned_deck_slug!,
-            utmMedium: "qr"
+            utmMedium: deriveUtmMedium(eoa)
           },
           { lazy: false } // Don't shorten yet, batch it later
         );
