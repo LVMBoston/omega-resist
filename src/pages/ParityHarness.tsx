@@ -100,18 +100,27 @@ export default function ParityHarness() {
   const bg = c.bg ?? BG;
   const vAlign = c.verticalAlign ?? "top";
 
+  // Use Inter on both sides — the SSR's actual font — so wrap measurements
+  // (now Inter-based pixel widths) match what the browser DOM measures.
+  const FONT_STACK = "'Inter', -apple-system, system-ui, sans-serif";
+
   const ssrStyle: RenderStyle = {
     baseFontSize: fs,
     color,
     align: "left",
     bg,
     verticalAlign: vAlign,
-    fontFamily: "system-ui, -apple-system, sans-serif",
+    fontFamily: FONT_STACK,
   };
   const ssrFragment = renderManualHtml(c.html, { x: 0, y: 0, w, h }, ssrStyle);
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", background: "#2b2b2b", minHeight: "100vh", color: "#eee" }}>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
+      />
       <h1 style={{ fontSize: 20, marginBottom: 4 }}>Manual-Entry Parity Harness</h1>
       <p style={{ fontSize: 13, opacity: 0.8, marginBottom: 16 }}>
         Section {c.section} · Case <strong>{c.id}</strong> — {c.label}
