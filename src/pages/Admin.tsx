@@ -40,6 +40,7 @@ export default function Admin() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: string; value: string } | null>(null);
   const [newShare, setNewShare] = useState({ campaign_id: "", expires_days: "90" });
+  const [fixChannelsOpen, setFixChannelsOpen] = useState(false);
   const { user, userRole, signOut } = useAuth();
   const { toast } = useToast();
 
