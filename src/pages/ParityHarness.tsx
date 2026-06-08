@@ -8,7 +8,8 @@
  * Use the case selector or ?case=NN to navigate. The user is the judge of
  * whether each pair is faithful.
  */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import type React from "react";
 import { useSearchParams } from "react-router-dom";
 import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import {
