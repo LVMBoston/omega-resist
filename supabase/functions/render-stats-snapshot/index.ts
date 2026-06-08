@@ -1154,6 +1154,13 @@ Deno.serve(async (req) => {
         typeof hotspot.manualHtml === "string" &&
         hotspot.manualHtml.replace(/<[^>]+>/g, "").trim().length > 0
       ) {
+        const vAlignRaw = (style.verticalAlign || "top").toLowerCase();
+        const verticalAlign: "top" | "middle" | "bottom" =
+          vAlignRaw === "center" || vAlignRaw === "middle"
+            ? "middle"
+            : vAlignRaw === "bottom"
+              ? "bottom"
+              : "top";
         return (
           svgParts +
           renderManualHtml(
@@ -1164,6 +1171,7 @@ Deno.serve(async (req) => {
               color,
               align: (textAlign as "left" | "center" | "right") || "left",
               bg: bgColor,
+              verticalAlign,
             }
           )
         );
