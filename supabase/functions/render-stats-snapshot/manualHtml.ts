@@ -203,9 +203,28 @@ export function wrapRunsByWidth(
     for (const tok of tokens) {
       if (!tok) continue;
       const tokW = measureTextPx(tok, fontSize, run.bold);
+      // Token bigger than the line itself → break by character to mirror the
+      // editor's `word-break: break-word` behavior.
+      if (tokW > maxWidthPx && !/^\s+$/.test(tok)) {
+        // Flush whatever is on the current line first.
+        if (currentW > 0) pushCurrent();
+        let buf = "";
+        let bufW = 0;
+        for (const ch of tok) {
+          const cw = charAdvancePx(ch, fontSize, run.bold);
+          if (bufW + cw > maxWidthPx && buf.length > 0) {
+            current.push({ text: buf, bold: run.bold, italic: run.italic });
+            pushCurrent();
+            buf = ""; bufW = 0;
+          }
+          buf += ch; bufW += cw;
+        }
+        if (buf) { current.push({ text: buf, bold: run.bold, italic: run.italic }); currentW = bufW; }
+        continue;
+      }
       if (currentW + tokW > maxWidthPx && currentW > 0) {
         pushCurrent();
-        if (/^\s+$/.test(tok)) continue; // collapse a wrap-position space
+        if (/^\s+$/.test(tok)) continue;
       }
       current.push({ text: tok, bold: run.bold, italic: run.italic });
       currentW += tokW;
