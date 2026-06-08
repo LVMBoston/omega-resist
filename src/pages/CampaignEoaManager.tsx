@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatFloatingLocalTime } from "@/lib/dateUtils";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files, Info } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files, Info, RefreshCw } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
@@ -1506,6 +1506,16 @@ export default function CampaignEoaManager() {
                 Event/Actions for {campaign.title}
               </CardTitle>
               <div className="flex gap-2">
+                {(userRole === "admin" || userRole === "manager") && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setRecomputeMediumOpen(true)}
+                    title="Recompute channel (utm_medium) for all L00 tokens in this campaign"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Fix channels
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
@@ -1999,6 +2009,13 @@ export default function CampaignEoaManager() {
         open={qrDefaultsDialogOpen}
         onOpenChange={setQrDefaultsDialogOpen}
       />
+
+      <RecomputeUtmMediumDialog
+        open={recomputeMediumOpen}
+        onOpenChange={setRecomputeMediumOpen}
+        campaignCode={campaign?.code ?? null}
+      />
+
 
       {/* Double-confirm delete dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteStep(1); setDeleteConfirmText(""); } }}>
