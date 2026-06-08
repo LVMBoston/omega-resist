@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserCog, LogOut, Trash2, Database, Share2, Copy, ExternalLink } from "lucide-react";
+import { Loader2, UserCog, LogOut, Trash2, Database, Share2, Copy, ExternalLink, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { RecomputeUtmMediumDialog } from "@/components/RecomputeUtmMediumDialog";
 
 interface UserWithRole {
   user_id: string;
