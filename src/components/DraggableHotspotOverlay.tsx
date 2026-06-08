@@ -4,6 +4,7 @@ import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Sh
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
+import { hasManualHtmlContent, sanitizeManualHtml } from "@/lib/manualEntryHtml";
 
 const LOCKED_HOTSPOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   sms: MessageSquare,
