@@ -160,7 +160,7 @@ export default function ParityHarness() {
               baseFontSize={fs}
               color={color}
               backgroundColor={bg}
-              fontFamily="system-ui, -apple-system, sans-serif"
+              fontFamily={FONT_STACK}
             />
           </div>
         </div>
