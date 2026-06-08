@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Hotspot, LiveMetricKey } from "@/types/viralTemplates";
 import { SliderWithButtons } from "@/components/ui/slider-with-buttons";
+import { ManualEntryEditor } from "@/components/ManualEntryEditor";
+import { plainTextToManualHtml } from "@/lib/manualEntryHtml";
 
 // Common fonts available on most systems
 const FONT_OPTIONS = [
