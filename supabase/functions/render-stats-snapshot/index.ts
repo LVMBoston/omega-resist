@@ -356,7 +356,7 @@ async function renderStaticMap(
       const chunk = png.subarray(i, Math.min(i + chunkSize, png.length));
       binary += String.fromCharCode(...chunk);
     }
-    console.log(`[render-stats-snapshot] CartoDB map rendered: ${imgW}x${imgH}, ${cap} markers, z=${zoom}`);
+    console.log(`[render-stats-snapshot] CartoDB map rendered: ${imgW}x${imgH}, ${aggregates.length} clusters / ${events.length} events, z=${zoom}`);
     return `data:image/png;base64,${btoa(binary)}`;
   } catch (e) {
     console.error("[render-stats-snapshot] Static map error:", e);
