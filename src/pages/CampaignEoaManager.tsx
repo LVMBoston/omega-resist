@@ -16,13 +16,15 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatFloatingLocalTime } from "@/lib/dateUtils";
-import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files, Info } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, ArrowLeft, Package, Eye, X, ArrowUpDown, ArrowUp, ArrowDown, QrCode, Download, Copy, Check, CheckCircle2, AlertCircle, Lock, FileJson, Settings, Columns, Files, Info, RefreshCw } from "lucide-react";
 import EoaForm from "@/components/EoaForm";
 import { QRCodeSVG } from "qrcode.react";
 import { mintL00 } from "@/lib/virality/mint";
+import { deriveUtmMedium } from "@/lib/virality/deriveUtmMedium";
 import { shortenUrlsBatch } from "@/lib/virality/shortener";
 import { TokenDisplay } from "@/components/TokenDisplay";
 import { QrDefaultsDialog } from "@/components/QrDefaultsDialog";
+import { RecomputeUtmMediumDialog } from "@/components/RecomputeUtmMediumDialog";
 import {
   useReactTable,
   getCoreRowModel,
@@ -76,6 +78,7 @@ export default function CampaignEoaManager() {
   const [payloadDialogOpen, setPayloadDialogOpen] = useState(false);
   const [visualizePayloadDialogOpen, setVisualizePayloadDialogOpen] = useState(false);
   const [qrDefaultsDialogOpen, setQrDefaultsDialogOpen] = useState(false);
+  const [recomputeMediumOpen, setRecomputeMediumOpen] = useState(false);
   const [selectedEoa, setSelectedEoa] = useState<EventAction | null>(null);
   const [bulkDeckSlug, setBulkDeckSlug] = useState("");
   const [bulkUtmId, setBulkUtmId] = useState("");
@@ -551,7 +554,7 @@ export default function CampaignEoaManager() {
         {
           eoaId: eoa.id,
           deckSlug: eoa.assigned_deck_slug,
-          utmMedium: "qr"
+          utmMedium: deriveUtmMedium(eoa)
         },
         {
           lazy: true,
@@ -657,7 +660,7 @@ export default function CampaignEoaManager() {
           {
             eoaId: eoa.id,
             deckSlug: eoa.assigned_deck_slug!,
-            utmMedium: "qr"
+            utmMedium: deriveUtmMedium(eoa)
           },
           { lazy: false } // Don't shorten yet, batch it later
         );
@@ -745,7 +748,7 @@ export default function CampaignEoaManager() {
           {
             eoaId: eoa.id,
             deckSlug: eoa.assigned_deck_slug!,
-            utmMedium: "qr"
+            utmMedium: deriveUtmMedium(eoa)
           },
           { lazy: false } // Don't shorten yet, batch it later
         );
@@ -1106,7 +1109,7 @@ export default function CampaignEoaManager() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span>
+                <span className="inline-flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1116,12 +1119,17 @@ export default function CampaignEoaManager() {
                     <QrCode className="h-4 w-4 mr-2" />
                     {generatingL00 === eoa.id ? "Generating..." : "Generate L00 Token"}
                   </Button>
+                  {eoa.utm_id && (
+                    <Badge variant="secondary" className="font-mono text-[10px]">
+                      via {deriveUtmMedium(eoa)}
+                    </Badge>
+                  )}
                 </span>
               </TooltipTrigger>
               <TooltipContent>
                 {!eoa.assigned_deck_slug || !eoa.mobilize_code 
                   ? `Missing: ${[!eoa.mobilize_code && "Mobilize Code", !eoa.assigned_deck_slug && "Deck"].filter(Boolean).join(", ")}`
-                  : "Generate L00 token with QR code and shortened URL"}
+                  : `Generate L00 token (channel: ${deriveUtmMedium(eoa)}, derived from utm_id="${eoa.utm_id ?? ""}")`}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -1498,6 +1506,16 @@ export default function CampaignEoaManager() {
                 Event/Actions for {campaign.title}
               </CardTitle>
               <div className="flex gap-2">
+                {(userRole === "admin" || userRole === "manager") && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setRecomputeMediumOpen(true)}
+                    title="Recompute channel (utm_medium) for all L00 tokens in this campaign"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Fix channels
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
@@ -1991,6 +2009,13 @@ export default function CampaignEoaManager() {
         open={qrDefaultsDialogOpen}
         onOpenChange={setQrDefaultsDialogOpen}
       />
+
+      <RecomputeUtmMediumDialog
+        open={recomputeMediumOpen}
+        onOpenChange={setRecomputeMediumOpen}
+        campaignCode={campaign?.code ?? null}
+      />
+
 
       {/* Double-confirm delete dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteStep(1); setDeleteConfirmText(""); } }}>

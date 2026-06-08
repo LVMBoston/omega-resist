@@ -24,6 +24,7 @@ import { DeploymentConfirmDialog } from "@/components/DeploymentConfirmDialog";
 import { SlidePreviewOverlay } from "@/components/SlidePreviewOverlay";
 import type { Hotspot } from "@/types/viralTemplates";
 import { mintL00 } from "@/lib/virality/mint";
+import { deriveUtmMedium } from "@/lib/virality/deriveUtmMedium";
 import { isAnimatedGif } from "@/lib/gifUtils";
 import JSZip from "jszip";
 import { FileDown } from "lucide-react";
@@ -295,7 +296,7 @@ export default function DeckEditor() {
   const [hasDeployedTokens, setHasDeployedTokens] = useState(false);
   const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
-  const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string }>>([]);
+  const [affectedEoas, setAffectedEoas] = useState<Array<{ id: string; title: string; utm_id: string | null }>>([]);
   const [deckMeta, setDeckMeta] = useState<{ last_deployed_at: string | null; last_modified_at: string | null } | null>(null);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [newDeckSlug, setNewDeckSlug] = useState('');
@@ -517,17 +518,18 @@ export default function DeckEditor() {
     try {
       const { data: eoas, error } = await supabase
         .from('events_actions')
-        .select('id, title, campaign_id, campaigns(title)')
+        .select('id, title, utm_id, campaign_id, campaigns(title)')
         .eq('assigned_deck_slug', slug);
 
       if (error) throw error;
 
       setEoaCount(eoas?.length || 0);
       
-      // Store affected EoAs for deployment
+      // Store affected EoAs for deployment (utm_id drives derived channel medium)
       setAffectedEoas(eoas?.map((eoa: any) => ({ 
         id: eoa.id, 
-        title: eoa.title 
+        title: eoa.title,
+        utm_id: eoa.utm_id ?? null,
       })) || []);
       
       // Get unique campaign titles
@@ -1700,7 +1702,7 @@ export default function DeckEditor() {
           await mintL00({
             eoaId: eoa.id,
             deckSlug: slug,
-            utmMedium: "qr"
+            utmMedium: deriveUtmMedium(eoa)
           });
           successCount++;
         } catch (error) {

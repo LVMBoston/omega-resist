@@ -844,6 +844,7 @@ export type Database = {
           deleted_tokens: number
         }[]
       }
+      derive_utm_medium: { Args: { _utm_id: string }; Returns: string }
       generate_share_code: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
       generate_token: { Args: never; Returns: string }
@@ -962,6 +963,20 @@ export type Database = {
           full_url: string
           level: number
           token: string
+        }[]
+      }
+      recompute_l00_utm_medium: {
+        Args: { _campaign_code?: string; _dry_run?: boolean }
+        Returns: {
+          applied: boolean
+          eoa_id: string
+          mobilize_code: string
+          new_medium: string
+          old_medium: string
+          short_urls_updated: number
+          token: string
+          utm_campaign: string
+          utm_id: string
         }[]
       }
       refresh_daily_aggregates: { Args: never; Returns: undefined }
