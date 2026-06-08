@@ -5,6 +5,8 @@ import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { Loader2 } from "lucide-react";
+import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
+import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 
 
 interface StatsPageSlideProps {
