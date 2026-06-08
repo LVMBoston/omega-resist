@@ -1063,6 +1063,15 @@ Deno.serve(async (req) => {
 
       if (!chosenLayout) return "";
 
+      // Apply vertical alignment by offsetting all line y positions.
+      const vAlign = style.verticalAlign || "top";
+      const freeSpace = Math.max(0, box.h - chosenLayout.totalH);
+      const yOffset =
+        vAlign === "middle" ? freeSpace / 2 : vAlign === "bottom" ? freeSpace : 0;
+      if (yOffset > 0) {
+        for (const ln of chosenLayout.lines) ln.y += yOffset;
+      }
+
       const fs = style.baseFontSize * chosenScale;
       let svg = "";
       if (style.bg && style.bg !== "transparent") {
