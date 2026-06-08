@@ -102,24 +102,19 @@ export function HotspotCalibrationControls({
           </Select>
         </div>
 
-        <div className={`space-y-2 ${!isManualEntry ? "opacity-40" : ""}`}>
+        <div className={`space-y-2 ${!isManualEntry ? "opacity-40 pointer-events-none" : ""}`}>
           <Label className="text-xs">Label</Label>
-          <textarea
-            key={`manual-label-${hotspot.id}`}
-            value={hotspot.manualLabel || ""}
-            onChange={(e) => {
-              e.stopPropagation();
-              onUpdate({ manualLabel: e.target.value });
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onDragStart={(e) => e.preventDefault()}
-            placeholder={isManualEntry ? "Enter text..." : "Select Manual Entry"}
-            disabled={!isManualEntry}
-            className="h-16 text-xs cursor-text w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y disabled:cursor-not-allowed"
-            draggable={false}
-            rows={2}
-          />
+          {isManualEntry ? (
+            <ManualEntryEditor
+              key={`manual-html-${hotspot.id}`}
+              html={hotspot.manualHtml || plainTextToManualHtml(hotspot.manualLabel || "")}
+              onChange={(html, plain) => onUpdate({ manualHtml: html, manualLabel: plain })}
+            />
+          ) : (
+            <div className="h-16 rounded-md border border-input bg-background px-3 py-2 text-xs text-muted-foreground">
+              Select Manual Entry to edit text
+            </div>
+          )}
         </div>
       </div>
 
