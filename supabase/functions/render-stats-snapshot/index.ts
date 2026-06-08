@@ -1004,7 +1004,7 @@ Deno.serve(async (req) => {
     function renderManualHtml(
       html: string,
       box: { x: number; y: number; w: number; h: number },
-      style: { baseFontSize: number; color: string; align: "left" | "center" | "right"; bg?: string }
+      style: { baseFontSize: number; color: string; align: "left" | "center" | "right"; bg?: string; verticalAlign?: "top" | "middle" | "bottom" }
     ): string {
       const blocks = parseManualHtml(html);
       const padding = 10;
@@ -1062,6 +1062,15 @@ Deno.serve(async (req) => {
       }
 
       if (!chosenLayout) return "";
+
+      // Apply vertical alignment by offsetting all line y positions.
+      const vAlign = style.verticalAlign || "top";
+      const freeSpace = Math.max(0, box.h - chosenLayout.totalH);
+      const yOffset =
+        vAlign === "middle" ? freeSpace / 2 : vAlign === "bottom" ? freeSpace : 0;
+      if (yOffset > 0) {
+        for (const ln of chosenLayout.lines) ln.y += yOffset;
+      }
 
       const fs = style.baseFontSize * chosenScale;
       let svg = "";
@@ -1145,6 +1154,13 @@ Deno.serve(async (req) => {
         typeof hotspot.manualHtml === "string" &&
         hotspot.manualHtml.replace(/<[^>]+>/g, "").trim().length > 0
       ) {
+        const vAlignRaw = (style.verticalAlign || "top").toLowerCase();
+        const verticalAlign: "top" | "middle" | "bottom" =
+          vAlignRaw === "center" || vAlignRaw === "middle"
+            ? "middle"
+            : vAlignRaw === "bottom"
+              ? "bottom"
+              : "top";
         return (
           svgParts +
           renderManualHtml(
@@ -1155,6 +1171,7 @@ Deno.serve(async (req) => {
               color,
               align: (textAlign as "left" | "center" | "right") || "left",
               bg: bgColor,
+              verticalAlign,
             }
           )
         );
