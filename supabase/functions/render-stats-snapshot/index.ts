@@ -260,14 +260,7 @@ async function renderStaticMap(
     // collide naturally) and scale radius by sqrt(count) — standard
     // proportional-symbol mapping. A count label appears once a cluster
     // has 2+ views and the circle is big enough to read inside.
-    interface Agg {
-      lat: number;
-      lng: number;
-      count: number;
-      fillCounts: Map<string, number>;
-      anySpawn: boolean;
-    }
-    const aggMap = new Map<string, Agg>();
+    const aggMap = new Map<string, { lat: number; lng: number; count: number; fillCounts: Map<string, number>; anySpawn: boolean }>();
     for (const ev of events as any[]) {
       const keyLat = Math.round(ev.latitude * 100) / 100;
       const keyLng = Math.round(ev.longitude * 100) / 100;
