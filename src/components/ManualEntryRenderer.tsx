@@ -84,6 +84,10 @@ export function ManualEntryRenderer({
   // editor's <strong>/<em> intent and make every paragraph look bold-italic.
   // Rich-text formatting is driven entirely by the sanitized HTML.
   void fontWeight;
+  const justify =
+    verticalAlign === "middle" ? "center"
+    : verticalAlign === "bottom" ? "flex-end"
+    : "flex-start";
   const wrapperStyle: CSSProperties = {
     width: `${width}px`,
     height: `${height}px`,
@@ -94,6 +98,9 @@ export function ManualEntryRenderer({
     fontWeight: 400,
     fontStyle: "normal",
     pointerEvents: "none",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: justify,
   };
 
   const contentStyle: CSSProperties = {
