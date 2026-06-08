@@ -64,6 +64,7 @@ interface Hotspot {
   // Data hotspot fields
   metricKey?: string;
   manualLabel?: string;
+  manualHtml?: string;
   liveNumberStyle?: Record<string, any>;
   chartConfig?: any;
   mapConfig?: any;
