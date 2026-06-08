@@ -502,6 +502,20 @@ export default function Admin() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-2">Fix Channel Labels (utm_medium)</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Scans every campaign's organizer seed (L00) tokens and rewrites
+                      mislabeled channels (e.g. an email link stored as "qr") based on
+                      each event's <code>utm_id</code>. Token strings stay the same —
+                      QR codes and short links keep working.
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => setFixChannelsOpen(true)}>
+                      <Wrench className="w-4 h-4 mr-2" />
+                      Fix channels across all campaigns
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
