@@ -16,6 +16,8 @@ interface ManualEntryRendererProps {
   backgroundColor?: string;
   fontFamily?: string;
   fontWeight?: string | number;
+  /** Vertical alignment of the content within the box. Defaults to "top". */
+  verticalAlign?: "top" | "middle" | "bottom";
   /** When true, disable auto-fit (rare; defaults to enabled). */
   noAutoFit?: boolean;
 }
@@ -39,6 +41,7 @@ export function ManualEntryRenderer({
   backgroundColor,
   fontFamily,
   fontWeight,
+  verticalAlign = "top",
   noAutoFit,
 }: ManualEntryRendererProps) {
   const safeHtml = sanitizeManualHtml(html);
@@ -81,6 +84,10 @@ export function ManualEntryRenderer({
   // editor's <strong>/<em> intent and make every paragraph look bold-italic.
   // Rich-text formatting is driven entirely by the sanitized HTML.
   void fontWeight;
+  const justify =
+    verticalAlign === "middle" ? "center"
+    : verticalAlign === "bottom" ? "flex-end"
+    : "flex-start";
   const wrapperStyle: CSSProperties = {
     width: `${width}px`,
     height: `${height}px`,
@@ -91,6 +98,9 @@ export function ManualEntryRenderer({
     fontWeight: 400,
     fontStyle: "normal",
     pointerEvents: "none",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: justify,
   };
 
   const contentStyle: CSSProperties = {
@@ -102,6 +112,13 @@ export function ManualEntryRenderer({
 
   return (
     <div ref={containerRef} style={wrapperStyle} className="manual-entry-box">
+      <style>{`
+        .manual-entry-box ul { list-style: disc; padding-left: 1.4em; margin: 0; }
+        .manual-entry-box ol { list-style: decimal; padding-left: 1.6em; margin: 0; }
+        .manual-entry-box li { margin: 0; }
+        .manual-entry-box p { margin: 0 0 0.4em 0; }
+        .manual-entry-box p:last-child { margin-bottom: 0; }
+      `}</style>
       <div
         ref={contentRef}
         style={contentStyle}

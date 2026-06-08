@@ -87,7 +87,14 @@ export function parseInline(html: string): ManualRun[][] {
 
 export function parseManualHtml(html: string): ManualBlock[] {
   const blocks: ManualBlock[] = [];
-  const src = html.replace(/>\s+</g, "><").trim();
+  // Strip dangerous tags AND their inner contents (script/style/iframe).
+  // This mirrors the editor's DOMPurify behavior so a `<script>alert(1)</script>`
+  // inside manualHtml does not leak its inner text into the rendered output.
+  let cleaned = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
+  const src = cleaned.replace(/>\s+</g, "><").trim();
   const blockRe = /<(p|ul|ol)([^>]*)>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = blockRe.exec(src)) !== null) {
@@ -196,9 +203,28 @@ export function wrapRunsByWidth(
     for (const tok of tokens) {
       if (!tok) continue;
       const tokW = measureTextPx(tok, fontSize, run.bold);
+      // Token bigger than the line itself → break by character to mirror the
+      // editor's `word-break: break-word` behavior.
+      if (tokW > maxWidthPx && !/^\s+$/.test(tok)) {
+        // Flush whatever is on the current line first.
+        if (currentW > 0) pushCurrent();
+        let buf = "";
+        let bufW = 0;
+        for (const ch of tok) {
+          const cw = charAdvancePx(ch, fontSize, run.bold);
+          if (bufW + cw > maxWidthPx && buf.length > 0) {
+            current.push({ text: buf, bold: run.bold, italic: run.italic });
+            pushCurrent();
+            buf = ""; bufW = 0;
+          }
+          buf += ch; bufW += cw;
+        }
+        if (buf) { current.push({ text: buf, bold: run.bold, italic: run.italic }); currentW = bufW; }
+        continue;
+      }
       if (currentW + tokW > maxWidthPx && currentW > 0) {
         pushCurrent();
-        if (/^\s+$/.test(tok)) continue; // collapse a wrap-position space
+        if (/^\s+$/.test(tok)) continue;
       }
       current.push({ text: tok, bold: run.bold, italic: run.italic });
       currentW += tokW;
@@ -258,7 +284,7 @@ export function renderManualHtml(
 
   let chosenScale = 1.0;
   let chosenLayout:
-    | { lines: { runs: ManualRun[]; x: number; y: number; bullet?: string }[]; totalH: number }
+    | { lines: { runs: ManualRun[]; x: number; y: number; anchor: "start" | "middle" | "end"; bullet?: string }[]; totalH: number }
     | null = null;
 
   for (let scale = 1.0; scale >= MANUAL_HTML_MIN_SCALE - 1e-6; scale -= MANUAL_HTML_STEP) {
@@ -267,7 +293,7 @@ export function renderManualHtml(
     const paraGap = fs * 0.4;
     const bulletIndent = fs * 1.4;
 
-    const placed: { runs: ManualRun[]; x: number; y: number; bullet?: string }[] = [];
+    const placed: { runs: ManualRun[]; x: number; y: number; anchor: "start" | "middle" | "end"; bullet?: string }[] = [];
     let cursorY = padding + fs;
     for (const block of blocks) {
       const isList = block.kind !== "paragraph";
@@ -277,17 +303,16 @@ export function renderManualHtml(
         for (let vi = 0; vi < visualLines.length; vi++) {
           const runs = visualLines[vi];
           let lineX: number;
+          let anchor: "start" | "middle" | "end";
           const baseX = padding + (isList ? bulletIndent : 0);
-          if (block.align === "center") lineX = box.w / 2;
-          else if (block.align === "right") lineX = box.w - padding;
-          else lineX = baseX;
+          if (block.align === "center") { lineX = box.w / 2; anchor = "middle"; }
+          else if (block.align === "right") { lineX = box.w - padding; anchor = "end"; }
+          else { lineX = baseX; anchor = "start"; }
           const bullet =
             vi === 0 && isList
-              ? block.kind === "li_bullet"
-                ? "•"
-                : `${block.number}.`
+              ? block.kind === "li_bullet" ? "•" : `${block.number}.`
               : undefined;
-          placed.push({ runs, x: lineX, y: cursorY, bullet });
+          placed.push({ runs, x: lineX, y: cursorY, anchor, bullet });
           cursorY += lineH;
         }
       }
@@ -319,8 +344,6 @@ export function renderManualHtml(
   svg += `<g clip-path="url(#${clipId})">`;
 
   for (const line of chosenLayout.lines) {
-    const anchor =
-      line.x === box.w / 2 ? "middle" : line.x >= box.w - 1 ? "end" : "start";
     const absX = box.x + line.x;
     const absY = box.y + line.y;
 
@@ -329,7 +352,7 @@ export function renderManualHtml(
       svg += `<text x="${bulletX}" y="${absY}" font-family="${fontFamily}" font-size="${fs}" fill="${escapeXml(style.color)}" text-anchor="start">${escapeXml(line.bullet)}</text>`;
     }
 
-    svg += `<text x="${absX}" y="${absY}" font-family="${fontFamily}" font-size="${fs}" fill="${escapeXml(style.color)}" text-anchor="${anchor}">`;
+    svg += `<text x="${absX}" y="${absY}" font-family="${fontFamily}" font-size="${fs}" fill="${escapeXml(style.color)}" text-anchor="${line.anchor}">`;
     for (const run of line.runs) {
       const weight = run.bold ? "bold" : "normal";
       const fstyle = run.italic ? "italic" : "normal";
