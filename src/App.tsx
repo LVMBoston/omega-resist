@@ -78,6 +78,7 @@ const App = () => (
             <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
             <Route path="/landing" element={<LandingPage />} />
             <Route path="/explainer" element={<Explainer />} />
+            <Route path="/parity-harness" element={<ParityHarness />} />
             
             {/* Routes with sidebar */}
             <Route path="/" element={<LayoutWithSidebar><Navigate to="/campaign-config" replace /></LayoutWithSidebar>} />
