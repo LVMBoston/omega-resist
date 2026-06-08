@@ -1008,7 +1008,6 @@ Deno.serve(async (req) => {
       let chosenLayout: { lines: { runs: ManualRun[]; x: number; y: number; bullet?: string }[]; totalH: number } | null = null;
 
       for (let scale = 1.0; scale >= MANUAL_HTML_MIN_SCALE - 1e-6; scale -= MANUAL_HTML_STEP) {
-        const fontSize = box.baseFontSize ? box.baseFontSize : style.baseFontSize * scale;
         const fs = style.baseFontSize * scale;
         const charW = fs * 0.55;
         const lineH = fs * 1.3;
