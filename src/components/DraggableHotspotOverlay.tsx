@@ -425,6 +425,12 @@ export function DraggableHotspotOverlay({
                 }}
                 placeholder="Enter text..."
               />
+            ) : isManualEntry && hasManualHtmlContent(hotspot.manualHtml) ? (
+              <div
+                className="manual-entry-box pointer-events-none w-full h-full overflow-hidden"
+                style={{ textAlign: (style as any).textAlign || "left" }}
+                dangerouslySetInnerHTML={{ __html: sanitizeManualHtml(hotspot.manualHtml || "") }}
+              />
             ) : (
               <span className="pointer-events-none whitespace-pre-line">
                 {isManualEntry ? (hotspot.manualLabel || "—") : (displayValues[hotspot.id] || "0")}
