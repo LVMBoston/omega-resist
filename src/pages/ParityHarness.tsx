@@ -188,6 +188,7 @@ function CasePair({ c }: { c: Case }) {
             <ManualEntryRenderer
               html={c.html} width={w} height={h} baseFontSize={fs}
               color={color} backgroundColor={bg} fontFamily={FONT_STACK}
+              verticalAlign={vAlign}
             />
           </div>
         </div>
