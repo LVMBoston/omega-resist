@@ -4,6 +4,7 @@ import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Sh
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
+import { hasManualHtmlContent, sanitizeManualHtml } from "@/lib/manualEntryHtml";
 
 const LOCKED_HOTSPOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   sms: MessageSquare,
@@ -423,6 +424,12 @@ export function DraggableHotspotOverlay({
                   fontFamily: "inherit",
                 }}
                 placeholder="Enter text..."
+              />
+            ) : isManualEntry && hasManualHtmlContent(hotspot.manualHtml) ? (
+              <div
+                className="manual-entry-box pointer-events-none w-full h-full overflow-hidden"
+                style={{ textAlign: (style as any).textAlign || "left" }}
+                dangerouslySetInnerHTML={{ __html: sanitizeManualHtml(hotspot.manualHtml || "") }}
               />
             ) : (
               <span className="pointer-events-none whitespace-pre-line">

@@ -18,6 +18,7 @@ import { BsShare, BsShareFill } from "react-icons/bs";
 import mailIcon from "@/assets/mail-icon.png";
 import textIcon from "@/assets/text-icon.png";
 import playButtonIcon from "@/assets/play-button.png";
+import { hasManualHtmlContent, sanitizeManualHtml } from "@/lib/manualEntryHtml";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
 import externalLinkIcon from "@/assets/external-link-icon.png";
@@ -63,6 +64,7 @@ interface Hotspot {
   // Data hotspot fields
   metricKey?: string;
   manualLabel?: string;
+  manualHtml?: string;
   liveNumberStyle?: Record<string, any>;
   chartConfig?: any;
   mapConfig?: any;
@@ -627,11 +629,19 @@ export const FullResolutionHotspotEditor = ({
             if (!isDragging) setSelectedHotspot(hotspot.id);
           }}
         >
-          <span className="pointer-events-none whitespace-pre-line">
-            {hotspot.metricKey === 'manual_entry'
-              ? (hotspot.manualLabel || "—")
-              : (displayValues[hotspot.id] || "0")}
-          </span>
+          {hotspot.metricKey === 'manual_entry' && hasManualHtmlContent(hotspot.manualHtml) ? (
+            <div
+              className="manual-entry-box pointer-events-none w-full h-full overflow-hidden"
+              style={{ textAlign: (style as any).textAlign || "left" }}
+              dangerouslySetInnerHTML={{ __html: sanitizeManualHtml(hotspot.manualHtml || "") }}
+            />
+          ) : (
+            <span className="pointer-events-none whitespace-pre-line">
+              {hotspot.metricKey === 'manual_entry'
+                ? (hotspot.manualLabel || "—")
+                : (displayValues[hotspot.id] || "0")}
+            </span>
+          )}
           {/* Index badge */}
           <div className={`absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
             isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
