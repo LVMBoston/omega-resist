@@ -978,23 +978,15 @@ Deno.serve(async (req) => {
         }
       };
       for (const run of runs) {
-        const words = run.text.split(/(\s+)/); // keep spaces
-        for (const w of words) {
-          if (!w) continue;
-          const wLen = w.length;
-          if (currentLen + wLen <= maxChars || currentLen === 0) {
-            current.push({ ...run, text: (current.at(-1)?.bold === run.bold && current.at(-1)?.italic === run.italic && current.length > 0) ? "" : "" });
-            // simpler: just push a fresh run segment
-            current.pop();
-            current.push({ text: w, bold: run.bold, italic: run.italic });
-            currentLen += wLen;
-          } else {
+        const tokens = run.text.split(/(\s+)/);
+        for (const tok of tokens) {
+          if (!tok) continue;
+          if (currentLen + tok.length > maxChars && currentLen > 0) {
             pushCurrent();
-            // Don't start a line with leading whitespace
-            if (/^\s+$/.test(w)) continue;
-            current.push({ text: w, bold: run.bold, italic: run.italic });
-            currentLen += wLen;
+            if (/^\s+$/.test(tok)) continue;
           }
+          current.push({ text: tok, bold: run.bold, italic: run.italic });
+          currentLen += tok.length;
         }
       }
       pushCurrent();
