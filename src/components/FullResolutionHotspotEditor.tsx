@@ -632,7 +632,7 @@ export const FullResolutionHotspotEditor = ({
           {hotspot.metricKey === 'manual_entry' && hasManualHtmlContent(hotspot.manualHtml) ? (
             <div
               className="manual-entry-box pointer-events-none w-full overflow-hidden"
-              style={{ textAlign: (style as any).textAlign || "left" }}
+              style={{ textAlign: (style as any).textAlign || "left", fontWeight: 400, fontStyle: "normal" }}
               dangerouslySetInnerHTML={{ __html: sanitizeManualHtml(hotspot.manualHtml || "") }}
             />
           ) : (
