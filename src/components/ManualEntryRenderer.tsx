@@ -16,6 +16,8 @@ interface ManualEntryRendererProps {
   backgroundColor?: string;
   fontFamily?: string;
   fontWeight?: string | number;
+  /** Vertical alignment of the content within the box. Defaults to "top". */
+  verticalAlign?: "top" | "middle" | "bottom";
   /** When true, disable auto-fit (rare; defaults to enabled). */
   noAutoFit?: boolean;
 }
@@ -39,6 +41,7 @@ export function ManualEntryRenderer({
   backgroundColor,
   fontFamily,
   fontWeight,
+  verticalAlign = "top",
   noAutoFit,
 }: ManualEntryRendererProps) {
   const safeHtml = sanitizeManualHtml(html);
