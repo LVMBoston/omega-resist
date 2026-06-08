@@ -407,6 +407,36 @@ export const StatsPageSlide = ({
           hotspot.metricKey === 'campaign_story' || /\n/.test(value);
         const baseFontSize = parseInt(String(style.fontSize || '24'), 10) || 24;
         const storyFontSize = Math.max(11, Math.round(baseFontSize * 0.5));
+
+        if (
+          hotspot.metricKey === 'manual_entry' &&
+          hasManualHtmlContent(hotspot.manualHtml)
+        ) {
+          return (
+            <div
+              key={hotspot.id}
+              className="absolute"
+              style={{
+                left: `${left}px`,
+                top: `${top}px`,
+                textAlign: style.textAlign || 'left',
+                borderRadius: style.borderRadius || '0',
+              }}
+            >
+              <ManualEntryRenderer
+                html={hotspot.manualHtml || ''}
+                width={width}
+                height={height}
+                baseFontSize={baseFontSize}
+                color={style.color || '#1a1a1a'}
+                backgroundColor={style.backgroundColor}
+                fontFamily={style.fontFamily}
+                fontWeight={style.fontWeight || '400'}
+              />
+            </div>
+          );
+        }
+
         return (
           <div
             key={hotspot.id}
