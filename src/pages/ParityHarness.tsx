@@ -159,102 +159,97 @@ const CASES: Case[] = [
     html: "<p>Square box, large.</p>", width: 520, height: 520 },
 ];
 
-export default function ParityHarness() {
-  const [params, setParams] = useSearchParams();
-  const caseId = params.get("case") || CASES[0].id;
-  const c = useMemo(() => CASES.find((x) => x.id === caseId) || CASES[0], [caseId]);
+const FONT_STACK = "'Inter', -apple-system, system-ui, sans-serif";
 
+function CasePair({ c }: { c: Case }) {
   const w = c.width ?? BOX_W;
   const h = c.height ?? BOX_H;
   const fs = c.baseFontSize ?? FS;
   const color = c.color ?? COLOR;
   const bg = c.bg ?? BG;
   const vAlign = c.verticalAlign ?? "top";
-
-  // Use Inter on both sides — the SSR's actual font — so wrap measurements
-  // (now Inter-based pixel widths) match what the browser DOM measures.
-  const FONT_STACK = "'Inter', -apple-system, system-ui, sans-serif";
-
   const ssrStyle: RenderStyle = {
-    baseFontSize: fs,
-    color,
-    align: "left",
-    bg,
-    verticalAlign: vAlign,
-    fontFamily: FONT_STACK,
+    baseFontSize: fs, color, align: "left", bg,
+    verticalAlign: vAlign, fontFamily: FONT_STACK,
   };
   const ssrFragment = renderManualHtml(c.html, { x: 0, y: 0, w, h }, ssrStyle);
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+        <strong>{c.id}</strong> — {c.label}
+        {c.verticalAlign ? `  ·  v-align: ${c.verticalAlign}` : ""}
+        {c.width ? `  ·  ${w}×${h}` : ""}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: `${w}px ${w}px`, gap: 24, alignItems: "start" }}>
+        <div>
+          <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>EDITOR (live React)</div>
+          <div style={{ width: w, height: h, background: bg, outline: "1px dashed #888" }}>
+            <ManualEntryRenderer
+              html={c.html} width={w} height={h} baseFontSize={fs}
+              color={color} backgroundColor={bg} fontFamily={FONT_STACK}
+            />
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>SSR (snapshot algorithm)</div>
+          <div style={{ width: w, height: h, outline: "1px dashed #888" }}>
+            <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} xmlns="http://www.w3.org/2000/svg"
+              dangerouslySetInnerHTML={{ __html: ssrFragment }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ParityHarness() {
+  const [params, setParams] = useSearchParams();
+  const caseId = params.get("case") || CASES[0].id;
+  const sectionFilter = params.get("section");
+  const showAll = sectionFilter === "all";
+
+  const visible = useMemo(() => {
+    if (showAll) return CASES;
+    if (sectionFilter) return CASES.filter((x) => x.section === sectionFilter);
+    return CASES.filter((x) => x.id === caseId);
+  }, [caseId, sectionFilter, showAll]);
+
+  const sections = Array.from(new Set(CASES.map((c) => c.section)));
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", background: "#2b2b2b", minHeight: "100vh", color: "#eee" }}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap"
-      />
-      <h1 style={{ fontSize: 20, marginBottom: 4 }}>Manual-Entry Parity Harness</h1>
-      <p style={{ fontSize: 13, opacity: 0.8, marginBottom: 16 }}>
-        Section {c.section} · Case <strong>{c.id}</strong> — {c.label}
-      </p>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" />
+      <h1 style={{ fontSize: 20, marginBottom: 8 }}>Manual-Entry Parity Harness</h1>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        <button onClick={() => setParams({ section: "all" })} style={btnStyle(showAll)}>ALL</button>
+        {sections.map((s) => (
+          <button key={s} onClick={() => setParams({ section: s })} style={btnStyle(sectionFilter === s)}>§{s}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {CASES.map((x) => (
-          <button
-            key={x.id}
-            onClick={() => setParams({ case: x.id })}
-            style={{
-              padding: "4px 10px",
-              fontSize: 12,
-              borderRadius: 4,
-              border: "1px solid #555",
-              background: x.id === c.id ? "#5b8def" : "#3b3b3b",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            {x.id}
-          </button>
+          <button key={x.id} onClick={() => setParams({ case: x.id })}
+            style={btnStyle(!showAll && !sectionFilter && x.id === caseId, true)}>{x.id}</button>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: `${w}px ${w}px`, gap: 24, alignItems: "start" }}>
-        <div>
-          <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.8 }}>EDITOR (live React)</div>
-          <div
-            data-parity-side="editor"
-            style={{ width: w, height: h, background: bg, outline: "1px dashed #888" }}
-          >
-            <ManualEntryRenderer
-              html={c.html}
-              width={w}
-              height={h}
-              baseFontSize={fs}
-              color={color}
-              backgroundColor={bg}
-              fontFamily={FONT_STACK}
-            />
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.8 }}>SSR (snapshot algorithm)</div>
-          <div data-parity-side="ssr" style={{ width: w, height: h, outline: "1px dashed #888" }}>
-            <svg
-              width={w}
-              height={h}
-              viewBox={`0 0 ${w} ${h}`}
-              xmlns="http://www.w3.org/2000/svg"
-              dangerouslySetInnerHTML={{ __html: ssrFragment }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <details style={{ marginTop: 24, fontSize: 12, opacity: 0.75 }}>
-        <summary>Fixture HTML</summary>
-        <pre style={{ background: "#1a1a1a", padding: 12, borderRadius: 4, overflow: "auto" }}>{c.html}</pre>
-      </details>
+      {visible.map((c) => <CasePair key={c.id} c={c} />)}
     </div>
   );
+}
+
+function btnStyle(active: boolean, small = false): React.CSSProperties {
+  return {
+    padding: small ? "3px 8px" : "5px 12px",
+    fontSize: small ? 11 : 12,
+    borderRadius: 4,
+    border: "1px solid #555",
+    background: active ? "#5b8def" : "#3b3b3b",
+    color: "#fff",
+    cursor: "pointer",
+  };
 }
 
 export { CASES as PARITY_CASES };
