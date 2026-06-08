@@ -303,10 +303,14 @@ async function renderStaticMap(
           canvas.setPixelAt(x + 1, y + 1, c >>> 0);
         }
       }
-      try {
-        // @ts-ignore imagescript drawText if available
-        canvas.drawText?.(text, x0 + padX, y0 + padY, 0x111111ff);
-      } catch (_) { /* best-effort */ }
+      const anyCanvas = canvas as any;
+      if (typeof anyCanvas.drawText === "function") {
+        try {
+          anyCanvas.drawText(text, x0 + padX, y0 + padY, 0x111111ff);
+        } catch (_err) {
+          // best-effort label text
+        }
+      }
     };
 
     for (const a of aggregates) {
