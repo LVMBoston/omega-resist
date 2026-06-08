@@ -346,26 +346,33 @@ export const HybridSlide = ({
             value = String(metricsMap[hotspot.metricKey]);
           }
 
+          const isStory =
+            hotspot.metricKey === "campaign_story" || /\n/.test(value);
+          const baseFontSize = parseInt(String(style.fontSize || "24"), 10) || 24;
+          const storyFontSize = Math.max(11, Math.round(baseFontSize * 0.5));
           return (
             <div
               key={hotspot.id}
-              className="absolute flex items-center justify-center overflow-hidden"
+              className={`absolute overflow-hidden flex ${
+                isStory ? "items-start justify-start" : "items-center justify-center"
+              }`}
               style={{
                 left: `${left}px`,
                 top: `${top}px`,
                 width: `${width}px`,
                 height: `${height}px`,
-                fontSize: style.fontSize || "24px",
+                fontSize: isStory ? `${storyFontSize}px` : style.fontSize || "24px",
+                lineHeight: isStory ? 1.25 : undefined,
                 fontWeight: style.fontWeight || "700",
                 color: style.color || "#1a1a1a",
                 backgroundColor: style.backgroundColor || "transparent",
-                textAlign: style.textAlign || "center",
+                textAlign: isStory ? "left" : style.textAlign || "center",
                 fontFamily: style.fontFamily || "system-ui, -apple-system, sans-serif",
-                padding: style.padding || "0",
+                padding: isStory ? "12px" : style.padding || "0",
                 borderRadius: style.borderRadius || "0",
                 pointerEvents: "none",
                 whiteSpace: "pre-line",
-                overflow: "hidden",
+                wordBreak: "break-word",
               }}
             >
               {value}
