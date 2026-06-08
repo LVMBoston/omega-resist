@@ -917,6 +917,20 @@ export default function CampaignEoaManager() {
     {
       accessorKey: "utm_id",
       header: "utm_id",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span>{row.original.utm_id || "—"}</span>
+          {row.original.utm_id && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0"
+              title={`Channel derived from utm_id="${row.original.utm_id}". Use "Fix channels" to apply to existing tokens.`}
+            >
+              via {deriveUtmMedium(row.original)}
+            </Badge>
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: "title",
