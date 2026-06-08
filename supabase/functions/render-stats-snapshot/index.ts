@@ -806,7 +806,9 @@ Deno.serve(async (req) => {
     }
 
 
-    // Image hotspots — bake pasted images into the SVG.
+    // Image hotspots — bake pasted images into the SVG as base64 data URLs.
+    // Remote href="..." references don't resolve when the SVG is rendered as
+    // a static asset (or rasterized by a downstream tool), so we inline them.
     const imageSvgElements: string[] = [];
     for (const imgHotspot of imageHotspots) {
       if (!imgHotspot.imageSrc) continue;
@@ -814,8 +816,13 @@ Deno.serve(async (req) => {
       const iy = (imgHotspot.y / 100) * height;
       const iw = ((imgHotspot.width || 30) / 100) * width;
       const ih = ((imgHotspot.height || 30) / 100) * height;
+      const dataUrl = await fetchImageAsDataUrl(imgHotspot.imageSrc);
+      if (!dataUrl) {
+        console.warn(`[render-stats-snapshot] Skipping image hotspot ${imgHotspot.id}: fetch failed for ${imgHotspot.imageSrc}`);
+        continue;
+      }
       imageSvgElements.push(
-        `<image href="${escapeXml(imgHotspot.imageSrc)}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`
+        `<image href="${dataUrl}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`
       );
     }
 
