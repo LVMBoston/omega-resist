@@ -254,25 +254,79 @@ async function renderStaticMap(
     }
     await Promise.all(tileJobs);
 
-    // ---- Draw markers ----
-    const radius = 5;
-    const cap = Math.min(events.length, 500);
-    for (let i = 0; i < cap; i++) {
-      const ev: any = events[i];
+    // ---- Aggregate events by location so the marker size reflects activity ----
+    // Static snapshots can't be zoomed, so a single dot would hide volume.
+    // We group events that share a coordinate (~1km grid; ZIP centroids
+    // collide naturally) and scale radius by sqrt(count) — standard
+    // proportional-symbol mapping. A count label appears once a cluster
+    // has 2+ views and the circle is big enough to read inside.
+    type Agg = {
+      lat: number; lng: number; count: number;
+      fillCounts: Map<string, number>;
+      anySpawn: boolean;
+    };
+    const aggMap = new Map<string, Agg>();
+    for (const ev of events as any[]) {
+      const keyLat = Math.round(ev.latitude * 100) / 100;
+      const keyLng = Math.round(ev.longitude * 100) / 100;
+      const key = `${keyLat},${keyLng}`;
       const token = tokenMap.get(ev.token);
       const medium = (token?.utm_medium || "").toLowerCase();
-      const fill = MEDIUM_COLORS_HEX[medium] || DEFAULT_COLOR_HEX;
       const hasSpawns = token ? rootTokensWithChildren.has(token.token) : false;
-      const stroke = hasSpawns ? SPAWN_STROKE : DEFAULT_STROKE;
+      let a = aggMap.get(key);
+      if (!a) {
+        a = { lat: keyLat, lng: keyLng, count: 0, fillCounts: new Map(), anySpawn: false };
+        aggMap.set(key, a);
+      }
+      a.count += 1;
+      a.fillCounts.set(medium, (a.fillCounts.get(medium) || 0) + 1);
+      if (hasSpawns) a.anySpawn = true;
+    }
 
-      const wx = lngToWorldX(ev.longitude, zoom);
-      const wy = latToWorldY(ev.latitude, zoom);
+    const aggregates = Array.from(aggMap.values()).sort((a, b) => a.count - b.count);
+    const BASE_R = 5;
+    const K = 3.2;
+    const MAX_R = 22;
+
+    const drawLabel = (text: string, cx: number, cy: number) => {
+      const charW = 6, charH = 8, padX = 3, padY = 2;
+      const w = text.length * charW + padX * 2;
+      const h = charH + padY * 2;
+      const x0 = Math.round(cx - w / 2);
+      const y0 = Math.round(cy - h / 2);
+      for (let yy = 0; yy < h; yy++) {
+        for (let xx = 0; xx < w; xx++) {
+          const x = x0 + xx, y = y0 + yy;
+          if (x < 0 || y < 0 || x >= imgW || y >= imgH) continue;
+          const onEdge = xx === 0 || yy === 0 || xx === w - 1 || yy === h - 1;
+          const c = onEdge ? 0x222222ff : 0xffffffee;
+          canvas.setPixelAt(x + 1, y + 1, c >>> 0);
+        }
+      }
+      try {
+        // @ts-ignore imagescript drawText if available
+        canvas.drawText?.(text, x0 + padX, y0 + padY, 0x111111ff);
+      } catch (_) { /* best-effort */ }
+    };
+
+    for (const a of aggregates) {
+      let topMedium = "";
+      let topN = -1;
+      for (const [m, n] of a.fillCounts) {
+        if (n > topN) { topN = n; topMedium = m; }
+      }
+      const fill = MEDIUM_COLORS_HEX[topMedium] || DEFAULT_COLOR_HEX;
+      const stroke = a.anySpawn ? SPAWN_STROKE : DEFAULT_STROKE;
+      const radius = Math.min(MAX_R, Math.round(BASE_R + K * Math.sqrt(Math.max(0, a.count - 1))));
+
+      const wx = lngToWorldX(a.lng, zoom);
+      const wy = latToWorldY(a.lat, zoom);
       const px = Math.round(wx - originWorldX);
       const py = Math.round(wy - originWorldY);
       if (px < -radius || py < -radius || px >= imgW + radius || py >= imgH + radius) continue;
 
-      // Filled circle + 1px stroke ring
-      const rOuter = radius + 1;
+      const strokeW = a.count > 1 ? 2 : 1;
+      const rOuter = radius + strokeW;
       for (let dy = -rOuter; dy <= rOuter; dy++) {
         for (let dx = -rOuter; dx <= rOuter; dx++) {
           const d2 = dx * dx + dy * dy;
@@ -280,14 +334,18 @@ async function renderStaticMap(
           const x = px + dx, y = py + dy;
           if (x < 0 || y < 0 || x >= imgW || y >= imgH) continue;
           if (d2 > radius * radius) {
-            // stroke ring
             const c = (stroke[0] << 24) | (stroke[1] << 16) | (stroke[2] << 8) | 0xff;
             canvas.setPixelAt(x + 1, y + 1, c >>> 0);
           } else {
-            const c = (fill[0] << 24) | (fill[1] << 16) | (fill[2] << 8) | 0xff;
+            const alpha = a.count > 1 ? 0xee : 0xff;
+            const c = (fill[0] << 24) | (fill[1] << 16) | (fill[2] << 8) | alpha;
             canvas.setPixelAt(x + 1, y + 1, c >>> 0);
           }
         }
+      }
+
+      if (a.count >= 2 && radius >= 8) {
+        drawLabel(String(a.count), px, py);
       }
     }
 
