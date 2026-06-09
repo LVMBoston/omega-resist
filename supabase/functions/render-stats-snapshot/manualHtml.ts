@@ -278,8 +278,10 @@ export function renderManualHtml(
   style: RenderStyle,
 ): string {
   const blocks = parseManualHtml(html);
-  const padding = 10;
-  const innerW = box.w - padding * 2;
+  // Match ManualEntryRenderer's contentStyle padding: "8px 10px"
+  const padX = 10;
+  const padY = 8;
+  const innerW = box.w - padX * 2;
   const fontFamily = style.fontFamily || "Inter, sans-serif";
 
   let chosenScale = 1.0;
@@ -289,13 +291,18 @@ export function renderManualHtml(
 
   for (let scale = 1.0; scale >= MANUAL_HTML_MIN_SCALE - 1e-6; scale -= MANUAL_HTML_STEP) {
     const fs = style.baseFontSize * scale;
-    const lineH = fs * 1.3;
+    // Match ManualEntryRenderer's lineHeight: 1.25
+    const lineH = fs * 1.25;
+    // Editor: <p> has margin-bottom: 0.4em; <li> has margin: 0. So only
+    // paragraphs contribute an inter-block gap, and the last block has none
+    // (p:last-child { margin-bottom: 0 }).
     const paraGap = fs * 0.4;
     const bulletIndent = fs * 1.4;
 
     const placed: { runs: ManualRun[]; x: number; y: number; anchor: "start" | "middle" | "end"; bullet?: string }[] = [];
-    let cursorY = padding + fs;
-    for (const block of blocks) {
+    let cursorY = padY + fs;
+    for (let bi = 0; bi < blocks.length; bi++) {
+      const block = blocks[bi];
       const isList = block.kind !== "paragraph";
       const availW = innerW - (isList ? bulletIndent : 0);
       for (let li = 0; li < block.lines.length; li++) {
@@ -304,9 +311,9 @@ export function renderManualHtml(
           const runs = visualLines[vi];
           let lineX: number;
           let anchor: "start" | "middle" | "end";
-          const baseX = padding + (isList ? bulletIndent : 0);
+          const baseX = padX + (isList ? bulletIndent : 0);
           if (block.align === "center") { lineX = box.w / 2; anchor = "middle"; }
-          else if (block.align === "right") { lineX = box.w - padding; anchor = "end"; }
+          else if (block.align === "right") { lineX = box.w - padX; anchor = "end"; }
           else { lineX = baseX; anchor = "start"; }
           const bullet =
             vi === 0 && isList
@@ -316,10 +323,19 @@ export function renderManualHtml(
           cursorY += lineH;
         }
       }
-      cursorY += paraGap;
+      // Only paragraphs add a trailing gap, and never after the very last block.
+      const isLastBlock = bi === blocks.length - 1;
+      const nextBlock = blocks[bi + 1];
+      const crossesIntoNonList = !isList || (nextBlock && nextBlock.kind === "paragraph");
+      if (!isLastBlock && !isList) {
+        cursorY += paraGap;
+      } else if (!isLastBlock && isList && crossesIntoNonList) {
+        // Gap between a list and the following paragraph.
+        cursorY += paraGap;
+      }
     }
-    const totalH = cursorY;
-    if (totalH <= box.h - padding || scale <= MANUAL_HTML_MIN_SCALE + 1e-6) {
+    const totalH = cursorY + padY;
+    if (totalH <= box.h || scale <= MANUAL_HTML_MIN_SCALE + 1e-6) {
       chosenScale = scale;
       chosenLayout = { lines: placed, totalH };
       break;
