@@ -334,7 +334,10 @@ export function renderManualHtml(
         cursorY += paraGap;
       }
     }
-    const totalH = cursorY + padY;
+    // cursorY is one lineH past the last baseline; the last line's visual
+    // bottom sits `lineH - fs` below that baseline. Net: subtract `fs` so the
+    // content height matches the editor's CSS box (N * lineH + 2*padY).
+    const totalH = cursorY - fs + padY;
     if (totalH <= box.h || scale <= MANUAL_HTML_MIN_SCALE + 1e-6) {
       chosenScale = scale;
       chosenLayout = { lines: placed, totalH };
