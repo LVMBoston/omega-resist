@@ -278,8 +278,10 @@ export function renderManualHtml(
   style: RenderStyle,
 ): string {
   const blocks = parseManualHtml(html);
-  const padding = 10;
-  const innerW = box.w - padding * 2;
+  // Match ManualEntryRenderer's contentStyle padding: "8px 10px"
+  const padX = 10;
+  const padY = 8;
+  const innerW = box.w - padX * 2;
   const fontFamily = style.fontFamily || "Inter, sans-serif";
 
   let chosenScale = 1.0;
