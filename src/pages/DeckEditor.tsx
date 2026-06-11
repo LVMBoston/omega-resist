@@ -1836,6 +1836,19 @@ export default function DeckEditor() {
           {/* Left Sidebar - Slide Thumbnails */}
           <Card className="overflow-hidden h-full">
             <CardContent className={`h-full ${slidesPanelCollapsed ? 'p-2 flex flex-col items-center' : 'p-4 space-y-4 overflow-y-auto'}`}>
+              <div className="flex items-center justify-between mb-2">
+                {!slidesPanelCollapsed && <h3 className="font-semibold">Slides</h3>}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSlidesPanelCollapsed(v => !v)}
+                  aria-label={slidesPanelCollapsed ? "Expand Slides Panel" : "Collapse Slides Panel"}
+                  className="h-7 w-7 p-0"
+                >
+                  {slidesPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
+              </div>
+              {!slidesPanelCollapsed && (
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
