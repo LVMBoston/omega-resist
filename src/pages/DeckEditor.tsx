@@ -2044,7 +2044,7 @@ Add Slide(s)
                   </div>
                 </SortableContext>
               </DndContext>
-              )}
+              </>)}
             </CardContent>
           </Card>
 
