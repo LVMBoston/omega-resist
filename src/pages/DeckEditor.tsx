@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, Upload, Loader2, Plus, Image as ImageIcon, GripVertical, Check, X, FileText, Copy, MoveVertical, Video, Camera, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { captureSlideThumbnail } from "@/lib/snapshotCapture";
 import { fetchDeckShape, persistDeckShape, probeFirstDims, ratioToOrientation, ratiosMatch, loadImageDims } from "@/lib/deckAspectRatio";
@@ -303,6 +303,7 @@ export default function DeckEditor() {
   const [savingAs, setSavingAs] = useState(false);
   const [saveAsError, setSaveAsError] = useState('');
   const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
+  const [slidesPanelCollapsed, setSlidesPanelCollapsed] = useState(false);
   const [selectedSlideIds, setSelectedSlideIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkMoveDialogOpen, setBulkMoveDialogOpen] = useState(false);
@@ -1831,10 +1832,23 @@ export default function DeckEditor() {
         </div>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_220px] gap-6 flex-1 min-h-0">
+        <div className={`grid grid-cols-1 gap-6 flex-1 min-h-0 ${slidesPanelCollapsed ? 'lg:grid-cols-[48px_1fr_220px]' : 'lg:grid-cols-[300px_1fr_220px]'}`}>
           {/* Left Sidebar - Slide Thumbnails */}
           <Card className="overflow-hidden h-full">
-            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
+            <CardContent className={`h-full ${slidesPanelCollapsed ? 'p-2 flex flex-col items-center' : 'p-4 space-y-4 overflow-y-auto'}`}>
+              <div className="flex items-center justify-between mb-2">
+                {!slidesPanelCollapsed && <h3 className="font-semibold">Slides</h3>}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSlidesPanelCollapsed(v => !v)}
+                  aria-label={slidesPanelCollapsed ? "Expand Slides Panel" : "Collapse Slides Panel"}
+                  className="h-7 w-7 p-0"
+                >
+                  {slidesPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
+              </div>
+              {!slidesPanelCollapsed && (<>
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
@@ -2030,6 +2044,7 @@ Add Slide(s)
                   </div>
                 </SortableContext>
               </DndContext>
+              </>)}
             </CardContent>
           </Card>
 
