@@ -1832,10 +1832,10 @@ export default function DeckEditor() {
         </div>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_220px] gap-6 flex-1 min-h-0">
+        <div className={`grid grid-cols-1 gap-6 flex-1 min-h-0 ${slidesPanelCollapsed ? 'lg:grid-cols-[48px_1fr_220px]' : 'lg:grid-cols-[300px_1fr_220px]'}`}>
           {/* Left Sidebar - Slide Thumbnails */}
           <Card className="overflow-hidden h-full">
-            <CardContent className="p-4 space-y-4 overflow-y-auto h-full">
+            <CardContent className={`h-full ${slidesPanelCollapsed ? 'p-2 flex flex-col items-center' : 'p-4 space-y-4 overflow-y-auto'}`}>
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
