@@ -1849,7 +1849,7 @@ export default function DeckEditor() {
                 </Button>
               </div>
               {!slidesPanelCollapsed && (
-              <>
+              <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
