@@ -1848,7 +1848,7 @@ export default function DeckEditor() {
                   {slidesPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 </Button>
               </div>
-              {!slidesPanelCollapsed && (
+              {!slidesPanelCollapsed && (<>
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
