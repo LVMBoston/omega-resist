@@ -675,6 +675,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
             backgroundColor: "rgba(255,255,255,0.95)",
             border: "2px dashed rgba(59, 130, 246, 0.5)",
             borderRadius: "4px",
