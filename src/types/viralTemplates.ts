@@ -119,6 +119,7 @@ export interface Hotspot {
   y: number;        // percentage (0-100)
   width: number;    // percentage
   height: number;   // percentage
+  zIndex?: number;  // stacking order (0-99, default 1) — higher = on top when hotspots overlap
   labelPosition?: 'top' | 'bottom';
   url?: string;     // For external_link type
   // App download hotspot properties
