@@ -1026,6 +1026,7 @@ const InteractiveSlideOverlay = ({
                 top: `${top}px`,
                 width: `${width}px`,
                 height: `${height}px`,
+                zIndex: hotspot.zIndex ?? 1,
                 fontSize: style.fontSize || '48px',
                 fontWeight: style.fontWeight || '700',
                 color: style.color || '#1a1a1a',
