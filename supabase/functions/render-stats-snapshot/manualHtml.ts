@@ -269,6 +269,8 @@ export interface RenderStyle {
   bg?: string;
   verticalAlign?: "top" | "middle" | "bottom";
   fontFamily?: string;
+  /** When false, do not wrap output in a clipPath. Defaults to true. */
+  clipOverflow?: boolean;
 }
 
 /** Returns SVG fragment string (no <svg> wrapper). */
@@ -358,9 +360,12 @@ export function renderManualHtml(
   if (style.bg && style.bg !== "transparent") {
     svg += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="${escapeXml(style.bg)}" rx="2"/>`;
   }
-  const clipId = `clip-mh-${Math.random().toString(36).slice(2, 8)}`;
-  svg += `<defs><clipPath id="${clipId}"><rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></clipPath></defs>`;
-  svg += `<g clip-path="url(#${clipId})">`;
+  const clip = style.clipOverflow !== false;
+  if (clip) {
+    const clipId = `clip-mh-${Math.random().toString(36).slice(2, 8)}`;
+    svg += `<defs><clipPath id="${clipId}"><rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></clipPath></defs>`;
+    svg += `<g clip-path="url(#${clipId})">`;
+  }
 
   for (const line of chosenLayout.lines) {
     const absX = box.x + line.x;
@@ -380,6 +385,6 @@ export function renderManualHtml(
     svg += `</text>`;
   }
 
-  svg += `</g>`;
+  if (clip) svg += `</g>`;
   return svg;
 }
