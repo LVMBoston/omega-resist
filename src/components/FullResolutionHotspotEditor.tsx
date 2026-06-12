@@ -737,6 +737,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
             border: isMapLocked ? "2px solid rgba(245, 158, 11, 0.7)" : "2px dashed rgba(168, 85, 247, 0.5)",
           }}
         >
