@@ -787,7 +787,7 @@ export function TemplateRepositoryTab() {
               + New Action Template
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
