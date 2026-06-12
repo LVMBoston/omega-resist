@@ -269,6 +269,8 @@ export interface RenderStyle {
   bg?: string;
   verticalAlign?: "top" | "middle" | "bottom";
   fontFamily?: string;
+  /** When false, do not wrap output in a clipPath. Defaults to true. */
+  clipOverflow?: boolean;
 }
 
 /** Returns SVG fragment string (no <svg> wrapper). */
