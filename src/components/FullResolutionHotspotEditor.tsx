@@ -600,6 +600,7 @@ export const FullResolutionHotspotEditor = ({
       const alignItems =
         style.verticalAlign === 'top' ? 'flex-start' :
         style.verticalAlign === 'bottom' ? 'flex-end' : 'center';
+      const clipOverflow = (style as any).clipOverflow !== false;
 
       return (
         <div
@@ -613,6 +614,7 @@ export const FullResolutionHotspotEditor = ({
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
             display: "flex",
+            overflow: clipOverflow ? "hidden" : "visible",
             fontSize: `${scaledFontSize}px`,
             fontWeight: style.fontWeight || "700",
             color: style.color || "#1a1a1a",
@@ -631,7 +633,7 @@ export const FullResolutionHotspotEditor = ({
         >
           {hotspot.metricKey === 'manual_entry' && hasManualHtmlContent(hotspot.manualHtml) ? (
             <div
-              className="manual-entry-box pointer-events-none w-full overflow-hidden"
+              className={`manual-entry-box pointer-events-none w-full ${clipOverflow ? "overflow-hidden" : "overflow-visible"}`}
               style={{ textAlign: (style as any).textAlign || "left", fontWeight: 400, fontStyle: "normal" }}
               dangerouslySetInnerHTML={{ __html: sanitizeManualHtml(hotspot.manualHtml || "") }}
             />
