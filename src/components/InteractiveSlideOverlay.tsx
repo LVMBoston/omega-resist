@@ -1049,6 +1049,7 @@ const InteractiveSlideOverlay = ({
           top: `${top}px`,
           width: `${buttonWidth}px`,
           height: `${buttonHeight}px`,
+          zIndex: hotspot.zIndex ?? 1,
           WebkitTapHighlightColor: 'transparent',
           touchAction: 'manipulation',
           background: 'transparent',
