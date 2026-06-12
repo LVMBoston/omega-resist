@@ -53,6 +53,7 @@ interface Hotspot {
   y: number;
   width: number;
   height: number;
+  zIndex?: number;
   labelPosition?: "top" | "bottom";
   url?: string;
   appStoreUrl?: string;
