@@ -154,6 +154,13 @@ export interface LiveNumberStyle {
   fontFamily?: string;
   padding?: string;
   borderRadius?: string;
+  /**
+   * When false, text that overflows the hotspot box is allowed to render
+   * outside its bounds (overflow: visible). Defaults to true (clip).
+   * Useful for splitting long content (e.g. campaign_story) across two
+   * hotspots configured as top- and bottom-aligned "pages".
+   */
+  clipOverflow?: boolean;
 }
 
 // Available metrics for live_number hotspots

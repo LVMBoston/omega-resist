@@ -380,11 +380,13 @@ export function DraggableHotspotOverlay({
         const baseFontSize = parseInt(style.fontSize || "25") || 25;
         const scaledFontSize = Math.max(8, Math.round(baseFontSize * scaleFactor));
 
+        const clipOverflow = (style as any).clipOverflow !== false;
+
         return (
           <div
             key={hotspot.id}
             data-hotspot-overlay
-            className={`absolute select-none transition-shadow overflow-y-auto ${
+            className={`absolute select-none transition-shadow ${clipOverflow ? "overflow-hidden" : "overflow-visible"} ${
               isEditMode ? "cursor-text" : "cursor-move"
             } ${isActive ? "ring-2 ring-primary ring-offset-2" : ""} ${
               isDragging ? "z-50 shadow-2xl" : "z-10"

@@ -383,12 +383,18 @@ export const HybridSlide = ({
             );
           }
 
+          const clipOverflow = style.clipOverflow !== false;
+          const vAlign = style.verticalAlign || (isStory ? "top" : "center");
+          const hAlign = isStory ? (style.textAlign || "left") : (style.textAlign || "center");
+          const alignItemsCls =
+            vAlign === "top" ? "items-start" : vAlign === "bottom" ? "items-end" : "items-center";
+          const justifyCls =
+            hAlign === "left" ? "justify-start" : hAlign === "right" ? "justify-end" : "justify-center";
+
           return (
             <div
               key={hotspot.id}
-              className={`absolute overflow-hidden flex ${
-                isStory ? "items-start justify-start" : "items-center justify-center"
-              }`}
+              className={`absolute ${clipOverflow ? "overflow-hidden" : "overflow-visible"} flex ${alignItemsCls} ${justifyCls}`}
               style={{
                 left: `${left}px`,
                 top: `${top}px`,
@@ -399,7 +405,7 @@ export const HybridSlide = ({
                 fontWeight: style.fontWeight || "700",
                 color: style.color || "#1a1a1a",
                 backgroundColor: style.backgroundColor || "transparent",
-                textAlign: isStory ? "left" : style.textAlign || "center",
+                textAlign: hAlign,
                 fontFamily: style.fontFamily || "system-ui, -apple-system, sans-serif",
                 padding: isStory ? "12px" : style.padding || "0",
                 borderRadius: style.borderRadius || "0",
