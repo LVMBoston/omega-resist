@@ -782,27 +782,32 @@ Deno.serve(async (req) => {
     const imageHotspots = hotspots.filter((h: any) => h.type === "image");
     console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots at ${width}x${height}`);
 
-    // Render static map images for map hotspots
-    const mapSvgElements: string[] = [];
+    // Render static map images for map hotspots. Each entry is tagged with its
+    // zIndex so we can sort all hotspot SVG fragments together before joining.
+    const mapSvgElements: { z: number; svg: string }[] = [];
     for (const mapHotspot of mapHotspots) {
       const mapX = (mapHotspot.x / 100) * width;
       const mapY = (mapHotspot.y / 100) * height;
       const mapW = ((mapHotspot.width || 30) / 100) * width;
       const mapH = ((mapHotspot.height || 20) / 100) * height;
+      const z = typeof mapHotspot.zIndex === "number" ? mapHotspot.zIndex : 1;
 
       const mapConfig = mapHotspot.mapConfig || {};
       const mapDataUrl = await renderStaticMap(supabase, campaign_code, mapConfig, mapW, mapH);
 
       if (mapDataUrl) {
-        mapSvgElements.push(
-          `<image href="${mapDataUrl}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="xMidYMid slice"/>`
-        );
+        mapSvgElements.push({
+          z,
+          svg: `<image href="${mapDataUrl}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="xMidYMid slice"/>`,
+        });
       } else {
         // Fallback: grey placeholder with label
-        mapSvgElements.push(
-          `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
-          `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`
-        );
+        mapSvgElements.push({
+          z,
+          svg:
+            `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
+            `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`,
+        });
       }
     }
 
