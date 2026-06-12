@@ -7,6 +7,7 @@ import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { InteractiveSlideOverlay } from "./InteractiveSlideOverlay";
 import { Loader2 } from "lucide-react";
 import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
+import { MapLegend } from "@/components/MapLegend";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 
 const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
@@ -352,6 +353,34 @@ export const HybridSlide = ({
             hotspot.metricKey === "campaign_story" || /\n/.test(value);
           const baseFontSize = parseInt(String(style.fontSize || "24"), 10) || 24;
           const storyFontSize = Math.max(11, Math.round(baseFontSize * 0.5));
+
+          // Map legend — static visual key matching MapHotspotRenderer symbols
+          if (hotspot.metricKey === "map_legend") {
+            return (
+              <div
+                key={hotspot.id}
+                className="absolute overflow-hidden"
+                style={{
+                  left: `${left}px`,
+                  top: `${top}px`,
+                  width: `${width}px`,
+                  height: `${height}px`,
+                  backgroundColor: style.backgroundColor || "transparent",
+                  padding: style.padding || "8px",
+                  borderRadius: style.borderRadius || "0",
+                  pointerEvents: "none",
+                }}
+              >
+                <MapLegend
+                  fontSize={baseFontSize}
+                  color={style.color || "#1a1a1a"}
+                  fontFamily={style.fontFamily}
+                  fontWeight={style.fontWeight || "600"}
+                />
+              </div>
+            );
+          }
+
 
           // Rich-text manual entry takes a dedicated renderer with auto-fit.
           if (
