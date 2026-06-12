@@ -15,6 +15,7 @@ import textIcon from "@/assets/text-icon.svg";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.png";
 import playButton from "@/assets/play-button.png";
+import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -1016,7 +1017,35 @@ const InteractiveSlideOverlay = ({
             ? mockMetricValue 
             : (hotspot.metricKey ? defaultMetrics[hotspot.metricKey] : '—');
           const style = hotspot.liveNumberStyle || {};
-          
+
+          if (hotspot.metricKey === 'map_legend') {
+            const baseFontSize = parseInt(String(style.fontSize || '24'), 10) || 24;
+            return (
+              <div
+                key={hotspot.id}
+                className="absolute overflow-hidden"
+                style={{
+                  left: `${left}px`,
+                  top: `${top}px`,
+                  width: `${width}px`,
+                  height: `${height}px`,
+                  zIndex: hotspot.zIndex ?? 1,
+                  backgroundColor: style.backgroundColor || 'transparent',
+                  padding: style.padding || '8px',
+                  borderRadius: style.borderRadius || '0',
+                  pointerEvents: 'none',
+                }}
+              >
+                <MapLegend
+                  fontSize={baseFontSize}
+                  color={style.color || '#1a1a1a'}
+                  fontFamily={style.fontFamily}
+                  fontWeight={style.fontWeight || '600'}
+                />
+              </div>
+            );
+          }
+
           return (
             <div
               key={hotspot.id}
