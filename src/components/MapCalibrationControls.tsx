@@ -183,8 +183,8 @@ export function MapCalibrationControls({
         />
       </div>
 
-      {/* Size Controls */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Size + Stacking Controls */}
+      <div className="grid grid-cols-3 gap-4">
         <SliderWithButtons
           label="W"
           value={hotspot.width}
@@ -202,6 +202,15 @@ export function MapCalibrationControls({
           max={80}
           step={0.5}
           fineStep={0.1}
+        />
+        <SliderWithButtons
+          label="Z"
+          value={hotspot.zIndex ?? 1}
+          onChange={(v) => onUpdate({ zIndex: v })}
+          min={0}
+          max={99}
+          step={1}
+          fineStep={1}
         />
       </div>
 
