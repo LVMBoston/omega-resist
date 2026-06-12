@@ -866,7 +866,7 @@ Deno.serve(async (req) => {
 
 
     // Build SVG with embedded background image and text hotspots
-    const hotspotSvgElements = textHotspots.map((hotspot: any) => {
+    const hotspotSvgEntries: { z: number; svg: string }[] = textHotspots.map((hotspot: any) => {
       // Resolve metric value
       let metricValue = "—";
       if (hotspot.metricKey === "manual_entry") {
