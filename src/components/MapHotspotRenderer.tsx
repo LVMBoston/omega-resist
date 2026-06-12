@@ -732,10 +732,10 @@ export function MapHotspotRenderer({
         </button>
       )}
 
-      {/* Event count badge */}
+      {/* Event count badge — events within this map's current visible bounds */}
       {eventPoints.length > 0 && (
         <div className="absolute bottom-2 left-2 z-[1000] px-2 py-1 bg-black/70 text-white text-xs rounded-full">
-          {eventPoints.length} events
+          {visibleCount} events
         </div>
       )}
     </div>
