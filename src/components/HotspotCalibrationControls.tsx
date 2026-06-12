@@ -188,8 +188,8 @@ export function HotspotCalibrationControls({
         />
       </div>
 
-      {/* Row 4: W | H */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Row 4: W | H | Z */}
+      <div className="grid grid-cols-3 gap-3">
         <SliderWithButtons
           label="W"
           value={hotspot.width}
@@ -207,6 +207,15 @@ export function HotspotCalibrationControls({
           max={100}
           step={0.5}
           fineStep={0.1}
+        />
+        <SliderWithButtons
+          label="Z"
+          value={hotspot.zIndex ?? 1}
+          onChange={(val) => onUpdate({ zIndex: val })}
+          min={0}
+          max={99}
+          step={1}
+          fineStep={1}
         />
       </div>
 
