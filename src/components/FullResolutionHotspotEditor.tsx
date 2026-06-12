@@ -613,6 +613,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
             display: "flex",
             overflow: clipOverflow ? "hidden" : "visible",
             fontSize: `${scaledFontSize}px`,
