@@ -190,7 +190,8 @@ export type LiveMetricKey =
   | 'last_updated'      // When snapshot was last rendered (for SSR)
   | 'campaign_story'    // Compact campaign narrative headline
   | 'campaign_description' // Campaign description text from campaigns table
-  | 'tz_offset_note';  // Dynamic ET offset note (DST-aware)
+  | 'tz_offset_note'   // Dynamic ET offset note (DST-aware)
+  | 'map_legend';      // Static visual key for map marker symbols
 
 // Hotspot action types (can expand for custom_action)
 export type HotspotActionType = 

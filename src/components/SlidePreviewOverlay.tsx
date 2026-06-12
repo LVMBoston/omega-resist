@@ -32,6 +32,7 @@ const METRIC_LABELS: Record<string, string> = {
   last_updated: "Updated",
   campaign_story: "Story",
   tz_offset_note: "TZ Note",
+  map_legend: "Map Legend",
 };
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
@@ -71,6 +72,7 @@ const METRIC_ICONS: Record<string, React.ElementType> = {
   campaign_story: Type,
   manual_entry: Type,
   tz_offset_note: Clock,
+  map_legend: Map,
 };
 
 export function SlidePreviewOverlay({ hotspots }: SlidePreviewOverlayProps) {

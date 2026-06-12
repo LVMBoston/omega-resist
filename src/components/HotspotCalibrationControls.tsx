@@ -47,6 +47,7 @@ const METRIC_OPTIONS: { value: LiveMetricKey; label: string }[] = [
   { value: "campaign_story", label: "📖 Campaign Story" },
   { value: "campaign_description", label: "📝 Campaign Description" },
   { value: "tz_offset_note", label: "🕐 TZ Offset Note" },
+  { value: "map_legend", label: "🗺️ Map Legend" },
 ];
 
 interface HotspotCalibrationControlsProps {
