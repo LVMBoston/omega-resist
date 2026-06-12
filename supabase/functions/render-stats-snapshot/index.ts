@@ -1064,15 +1064,24 @@ Deno.serve(async (req) => {
 
       if (clipOverflow) svgParts += `</g>`;
 
-      return svgParts;
-    }).join("\n    ");
+      return {
+        z: typeof hotspot.zIndex === "number" ? hotspot.zIndex : 1,
+        svg: svgParts,
+      };
+    });
+
+    // Merge all hotspot SVG fragments (maps, images, text) and sort by zIndex
+    // ascending so higher Z paints last/on top. JS sort is stable, so hotspots
+    // sharing the same Z keep their original order (map → image → text).
+    const allHotspotSvg = [...mapSvgElements, ...imageSvgElements, ...hotspotSvgEntries]
+      .sort((a, b) => a.z - b.z)
+      .map((e) => e.svg)
+      .join("\n  ");
 
     const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   ${bgSolidColor ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${bgSolidColor}"/>` : `<image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`}
-  ${mapSvgElements.join("\n  ")}
-  ${imageSvgElements.join("\n  ")}
-  ${hotspotSvgElements}
+  ${allHotspotSvg}
 </svg>`;
 
     const svgBytes = new TextEncoder().encode(svgContent);
