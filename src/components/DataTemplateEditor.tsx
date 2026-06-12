@@ -111,6 +111,7 @@ export function DataTemplateEditor({
   const canvasRef = useRef<HTMLDivElement>(null);
   const captureContainerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -353,6 +354,7 @@ export function DataTemplateEditor({
 
       setImageUrl(publicUrl);
       setImageLoaded(false);
+      setImageError(false);
       
       // Auto-generate slug from filename if empty
       if (!slug) {
@@ -917,17 +919,46 @@ export function DataTemplateEditor({
               />
             </div>
           ) : imageUrl ? (
-            <div ref={captureContainerRef} className="relative max-w-4xl w-full">
+            <div ref={captureContainerRef} className="relative max-w-4xl w-full" style={imageError ? { aspectRatio: "9/16" } : undefined}>
               <img
                 ref={imageRef}
                 src={imageUrl}
                 alt="Template slide"
                 className="w-full h-auto rounded-lg shadow-2xl shrink-0"
-                style={{ objectFit: "contain" }}
-                onLoad={() => setImageLoaded(true)}
+                style={{ objectFit: "contain", display: imageError ? "none" : undefined }}
+                onLoad={() => { setImageLoaded(true); setImageError(false); }}
+                onError={() => { setImageError(true); setImageLoaded(false); }}
               />
 
-              {imageLoaded && (
+              {imageError && (
+                <div className="absolute inset-0 rounded-lg border-2 border-dashed border-destructive bg-destructive/10 flex flex-col items-center justify-center p-6 text-center capture-hide">
+                  <ImageIcon className="w-12 h-12 mb-3 text-destructive" />
+                  <p className="text-base font-semibold text-destructive mb-1">
+                    Background image is missing
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4 max-w-md">
+                    The original file has been deleted from storage. Your {hotspots.length} hotspot{hotspots.length === 1 ? "" : "s"} are safe — replace the background or switch to Solid Color and they'll reappear in place.
+                  </p>
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(file);
+                      }}
+                      disabled={isUploading}
+                    />
+                    <Button variant="default" className="gap-2 pointer-events-none">
+                      <Upload className="w-4 h-4" />
+                      Replace background image
+                    </Button>
+                  </label>
+                </div>
+              )}
+
+              {imageLoaded && !imageError && (
                 <DraggableHotspotOverlay
                   hotspots={hotspots}
                   activeIndex={activeIndex}
@@ -944,29 +975,32 @@ export function DataTemplateEditor({
               )}
 
               {/* Replace Image Button - hidden during capture */}
-              <div className="absolute top-2 right-2 capture-hide">
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                    disabled={isUploading}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="gap-1 pointer-events-none"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Replace
-                  </Button>
-                </label>
-              </div>
+              {!imageError && (
+                <div className="absolute top-2 right-2 capture-hide">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(file);
+                      }}
+                      disabled={isUploading}
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="gap-1 pointer-events-none"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Replace
+                    </Button>
+                  </label>
+                </div>
+              )}
             </div>
+
           ) : (
             <div className="text-center">
               <ImageIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
