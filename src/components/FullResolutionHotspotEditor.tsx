@@ -1209,6 +1209,7 @@ export const FullResolutionHotspotEditor = ({
                           top: `${hotspot.y}%`,
                           width: `${hotspot.width}%`,
                           height: `${hotspot.height}%`,
+                          zIndex: isDragging === hotspot.id ? 1000 : (hotspot.zIndex ?? 1),
                         }}
                         onMouseDown={(e) => handleMouseDown(e, hotspot)}
                         onClick={(e) => {
