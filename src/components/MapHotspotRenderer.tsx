@@ -564,6 +564,30 @@ export function MapHotspotRenderer({
     });
   }, [eventPoints, mapReady]);
 
+  // Recompute the count of events visible within the current map bounds.
+  // Updates on pan/zoom so each map hotspot reflects its own framing.
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    const map = mapRef.current;
+
+    const recompute = () => {
+      const bounds = map.getBounds();
+      let count = 0;
+      for (const p of eventPoints) {
+        if (bounds.contains(L.latLng(p.latitude, p.longitude))) count++;
+      }
+      setVisibleCount(count);
+    };
+
+    recompute();
+    map.on("moveend", recompute);
+    map.on("zoomend", recompute);
+    return () => {
+      map.off("moveend", recompute);
+      map.off("zoomend", recompute);
+    };
+  }, [eventPoints, mapReady]);
+
   // Handle tap to zoom in
   const handleTap = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
