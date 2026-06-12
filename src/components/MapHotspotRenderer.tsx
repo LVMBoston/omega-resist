@@ -103,6 +103,7 @@ export function MapHotspotRenderer({
   
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
+  const [visibleCount, setVisibleCount] = useState(0);
   const [isInteractive, setIsInteractive] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   
