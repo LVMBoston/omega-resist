@@ -94,7 +94,7 @@ export function ChartCalibrationControls({
         value={hotspot.zIndex ?? 1}
         onChange={(val) => onUpdate({ zIndex: val })}
         min={0}
-        max={99}
+        max={9}
         step={1}
         fineStep={1}
       />

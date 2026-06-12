@@ -208,7 +208,7 @@ export function MapCalibrationControls({
           value={hotspot.zIndex ?? 1}
           onChange={(v) => onUpdate({ zIndex: v })}
           min={0}
-          max={99}
+          max={9}
           step={1}
           fineStep={1}
         />
