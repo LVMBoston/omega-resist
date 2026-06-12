@@ -241,6 +241,23 @@ export function HotspotCalibrationControls({
         </div>
       </div>
 
+      {/* Clip overflow toggle — hides text that extends past the box */}
+      <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
+        <div className="space-y-0.5">
+          <Label className="text-xs cursor-pointer" htmlFor={`clip-overflow-${hotspot.id}`}>
+            Clip text to box
+          </Label>
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            When on, text that doesn't fit is hidden. Turn off to let text spill outside the box.
+          </p>
+        </div>
+        <Switch
+          id={`clip-overflow-${hotspot.id}`}
+          checked={style.clipOverflow !== false}
+          onCheckedChange={(checked) => updateStyle({ clipOverflow: checked })}
+        />
+      </div>
+
       {/* Row 6: Text Color | BG Color */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
