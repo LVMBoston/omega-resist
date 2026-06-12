@@ -53,6 +53,7 @@ interface Hotspot {
   y: number;
   width: number;
   height: number;
+  zIndex?: number;
   labelPosition?: "top" | "bottom";
   url?: string;
   appStoreUrl?: string;
@@ -613,6 +614,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
             display: "flex",
             overflow: clipOverflow ? "hidden" : "visible",
             fontSize: `${scaledFontSize}px`,
@@ -673,6 +675,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
             backgroundColor: "rgba(255,255,255,0.95)",
             border: "2px dashed rgba(59, 130, 246, 0.5)",
             borderRadius: "4px",
@@ -734,6 +737,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
             border: isMapLocked ? "2px solid rgba(245, 158, 11, 0.7)" : "2px dashed rgba(168, 85, 247, 0.5)",
           }}
         >
@@ -813,6 +817,7 @@ export const FullResolutionHotspotEditor = ({
             top: `${hotspot.y}%`,
             width: `${hotspot.width}%`,
             height: `${hotspot.height}%`,
+            zIndex: dragging ? 1000 : (hotspot.zIndex ?? 1),
           }}
           onMouseDown={(e) => handleMouseDown(e, hotspot)}
           onClick={(e) => {
@@ -1204,6 +1209,7 @@ export const FullResolutionHotspotEditor = ({
                           top: `${hotspot.y}%`,
                           width: `${hotspot.width}%`,
                           height: `${hotspot.height}%`,
+                          zIndex: isDragging === hotspot.id ? 1000 : (hotspot.zIndex ?? 1),
                         }}
                         onMouseDown={(e) => handleMouseDown(e, hotspot)}
                         onClick={(e) => {

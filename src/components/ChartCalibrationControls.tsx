@@ -88,6 +88,17 @@ export function ChartCalibrationControls({
         fineStep={0.1}
       />
 
+      {/* Z (stacking order) */}
+      <SliderWithButtons
+        label="Z"
+        value={hotspot.zIndex ?? 1}
+        onChange={(val) => onUpdate({ zIndex: val })}
+        min={0}
+        max={99}
+        step={1}
+        fineStep={1}
+      />
+
       {/* Show X Axis */}
       <div className="space-y-2">
         <Label className="text-xs">X Axis</Label>

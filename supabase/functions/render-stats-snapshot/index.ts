@@ -782,27 +782,32 @@ Deno.serve(async (req) => {
     const imageHotspots = hotspots.filter((h: any) => h.type === "image");
     console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots at ${width}x${height}`);
 
-    // Render static map images for map hotspots
-    const mapSvgElements: string[] = [];
+    // Render static map images for map hotspots. Each entry is tagged with its
+    // zIndex so we can sort all hotspot SVG fragments together before joining.
+    const mapSvgElements: { z: number; svg: string }[] = [];
     for (const mapHotspot of mapHotspots) {
       const mapX = (mapHotspot.x / 100) * width;
       const mapY = (mapHotspot.y / 100) * height;
       const mapW = ((mapHotspot.width || 30) / 100) * width;
       const mapH = ((mapHotspot.height || 20) / 100) * height;
+      const z = typeof mapHotspot.zIndex === "number" ? mapHotspot.zIndex : 1;
 
       const mapConfig = mapHotspot.mapConfig || {};
       const mapDataUrl = await renderStaticMap(supabase, campaign_code, mapConfig, mapW, mapH);
 
       if (mapDataUrl) {
-        mapSvgElements.push(
-          `<image href="${mapDataUrl}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="xMidYMid slice"/>`
-        );
+        mapSvgElements.push({
+          z,
+          svg: `<image href="${mapDataUrl}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="xMidYMid slice"/>`,
+        });
       } else {
         // Fallback: grey placeholder with label
-        mapSvgElements.push(
-          `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
-          `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`
-        );
+        mapSvgElements.push({
+          z,
+          svg:
+            `<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#e2e8f0" rx="4"/>` +
+            `<text x="${mapX + mapW / 2}" y="${mapY + mapH / 2}" font-family="Inter, sans-serif" font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="middle">Map</text>`,
+        });
       }
     }
 
@@ -810,7 +815,7 @@ Deno.serve(async (req) => {
     // Image hotspots — bake pasted images into the SVG as base64 data URLs.
     // Remote href="..." references don't resolve when the SVG is rendered as
     // a static asset (or rasterized by a downstream tool), so we inline them.
-    const imageSvgElements: string[] = [];
+    const imageSvgElements: { z: number; svg: string }[] = [];
     for (const imgHotspot of imageHotspots) {
       if (!imgHotspot.imageSrc) continue;
       const ix = (imgHotspot.x / 100) * width;
@@ -822,9 +827,10 @@ Deno.serve(async (req) => {
         console.warn(`[render-stats-snapshot] Skipping image hotspot ${imgHotspot.id}: fetch failed for ${imgHotspot.imageSrc}`);
         continue;
       }
-      imageSvgElements.push(
-        `<image href="${dataUrl}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`
-      );
+      imageSvgElements.push({
+        z: typeof imgHotspot.zIndex === "number" ? imgHotspot.zIndex : 1,
+        svg: `<image href="${dataUrl}" x="${ix}" y="${iy}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`,
+      });
     }
 
 
@@ -860,7 +866,7 @@ Deno.serve(async (req) => {
 
 
     // Build SVG with embedded background image and text hotspots
-    const hotspotSvgElements = textHotspots.map((hotspot: any) => {
+    const hotspotSvgEntries: { z: number; svg: string }[] = textHotspots.map((hotspot: any) => {
       // Resolve metric value
       let metricValue = "—";
       if (hotspot.metricKey === "manual_entry") {
@@ -1058,15 +1064,24 @@ Deno.serve(async (req) => {
 
       if (clipOverflow) svgParts += `</g>`;
 
-      return svgParts;
-    }).join("\n    ");
+      return {
+        z: typeof hotspot.zIndex === "number" ? hotspot.zIndex : 1,
+        svg: svgParts,
+      };
+    });
+
+    // Merge all hotspot SVG fragments (maps, images, text) and sort by zIndex
+    // ascending so higher Z paints last/on top. JS sort is stable, so hotspots
+    // sharing the same Z keep their original order (map → image → text).
+    const allHotspotSvg = [...mapSvgElements, ...imageSvgElements, ...hotspotSvgEntries]
+      .sort((a, b) => a.z - b.z)
+      .map((e) => e.svg)
+      .join("\n  ");
 
     const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   ${bgSolidColor ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${bgSolidColor}"/>` : `<image href="${bgDataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice"/>`}
-  ${mapSvgElements.join("\n  ")}
-  ${imageSvgElements.join("\n  ")}
-  ${hotspotSvgElements}
+  ${allHotspotSvg}
 </svg>`;
 
     const svgBytes = new TextEncoder().encode(svgContent);
