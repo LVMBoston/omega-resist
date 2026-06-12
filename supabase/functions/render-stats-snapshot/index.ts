@@ -896,6 +896,11 @@ Deno.serve(async (req) => {
         svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
       }
 
+      // Editor parity: when style.clipOverflow === false, do NOT wrap
+      // text in a clipPath so it can spill outside the hotspot box, just
+      // like the in-app renderers.
+      const clipOverflow = style.clipOverflow !== false;
+
       // === Manual entry with rich-text HTML (preferred over manualLabel) ===
       if (
         hotspot.metricKey === "manual_entry" &&
@@ -920,6 +925,7 @@ Deno.serve(async (req) => {
               align: (textAlign as "left" | "center" | "right") || "left",
               bg: bgColor,
               verticalAlign,
+              clipOverflow,
             }
           )
         );
@@ -939,62 +945,74 @@ Deno.serve(async (req) => {
         const maxCharsIndented = Math.floor((hsWidth - padding * 2 - emojiIndent) / (storyFontSize * 0.52));
 
         const rawLines = metricValue.split("\n");
-        let cursorY = y + padding + storyFontSize;
 
-        // Clip to hotspot bounds
-        const clipId = `clip-story-${Math.random().toString(36).slice(2, 8)}`;
-        svgParts += `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs>`;
-        svgParts += `<g clip-path="url(#${clipId})">`;
+        // PASS 1 — build a flat list of draw ops with relative Y, so we can
+        // measure total height before placing them. This lets us honor the
+        // editor's V-Align (top/center/bottom) for the two-page trick.
+        type DrawOp =
+          | { kind: "text"; x: number; yRel: number; size: number; weight: string; text: string }
+          | { kind: "advance"; delta: number };
+        const ops: DrawOp[] = [];
+        let yRel = storyFontSize; // baseline of first line, relative to top padding
 
         for (const rawLine of rawLines) {
-          if (cursorY > y + hsHeight) break;
-
-          // Blank line → paragraph gap
           if (rawLine.trim() === "") {
-            cursorY += paragraphGap;
+            yRel += paragraphGap;
             continue;
           }
-
-          // Title line (__TITLE__...__TITLE__)
           if (rawLine.startsWith("__TITLE__") && rawLine.endsWith("__TITLE__")) {
             const titleText = rawLine.replace(/__TITLE__/g, "");
             const titleWrapped = wordWrap(titleText, Math.floor(maxCharsPerLine * (storyFontSize / titleFontSize)));
             for (const tl of titleWrapped) {
-              if (cursorY > y + hsHeight) break;
-              svgParts += `<text x="${x + padding}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${titleFontSize}" font-weight="bold" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(tl)}</text>`;
-              cursorY += titleFontSize * 1.35;
+              ops.push({ kind: "text", x: x + padding, yRel, size: titleFontSize, weight: "bold", text: tl });
+              yRel += titleFontSize * 1.35;
             }
-            cursorY += paragraphGap * 0.3;
+            yRel += paragraphGap * 0.3;
             continue;
           }
-
-          // Emoji-prefixed line → hanging indent
           const emojiMatch = rawLine.match(emojiPrefixRe);
           if (emojiMatch) {
             const emoji = emojiMatch[1];
             const rest = rawLine.slice(emoji.length);
-            // Render emoji
-            svgParts += `<text x="${x + padding}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${storyFontSize}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(emoji.trim())}</text>`;
-            // Word-wrap the rest with indent
+            ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: emoji.trim() });
             const wrappedRest = wordWrap(rest, maxCharsIndented);
             for (const wl of wrappedRest) {
-              if (cursorY > y + hsHeight) break;
-              svgParts += `<text x="${x + padding + emojiIndent}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${storyFontSize}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(wl)}</text>`;
-              cursorY += lineHeight;
+              ops.push({ kind: "text", x: x + padding + emojiIndent, yRel, size: storyFontSize, weight: "normal", text: wl });
+              yRel += lineHeight;
             }
             continue;
           }
-
-          // Regular line — word-wrap
           const wrapped = wordWrap(rawLine, maxCharsPerLine);
           for (const wl of wrapped) {
-            if (cursorY > y + hsHeight) break;
-            svgParts += `<text x="${x + padding}" y="${cursorY}" font-family="Inter, sans-serif" font-size="${storyFontSize}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(wl)}</text>`;
-            cursorY += lineHeight;
+            ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: wl });
+            yRel += lineHeight;
           }
         }
 
-        svgParts += `</g>`;
+        // Total content height (last baseline + descent approximation).
+        const totalH = yRel + padding;
+        const vAlignRaw = (style.verticalAlign || "top").toLowerCase();
+        const freeSpace = Math.max(0, hsHeight - totalH);
+        const yOffset =
+          vAlignRaw === "bottom" ? freeSpace
+          : vAlignRaw === "center" || vAlignRaw === "middle" ? freeSpace / 2
+          : 0;
+
+        // Optional clip to hotspot bounds (editor parity with clipOverflow).
+        let clipId: string | null = null;
+        if (clipOverflow) {
+          clipId = `clip-story-${Math.random().toString(36).slice(2, 8)}`;
+          svgParts += `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs>`;
+          svgParts += `<g clip-path="url(#${clipId})">`;
+        }
+
+        for (const op of ops) {
+          if (op.kind !== "text") continue;
+          const absY = y + padding + op.yRel + yOffset;
+          svgParts += `<text x="${op.x}" y="${absY}" font-family="Inter, sans-serif" font-size="${op.size}" font-weight="${op.weight}" fill="${escapeXml(color)}" text-anchor="start">${escapeXml(op.text)}</text>`;
+        }
+
+        if (clipOverflow) svgParts += `</g>`;
         return svgParts;
       }
 
