@@ -354,6 +354,7 @@ export function DataTemplateEditor({
 
       setImageUrl(publicUrl);
       setImageLoaded(false);
+      setImageError(false);
       
       // Auto-generate slug from filename if empty
       if (!slug) {
