@@ -937,7 +937,41 @@ Deno.serve(async (req) => {
         );
       }
 
-      // === Special rendering for campaign_story ===
+      // === Map Legend — static visual key for marker symbols ===
+      // Must mirror src/components/MapLegend.tsx exactly.
+      if (hotspot.metricKey === "map_legend") {
+        const legendItems = [
+          { label: "QR", color: "#000099", ring: false },
+          { label: "Email", color: "#0066ff", ring: false },
+          { label: "Text / SMS", color: "#99ccff", ring: false },
+          { label: "Other", color: "#64748b", ring: false },
+          { label: "Seed with spawns", color: "#64748b", ring: true },
+        ];
+        const padding = 8;
+        const fs = scaledFontSize;
+        const swatch = Math.round(fs * 0.9);
+        const gap = Math.max(4, Math.round(fs * 0.45));
+        const rowGap = Math.max(2, Math.round(fs * 0.25));
+        const rowH = Math.max(swatch, fs) + rowGap;
+        const fontFamily = style.fontFamily || "Inter, system-ui, sans-serif";
+        const weight = style.fontWeight || "600";
+        let parts = svgParts;
+        let cy = y + padding;
+        for (const item of legendItems) {
+          const cxSwatch = x + padding + swatch / 2;
+          const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
+          parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${item.color}"${item.ring ? ` stroke="#22c55e" stroke-width="${Math.max(2, Math.round(swatch * 0.18))}"` : ""}/>`;
+          const tx = x + padding + swatch + gap;
+          const ty = cy + fs * 0.82;
+          parts += `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(item.label)}</text>`;
+          cy += rowH;
+        }
+        // Clip to hotspot bounds
+        const clipId = `legend-clip-${hotspot.id}`;
+        return `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${parts}</g>`;
+      }
+
+
       if (hotspot.metricKey === "campaign_story") {
         // Story text is rendered smaller than other live numbers so the whole
         // multi-paragraph narrative fits inside the hotspot on mobile.

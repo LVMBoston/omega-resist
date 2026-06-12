@@ -32,6 +32,7 @@ import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { DATA_HOTSPOT_TYPES } from "@/lib/hotspotClassification";
+import { MapLegend } from "@/components/MapLegend";
 import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 
 interface IconPreset {
@@ -633,7 +634,14 @@ export const FullResolutionHotspotEditor = ({
             if (!isDragging) setSelectedHotspot(hotspot.id);
           }}
         >
-          {hotspot.metricKey === 'manual_entry' && hasManualHtmlContent(hotspot.manualHtml) ? (
+          {hotspot.metricKey === 'map_legend' ? (
+            <MapLegend
+              fontSize={scaledFontSize}
+              color={style.color || "#1a1a1a"}
+              fontFamily={style.fontFamily}
+              fontWeight={style.fontWeight || "600"}
+            />
+          ) : hotspot.metricKey === 'manual_entry' && hasManualHtmlContent(hotspot.manualHtml) ? (
             <div
               className={`manual-entry-box pointer-events-none w-full ${clipOverflow ? "overflow-hidden" : "overflow-visible"}`}
               style={{ textAlign: (style as any).textAlign || "left", fontWeight: 400, fontStyle: "normal" }}

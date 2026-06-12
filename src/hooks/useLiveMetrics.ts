@@ -56,6 +56,7 @@ const METRIC_LABELS: Record<LiveMetricKey, string> = {
   campaign_story: "Campaign Story",
   campaign_description: "Campaign Description",
   tz_offset_note: "Timezone Offset Note",
+  map_legend: "Map Legend",
 };
 
 // ─── Sanitization helpers ────────────────────────────────────────────
