@@ -103,6 +103,7 @@ export function MapHotspotRenderer({
   
   const [loading, setLoading] = useState(true);
   const [eventPoints, setEventPoints] = useState<EventPoint[]>([]);
+  const [visibleCount, setVisibleCount] = useState(0);
   const [isInteractive, setIsInteractive] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   
@@ -563,6 +564,30 @@ export function MapHotspotRenderer({
     });
   }, [eventPoints, mapReady]);
 
+  // Recompute the count of events visible within the current map bounds.
+  // Updates on pan/zoom so each map hotspot reflects its own framing.
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+    const map = mapRef.current;
+
+    const recompute = () => {
+      const bounds = map.getBounds();
+      let count = 0;
+      for (const p of eventPoints) {
+        if (bounds.contains(L.latLng(p.latitude, p.longitude))) count++;
+      }
+      setVisibleCount(count);
+    };
+
+    recompute();
+    map.on("moveend", recompute);
+    map.on("zoomend", recompute);
+    return () => {
+      map.off("moveend", recompute);
+      map.off("zoomend", recompute);
+    };
+  }, [eventPoints, mapReady]);
+
   // Handle tap to zoom in
   const handleTap = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
@@ -707,10 +732,10 @@ export function MapHotspotRenderer({
         </button>
       )}
 
-      {/* Event count badge */}
+      {/* Event count badge — events within this map's current visible bounds */}
       {eventPoints.length > 0 && (
         <div className="absolute bottom-2 left-2 z-[1000] px-2 py-1 bg-black/70 text-white text-xs rounded-full">
-          {eventPoints.length} events
+          {visibleCount} events
         </div>
       )}
     </div>

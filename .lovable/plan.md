@@ -1,35 +1,34 @@
 ## Goal
 
-Give each hotspot a "Z" (layer) value so you can choose which one sits on top when they overlap. The control appears alongside W and H in the right-side calibration panel for **all three** hotspot families (action / live number, chart, map).
+Each map hotspot's badge currently shows the total campaign event count (same number on every map). Change it to show the number of events whose coordinates fall within that specific map's current visible bounds, so overlapping or differently-framed maps each show their own count.
 
-## 1. What you'll see
+## 1. `src/components/MapHotspotRenderer.tsx`
 
-a. The W / H row becomes a **W / H / Z** row in every calibration panel.
-b. Z is a numeric stepper from **0 to 99** (default **1**). Higher number = on top.
-c. The change is immediately visible in the editor canvas, in the live deck viewer, and in saved snapshot images.
+a. Add a `visibleCount` state (number), defaulting to `eventPoints.length`.
 
-## 2. Where it applies
+b. Add a helper that, given the current Leaflet map bounds, counts `eventPoints` where `bounds.contains([lat, lng])` is true.
 
-a. **Action hotspots** (sms, email, social, video, external link, app download, image, email links, transparent) — `HotspotCalibrationControls`.
-b. **Live number hotspots** — same `HotspotCalibrationControls`.
-c. **Chart hotspots** — `ChartCalibrationControls`.
-d. **Map hotspots** — `MapCalibrationControls`.
+c. Recompute `visibleCount` whenever:
+   - `eventPoints` changes (after fetch)
+   - `mapReady` becomes true
+   - The map fires `moveend` or `zoomend` (pan/zoom in editor mode or interactive runtime mode)
+   - Initial saved bounds are applied (after the `fitBounds` calls already in the file)
 
-## 3. Technical changes
+d. Update the badge at lines 711–715 to render `{visibleCount} events` instead of `{eventPoints.length} events`. Keep the badge hidden when `eventPoints.length === 0` (no data at all), matching current behavior. When data exists but `visibleCount === 0`, still render the badge so the user sees `0 events` — that is the signal that this map is framed off the data.
 
-a. Add optional `zIndex?: number` to the `Hotspot` interface in `src/types/viralTemplates.ts`. No DB migration — hotspots are stored as JSON.
-b. Add a Z `SliderWithButtons` to the three calibration components, converting the existing 2-column W/H row into a 3-column W/H/Z row.
-c. Apply `zIndex: hotspot.zIndex ?? 1` to every hotspot wrapper `style={{ ... }}` in:
-   - `src/components/FullResolutionHotspotEditor.tsx` (editor canvas — multiple per-type branches)
-   - `src/components/DataTemplateEditor.tsx` (data template canvas)
-   - `src/components/InteractiveSlideOverlay.tsx` (runtime viewer — all hotspot branches incl. transparent, video, live number, chart, map, image, etc.)
-d. **Snapshot parity** (per the editor/SSR render-parity rule): in `supabase/functions/render-stats-snapshot/canvas.ts`, sort hotspots by `zIndex` ascending before drawing so higher Z paints last/on top.
+## 2. What does not change
 
-## 4. Backwards compatibility
+- Data fetching, marker rendering, clustering, interaction handlers.
+- SSR snapshot renderer — out of scope unless you want the same badge baked into the static image (ask first).
+- No new props on `MapHotspotRenderer`; the count is derived internally from current bounds.
 
-a. Existing hotspots have no `zIndex` — they fall back to `1`, matching today's behavior. Nothing visually changes until you start adjusting Z values.
-b. No database migration needed.
+## 3. Technical notes
 
-## 5. Decision log
+- Use Leaflet's `map.getBounds().contains(L.latLng(lat, lng))` for filtering — handles antimeridian and is consistent with marker visibility.
+- The `moveend` listener already exists for `onBoundsChange`; add the count recompute in the same handler block (or a sibling effect listening to the same events) to avoid duplicate subscriptions.
+- Recompute is O(n) over event points; campaign sizes here are small enough that this is fine without memoization.
 
-a. New file: `docs/decisions/hotspots/2026-06-12_z-index-layer-control_feature-doc_lovable.md` with `Status: Approved & Implemented`.
+## 4. Decision log
+
+This is a new plan (not an update to a prior doc). On approval, archive as:
+`docs/decisions/hotspots/2026-06-12_map-hotspot-visible-event-count_feature-doc_lovable.md`
