@@ -398,6 +398,7 @@ export function DraggableHotspotOverlay({
               top: `${hotspot.y}%`,
               width: `${hotspot.width}%`,
               height: `${hotspot.height}%`,
+              zIndex: isDragging ? 1000 : (hotspot.zIndex ?? 1),
               display: "flex",
               fontSize: `${scaledFontSize}px`,
               fontWeight: style.fontWeight || "700",
