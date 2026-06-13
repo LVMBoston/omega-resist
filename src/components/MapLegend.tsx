@@ -101,7 +101,11 @@ export function MapLegend({
               height: `${swatch}px`,
               borderRadius: "50%",
               backgroundColor: item.color,
-              border: item.ring ? `${Math.max(2, Math.round(swatch * 0.18))}px solid #22c55e` : "none",
+              border: item.ring
+                ? `${Math.max(2, Math.round(swatch * 0.18))}px solid #22c55e`
+                : item.whiteBorder
+                  ? `${Math.max(2, Math.round(swatch * 0.18))}px solid #ffffff`
+                  : "none",
               boxSizing: "border-box",
             }}
           />
