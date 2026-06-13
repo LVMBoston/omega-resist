@@ -1,8 +1,9 @@
 import React from "react";
 
 /**
- * Static visual key matching the symbols drawn by MapHotspotRenderer.
- * Reused inside live_number hotspots when metricKey === "map_legend".
+ * Static visual key matching MapHotspotRenderer markers exactly.
+ * Channel fills match MEDIUM_COLORS; every marker has a white border;
+ * "Shared with others" uses the green spawn-ring border.
  */
 
 export type LegendRow =
@@ -10,20 +11,24 @@ export type LegendRow =
   | {
       kind: "item";
       label: string;
-      color: string;
-      hollow?: boolean; // hollow circle (white fill, dark border)
+      fill: string;
+      borderColor: string; // marker stroke
     };
 
 export const MAP_LEGEND_TITLE = "Map Legend";
 
+const WHITE = "#ffffff";
+const SPAWN_GREEN = "#22c55e";
+const SLATE = "#64748b";
+
 export const MAP_LEGEND_ROWS: LegendRow[] = [
   { kind: "subhead", label: "Message received via:" },
-  { kind: "item", label: "QR code", color: "#000099" },
-  { kind: "item", label: "Email", color: "#000099" },
-  { kind: "item", label: "Text / SMS", color: "#000099" },
+  { kind: "item", label: "QR code", fill: "#000099", borderColor: WHITE },
+  { kind: "item", label: "Email", fill: "#0066ff", borderColor: WHITE },
+  { kind: "item", label: "Text / SMS", fill: "#99ccff", borderColor: WHITE },
   { kind: "subhead", label: "Message viewed:" },
-  { kind: "item", label: "Not shared", color: "#ffffff", hollow: true },
-  { kind: "item", label: "Shared with others", color: "#ffffff", hollow: true },
+  { kind: "item", label: "Not shared", fill: SLATE, borderColor: WHITE },
+  { kind: "item", label: "Shared with others", fill: SLATE, borderColor: SPAWN_GREEN },
 ];
 
 interface MapLegendProps {
@@ -104,8 +109,8 @@ export function MapLegend({
                 width: `${swatch}px`,
                 height: `${swatch}px`,
                 borderRadius: "50%",
-                backgroundColor: row.color,
-                border: row.hollow ? `${borderW}px solid ${color}` : "none",
+                backgroundColor: row.fill,
+                border: `${borderW}px solid ${row.borderColor}`,
                 boxSizing: "border-box",
               }}
             />
@@ -125,5 +130,5 @@ export function MapLegend({
   );
 }
 
-// Back-compat export (some files may import this)
+// Back-compat alias
 export const MAP_LEGEND_ITEMS = MAP_LEGEND_ROWS;

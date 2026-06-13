@@ -942,15 +942,15 @@ Deno.serve(async (req) => {
       if (hotspot.metricKey === "map_legend") {
         type LegendRow =
           | { kind: "subhead"; label: string }
-          | { kind: "item"; label: string; color: string; hollow?: boolean };
+          | { kind: "item"; label: string; fill: string; borderColor: string };
         const rows: LegendRow[] = [
           { kind: "subhead", label: "Message received via:" },
-          { kind: "item", label: "QR code", color: "#000099" },
-          { kind: "item", label: "Email", color: "#000099" },
-          { kind: "item", label: "Text / SMS", color: "#000099" },
+          { kind: "item", label: "QR code", fill: "#000099", borderColor: "#ffffff" },
+          { kind: "item", label: "Email", fill: "#0066ff", borderColor: "#ffffff" },
+          { kind: "item", label: "Text / SMS", fill: "#99ccff", borderColor: "#ffffff" },
           { kind: "subhead", label: "Message viewed:" },
-          { kind: "item", label: "Not shared", color: "#ffffff", hollow: true },
-          { kind: "item", label: "Shared with others", color: "#ffffff", hollow: true },
+          { kind: "item", label: "Not shared", fill: "#64748b", borderColor: "#ffffff" },
+          { kind: "item", label: "Shared with others", fill: "#64748b", borderColor: "#22c55e" },
         ];
         const padding = 8;
         const fs = scaledFontSize;
@@ -975,10 +975,9 @@ Deno.serve(async (req) => {
           } else {
             const cxSwatch = x + padding + indent + swatch / 2;
             const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
-            const stroke = row.hollow
-              ? ` stroke="${escapeXml(color)}" stroke-width="${borderW}"`
-              : "";
-            parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${row.color}"${stroke}/>`;
+            // Inset radius so the stroke stays inside the swatch box (matches CSS box-sizing: border-box)
+            const r = Math.max(1, swatch / 2 - borderW / 2);
+            parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${r}" fill="${row.fill}" stroke="${row.borderColor}" stroke-width="${borderW}"/>`;
             const tx = x + padding + indent + swatch + gap;
             const ty = cy + fs * 0.82;
             parts += `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${escapeXml(String(style.fontWeight || "600"))}" fill="${escapeXml(color)}">${escapeXml(row.label)}</text>`;
