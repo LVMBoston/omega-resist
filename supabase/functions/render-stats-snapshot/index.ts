@@ -958,8 +958,10 @@ Deno.serve(async (req) => {
         const weight = style.fontWeight || "600";
         let parts = svgParts;
         let cy = y + padding;
-        // Title row
-        parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Map Legend - Messages received by:")}</text>`;
+        // Title rows
+        parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Map Legend")}</text>`;
+        cy += titleRowH;
+        parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Messages received via:")}</text>`;
         cy += titleRowH + rowGap;
         for (const item of legendItems) {
           const cxSwatch = x + padding + swatch / 2;
