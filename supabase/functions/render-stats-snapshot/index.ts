@@ -945,7 +945,7 @@ Deno.serve(async (req) => {
           { label: "Email", color: "#0066ff", ring: false },
           { label: "Text / SMS", color: "#99ccff", ring: false },
           { label: "Other", color: "#64748b", ring: false },
-          { label: "Seed with spawns", color: "#64748b", ring: true },
+          { label: "Message shared with others", color: "#64748b", ring: true },
         ];
         const padding = 8;
         const fs = scaledFontSize;

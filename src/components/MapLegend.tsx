@@ -14,7 +14,7 @@ export const MAP_LEGEND_ITEMS: Array<{
   { label: "Email", color: "#0066ff" },
   { label: "Text / SMS", color: "#99ccff" },
   { label: "Other", color: "#64748b" },
-  { label: "Seed with spawns", color: "#64748b", ring: true },
+  { label: "Message shared with others", color: "#64748b", ring: true },
 ];
 
 export const MAP_LEGEND_TITLE_LINE1 = "Map Legend";
