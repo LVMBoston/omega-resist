@@ -943,7 +943,7 @@ Deno.serve(async (req) => {
         const legendItems = [
           { label: "QR code", color: "#000099", ring: false },
           { label: "Email", color: "#0066ff", ring: false },
-          { label: "Text / SMS  Share Status", color: "#99ccff", ring: false },
+          { label: "Text / SMS\nShare Status", color: "#99ccff", ring: false },
           { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true, ring: false },
           { label: "Message shared with others", color: "#64748b", ring: true },
         ];
@@ -952,7 +952,7 @@ Deno.serve(async (req) => {
         const swatch = Math.round(fs * 0.9);
         const gap = Math.max(4, Math.round(fs * 0.45));
         const rowGap = Math.max(2, Math.round(fs * 0.25));
-        const rowH = Math.max(swatch, fs) + rowGap;
+        
         const titleRowH = Math.round(fs * 1.3);
         const fontFamily = style.fontFamily || "Inter, system-ui, sans-serif";
         const weight = style.fontWeight || "600";
@@ -964,6 +964,10 @@ Deno.serve(async (req) => {
         parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Messages received via:")}</text>`;
         cy += titleRowH + rowGap;
         for (const item of legendItems) {
+          const lines = item.label.split('\n');
+          const lineCount = lines.length;
+          const extraH = lineCount > 1 ? Math.round(fs * 1.2) * (lineCount - 1) : 0;
+          const currentRowH = Math.max(swatch, fs + extraH);
           const cxSwatch = x + padding + swatch / 2;
           const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
           const stroke = item.ring
@@ -974,8 +978,14 @@ Deno.serve(async (req) => {
           parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${item.color}"${stroke}/>`;
           const tx = x + padding + swatch + gap;
           const ty = cy + fs * 0.82;
-          parts += `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(item.label)}</text>`;
-          cy += rowH;
+          let textSvg = `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${weight}" fill="${escapeXml(color)}">`;
+          textSvg += escapeXml(lines[0]);
+          for (let i = 1; i < lines.length; i++) {
+            textSvg += `<tspan x="${tx}" dy="${Math.round(fs * 1.2)}">${escapeXml(lines[i])}</tspan>`;
+          }
+          textSvg += `</text>`;
+          parts += textSvg;
+          cy += currentRowH + rowGap;
         }
         // Clip to hotspot bounds
         const clipId = `legend-clip-${hotspot.id}`;

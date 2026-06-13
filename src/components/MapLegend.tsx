@@ -13,7 +13,7 @@ export const MAP_LEGEND_ITEMS: Array<{
 }> = [
   { label: "QR code", color: "#000099" },
   { label: "Email", color: "#0066ff" },
-  { label: "Text / SMS  Share Status", color: "#99ccff" },
+  { label: "Text / SMS\nShare Status", color: "#99ccff" },
   { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true },
   { label: "Message shared with others", color: "#64748b", ring: true },
 ];
@@ -109,8 +109,12 @@ export function MapLegend({
               boxSizing: "border-box",
             }}
           />
-          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {item.label}
+          <span style={{ display: "flex", flexDirection: "column" }}>
+            {item.label.split('\n').map((line, i) => (
+              <span key={i} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {line}
+              </span>
+            ))}
           </span>
         </div>
       ))}
