@@ -414,7 +414,14 @@ export function DraggableHotspotOverlay({
             onMouseDown={(e) => handleMouseDown(e, index)}
           >
             {/* Editable input when in edit mode and manual entry */}
-            {isEditMode && isManualEntry ? (
+            {hotspot.metricKey === "map_legend" ? (
+              <MapLegend
+                fontSize={scaledFontSize}
+                color={style.color || "#1a1a1a"}
+                fontFamily={style.fontFamily}
+                fontWeight={style.fontWeight || "600"}
+              />
+            ) : isEditMode && isManualEntry ? (
               <textarea
                 value={hotspot.manualLabel || ""}
                 onChange={(e) => onUpdateHotspot(index, { manualLabel: e.target.value })}
