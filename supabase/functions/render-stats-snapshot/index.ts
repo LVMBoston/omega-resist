@@ -952,7 +952,7 @@ Deno.serve(async (req) => {
         const swatch = Math.round(fs * 0.9);
         const gap = Math.max(4, Math.round(fs * 0.45));
         const rowGap = Math.max(2, Math.round(fs * 0.25));
-        const rowH = Math.max(swatch, fs) + rowGap;
+        
         const titleRowH = Math.round(fs * 1.3);
         const fontFamily = style.fontFamily || "Inter, system-ui, sans-serif";
         const weight = style.fontWeight || "600";
