@@ -943,7 +943,7 @@ Deno.serve(async (req) => {
         const legendItems = [
           { label: "QR code", color: "#000099", ring: false },
           { label: "Email", color: "#0066ff", ring: false },
-          { label: "Text / SMS  Share Status", color: "#99ccff", ring: false },
+          { label: "Text / SMS\nShare Status", color: "#99ccff", ring: false },
           { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true, ring: false },
           { label: "Message shared with others", color: "#64748b", ring: true },
         ];
