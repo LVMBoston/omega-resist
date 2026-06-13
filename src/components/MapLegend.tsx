@@ -17,7 +17,8 @@ export const MAP_LEGEND_ITEMS: Array<{
   { label: "Seed with spawns", color: "#64748b", ring: true },
 ];
 
-export const MAP_LEGEND_TITLE = "Map Legend - Messages received by:";
+export const MAP_LEGEND_TITLE_LINE1 = "Map Legend";
+export const MAP_LEGEND_TITLE_LINE2 = "Messages received via:";
 
 interface MapLegendProps {
   fontSize?: number; // px
@@ -57,16 +58,35 @@ export function MapLegend({
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          height: `${titleRowH}px`,
+          flexDirection: "column",
+          gap: `${rowGap}px`,
           flexShrink: 0,
-          fontWeight: 700,
         }}
       >
-        {MAP_LEGEND_TITLE}
+        <div
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            height: `${titleRowH}px`,
+            fontWeight: 700,
+            lineHeight: 1.2,
+          }}
+        >
+          {MAP_LEGEND_TITLE_LINE1}
+        </div>
+        <div
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            height: `${titleRowH}px`,
+            fontWeight: 700,
+            lineHeight: 1.2,
+          }}
+        >
+          {MAP_LEGEND_TITLE_LINE2}
+        </div>
       </div>
       {MAP_LEGEND_ITEMS.map((item) => (
         <div
