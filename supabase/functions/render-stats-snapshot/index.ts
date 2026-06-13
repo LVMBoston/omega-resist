@@ -940,54 +940,51 @@ Deno.serve(async (req) => {
       // === Map Legend — static visual key for marker symbols ===
       // Must mirror src/components/MapLegend.tsx exactly.
       if (hotspot.metricKey === "map_legend") {
-        const legendItems = [
-          { label: "QR code", color: "#000099", ring: false },
-          { label: "Email", color: "#0066ff", ring: false },
-          { label: "Text / SMS\nShare Status", color: "#99ccff", ring: false },
-          { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true, ring: false },
-          { label: "Message shared with others", color: "#64748b", ring: true },
+        type LegendRow =
+          | { kind: "subhead"; label: string }
+          | { kind: "item"; label: string; color: string; hollow?: boolean };
+        const rows: LegendRow[] = [
+          { kind: "subhead", label: "Message received via:" },
+          { kind: "item", label: "QR code", color: "#000099" },
+          { kind: "item", label: "Email", color: "#000099" },
+          { kind: "item", label: "Text / SMS", color: "#000099" },
+          { kind: "subhead", label: "Message viewed:" },
+          { kind: "item", label: "Not shared", color: "#ffffff", hollow: true },
+          { kind: "item", label: "Shared with others", color: "#ffffff", hollow: true },
         ];
         const padding = 8;
         const fs = scaledFontSize;
         const swatch = Math.round(fs * 0.9);
         const gap = Math.max(4, Math.round(fs * 0.45));
         const rowGap = Math.max(2, Math.round(fs * 0.25));
-        
-        const titleRowH = Math.round(fs * 1.3);
+        const indent = Math.round(fs * 1.2);
+        const borderW = Math.max(2, Math.round(swatch * 0.18));
+        const rowH = Math.round(fs * 1.3);
         const fontFamily = style.fontFamily || "Inter, system-ui, sans-serif";
-        const weight = style.fontWeight || "600";
         let parts = svgParts;
         let cy = y + padding;
-        // Title rows
+        // Title
         parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Map Legend")}</text>`;
-        cy += titleRowH;
-        parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Messages received via:")}</text>`;
-        cy += titleRowH + rowGap;
-        for (const item of legendItems) {
-          const lines = item.label.split('\n');
-          const lineCount = lines.length;
-          const extraH = lineCount > 1 ? Math.round(fs * 1.2) * (lineCount - 1) : 0;
-          const currentRowH = Math.max(swatch, fs + extraH);
-          const cxSwatch = x + padding + swatch / 2;
-          const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
-          const stroke = item.ring
-            ? ` stroke="#22c55e" stroke-width="${Math.max(2, Math.round(swatch * 0.18))}"`
-            : item.whiteBorder
-              ? ` stroke="#ffffff" stroke-width="${Math.max(2, Math.round(swatch * 0.18))}"`
+        cy += rowH + rowGap;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.kind === "subhead") {
+            if (i > 0) cy += rowGap;
+            parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml(row.label)}</text>`;
+            cy += rowH + rowGap;
+          } else {
+            const cxSwatch = x + padding + indent + swatch / 2;
+            const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
+            const stroke = row.hollow
+              ? ` stroke="${escapeXml(color)}" stroke-width="${borderW}"`
               : "";
-          parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${item.color}"${stroke}/>`;
-          const tx = x + padding + swatch + gap;
-          const ty = cy + fs * 0.82;
-          let textSvg = `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${weight}" fill="${escapeXml(color)}">`;
-          textSvg += escapeXml(lines[0]);
-          for (let i = 1; i < lines.length; i++) {
-            textSvg += `<tspan x="${tx}" dy="${Math.round(fs * 1.2)}">${escapeXml(lines[i])}</tspan>`;
+            parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${row.color}"${stroke}/>`;
+            const tx = x + padding + indent + swatch + gap;
+            const ty = cy + fs * 0.82;
+            parts += `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${escapeXml(String(style.fontWeight || "600"))}" fill="${escapeXml(color)}">${escapeXml(row.label)}</text>`;
+            cy += rowH + rowGap;
           }
-          textSvg += `</text>`;
-          parts += textSvg;
-          cy += currentRowH + rowGap;
         }
-        // Clip to hotspot bounds
         const clipId = `legend-clip-${hotspot.id}`;
         return `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${parts}</g>`;
       }
