@@ -10,12 +10,14 @@ export const MAP_LEGEND_ITEMS: Array<{
   color: string;
   ring?: boolean;
 }> = [
-  { label: "QR", color: "#000099" },
+  { label: "QR code", color: "#000099" },
   { label: "Email", color: "#0066ff" },
   { label: "Text / SMS", color: "#99ccff" },
   { label: "Other", color: "#64748b" },
   { label: "Seed with spawns", color: "#64748b", ring: true },
 ];
+
+export const MAP_LEGEND_TITLE = "Map Legend - Messages received by:";
 
 interface MapLegendProps {
   fontSize?: number; // px
@@ -34,6 +36,8 @@ export function MapLegend({
   const gap = Math.max(4, Math.round(fontSize * 0.45));
   const rowGap = Math.max(2, Math.round(fontSize * 0.25));
 
+  const titleRowH = Math.round(fontSize * 1.3);
+
   return (
     <div
       style={{
@@ -50,6 +54,20 @@ export function MapLegend({
         lineHeight: 1.2,
       }}
     >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          height: `${titleRowH}px`,
+          flexShrink: 0,
+          fontWeight: 700,
+        }}
+      >
+        {MAP_LEGEND_TITLE}
+      </div>
       {MAP_LEGEND_ITEMS.map((item) => (
         <div
           key={item.label}

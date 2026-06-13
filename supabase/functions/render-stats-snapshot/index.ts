@@ -941,7 +941,7 @@ Deno.serve(async (req) => {
       // Must mirror src/components/MapLegend.tsx exactly.
       if (hotspot.metricKey === "map_legend") {
         const legendItems = [
-          { label: "QR", color: "#000099", ring: false },
+          { label: "QR code", color: "#000099", ring: false },
           { label: "Email", color: "#0066ff", ring: false },
           { label: "Text / SMS", color: "#99ccff", ring: false },
           { label: "Other", color: "#64748b", ring: false },
@@ -953,10 +953,14 @@ Deno.serve(async (req) => {
         const gap = Math.max(4, Math.round(fs * 0.45));
         const rowGap = Math.max(2, Math.round(fs * 0.25));
         const rowH = Math.max(swatch, fs) + rowGap;
+        const titleRowH = Math.round(fs * 1.3);
         const fontFamily = style.fontFamily || "Inter, system-ui, sans-serif";
         const weight = style.fontWeight || "600";
         let parts = svgParts;
         let cy = y + padding;
+        // Title row
+        parts += `<text x="${x + padding}" y="${cy + fs * 0.82}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="700" fill="${escapeXml(color)}">${escapeXml("Map Legend - Messages received by:")}</text>`;
+        cy += titleRowH + rowGap;
         for (const item of legendItems) {
           const cxSwatch = x + padding + swatch / 2;
           const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
