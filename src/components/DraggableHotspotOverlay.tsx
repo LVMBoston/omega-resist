@@ -5,6 +5,7 @@ import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
 import { hasManualHtmlContent, sanitizeManualHtml } from "@/lib/manualEntryHtml";
+import { MapLegend } from "@/components/MapLegend";
 
 const LOCKED_HOTSPOT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   sms: MessageSquare,
