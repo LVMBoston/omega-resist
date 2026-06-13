@@ -944,7 +944,7 @@ Deno.serve(async (req) => {
           { label: "QR code", color: "#000099", ring: false },
           { label: "Email", color: "#0066ff", ring: false },
           { label: "Text / SMS", color: "#99ccff", ring: false },
-          { label: "Other", color: "#64748b", ring: false },
+          { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true, ring: false },
           { label: "Message shared with others", color: "#64748b", ring: true },
         ];
         const padding = 8;
@@ -966,7 +966,12 @@ Deno.serve(async (req) => {
         for (const item of legendItems) {
           const cxSwatch = x + padding + swatch / 2;
           const swatchTop = cy + Math.max(0, (fs - swatch) / 2);
-          parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${item.color}"${item.ring ? ` stroke="#22c55e" stroke-width="${Math.max(2, Math.round(swatch * 0.18))}"` : ""}/>`;
+          const stroke = item.ring
+            ? ` stroke="#22c55e" stroke-width="${Math.max(2, Math.round(swatch * 0.18))}"`
+            : item.whiteBorder
+              ? ` stroke="#ffffff" stroke-width="${Math.max(2, Math.round(swatch * 0.18))}"`
+              : "";
+          parts += `<circle cx="${cxSwatch}" cy="${swatchTop + swatch / 2}" r="${swatch / 2}" fill="${item.color}"${stroke}/>`;
           const tx = x + padding + swatch + gap;
           const ty = cy + fs * 0.82;
           parts += `<text x="${tx}" y="${ty}" font-family="${escapeXml(fontFamily)}" font-size="${fs}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(item.label)}</text>`;

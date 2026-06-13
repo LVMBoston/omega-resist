@@ -9,11 +9,12 @@ export const MAP_LEGEND_ITEMS: Array<{
   label: string;
   color: string;
   ring?: boolean;
+  whiteBorder?: boolean;
 }> = [
   { label: "QR code", color: "#000099" },
   { label: "Email", color: "#0066ff" },
   { label: "Text / SMS", color: "#99ccff" },
-  { label: "Other", color: "#64748b" },
+  { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true },
   { label: "Message shared with others", color: "#64748b", ring: true },
 ];
 
@@ -100,7 +101,11 @@ export function MapLegend({
               height: `${swatch}px`,
               borderRadius: "50%",
               backgroundColor: item.color,
-              border: item.ring ? `${Math.max(2, Math.round(swatch * 0.18))}px solid #22c55e` : "none",
+              border: item.ring
+                ? `${Math.max(2, Math.round(swatch * 0.18))}px solid #22c55e`
+                : item.whiteBorder
+                  ? `${Math.max(2, Math.round(swatch * 0.18))}px solid #ffffff`
+                  : "none",
               boxSizing: "border-box",
             }}
           />
