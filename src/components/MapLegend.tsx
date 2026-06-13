@@ -13,7 +13,7 @@ export const MAP_LEGEND_ITEMS: Array<{
 }> = [
   { label: "QR code", color: "#000099" },
   { label: "Email", color: "#0066ff" },
-  { label: "Text / SMS", color: "#99ccff" },
+  { label: "Text / SMS  Share Status", color: "#99ccff" },
   { label: "Message opened, not yet shared", color: "#64748b", whiteBorder: true },
   { label: "Message shared with others", color: "#64748b", ring: true },
 ];
