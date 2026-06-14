@@ -528,18 +528,30 @@ export function DataTemplateEditor({
       // Now capture the snapshot
       setIsCapturing(true);
       
-      // Wait for ref to re-attach after save-triggered re-render
-      let container = captureContainerRef.current;
+      // Wait for ref to re-attach after save-triggered re-render.
+      // Fallback to a DOM query in case the ref didn't reattach (can happen
+      // when a stale closure or portal re-mount detaches it mid-flow).
+      const findContainer = (): HTMLElement | null =>
+        captureContainerRef.current ||
+        (document.querySelector('[data-capture-container="true"]') as HTMLElement | null);
+
+      let container = findContainer();
       if (!container) {
         // Retry for up to ~6s — re-renders from query invalidation can
         // momentarily detach the ref, especially with map hotspots.
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 200));
-          container = captureContainerRef.current;
+          container = findContainer();
           if (container) break;
         }
       }
       if (!container) {
+        console.error("[Save & Capture] No capture container found in DOM after 6s", {
+          refCurrent: captureContainerRef.current,
+          domMatches: document.querySelectorAll('[data-capture-container="true"]').length,
+          backgroundMode,
+          imageUrl: imageUrl?.slice(0, 60),
+        });
         throw new Error("Capture container not available — please try again");
       }
       container.classList.add("capture-mode");
@@ -965,6 +977,7 @@ export function DataTemplateEditor({
           {backgroundMode === "solid" ? (
             <div 
               ref={captureContainerRef} 
+              data-capture-container="true"
               className="relative max-w-4xl w-full rounded-lg shadow-2xl shrink-0"
               style={{ 
                 backgroundColor,
@@ -992,7 +1005,7 @@ export function DataTemplateEditor({
               />
             </div>
           ) : imageUrl ? (
-            <div ref={captureContainerRef} className="relative max-w-4xl w-full" style={imageError ? { aspectRatio: "9/16" } : undefined}>
+            <div ref={captureContainerRef} data-capture-container="true" className="relative max-w-4xl w-full" style={imageError ? { aspectRatio: "9/16" } : undefined}>
               <img
                 ref={imageRef}
                 src={imageUrl}
