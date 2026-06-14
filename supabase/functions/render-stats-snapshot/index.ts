@@ -920,22 +920,25 @@ Deno.serve(async (req) => {
             : vAlignRaw === "bottom"
               ? "bottom"
               : "top";
-        return (
-          svgParts +
-          renderManualHtml(
-            hotspot.manualHtml,
-            { x, y, w: hsWidth, h: hsHeight },
-            {
-              baseFontSize: scaledFontSize,
-              color,
-              align: (textAlign as "left" | "center" | "right") || "left",
-              bg: bgColor,
-              verticalAlign,
-              clipOverflow,
-            }
-          )
-        );
+        return {
+          z: typeof hotspot.zIndex === "number" ? hotspot.zIndex : 1,
+          svg:
+            svgParts +
+            renderManualHtml(
+              hotspot.manualHtml,
+              { x, y, w: hsWidth, h: hsHeight },
+              {
+                baseFontSize: scaledFontSize,
+                color,
+                align: (textAlign as "left" | "center" | "right") || "left",
+                bg: bgColor,
+                verticalAlign,
+                clipOverflow,
+              }
+            ),
+        };
       }
+
 
       // === Map Legend — static visual key for marker symbols ===
       // Must mirror src/components/MapLegend.tsx exactly.
