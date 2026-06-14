@@ -988,8 +988,12 @@ Deno.serve(async (req) => {
           }
         }
         const clipId = `legend-clip-${hotspot.id}`;
-        return `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${parts}</g>`;
+        return {
+          z: typeof hotspot.zIndex === "number" ? hotspot.zIndex : 1,
+          svg: `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs><g clip-path="url(#${clipId})">${parts}</g>`,
+        };
       }
+
 
 
       if (hotspot.metricKey === "campaign_story") {
