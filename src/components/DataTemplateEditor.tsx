@@ -977,6 +977,7 @@ export function DataTemplateEditor({
           {backgroundMode === "solid" ? (
             <div 
               ref={captureContainerRef} 
+              data-capture-container="true"
               className="relative max-w-4xl w-full rounded-lg shadow-2xl shrink-0"
               style={{ 
                 backgroundColor,
