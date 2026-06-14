@@ -931,6 +931,53 @@ export function TemplateRepositoryTab() {
         open={isDataDialogOpen}
         onOpenChange={handleDataDialogClose}
         onSave={handleDataTemplateSave}
+        onSaveAs={editingDataTemplate ? async (data) => {
+          const saveType: TemplateType = editingDataTemplate.template_type === "hybrid" ? "hybrid" : "stats_page";
+          const saveConfig = editingDataTemplate.template_type === "hybrid"
+            ? (editingDataTemplate.config || { type: "hybrid" })
+            : { type: "stats_page" };
+
+          // Resolve a unique slug (auto-append -2, -3, …)
+          const base = data.slug;
+          const { data: existing } = await supabase
+            .from("viral_slide_configs")
+            .select("slug")
+            .like("slug", `${base}%`);
+          const taken = new Set((existing ?? []).map((r) => r.slug));
+          let finalSlug = base;
+          let n = 2;
+          while (taken.has(finalSlug)) {
+            finalSlug = `${base}-${n}`.slice(0, 80);
+            n += 1;
+          }
+
+          const { data: inserted, error } = await supabase
+            .from("viral_slide_configs")
+            .insert([{
+              name: data.name,
+              slug: finalSlug,
+              description: data.description || "",
+              image_url: data.imageUrl,
+              hotspots: data.hotspots as unknown as Json,
+              is_default: false,
+              template_type: saveType,
+              config: saveConfig as Json,
+            }])
+            .select("*")
+            .single();
+
+          if (error) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
+            throw error;
+          }
+
+          queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
+          toast({ title: "Copy saved", description: `Created "${data.name}" (slug: ${finalSlug})` });
+
+          // Switch the editor to the new copy
+          createdDataTemplateIdRef.current = inserted.id;
+          setEditingDataTemplate(inserted as Template);
+        } : undefined}
         mode={dataDialogMode}
         isHybrid={!!hybridSourceTemplate || editingDataTemplate?.template_type === 'hybrid'}
         lockedHotspots={hybridSourceTemplate?.hotspots}
