@@ -1220,5 +1220,29 @@ export function DataTemplateEditor({
         </div>
       </div>
     </div>
+
+    <ImportLayoutDialog
+      open={importDialogOpen}
+      onOpenChange={setImportDialogOpen}
+      targetAspectRatio="9:16"
+      onImport={(imported, mode) => {
+        setHotspots((prev) => {
+          const next = mode === "replace" ? imported : [...prev, ...imported];
+          setActiveIndex(0);
+          setDisplayValues((dv) => {
+            const updated = { ...dv };
+            imported.forEach((h) => {
+              if (!(h.id in updated)) updated[h.id] = "0";
+            });
+            return updated;
+          });
+          return next;
+        });
+        toast.success(
+          `Imported ${imported.length} hotspot${imported.length === 1 ? "" : "s"}`
+        );
+      }}
+    />
+    </>
   );
 }
