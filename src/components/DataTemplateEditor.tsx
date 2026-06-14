@@ -91,6 +91,13 @@ interface DataTemplateEditorProps {
     slug: string;
     description?: string;
   }) => Promise<string | void>;
+  onSaveAs?: (data: {
+    hotspots: Hotspot[];
+    imageUrl: string;
+    name: string;
+    slug: string;
+    description?: string;
+  }) => Promise<void>;
   onCancel: () => void;
   mode: "create" | "edit";
 }
