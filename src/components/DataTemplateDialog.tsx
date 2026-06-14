@@ -104,6 +104,7 @@ export function DataTemplateDialog({
               templateId={initialData?.id}
               lockedHotspots={lockedHotspots}
               onSave={handleSave}
+              onSaveAs={onSaveAs}
               onCancel={() => onOpenChange(false)}
               mode={mode}
             />
