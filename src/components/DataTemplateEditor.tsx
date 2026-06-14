@@ -692,6 +692,7 @@ export function DataTemplateEditor({
   };
 
   return (
+    <>
     <div className="flex flex-col min-h-full h-full">
       {/* Split-View: Controls (left) + Preview (right) on lg+, stacked on smaller */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
