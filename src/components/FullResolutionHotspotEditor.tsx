@@ -1234,13 +1234,35 @@ export const FullResolutionHotspotEditor = ({
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full drop-shadow-lg" />
                         ) : null}
-                        {(hasOverlap || isOutOfBounds) && (
-                          <div className={`absolute -top-2 -right-2 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10 ${
-                            hasOverlap ? "bg-red-500" : "bg-orange-500"
-                          } text-white`}>
-                            ⚠
-                          </div>
-                        )}
+                        {(hasOverlap || isOutOfBounds) && (() => {
+                          const overlapIds = overlaps.get(hotspot.id) || [];
+                          const overlapLabels = overlapIds
+                            .map((id) => hotspots.find((h) => h.id === id)?.label || id)
+                            .join(", ");
+                          const tip = hasOverlap
+                            ? `Overlaps with: ${overlapLabels}. Tap targets shouldn't overlap.`
+                            : "Out of bounds — part of this hotspot is outside the slide area.";
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={`absolute -top-2 -right-2 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10 cursor-help pointer-events-auto ${
+                                      hasOverlap ? "bg-red-500" : "bg-orange-500"
+                                    } text-white`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    ⚠
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  {tip}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })()}
                         {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && (
                         <div 
                           className={`absolute left-0 w-full px-2 py-1.5 text-xs font-bold whitespace-pre-line text-center pointer-events-none rounded-md shadow-lg ${
