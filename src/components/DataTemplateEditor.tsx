@@ -531,8 +531,9 @@ export function DataTemplateEditor({
       // Wait for ref to re-attach after save-triggered re-render
       let container = captureContainerRef.current;
       if (!container) {
-        // Retry a few times with short delays
-        for (let i = 0; i < 10; i++) {
+        // Retry for up to ~6s — re-renders from query invalidation can
+        // momentarily detach the ref, especially with map hotspots.
+        for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 200));
           container = captureContainerRef.current;
           if (container) break;
