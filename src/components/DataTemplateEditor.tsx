@@ -419,6 +419,43 @@ export function DataTemplateEditor({
     }
   };
 
+  // Handle "Save As Copy" — duplicates current in-memory state as a new template
+  const handleSaveAs = async () => {
+    if (!onSaveAs) return;
+    if (!name.trim()) {
+      toast.error("Template name is required");
+      return;
+    }
+    if (!slug.trim()) {
+      toast.error("Template slug is required");
+      return;
+    }
+    const hasBackground = backgroundMode === "solid" || imageUrl;
+    if (!hasBackground) {
+      toast.error("Please set a background (image or solid color)");
+      return;
+    }
+    const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
+    const allHotspots = [...derivedLockedHotspots, ...hotspots];
+    const baseName = `${name.trim()} (copy)`.slice(0, 200);
+    const baseSlug = `${slug.trim()}-copy`.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 80);
+
+    setIsSavingAs(true);
+    try {
+      await onSaveAs({
+        hotspots: allHotspots,
+        imageUrl: effectiveImageUrl,
+        name: baseName,
+        slug: baseSlug,
+        description: description.trim() || undefined,
+      });
+    } catch (error: any) {
+      toast.error(`Failed to save copy: ${error.message}`);
+    } finally {
+      setIsSavingAs(false);
+    }
+  };
+
   // Handle save and capture snapshot
   const handleSaveAndCapture = async () => {
     if (!name.trim()) {
