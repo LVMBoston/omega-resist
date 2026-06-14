@@ -476,6 +476,8 @@ export function DataTemplateEditor({
 
     const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
 
+    let captureContainer: HTMLElement | null = null;
+
     setIsSaving(true);
     try {
       // Auto-save each map hotspot's current viewport bounds before persisting
@@ -535,17 +537,17 @@ export function DataTemplateEditor({
         captureContainerRef.current ||
         (document.querySelector('[data-capture-container="true"]') as HTMLElement | null);
 
-      let container = findContainer();
-      if (!container) {
+      captureContainer = findContainer();
+      if (!captureContainer) {
         // Retry for up to ~6s — re-renders from query invalidation can
         // momentarily detach the ref, especially with map hotspots.
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 200));
-          container = findContainer();
-          if (container) break;
+          captureContainer = findContainer();
+          if (captureContainer) break;
         }
       }
-      if (!container) {
+      if (!captureContainer) {
         console.error("[Save & Capture] No capture container found in DOM after 6s", {
           refCurrent: captureContainerRef.current,
           domMatches: document.querySelectorAll('[data-capture-container="true"]').length,
@@ -554,13 +556,13 @@ export function DataTemplateEditor({
         });
         throw new Error("Capture container not available — please try again");
       }
-      container.classList.add("capture-mode");
+      captureContainer.classList.add("capture-mode");
       
       toast.info("Capturing snapshot...", { duration: 2000 });
       
       const captureResult = await captureTemplateSnapshot(
         templateIdToUse,
-        container,
+        captureContainer,
         campaignId || undefined,
         backgroundMode === "solid" ? backgroundColor : undefined
       );
@@ -573,7 +575,9 @@ export function DataTemplateEditor({
       toast.error(`Failed: ${msg}`);
     } finally {
       // Remove capture mode class
-      if (captureContainerRef.current) {
+      if (captureContainer) {
+        captureContainer.classList.remove("capture-mode");
+      } else if (captureContainerRef.current) {
         captureContainerRef.current.classList.remove("capture-mode");
       }
       setIsSaving(false);
