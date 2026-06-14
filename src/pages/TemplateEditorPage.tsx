@@ -110,6 +110,58 @@ export default function TemplateEditorPage() {
     return await saveMutation.mutateAsync(data);
   };
 
+  // Save As Copy — duplicates the current template into a new row and navigates to it
+  const handleSaveAs = async (data: {
+    hotspots: Hotspot[];
+    imageUrl: string;
+    name: string;
+    slug: string;
+    description?: string;
+  }): Promise<void> => {
+    // Resolve a unique slug by appending -2, -3, … if needed
+    const base = data.slug;
+    const { data: existing, error: lookupErr } = await supabase
+      .from("viral_slide_configs")
+      .select("slug")
+      .like("slug", `${base}%`);
+    if (lookupErr) {
+      toast({ variant: "destructive", title: "Error", description: lookupErr.message });
+      throw lookupErr;
+    }
+    const taken = new Set((existing ?? []).map((r) => r.slug));
+    let finalSlug = base;
+    let n = 2;
+    while (taken.has(finalSlug)) {
+      finalSlug = `${base}-${n}`.slice(0, 80);
+      n += 1;
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("viral_slide_configs")
+      .insert({
+        name: data.name,
+        slug: finalSlug,
+        description: data.description,
+        image_url: data.imageUrl,
+        hotspots: data.hotspots as unknown as Json,
+        template_type: template?.template_type || "stats_page",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+      throw error;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
+    toast({
+      title: "Copy saved",
+      description: `Created "${data.name}" (slug: ${finalSlug})`,
+    });
+    navigate(`/template-editor/${inserted.id}`);
+  };
+
   const handleCancel = () => {
     window.close();
   };
