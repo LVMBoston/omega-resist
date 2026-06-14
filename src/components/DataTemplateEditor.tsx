@@ -1106,6 +1106,19 @@ export function DataTemplateEditor({
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
+            {onSaveAs && mode === "edit" && (
+              <Button
+                variant="outline"
+                onClick={handleSaveAs}
+                disabled={isSaving || isAutoSaving || isCapturing || isSavingAs || !(imageUrl || backgroundMode === "solid") || !name || !slug}
+                className="gap-1"
+                title="Duplicate this template under a new name"
+              >
+                {isSavingAs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                {isSavingAs ? "Saving copy..." : "Save As Copy"}
+              </Button>
+            )}
+            
             
             <Button
               onClick={handleSaveAndCapture}
