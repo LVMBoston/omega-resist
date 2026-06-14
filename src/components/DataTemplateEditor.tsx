@@ -1046,31 +1046,6 @@ export function DataTemplateEditor({
                 />
               )}
 
-              {/* Replace Image Button - hidden during capture */}
-              {!imageError && (
-                <div className="absolute top-2 right-2 capture-hide">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload(file);
-                      }}
-                      disabled={isUploading}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-1 pointer-events-none"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Replace
-                    </Button>
-                  </label>
-                </div>
-              )}
             </div>
 
           ) : (
