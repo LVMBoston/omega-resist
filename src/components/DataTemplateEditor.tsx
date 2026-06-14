@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette, X } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette, X, Copy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -91,6 +91,13 @@ interface DataTemplateEditorProps {
     slug: string;
     description?: string;
   }) => Promise<string | void>;
+  onSaveAs?: (data: {
+    hotspots: Hotspot[];
+    imageUrl: string;
+    name: string;
+    slug: string;
+    description?: string;
+  }) => Promise<void>;
   onCancel: () => void;
   mode: "create" | "edit";
 }
@@ -104,6 +111,7 @@ export function DataTemplateEditor({
   templateId,
   lockedHotspots = [],
   onSave,
+  onSaveAs,
   onCancel,
   mode,
 }: DataTemplateEditorProps) {
@@ -113,6 +121,7 @@ export function DataTemplateEditor({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingAs, setIsSavingAs] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -407,6 +416,43 @@ export function DataTemplateEditor({
       toast.error(`Failed to save: ${error.message}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handle "Save As Copy" — duplicates current in-memory state as a new template
+  const handleSaveAs = async () => {
+    if (!onSaveAs) return;
+    if (!name.trim()) {
+      toast.error("Template name is required");
+      return;
+    }
+    if (!slug.trim()) {
+      toast.error("Template slug is required");
+      return;
+    }
+    const hasBackground = backgroundMode === "solid" || imageUrl;
+    if (!hasBackground) {
+      toast.error("Please set a background (image or solid color)");
+      return;
+    }
+    const effectiveImageUrl = backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
+    const allHotspots = [...derivedLockedHotspots, ...hotspots];
+    const baseName = `${name.trim()} (copy)`.slice(0, 200);
+    const baseSlug = `${slug.trim()}-copy`.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 80);
+
+    setIsSavingAs(true);
+    try {
+      await onSaveAs({
+        hotspots: allHotspots,
+        imageUrl: effectiveImageUrl,
+        name: baseName,
+        slug: baseSlug,
+        description: description.trim() || undefined,
+      });
+    } catch (error: any) {
+      toast.error(`Failed to save copy: ${error.message}`);
+    } finally {
+      setIsSavingAs(false);
     }
   };
 
@@ -1060,6 +1106,19 @@ export function DataTemplateEditor({
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
+            {onSaveAs && mode === "edit" && (
+              <Button
+                variant="outline"
+                onClick={handleSaveAs}
+                disabled={isSaving || isAutoSaving || isCapturing || isSavingAs || !(imageUrl || backgroundMode === "solid") || !name || !slug}
+                className="gap-1"
+                title="Duplicate this template under a new name"
+              >
+                {isSavingAs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                {isSavingAs ? "Saving copy..." : "Save As Copy"}
+              </Button>
+            )}
+            
             
             <Button
               onClick={handleSaveAndCapture}
