@@ -889,48 +889,74 @@ export function DataTemplateEditor({
         {/* Right Column: Preview — sticky */}
         <div className="flex-1 flex flex-col items-center p-4 bg-black/95 min-h-[300px] order-1 lg:order-2 overflow-y-auto">
           {/* Background Mode Toggle */}
-          <div className="flex items-center gap-2 mb-4 capture-hide shrink-0">
-            <Button
-              variant={backgroundMode === "solid" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setBackgroundMode("solid");
-                setImageLoaded(true);
-              }}
-              className="gap-1"
-            >
-              <Palette className="w-4 h-4" />
-              Solid Color
-            </Button>
-            <Button
-              variant={backgroundMode === "image" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setBackgroundMode("image");
-                setImageLoaded(!!imageUrl);
-              }}
-              className="gap-1"
-            >
-              <ImageIcon className="w-4 h-4" />
-              Image
-            </Button>
-            
-            {backgroundMode === "solid" && (
-              <div className="flex items-center gap-2 ml-4">
-                <Label className="text-sm text-muted-foreground">Color:</Label>
+          <div className="flex items-center justify-between gap-2 mb-4 capture-hide shrink-0 w-full max-w-4xl">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={backgroundMode === "solid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setBackgroundMode("solid");
+                  setImageLoaded(true);
+                }}
+                className="gap-1"
+              >
+                <Palette className="w-4 h-4" />
+                Solid Color
+              </Button>
+              <Button
+                variant={backgroundMode === "image" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setBackgroundMode("image");
+                  setImageLoaded(!!imageUrl);
+                }}
+                className="gap-1"
+              >
+                <ImageIcon className="w-4 h-4" />
+                Image
+              </Button>
+              
+              {backgroundMode === "solid" && (
+                <div className="flex items-center gap-2 ml-4">
+                  <Label className="text-sm text-muted-foreground">Color:</Label>
+                  <input
+                    type="color"
+                    value={backgroundColor}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="w-10 h-8 rounded border border-border cursor-pointer"
+                  />
+                  <Input
+                    value={backgroundColor}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="w-24 h-8 text-xs font-mono"
+                    placeholder="#1a1a2e"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Replace Image Button - upper right */}
+            {backgroundMode === "image" && imageUrl && !imageError && (
+              <label className="cursor-pointer">
                 <input
-                  type="color"
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="w-10 h-8 rounded border border-border cursor-pointer"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                  }}
+                  disabled={isUploading}
                 />
-                <Input
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="w-24 h-8 text-xs font-mono"
-                  placeholder="#1a1a2e"
-                />
-              </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1 pointer-events-none"
+                >
+                  <Upload className="w-4 h-4" />
+                  Replace
+                </Button>
+              </label>
             )}
           </div>
 
@@ -1020,31 +1046,6 @@ export function DataTemplateEditor({
                 />
               )}
 
-              {/* Replace Image Button - hidden during capture */}
-              {!imageError && (
-                <div className="absolute top-2 right-2 capture-hide">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload(file);
-                      }}
-                      disabled={isUploading}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-1 pointer-events-none"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Replace
-                    </Button>
-                  </label>
-                </div>
-              )}
             </div>
 
           ) : (
