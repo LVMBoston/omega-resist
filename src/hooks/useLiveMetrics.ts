@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatInTimeZone } from "date-fns-tz";
 import { LiveMetricKey } from "@/types/viralTemplates";
@@ -392,12 +392,18 @@ export function useLiveMetrics(): UseLiveMetricsResult {
     }
   }, []);
 
-  // Create a lookup map
-  const metricsMap = metrics.reduce((acc, m) => {
-    const val = typeof m.value === "number" ? m.value.toLocaleString() : m.value;
-    acc[m.key] = val;
-    return acc;
-  }, {} as Record<string, string | number>);
+  // Create a lookup map — memoized so the reference is stable across renders.
+  // Without this, every render produces a new object reference, which trips
+  // any downstream useEffect([metricsMap, ...]) into an infinite re-render loop.
+  const metricsMap = useMemo(
+    () =>
+      metrics.reduce((acc, m) => {
+        const val = typeof m.value === "number" ? m.value.toLocaleString() : m.value;
+        acc[m.key] = val;
+        return acc;
+      }, {} as Record<string, string | number>),
+    [metrics]
+  );
 
   return { metrics, metricsMap, loading, error, resolveMetrics };
 }
