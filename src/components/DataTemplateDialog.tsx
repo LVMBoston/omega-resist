@@ -14,6 +14,13 @@ interface DataTemplateDialogProps {
     slug: string;
     description?: string;
   }) => Promise<string | void>;
+  onSaveAs?: (data: {
+    hotspots: Hotspot[];
+    imageUrl: string;
+    name: string;
+    slug: string;
+    description?: string;
+  }) => Promise<void>;
   mode: "create" | "edit";
   isHybrid?: boolean;
   lockedHotspots?: Hotspot[];
