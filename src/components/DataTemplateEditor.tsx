@@ -190,6 +190,7 @@ export function DataTemplateEditor({
     editableInitialHotspots.length > 0 ? editableInitialHotspots : [createDefaultHotspot(0)]
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [mapBoundsMap, setMapBoundsMap] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
   const [mapControlsMap, setMapControlsMap] = useState<Record<string, MapControls>>({});
   const [mapZoomMap, setMapZoomMap] = useState<Record<string, number>>({});
