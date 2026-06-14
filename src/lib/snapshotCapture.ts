@@ -40,124 +40,124 @@ export async function captureTemplateSnapshot(
     (el as HTMLElement).style.display = 'none';
   });
 
-  // Force synchronous reflow to ensure browser layout is stable
-  void containerElement.offsetHeight;
-  console.log("[snapshotCapture] Forced reflow complete");
+  try {
+    // Force synchronous reflow to ensure browser layout is stable
+    void containerElement.offsetHeight;
+    console.log("[snapshotCapture] Forced reflow complete");
 
-  // Wait for browser paint cycle to complete
-  await new Promise((resolve) => requestAnimationFrame(resolve));
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  console.log("[snapshotCapture] Paint cycle delay complete, starting capture");
+    // Wait for browser paint cycle to complete
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    console.log("[snapshotCapture] Paint cycle delay complete, starting capture");
 
-  // Determine the background color to use
-  // Priority: explicit parameter > computed style > transparent (null)
-  let captureBackground: string | null = null;
-  if (backgroundColor) {
-    captureBackground = backgroundColor;
-    console.log("[snapshotCapture] Using explicit background color:", captureBackground);
-  } else {
-    const computedStyle = window.getComputedStyle(containerElement);
-    const bgColor = computedStyle.backgroundColor;
-    if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-      captureBackground = bgColor;
-      console.log("[snapshotCapture] Using computed background color:", captureBackground);
+    // Determine the background color to use
+    // Priority: explicit parameter > computed style > transparent (null)
+    let captureBackground: string | null = null;
+    if (backgroundColor) {
+      captureBackground = backgroundColor;
+      console.log("[snapshotCapture] Using explicit background color:", captureBackground);
     } else {
-      console.log("[snapshotCapture] No background color detected, using transparent");
+      const computedStyle = window.getComputedStyle(containerElement);
+      const bgColor = computedStyle.backgroundColor;
+      if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+        captureBackground = bgColor;
+        console.log("[snapshotCapture] Using computed background color:", captureBackground);
+      } else {
+        console.log("[snapshotCapture] No background color detected, using transparent");
+      }
     }
-  }
 
-  // Capture at 2x scale for retina quality
-  const canvas = await html2canvas(containerElement, {
-    useCORS: true,
-    allowTaint: false,
-    scale: 2,
-    logging: false,
-    backgroundColor: captureBackground,
-  });
-
-  // Restore hidden elements
-  hideElements.forEach((el) => {
-    (el as HTMLElement).style.display = '';
-  });
-
-  // Restore badge elements
-  badgeElements.forEach((el) => {
-    (el as HTMLElement).style.display = '';
-  });
-
-
-  // Convert canvas to PNG blob first
-  const rawBlob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => {
-        if (b) resolve(b);
-        else reject(new Error("Failed to create blob from canvas"));
-      },
-      "image/png"
-    );
-  });
-
-  // Compress the PNG using browser-image-compression (same approach as zip imports)
-  const compressedBlob = await imageCompression(
-    new File([rawBlob], "snapshot.png", { type: "image/png" }),
-    {
-      maxSizeMB: 0.5, // Target ~500KB
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-      fileType: "image/png",
-    }
-  );
-
-  console.log(`[snapshotCapture] Compressed from ${(rawBlob.size / 1024).toFixed(0)}KB to ${(compressedBlob.size / 1024).toFixed(0)}KB`);
-
-  // Generate storage path - use slide-snapshots bucket directly
-  const timestamp = new Date().toISOString();
-  const fileName = campaignCode 
-    ? `snapshot-${campaignCode}.png`
-    : "latest.png";
-  const storagePath = `${templateId}/${fileName}`;
-
-  console.log("[snapshotCapture] Uploading to slide-snapshots bucket:", storagePath);
-
-  // Upload to storage (upsert - replace if exists)
-  const { error: uploadError } = await supabase.storage
-    .from("slide-snapshots")
-    .upload(storagePath, compressedBlob, {
-      cacheControl: "300", // 5 minute cache
-      upsert: true,
-      contentType: "image/png",
+    // Capture at 2x scale for retina quality
+    const canvas = await html2canvas(containerElement, {
+      useCORS: true,
+      allowTaint: false,
+      scale: 2,
+      logging: false,
+      backgroundColor: captureBackground,
     });
 
-  if (uploadError) {
-    console.error("[snapshotCapture] Upload error:", uploadError);
-    throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
+
+    // Convert canvas to PNG blob first
+    const rawBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => {
+          if (b) resolve(b);
+          else reject(new Error("Failed to create blob from canvas"));
+        },
+        "image/png"
+      );
+    });
+
+    // Compress the PNG using browser-image-compression (same approach as zip imports)
+    const compressedBlob = await imageCompression(
+      new File([rawBlob], "snapshot.png", { type: "image/png" }),
+      {
+        maxSizeMB: 0.5, // Target ~500KB
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: "image/png",
+      }
+    );
+
+    console.log(`[snapshotCapture] Compressed from ${(rawBlob.size / 1024).toFixed(0)}KB to ${(compressedBlob.size / 1024).toFixed(0)}KB`);
+
+    // Generate storage path - use slide-snapshots bucket directly
+    const timestamp = new Date().toISOString();
+    const fileName = campaignCode 
+      ? `snapshot-${campaignCode}.png`
+      : "latest.png";
+    const storagePath = `${templateId}/${fileName}`;
+
+    console.log("[snapshotCapture] Uploading to slide-snapshots bucket:", storagePath);
+
+    // Upload to storage (upsert - replace if exists)
+    const { error: uploadError } = await supabase.storage
+      .from("slide-snapshots")
+      .upload(storagePath, compressedBlob, {
+        cacheControl: "300", // 5 minute cache
+        upsert: true,
+        contentType: "image/png",
+      });
+
+    if (uploadError) {
+      console.error("[snapshotCapture] Upload error:", uploadError);
+      throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
+    }
+
+    // Get the public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from("slide-snapshots")
+      .getPublicUrl(storagePath);
+    
+    console.log("[snapshotCapture] Upload successful, public URL:", publicUrl);
+
+    // Update the template record with snapshot info
+    const { error: updateError } = await supabase
+      .from("viral_slide_configs")
+      .update({
+        cached_snapshot_path: publicUrl,
+        snapshot_rendered_at: timestamp,
+      })
+      .eq("id", templateId);
+
+    if (updateError) {
+      console.warn("Failed to update template snapshot metadata:", updateError);
+      // Don't throw - the snapshot was still captured successfully
+    }
+
+    return {
+      snapshotPath: publicUrl,
+      timestamp,
+    };
+  } finally {
+    hideElements.forEach((el) => {
+      (el as HTMLElement).style.display = '';
+    });
+
+    badgeElements.forEach((el) => {
+      (el as HTMLElement).style.display = '';
+    });
   }
-
-  // Get the public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from("slide-snapshots")
-    .getPublicUrl(storagePath);
-  
-  console.log("[snapshotCapture] Upload successful, public URL:", publicUrl);
-
-  // Update the template record with snapshot info
-  const { error: updateError } = await supabase
-    .from("viral_slide_configs")
-    .update({
-      cached_snapshot_path: publicUrl,
-      snapshot_rendered_at: timestamp,
-    })
-    .eq("id", templateId);
-
-  if (updateError) {
-    console.warn("Failed to update template snapshot metadata:", updateError);
-    // Don't throw - the snapshot was still captured successfully
-  }
-
-  return {
-    snapshotPath: publicUrl,
-    timestamp,
-  };
 }
 
 /**
