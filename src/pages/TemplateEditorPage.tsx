@@ -210,6 +210,7 @@ export default function TemplateEditorPage() {
           templateDescription={template?.description || ""}
           templateId={savedId}
           onSave={handleSave}
+          onSaveAs={savedId ? handleSaveAs : undefined}
           onCancel={handleCancel}
           mode={isNewTemplate ? "create" : "edit"}
         />
