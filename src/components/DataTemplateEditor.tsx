@@ -111,6 +111,7 @@ export function DataTemplateEditor({
   templateId,
   lockedHotspots = [],
   onSave,
+  onSaveAs,
   onCancel,
   mode,
 }: DataTemplateEditorProps) {
