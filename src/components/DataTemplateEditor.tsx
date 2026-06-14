@@ -120,6 +120,7 @@ export function DataTemplateEditor({
   const captureContainerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSavingAs, setIsSavingAs] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
