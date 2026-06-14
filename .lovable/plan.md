@@ -1,46 +1,58 @@
-# Plan — Map Legend Hotspot
-
-Status: Approved
-Date: 2026-06-12
+# Export / Import Template Hotspot Layout as JSON
 
 ## 1. Goal
+Let an editor save the **hotspot layout** of a Data Template to a `.json` file and re-apply it on a different template canvas. This is a layout-portability feature, not a full template clone.
 
-Add a placeable "Map Legend" element so a slide can show what the symbols on the map mean (marker colors per channel, and the green ring for seeds that produced spawns). The legend is a static visual key — it does not query data.
+## 2. What gets exported
+a. Every **data hotspot** on the canvas (maps, live numbers, charts, etc.)
+b. Per hotspot: `id`, `iconId`, `type`, `label`, `labelPosition`, `x`, `y`, `width`, `height`, `zIndex`
+c. Per hotspot: type-specific config block — `mapConfig`, `liveNumberStyle`, `metricKey`, chart settings, etc.
+d. Header block: `schemaVersion`, `exportedAt`, `templateId`, `templateName`, `sourceAspectRatio`, `sourceImageWidth`, `sourceImageHeight`
 
-## 2. What the legend shows
+## 3. What does NOT get exported
+- Background image
+- Captured snapshot / thumbnail
+- Deployment, EoA, or campaign bindings
+- Database row IDs
+- Locked / derived action hotspots (these belong to the underlying slide, not the layout)
 
-Pulled directly from `MapHotspotRenderer` so it always matches the map:
+## 4. Import behavior
+a. `.json` file picker on the target template's editor
+b. Validate with zod against `schemaVersion`; reject with a clear message if unsupported
+c. Generate **fresh hotspot IDs** on import (never reuse exported IDs)
+d. Default = **Replace** existing data hotspots; checkbox for **Append instead of replace**
+e. If `sourceAspectRatio` ≠ target aspect ratio, show a one-time dialog:
+   - **Keep percentages as-is** (hotspots may sit off-canvas)
+   - **Fit to target** (rescale `x/y/width/height` to fit, preserving relative arrangement)
+f. Locked action hotspots on the target are never touched
 
-a. QR — navy dot (`#000099`)
-b. Email — medium blue dot (`#0066ff`)
-c. Text / SMS — light blue dot (`#99ccff`)
-d. Other — slate dot (`#64748b`)
-e. Green ring — "this seed has spawns"
+## 5. Stable identifiers, never ordinals
+a. Metric bindings stored as `metricKey` strings (e.g. `"map_legend"`) — never as list position
+b. Same rule for chart types, map presets, color palettes — slug/id only
+c. If a key is renamed or removed, that one hotspot imports with an **"Unknown metric"** badge; the rest import cleanly
+d. Reordering the METRIC list later will **not** break older export files
 
-Fixed list (always all five), confirmed with user.
+## 6. UI
+a. Two buttons in the `DataTemplateEditor` toolbar: **Export ⇩** and **Import ⇧**
+b. Both disabled during capture/save
+c. Export downloads `template-<slug>-<YYYYMMDD>.json`
+d. Import opens a modal: file picker → validation summary → Replace/Append toggle → aspect-ratio dialog if needed → Apply
 
-## 3. UX
+## 7. Technical notes
+- New module: `src/lib/templateLayoutIO.ts`
+  - `exportHotspotsToJson(template, hotspots): Blob`
+  - `parseHotspotsJson(raw): ParsedLayout` (zod-validated)
+  - `rescaleHotspots(hotspots, sourceAR, targetAR): Hotspot[]`
+- Purely client-side; no DB migrations, no edge functions, no backend changes
+- Reuses the existing `Hotspot` type from the editor
 
-a. New entry in the Live Number metric dropdown: **"Map Legend"** (`metricKey: "map_legend"`).
-b. Reuses live-number hotspot — inherits W, H, Z, transparency, font-size, color, background, padding, alignment.
-c. Swatch size scales with font-size so legend stays proportional.
-d. `overflow: hidden` so contents never spill outside the user's box.
-e. Rendered in editor preview overlay so the deck-editor thumbnail matches.
+## 8. Out of scope
+- Cross-account sharing / share-by-URL
+- Importing the background image
+- Validating metric bindings against a specific campaign's available data
+- Bulk import of multiple templates at once
 
-## 4. Files to change
-
-a. `src/types/viralTemplates.ts` — add `"map_legend"` to metric-key union.
-b. Runtime live-number renderer (locate during build, likely `LiveNumberRenderer.tsx` or inline in `InteractiveSlideOverlay.tsx`) — when `metricKey === "map_legend"`, render swatch list.
-c. `src/components/SlidePreviewOverlay.tsx` — add `map_legend` label + mini swatch preview.
-d. Metric dropdown component (likely in hotspot calibration) — add option.
-e. `supabase/functions/render-stats-snapshot/index.ts` — SSR parity: render same legend in snapshot SVG.
-
-## 5. What does NOT change
-
-- `MapHotspotRenderer.tsx` marker drawing
-- Database schema
-- Hotspot drag/resize/Z/transparency behavior
-
-## 6. Decision log
-
-Archive to `docs/decisions/hotspots/2026-06-12_map-legend-hotspot_feature-doc_lovable.md` with `Status: Approved & Implemented`. This is a **new** plan (not an update to a prior decision).
+## 9. Decision log
+On approval + implementation, archive this plan to:
+`docs/decisions/templates/2026-06-14_template-layout-export-import_feature-doc_lovable.md`
+with `Status: Approved & Implemented`. This is a **new** plan (no prior decision doc to update).
