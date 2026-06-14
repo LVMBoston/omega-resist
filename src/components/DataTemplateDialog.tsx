@@ -79,7 +79,13 @@ export function DataTemplateDialog({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[90vw] sm:max-w-[90vw] p-0 flex flex-col">
+      <SheetContent
+        side="right"
+        className="w-[90vw] sm:max-w-[90vw] p-0 flex flex-col"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <SheetHeader className={`px-6 py-4 border-b border-border ${accentBg}`}>
           <div className="flex items-center gap-3">
             <div className={`h-10 w-10 rounded-lg ${iconBg} flex items-center justify-center`}>
