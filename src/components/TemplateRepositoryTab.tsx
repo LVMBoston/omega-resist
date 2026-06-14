@@ -305,9 +305,10 @@ export function TemplateRepositoryTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["interactive-templates"] });
-      setEditingTemplate(null);
-      setEditingDataTemplate(null);
-      resetForm();
+      // NOTE: do NOT clear editingTemplate / editingDataTemplate here.
+      // The data-template dialog handles its own lifecycle and may still be
+      // mid-flow (e.g. Save & Capture). Clearing it mid-save unmounts the
+      // capture container and causes "capture container not available".
       toast({ title: "Success", description: "Template saved successfully" });
     },
     onError: (error: Error) => {
