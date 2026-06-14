@@ -446,7 +446,15 @@ export function TemplateRepositoryTab() {
     };
 
     if (editingTemplate) {
-      updateTemplate.mutate({ id: editingTemplate.id, data: dataToSave });
+      updateTemplate.mutate(
+        { id: editingTemplate.id, data: dataToSave },
+        {
+          onSuccess: () => {
+            setEditingTemplate(null);
+            resetForm();
+          },
+        }
+      );
     } else {
       createTemplate.mutate(dataToSave);
     }
