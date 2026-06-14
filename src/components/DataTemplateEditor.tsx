@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette, X, Copy } from "lucide-react";
+import { Plus, Trash2, Upload, Image as ImageIcon, Check, Loader2, Database, BarChart3, MapIcon, Camera, RefreshCw, Rocket, Palette, X, Copy, Download, FileUp } from "lucide-react";
+import { ImportLayoutDialog } from "@/components/ImportLayoutDialog";
+import {
+  exportHotspotsToJson,
+  downloadJsonFile,
+  makeExportFilename,
+} from "@/lib/templateLayoutIO";
 import { useQuery } from "@tanstack/react-query";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
@@ -184,6 +190,7 @@ export function DataTemplateEditor({
     editableInitialHotspots.length > 0 ? editableInitialHotspots : [createDefaultHotspot(0)]
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [mapBoundsMap, setMapBoundsMap] = useState<Record<string, { north: number; south: number; east: number; west: number }>>({});
   const [mapControlsMap, setMapControlsMap] = useState<Record<string, MapControls>>({});
   const [mapZoomMap, setMapZoomMap] = useState<Record<string, number>>({});
@@ -685,6 +692,7 @@ export function DataTemplateEditor({
   };
 
   return (
+    <>
     <div className="flex flex-col min-h-full h-full">
       {/* Split-View: Controls (left) + Preview (right) on lg+, stacked on smaller */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
@@ -871,7 +879,39 @@ export function DataTemplateEditor({
               <Trash2 className="w-4 h-4" />
               Remove
             </Button>
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const contents = exportHotspotsToJson(hotspots, {
+                  templateId: savedTemplateId,
+                  templateName: name || templateName,
+                  sourceAspectRatio: "9:16",
+                });
+                downloadJsonFile(makeExportFilename(slug || templateSlug), contents);
+                toast.success("Layout exported");
+              }}
+              disabled={isCapturing || isSaving || isSavingAs || hotspots.length === 0}
+              className="gap-1"
+              title="Export hotspot layout as JSON"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportDialogOpen(true)}
+              disabled={isCapturing || isSaving || isSavingAs}
+              className="gap-1"
+              title="Import hotspot layout from JSON"
+            >
+              <FileUp className="w-4 h-4" />
+              Import
+            </Button>
           </div>
+
 
           {/* Active Hotspot Controls - different controls for different types */}
           {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "live_number" && (
@@ -1181,5 +1221,29 @@ export function DataTemplateEditor({
         </div>
       </div>
     </div>
+
+    <ImportLayoutDialog
+      open={importDialogOpen}
+      onOpenChange={setImportDialogOpen}
+      targetAspectRatio="9:16"
+      onImport={(imported, mode) => {
+        setHotspots((prev) => {
+          const next = mode === "replace" ? imported : [...prev, ...imported];
+          setActiveIndex(0);
+          setDisplayValues((dv) => {
+            const updated = { ...dv };
+            imported.forEach((h) => {
+              if (!(h.id in updated)) updated[h.id] = "0";
+            });
+            return updated;
+          });
+          return next;
+        });
+        toast.success(
+          `Imported ${imported.length} hotspot${imported.length === 1 ? "" : "s"}`
+        );
+      }}
+    />
+    </>
   );
 }
