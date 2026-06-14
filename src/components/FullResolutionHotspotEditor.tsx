@@ -1234,13 +1234,35 @@ export const FullResolutionHotspotEditor = ({
                         ) : HotspotIcon ? (
                           <HotspotIcon className="w-full h-full drop-shadow-lg" />
                         ) : null}
-                        {(hasOverlap || isOutOfBounds) && (
-                          <div className={`absolute -top-2 -right-2 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10 ${
-                            hasOverlap ? "bg-red-500" : "bg-orange-500"
-                          } text-white`}>
-                            ⚠
-                          </div>
-                        )}
+                        {(hasOverlap || isOutOfBounds) && (() => {
+                          const overlapIds = overlaps.get(hotspot.id) || [];
+                          const overlapLabels = overlapIds
+                            .map((id) => hotspots.find((h) => h.id === id)?.label || id)
+                            .join(", ");
+                          const tip = hasOverlap
+                            ? `Overlaps with: ${overlapLabels}. Tap targets shouldn't overlap.`
+                            : "Out of bounds — part of this hotspot is outside the slide area.";
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={`absolute -top-2 -right-2 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg z-10 cursor-help pointer-events-auto ${
+                                      hasOverlap ? "bg-red-500" : "bg-orange-500"
+                                    } text-white`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    ⚠
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  {tip}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })()}
                         {hotspot.label && hotspot.label.trim().length > 0 && hotspot.type !== 'external_link' && (
                         <div 
                           className={`absolute left-0 w-full px-2 py-1.5 text-xs font-bold whitespace-pre-line text-center pointer-events-none rounded-md shadow-lg ${
@@ -1292,10 +1314,28 @@ export const FullResolutionHotspotEditor = ({
                               <div className="text-sm flex-1">
                                 <div className="font-medium flex items-center gap-2">
                                   {overlaps.has(hotspot.id) && (
-                                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                          Overlaps with: {(overlaps.get(hotspot.id) || []).map((id) => hotspots.find((h) => h.id === id)?.label || id).join(", ")}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   )}
                                   {isOutOfBounds && (
-                                    <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                          Out of bounds — part of this hotspot is outside the slide area.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   )}
                                   {listImageUrl ? (
                                     <img src={listImageUrl} alt={hotspot.label} className="w-4 h-4 object-contain" />
