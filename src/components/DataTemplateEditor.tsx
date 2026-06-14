@@ -1005,7 +1005,7 @@ export function DataTemplateEditor({
               />
             </div>
           ) : imageUrl ? (
-            <div ref={captureContainerRef} className="relative max-w-4xl w-full" style={imageError ? { aspectRatio: "9/16" } : undefined}>
+            <div ref={captureContainerRef} data-capture-container="true" className="relative max-w-4xl w-full" style={imageError ? { aspectRatio: "9/16" } : undefined}>
               <img
                 ref={imageRef}
                 src={imageUrl}
