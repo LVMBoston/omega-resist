@@ -38,6 +38,7 @@ export function DataTemplateDialog({
   open,
   onOpenChange,
   onSave,
+  onSaveAs,
   mode,
   isHybrid = false,
   lockedHotspots,
