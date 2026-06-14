@@ -878,7 +878,39 @@ export function DataTemplateEditor({
               <Trash2 className="w-4 h-4" />
               Remove
             </Button>
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const contents = exportHotspotsToJson(hotspots, {
+                  templateId: savedTemplateId,
+                  templateName: name || templateName,
+                  sourceAspectRatio: "9:16",
+                });
+                downloadJsonFile(makeExportFilename(slug || templateSlug), contents);
+                toast.success("Layout exported");
+              }}
+              disabled={isCapturing || isSaving || isSavingAs || hotspots.length === 0}
+              className="gap-1"
+              title="Export hotspot layout as JSON"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportDialogOpen(true)}
+              disabled={isCapturing || isSaving || isSavingAs}
+              className="gap-1"
+              title="Import hotspot layout from JSON"
+            >
+              <FileUp className="w-4 h-4" />
+              Import
+            </Button>
           </div>
+
 
           {/* Active Hotspot Controls - different controls for different types */}
           {activeHotspot && (imageUrl || backgroundMode === "solid") && activeHotspot.type === "live_number" && (
