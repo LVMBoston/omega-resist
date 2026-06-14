@@ -1314,10 +1314,28 @@ export const FullResolutionHotspotEditor = ({
                               <div className="text-sm flex-1">
                                 <div className="font-medium flex items-center gap-2">
                                   {overlaps.has(hotspot.id) && (
-                                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                          Overlaps with: {(overlaps.get(hotspot.id) || []).map((id) => hotspots.find((h) => h.id === id)?.label || id).join(", ")}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   )}
                                   {isOutOfBounds && (
-                                    <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                          Out of bounds — part of this hotspot is outside the slide area.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   )}
                                   {listImageUrl ? (
                                     <img src={listImageUrl} alt={hotspot.label} className="w-4 h-4 object-contain" />
