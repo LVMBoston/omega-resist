@@ -447,7 +447,7 @@ function generateFullStory(data: NarrativeData): string {
   if (maxLevel > 0) {
     let chainLine = `🔗 Longest chain: ${maxLevel} levels deep.`;
     if (maxLevel >= 3) {
-      chainLine += ` Someone scanned a card → shared it → that person shared it → and it kept going.`;
+      chainLine += ` Someone opened it → shared it → that person shared it → and it kept going.`;
     } else if (maxLevel === 2) {
       chainLine += ` A scan became a share, which became another share.`;
     } else {
