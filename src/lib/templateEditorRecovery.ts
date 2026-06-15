@@ -1,5 +1,6 @@
 const LAST_TEMPLATE_EDITOR_ROUTE_KEY = "samizdat:last-template-editor-route";
 const TEMPLATE_EDITOR_EXIT_INTENT_KEY = "samizdat:template-editor-intentional-exit";
+const TEMPLATE_EDITOR_RECOVERY_ATTEMPT_KEY = "samizdat:template-editor-recovery-attempt";
 
 const IMMEDIATE_BOUNCE_MS = 3 * 60 * 1000;
 
@@ -40,6 +41,7 @@ export function clearTemplateEditorRecovery() {
 
   storage.removeItem(LAST_TEMPLATE_EDITOR_ROUTE_KEY);
   storage.removeItem(TEMPLATE_EDITOR_EXIT_INTENT_KEY);
+  storage.removeItem(TEMPLATE_EDITOR_RECOVERY_ATTEMPT_KEY);
 }
 
 export function getRecoverableTemplateEditorRoute(maxAgeMs = IMMEDIATE_BOUNCE_MS): string | null {
@@ -59,6 +61,14 @@ export function getRecoverableTemplateEditorRoute(maxAgeMs = IMMEDIATE_BOUNCE_MS
     const parsed = JSON.parse(raw) as Partial<StoredEditorRoute>;
     if (!parsed.path?.startsWith("/template-editor/")) return null;
     if (!parsed.at || Date.now() - parsed.at > maxAgeMs) return null;
+
+    const attemptedPath = storage.getItem(TEMPLATE_EDITOR_RECOVERY_ATTEMPT_KEY);
+    if (attemptedPath === parsed.path) {
+      clearTemplateEditorRecovery();
+      return null;
+    }
+
+    storage.setItem(TEMPLATE_EDITOR_RECOVERY_ATTEMPT_KEY, parsed.path);
     return parsed.path;
   } catch {
     clearTemplateEditorRecovery();
