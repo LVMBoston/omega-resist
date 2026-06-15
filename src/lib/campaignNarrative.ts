@@ -449,7 +449,7 @@ function generateFullStory(data: NarrativeData): string {
     if (maxLevel >= 3) {
       chainLine += ` Someone opened it → shared it → that person shared it → and it kept going.`;
     } else if (maxLevel === 2) {
-      chainLine += ` A scan became a share, which became another share.`;
+      chainLine += ` An open became a share, which became another share.`;
     } else {
       chainLine += ` Seeds turned into shares.`;
     }
