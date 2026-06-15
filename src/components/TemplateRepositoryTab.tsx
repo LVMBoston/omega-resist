@@ -450,8 +450,8 @@ export function TemplateRepositoryTab() {
         { id: editingTemplate.id, data: dataToSave },
         {
           onSuccess: () => {
-            setEditingTemplate(null);
-            resetForm();
+            setEditingTemplate({ ...editingTemplate, ...dataToSave, id: editingTemplate.id });
+            setFormSnapshot(JSON.stringify(formData));
           },
         }
       );
