@@ -222,16 +222,23 @@ export function DataTemplateEditor({
     if (Object.keys(metricsMap).length > 0) {
       setDisplayValues((prev) => {
         const updated = { ...prev };
+        let changed = false;
+
         hotspots.forEach((h) => {
           if (h.metricKey && metricsMap[h.metricKey] !== undefined) {
             console.log(`[DataTemplateEditor] Hotspot ${h.id}: metricKey=${h.metricKey} -> value=${metricsMap[h.metricKey]}`);
-            updated[h.id] = String(metricsMap[h.metricKey]);
+            const nextValue = String(metricsMap[h.metricKey]);
+            if (updated[h.id] !== nextValue) {
+              updated[h.id] = nextValue;
+              changed = true;
+            }
           }
         });
-        return updated;
+
+        return changed ? updated : prev;
       });
     }
-  }, [metricsMap, hotspots]);
+  }, [campaignId, metricsMap, hotspots]);
 
   // Auto-populate campaign from templateCampaigns if not already selected (and user hasn't manually cleared)
   useEffect(() => {
