@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState } from "react";
 import { Hotspot } from "@/types/viralTemplates";
-import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Share2, ExternalLink, Plus, Minus } from "lucide-react";
+import { Pencil, Move, BarChart3, MapIcon, Lock, Unlock, Mail, MessageSquare, Share2, Plus, Minus } from "lucide-react";
+import { LinkIcon } from "@/components/icons/LinkIcon";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
@@ -11,7 +12,7 @@ const LOCKED_HOTSPOT_ICONS: Record<string, React.ComponentType<{ className?: str
   sms: MessageSquare,
   email: Mail,
   social: Share2,
-  external_link: ExternalLink,
+  external_link: LinkIcon,
 };
 
 interface DraggableHotspotOverlayProps {
