@@ -283,7 +283,7 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   lines.push(`${daysActive} days ${hoursRemainder} hours active`);
   lines.push("");
 
-  lines.push(`${seedCount} cards dropped`);
+  lines.push(`${seedCount} first opens`);
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
     lines.push(`${sproutCount} sprouted (${sproutRate}%)`);
