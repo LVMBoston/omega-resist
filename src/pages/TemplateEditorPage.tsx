@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DataTemplateEditor } from "@/components/DataTemplateEditor";
@@ -9,15 +9,25 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import type { Json } from "@/integrations/supabase/types";
+import { clearTemplateEditorRecovery, markTemplateEditorExitIntent, rememberTemplateEditorRoute } from "@/lib/templateEditorRecovery";
 
 export default function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isNewTemplate = id === "new";
   // Track the actual saved ID — starts as the URL param for existing templates
   const [savedId, setSavedId] = useState<string | undefined>(isNewTemplate ? undefined : id);
+
+  useEffect(() => {
+    rememberTemplateEditorRoute(`${location.pathname}${location.search}`);
+
+    return () => {
+      clearTemplateEditorRecovery();
+    };
+  }, [location.pathname, location.search]);
 
   // Fetch existing template if editing
   const { data: template, isLoading } = useQuery({
@@ -89,7 +99,9 @@ export default function TemplateEditorPage() {
       // Store the ID so subsequent saves are updates, not inserts
       if (returnedId && !savedId) {
         setSavedId(returnedId);
-        window.history.replaceState(null, "", `/template-editor/${returnedId}`);
+        const nextPath = `/template-editor/${returnedId}`;
+        window.history.replaceState(null, "", nextPath);
+        rememberTemplateEditorRoute(nextPath);
       }
     },
     onError: (error: Error) => {
@@ -164,10 +176,12 @@ export default function TemplateEditorPage() {
   };
 
   const handleCancel = () => {
+    markTemplateEditorExitIntent();
     window.close();
   };
 
   const handleBack = () => {
+    markTemplateEditorExitIntent();
     navigate("/deck-management?tab=templates");
   };
 
@@ -187,7 +201,7 @@ export default function TemplateEditorPage() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/deck-management?tab=templates">Template Repository</Link>
+                <Link to="/deck-management?tab=templates" onClick={markTemplateEditorExitIntent}>Template Repository</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
