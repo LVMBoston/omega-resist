@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DataTemplateEditor } from "@/components/DataTemplateEditor";
+import { EditorErrorBoundary } from "@/components/EditorErrorBoundary";
 import { Hotspot } from "@/types/viralTemplates";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -201,20 +202,23 @@ export default function TemplateEditorPage() {
 
       {/* Editor */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <DataTemplateEditor
-          key={id}
-          initialHotspots={(template?.hotspots as unknown as Hotspot[]) || undefined}
-          initialImageUrl={template?.image_url}
-          templateName={template?.name || ""}
-          templateSlug={template?.slug || ""}
-          templateDescription={template?.description || ""}
-          templateId={savedId}
-          onSave={handleSave}
-          onSaveAs={savedId ? handleSaveAs : undefined}
-          onCancel={handleCancel}
-          mode={isNewTemplate ? "create" : "edit"}
-        />
+        <EditorErrorBoundary area="Template Editor">
+          <DataTemplateEditor
+            key={id}
+            initialHotspots={(template?.hotspots as unknown as Hotspot[]) || undefined}
+            initialImageUrl={template?.image_url}
+            templateName={template?.name || ""}
+            templateSlug={template?.slug || ""}
+            templateDescription={template?.description || ""}
+            templateId={savedId}
+            onSave={handleSave}
+            onSaveAs={savedId ? handleSaveAs : undefined}
+            onCancel={handleCancel}
+            mode={isNewTemplate ? "create" : "edit"}
+          />
+        </EditorErrorBoundary>
       </div>
+
     </div>
   );
 }
