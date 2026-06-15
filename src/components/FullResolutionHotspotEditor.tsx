@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Card, CardContent } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Trash2, X, AlertTriangle, ExternalLink, MailPlus, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock, Image as ImageIcon } from "lucide-react";
+import { Trash2, X, AlertTriangle, ExternalLink, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock, Image as ImageIcon } from "lucide-react";
 import { fetchOEmbed, type OEmbedResult } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ import textIcon from "@/assets/text-icon.png";
 import playButtonIcon from "@/assets/play-button.png";
 import { hasManualHtmlContent, sanitizeManualHtml } from "@/lib/manualEntryHtml";
 import shareIcon from "@/assets/share-icon.png";
-import emailLinksIcon from "@/assets/email-links-icon.png";
+import emailLinksIcon from "@/assets/email-links-icon.svg";
 import externalLinkIcon from "@/assets/external-link-icon.png";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
@@ -95,7 +95,7 @@ const ICON_PRESETS: IconPreset[] = [
   // External link variants
   { id: "link-icon", label: "External Link", type: "external_link", imageUrl: externalLinkIcon, width: 5, height: 4 },
   // Email links variant
-  { id: "email-links", label: "Email Links", type: "email_links", icon: MailPlus as any, width: 8, height: 8 },
+  { id: "email-links", label: "Email Links", type: "email_links", imageUrl: emailLinksIcon, width: 8, height: 8 },
   // Video variant
   { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
   // Data hotspot presets
