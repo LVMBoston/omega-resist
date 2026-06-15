@@ -1012,7 +1012,7 @@ export function TemplateRepositoryTab() {
               onClick={() => pendingCloseAction === "data" ? confirmDiscardData() : confirmDiscardAction()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Discard Changes
+              Exit
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
