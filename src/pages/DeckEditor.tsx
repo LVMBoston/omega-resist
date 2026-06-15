@@ -2405,6 +2405,7 @@ Add Slide(s)
                 setHotspotEditorOpen(false);
                 setHotspotEditorSlide(null);
               }}
+              saveLabel="Save Slide"
             />
           </DialogContent>
         </Dialog>
