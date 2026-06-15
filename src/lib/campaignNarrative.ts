@@ -380,7 +380,7 @@ function generateFullStory(data: NarrativeData): string {
       const days = Math.round(diffHours / 24);
       timePart = `${days} day${days > 1 ? "s" : ""}`;
     }
-    speedNarrative = `Fastest share: From the first card drop shared to the first Level ${lastLevel.level} share took ${timePart}.`;
+    speedNarrative = `Fastest share: From the first open shared to the first Level ${lastLevel.level} share took ${timePart}.`;
     if (data.speedOriginCity && data.speedDestCity) {
       // Replace trailing period with geo suffix
       speedNarrative = speedNarrative.slice(0, -1) + `; ${data.speedOriginCity} to ${data.speedDestCity}.`;
