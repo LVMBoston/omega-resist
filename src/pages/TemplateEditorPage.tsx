@@ -23,10 +23,6 @@ export default function TemplateEditorPage() {
 
   useEffect(() => {
     rememberTemplateEditorRoute(`${location.pathname}${location.search}`);
-
-    return () => {
-      clearTemplateEditorRecovery();
-    };
   }, [location.pathname, location.search]);
 
   // Fetch existing template if editing
