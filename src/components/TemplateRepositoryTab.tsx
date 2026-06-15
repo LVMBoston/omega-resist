@@ -901,21 +901,6 @@ export function TemplateRepositoryTab() {
                 <Label htmlFor="default">Set as default template</Label>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setIsCreateOpen(false); setEditingTemplate(null); resetForm(); }}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={isGeneratingThumbnail}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isGeneratingThumbnail 
-                    ? "Generating Thumbnail..." 
-                    : editingTemplate ? "Update Template" : "Create Template"
-                  }
-                </Button>
-              </div>
             </div>
           </DialogContent>
         </Dialog>
