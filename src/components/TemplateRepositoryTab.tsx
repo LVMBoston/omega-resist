@@ -890,7 +890,13 @@ export function TemplateRepositoryTab() {
                       imageUrl={formData.image_url}
                       initialHotspots={formData.hotspots}
                       onChange={(hotspots) => setFormData(prev => ({ ...prev, hotspots }))}
-                      onSave={(hotspots) => setFormData(prev => ({ ...prev, hotspots }))}
+                      onSave={(hotspots) => {
+                        setFormData(prev => ({ ...prev, hotspots }));
+                        handleSubmit();
+                      }}
+                      onCancel={() => handleActionDialogClose(false)}
+                      saveLabel={editingTemplate ? "Update Template" : "Create Template"}
+                      cancelLabel="Cancel"
                     />
                   </div>
                 </div>
