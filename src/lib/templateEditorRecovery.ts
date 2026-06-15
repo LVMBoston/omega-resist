@@ -1,7 +1,7 @@
 const LAST_TEMPLATE_EDITOR_ROUTE_KEY = "samizdat:last-template-editor-route";
 const TEMPLATE_EDITOR_EXIT_INTENT_KEY = "samizdat:template-editor-intentional-exit";
 
-const TEN_MINUTES_MS = 10 * 60 * 1000;
+const IMMEDIATE_BOUNCE_MS = 30 * 1000;
 
 type StoredEditorRoute = {
   path: string;
@@ -42,7 +42,7 @@ export function clearTemplateEditorRecovery() {
   storage.removeItem(TEMPLATE_EDITOR_EXIT_INTENT_KEY);
 }
 
-export function getRecoverableTemplateEditorRoute(maxAgeMs = TEN_MINUTES_MS): string | null {
+export function getRecoverableTemplateEditorRoute(maxAgeMs = IMMEDIATE_BOUNCE_MS): string | null {
   const storage = safeSessionStorage();
   if (!storage) return null;
 
