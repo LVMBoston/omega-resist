@@ -1,7 +1,7 @@
 const LAST_TEMPLATE_EDITOR_ROUTE_KEY = "samizdat:last-template-editor-route";
 const TEMPLATE_EDITOR_EXIT_INTENT_KEY = "samizdat:template-editor-intentional-exit";
 
-const IMMEDIATE_BOUNCE_MS = 30 * 1000;
+const IMMEDIATE_BOUNCE_MS = 3 * 60 * 1000;
 
 type StoredEditorRoute = {
   path: string;
