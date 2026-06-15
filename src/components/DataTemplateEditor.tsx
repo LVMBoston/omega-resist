@@ -761,7 +761,10 @@ export function DataTemplateEditor({
                 <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
               </Label>
               <div className="flex gap-2">
-                <Select key={campaignId || '__empty__'} value={campaignId || undefined} onValueChange={setCampaignId}>
+                {/* key only flips between "has value" and "empty" so we remount on clear (needed to reset
+                    the trigger label) but NOT on every campaign switch — remounting mid-interaction was
+                    causing the editor to blank out and the preview harness to bounce back. */}
+                <Select key={campaignId ? '__has__' : '__empty__'} value={campaignId || undefined} onValueChange={(v) => { try { setCampaignId(v); } catch (e) { console.error('[DataTemplateEditor] setCampaignId threw:', e); } }}>
                   <SelectTrigger className="h-9 bg-background flex-1">
                     <SelectValue placeholder="Select a campaign..." />
                   </SelectTrigger>
