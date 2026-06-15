@@ -13,7 +13,7 @@ import mailIcon from "@/assets/mail-icon.png";
 import externalLinkIcon from "@/assets/external-link-icon.png";
 import textIcon from "@/assets/text-icon.svg";
 import shareIcon from "@/assets/share-icon.png";
-import emailLinksIcon from "@/assets/email-links-icon.png";
+import emailLinksIcon from "@/assets/email-links-icon.svg";
 import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
