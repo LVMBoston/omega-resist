@@ -95,7 +95,7 @@ const ICON_PRESETS: IconPreset[] = [
   // External link variants
   { id: "link-icon", label: "External Link", type: "external_link", imageUrl: externalLinkIcon, width: 5, height: 4 },
   // Email links variant
-  { id: "email-links", label: "Email Links", type: "email_links", imageUrl: emailLinksIcon, width: 8, height: 8 },
+  { id: "email-links", label: "Email all links", type: "email_links", imageUrl: emailLinksIcon, width: 8, height: 8 },
   // Video variant
   { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
   // Data hotspot presets
@@ -1501,7 +1501,6 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       </div>
 
-                      {selectedHotspotData.type !== 'email_links' && (
                       <div>
                         <div className="flex items-center gap-1">
                           <Label>Label</Label>
@@ -1533,7 +1532,6 @@ export const FullResolutionHotspotEditor = ({
                           className="flex rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize"
                         />
                       </div>
-                      )}
 
                       {(selectedHotspotData.type === "external_link" || selectedHotspotData.type === "video" || selectedHotspotData.type === "vimeo" || selectedHotspotData.type === "youtube") && (
                         <div className="space-y-2">
