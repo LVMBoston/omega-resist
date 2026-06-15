@@ -283,7 +283,7 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   lines.push(`${daysActive} days ${hoursRemainder} hours active`);
   lines.push("");
 
-  lines.push(`${seedCount} cards dropped`);
+  lines.push(`${seedCount} first opens`);
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
     lines.push(`${sproutCount} sprouted (${sproutRate}%)`);
@@ -380,7 +380,7 @@ function generateFullStory(data: NarrativeData): string {
       const days = Math.round(diffHours / 24);
       timePart = `${days} day${days > 1 ? "s" : ""}`;
     }
-    speedNarrative = `Fastest share: From the first card drop shared to the first Level ${lastLevel.level} share took ${timePart}.`;
+    speedNarrative = `Fastest share: From the first open shared to the first Level ${lastLevel.level} share took ${timePart}.`;
     if (data.speedOriginCity && data.speedDestCity) {
       // Replace trailing period with geo suffix
       speedNarrative = speedNarrative.slice(0, -1) + `; ${data.speedOriginCity} to ${data.speedDestCity}.`;
@@ -432,7 +432,7 @@ function generateFullStory(data: NarrativeData): string {
   lines.push("");
 
   // Seeds & sprouts
-  let seedLine = `🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a QR scan not shared.)`;
+  let seedLine = `🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a first open that didn't share.)`;
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
     seedLine += ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared.`;
@@ -447,9 +447,9 @@ function generateFullStory(data: NarrativeData): string {
   if (maxLevel > 0) {
     let chainLine = `🔗 Longest chain: ${maxLevel} levels deep.`;
     if (maxLevel >= 3) {
-      chainLine += ` Someone scanned a card → shared it → that person shared it → and it kept going.`;
+      chainLine += ` Someone opened it → shared it → that person shared it → and it kept going.`;
     } else if (maxLevel === 2) {
-      chainLine += ` A scan became a share, which became another share.`;
+      chainLine += ` An open became a share, which became another share.`;
     } else {
       chainLine += ` Seeds turned into shares.`;
     }
