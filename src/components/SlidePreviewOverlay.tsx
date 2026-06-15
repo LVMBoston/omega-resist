@@ -1,4 +1,5 @@
 import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark, EyeOff } from "lucide-react";
+import { LinkIcon } from "@/components/icons/LinkIcon";
 import type { Hotspot } from "@/types/viralTemplates";
 
 interface SlidePreviewOverlayProps {
@@ -39,7 +40,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   sms: MessageSquare,
   email: Mail,
   social: Share2,
-  external_link: ExternalLink,
+  external_link: LinkIcon,
   email_links: Mail,
   video: Video,
   vimeo: Video,     // legacy

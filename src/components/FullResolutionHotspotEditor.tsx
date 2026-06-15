@@ -21,7 +21,7 @@ import playButtonIcon from "@/assets/play-button.png";
 import { hasManualHtmlContent, sanitizeManualHtml } from "@/lib/manualEntryHtml";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.svg";
-import externalLinkIcon from "@/assets/external-link-icon.png";
+import externalLinkIcon from "@/assets/external-link-icon.svg";
 import { detectOverlaps, getAllIntersections, detectOutOfBounds, getMaxSize } from "@/lib/hotspotValidation";
 import { HotspotCalibrationControls } from "@/components/HotspotCalibrationControls";
 import { ChartCalibrationControls } from "@/components/ChartCalibrationControls";
