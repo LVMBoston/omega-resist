@@ -56,3 +56,26 @@ d. Import opens a modal: file picker → validation summary → Replace/Append t
 On approval + implementation, archive this plan to:
 `docs/decisions/templates/2026-06-14_template-layout-export-import_feature-doc_lovable.md`
 with `Status: Approved & Implemented`. This is a **new** plan (no prior decision doc to update).
+
+---
+
+# PENDING — Remove campaign-switch crash diagnostics
+
+## P1. Trigger
+After several successful Template creations with no crash when switching the **Live Data Preview → Campaign** dropdown, retire the defensive guards added to investigate the blank-page → bounce-back bug.
+
+## P2. What to remove
+File: `src/components/DataTemplateEditor.tsx` (around line 764–767)
+
+a. The explanatory comment block on lines 764–766 (`/* key only flips between … bounce back. */`).
+b. The `try { … } catch (e) { console.error(...) }` wrapper around `setCampaignId(v)` in the `onValueChange` handler. Restore to a plain `onValueChange={(v) => setCampaignId(v)}`.
+
+## P3. What to KEEP
+a. The `key={campaignId ? '__has__' : '__empty__'}` pattern — this is the actual fix. It only remounts the Select when toggling between "empty" and "has value", which is what prevents the mid-interaction remount that caused the crash.
+
+## P4. Verification before removal
+a. Create at least 3 new templates and switch the preview Campaign multiple times across different campaigns including ICE OUT FOR GOOD. No crash, no bounce-back.
+b. After removal, repeat the same flow once to confirm no regression.
+
+## P5. Decision-log follow-up
+After removal, archive this entry under `docs/decisions/template-editor/<YYYY-MM-DD>_campaign-switch-crash-guard-removal_feature-doc_lovable.md` with `Status: Approved & Implemented`.
