@@ -432,7 +432,7 @@ function generateFullStory(data: NarrativeData): string {
   lines.push("");
 
   // Seeds & sprouts
-  let seedLine = `🌱 ${seedCount} seeds planted. ${sproutCount} sprouted into viral chains. (A seed is a first open that didn't share.)`;
+  let seedLine = `While ${seedCount} seeds were planted, ${sproutCount} sprouted into viral chains. (A seed is a first open that didn't share.)`;
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
     seedLine += ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look, they shared.`;
