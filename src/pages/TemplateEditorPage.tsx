@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import type { Json } from "@/integrations/supabase/types";
-import { clearTemplateEditorRecovery, markTemplateEditorExitIntent, rememberTemplateEditorRoute } from "@/lib/templateEditorRecovery";
+import { markTemplateEditorExitIntent, rememberTemplateEditorRoute } from "@/lib/templateEditorRecovery";
 
 export default function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
