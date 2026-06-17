@@ -1005,9 +1005,10 @@ export default function DeckEditor() {
       setPreviewHotspots(hotspots as Hotspot[]);
     }
 
+    // Update the cancel baseline so subsequent Cancels revert to this saved state
+    setInitialHotspots(hotspots);
+
     setHasChanges(true);
-    setHotspotEditorOpen(false);
-    setHotspotEditorSlide(null);
     toast.success('Hotspot changes staged');
 
     // Auto-capture thumbnail after overlay renders. The guard inside
