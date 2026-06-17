@@ -436,11 +436,11 @@ function generateFullStory(data: NarrativeData): string {
   if (seedCount > 0 && sproutCount > 0) {
     const sproutRate = Math.round((sproutCount / seedCount) * 100);
     seedLine += ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look; they shared.`;
-    if (mediumLine) {
-      seedLine += ` Opens by medium: ${mediumLine}.`;
-    }
   }
   lines.push(seedLine);
+  if (mediumLine) {
+    lines.push(`📱 Opens by medium: ${mediumLine}.`);
+  }
   lines.push("");
 
   // Depth
