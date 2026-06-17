@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { TemplateRepositoryTab } from "@/components/TemplateRepositoryTab";
 import { FolderOpen } from "lucide-react";
-import { getRecoverableTemplateEditorRoute } from "@/lib/templateEditorRecovery";
+
 interface DeckWithSlides {
   slug: string;
   created_at: string;
@@ -81,15 +81,6 @@ const Index = () => {
     userRole,
     signOut
   } = useAuth();
-  useEffect(() => {
-    if (activeTab !== "templates") return;
-
-    const recoverPath = getRecoverableTemplateEditorRoute();
-    if (!recoverPath) return;
-
-    console.warn("[TemplateEditorRecovery] Restoring editor after unexpected bounce", recoverPath);
-    navigate(recoverPath, { replace: true });
-  }, [activeTab, navigate]);
 
   useEffect(() => {
     fetchDecks();
