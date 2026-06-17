@@ -1543,26 +1543,35 @@ export default function CampaignEoaManager() {
                       .filter((column) => column.getCanHide())
                       .map((column) => {
                         return (
-                          <DropdownMenuCheckboxItem
+                          <DropdownMenuItem
                             key={column.id}
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                            className="flex items-center gap-2"
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              column.toggleVisibility(!column.getIsVisible());
+                            }}
                           >
-                            {column.id === "mobilize_code" && "Mobilize/ Zip Code"}
-                            {column.id === "utm_id" && "utm_id"}
-                            {column.id === "title" && "Event/Action Name"}
-                            {column.id === "site_name" && "Site Name"}
-                            {column.id === "city" && "City"}
-                            {column.id === "state" && "State"}
-                            {column.id === "zip_code" && "Zip Code"}
-                            {column.id === "type" && "Type"}
-                            {column.id === "start_date" && "Start Date/Time"}
-                            {column.id === "end_date" && "End Date/Time"}
-                            {column.id === "timezone" && "Timezone"}
-                            {column.id === "assigned_deck_slug" && "Assigned Deck"}
-                            {column.id === "status" && "Status"}
-                            {column.id === "l00_token" && "L00 Token"}
-                          </DropdownMenuCheckboxItem>
+                            <Checkbox
+                              checked={column.getIsVisible()}
+                              onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                            />
+                            <span>
+                              {column.id === "mobilize_code" && "Mobilize/ Zip Code"}
+                              {column.id === "utm_id" && "utm_id"}
+                              {column.id === "title" && "Event/Action Name"}
+                              {column.id === "site_name" && "Site Name"}
+                              {column.id === "city" && "City"}
+                              {column.id === "state" && "State"}
+                              {column.id === "zip_code" && "Zip Code"}
+                              {column.id === "type" && "Type"}
+                              {column.id === "start_date" && "Start Date/Time"}
+                              {column.id === "end_date" && "End Date/Time"}
+                              {column.id === "timezone" && "Timezone"}
+                              {column.id === "assigned_deck_slug" && "Assigned Deck"}
+                              {column.id === "status" && "Status"}
+                              {column.id === "l00_token" && "L00 Token"}
+                            </span>
+                          </DropdownMenuItem>
                         );
                       })}
                   </DropdownMenuContent>
