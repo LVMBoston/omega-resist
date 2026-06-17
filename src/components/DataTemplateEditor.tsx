@@ -254,6 +254,80 @@ export function DataTemplateEditor({
     }
   }, [templateCampaigns, campaignId]);
 
+  // ── Local draft autosave ────────────────────────────────────────────────
+  // Protects against the Lovable preview iframe reloading and wiping React
+  // state before the next debounced DB auto-save fires. Persists the in-flight
+  // edit to localStorage on every change, restores it on mount, clears it on
+  // a successful save.
+  const draftKeyId = savedTemplateId ?? (mode === "create" ? "new" : templateId);
+  const restoredRef = useRef(false);
+
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const draft = loadTemplateDraft(draftKeyId);
+    if (!draft) return;
+    // Don't prompt if the draft matches what we already loaded from the DB.
+    const sameAsInitial =
+      draft.name === (templateName || "") &&
+      draft.slug === normalizeSlug(templateSlug || "") &&
+      draft.description === (templateDescription || "") &&
+      draft.imageUrl === (initialImageUrl || "") &&
+      JSON.stringify(draft.hotspots) === JSON.stringify(editableInitialHotspots);
+    if (sameAsInitial) {
+      clearTemplateDraft(draftKeyId);
+      return;
+    }
+    const minutesAgo = Math.max(1, Math.round((Date.now() - draft.savedAt) / 60000));
+    toast("Unsaved changes from earlier", {
+      description: `Restore your edits from ${minutesAgo} min ago?`,
+      duration: 15000,
+      action: {
+        label: "Restore",
+        onClick: () => {
+          setName(draft.name);
+          setSlug(draft.slug);
+          setDescription(draft.description);
+          if (draft.imageUrl?.startsWith("solid:")) {
+            setBackgroundMode("solid");
+            setBackgroundColor(draft.imageUrl.replace("solid:", ""));
+          } else {
+            setBackgroundMode("image");
+            setImageUrl(draft.imageUrl);
+          }
+          setHotspots(
+            draft.hotspots && draft.hotspots.length > 0
+              ? draft.hotspots
+              : [createDefaultHotspot(0)],
+          );
+          toast.success("Draft restored");
+        },
+      },
+      cancel: {
+        label: "Discard",
+        onClick: () => clearTemplateDraft(draftKeyId),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKeyId]);
+
+  // Persist draft on any change (cheap; debounced via setTimeout)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const effectiveImageUrl =
+        backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
+      saveTemplateDraft(draftKeyId, {
+        name,
+        slug,
+        description,
+        imageUrl: effectiveImageUrl,
+        hotspots,
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draftKeyId, name, slug, description, imageUrl, backgroundMode, backgroundColor, hotspots]);
+
+
   // Auto-save function
   const performAutoSave = useCallback(async (hotspotsToSave: Hotspot[]) => {
     // Only auto-save if we have the minimum required fields
