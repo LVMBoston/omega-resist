@@ -1334,12 +1334,21 @@ export default function DeckEditor() {
       setSelectedSlideIds(new Set());
       toast.info('Changes discarded');
     }
-    // Return to the page that invoked the editor
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/deck-management');
+    // Return to the page that invoked the editor.
+    // The editor often opens in a new tab; window.close() works only when the
+    // tab was opened by script with an opener. Fall back to navigating to the
+    // Deck Management page so Exit always lands somewhere useful (never about:blank).
+    try {
+      window.close();
+    } catch {
+      /* noop */
     }
+    // If the tab is still open after a brief delay, navigate to Deck Management.
+    setTimeout(() => {
+      if (!window.closed) {
+        navigate('/deck-management');
+      }
+    }, 50);
   };
 
   const toggleSlideCheck = (slideId: string) => {
