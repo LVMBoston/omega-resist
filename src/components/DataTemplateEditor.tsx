@@ -355,7 +355,7 @@ export function DataTemplateEditor({
       }
       
       setLastSavedAt(new Date());
-      clearTemplateDraft(result ?? savedTemplateId ?? draftKeyId);
+      clearTemplateDraft((typeof result === "string" ? result : undefined) ?? savedTemplateId ?? draftKeyId);
       toast.success("Auto-saved", { duration: 1500 });
     } catch (error: any) {
       console.error("Auto-save failed:", error);
@@ -499,13 +499,14 @@ export function DataTemplateEditor({
     try {
       // Merge data hotspots with locked action hotspots for hybrid templates
       const allHotspots = [...derivedLockedHotspots, ...hotspots];
-      await onSave({
+      const result = await onSave({
         hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
       });
+      clearTemplateDraft((typeof result === "string" ? result : undefined) ?? savedTemplateId ?? draftKeyId);
     } catch (error: any) {
       toast.error(`Failed to save: ${error.message}`);
     } finally {
