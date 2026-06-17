@@ -355,6 +355,7 @@ export function DataTemplateEditor({
       }
       
       setLastSavedAt(new Date());
+      clearTemplateDraft(result ?? savedTemplateId ?? draftKeyId);
       toast.success("Auto-saved", { duration: 1500 });
     } catch (error: any) {
       console.error("Auto-save failed:", error);
