@@ -112,8 +112,8 @@ export function TokenDisplay({ open, onOpenChange, token, fullUrl, shortUrl, eoa
     const textColor = textColorSetting?.value?.value ?? "#000000";
     const logoSizePercent = logoSizeSetting?.value?.value ?? 20;
     
-    const topCaptionText = topCaptionSetting?.value?.text || "";
-    let bottomCaptionText = bottomCaptionSetting?.value?.text || "{eoa_title}";
+    const topCaptionText = "";
+    let bottomCaptionText = campaignName || eoaTitle;
     bottomCaptionText = bottomCaptionText.replace("{eoa_title}", eoaTitle);
     
     const lineHeight = fontSize * 1.25;
