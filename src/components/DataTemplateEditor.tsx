@@ -24,6 +24,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { captureTemplateSnapshot } from "@/lib/snapshotCapture";
 import { useTemplateCampaigns } from "@/hooks/useTemplateCampaigns";
+import {
+  loadTemplateDraft,
+  saveTemplateDraft,
+  clearTemplateDraft,
+} from "@/lib/templateEditorDraft";
 
 
 // Default hotspot template for data templates (live_number)
@@ -249,6 +254,80 @@ export function DataTemplateEditor({
     }
   }, [templateCampaigns, campaignId]);
 
+  // ── Local draft autosave ────────────────────────────────────────────────
+  // Protects against the Lovable preview iframe reloading and wiping React
+  // state before the next debounced DB auto-save fires. Persists the in-flight
+  // edit to localStorage on every change, restores it on mount, clears it on
+  // a successful save.
+  const draftKeyId = savedTemplateId ?? (mode === "create" ? "new" : templateId);
+  const restoredRef = useRef(false);
+
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const draft = loadTemplateDraft(draftKeyId);
+    if (!draft) return;
+    // Don't prompt if the draft matches what we already loaded from the DB.
+    const sameAsInitial =
+      draft.name === (templateName || "") &&
+      draft.slug === normalizeSlug(templateSlug || "") &&
+      draft.description === (templateDescription || "") &&
+      draft.imageUrl === (initialImageUrl || "") &&
+      JSON.stringify(draft.hotspots) === JSON.stringify(editableInitialHotspots);
+    if (sameAsInitial) {
+      clearTemplateDraft(draftKeyId);
+      return;
+    }
+    const minutesAgo = Math.max(1, Math.round((Date.now() - draft.savedAt) / 60000));
+    toast("Unsaved changes from earlier", {
+      description: `Restore your edits from ${minutesAgo} min ago?`,
+      duration: 15000,
+      action: {
+        label: "Restore",
+        onClick: () => {
+          setName(draft.name);
+          setSlug(draft.slug);
+          setDescription(draft.description);
+          if (draft.imageUrl?.startsWith("solid:")) {
+            setBackgroundMode("solid");
+            setBackgroundColor(draft.imageUrl.replace("solid:", ""));
+          } else {
+            setBackgroundMode("image");
+            setImageUrl(draft.imageUrl);
+          }
+          setHotspots(
+            draft.hotspots && draft.hotspots.length > 0
+              ? draft.hotspots
+              : [createDefaultHotspot(0)],
+          );
+          toast.success("Draft restored");
+        },
+      },
+      cancel: {
+        label: "Discard",
+        onClick: () => clearTemplateDraft(draftKeyId),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKeyId]);
+
+  // Persist draft on any change (cheap; debounced via setTimeout)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const effectiveImageUrl =
+        backgroundMode === "solid" ? `solid:${backgroundColor}` : imageUrl;
+      saveTemplateDraft(draftKeyId, {
+        name,
+        slug,
+        description,
+        imageUrl: effectiveImageUrl,
+        hotspots,
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draftKeyId, name, slug, description, imageUrl, backgroundMode, backgroundColor, hotspots]);
+
+
   // Auto-save function
   const performAutoSave = useCallback(async (hotspotsToSave: Hotspot[]) => {
     // Only auto-save if we have the minimum required fields
@@ -276,6 +355,7 @@ export function DataTemplateEditor({
       }
       
       setLastSavedAt(new Date());
+      clearTemplateDraft((typeof result === "string" ? result : undefined) ?? savedTemplateId ?? draftKeyId);
       toast.success("Auto-saved", { duration: 1500 });
     } catch (error: any) {
       console.error("Auto-save failed:", error);
@@ -419,13 +499,14 @@ export function DataTemplateEditor({
     try {
       // Merge data hotspots with locked action hotspots for hybrid templates
       const allHotspots = [...derivedLockedHotspots, ...hotspots];
-      await onSave({
+      const result = await onSave({
         hotspots: allHotspots,
         imageUrl: effectiveImageUrl,
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || undefined,
       });
+      clearTemplateDraft((typeof result === "string" ? result : undefined) ?? savedTemplateId ?? draftKeyId);
     } catch (error: any) {
       toast.error(`Failed to save: ${error.message}`);
     } finally {
@@ -761,10 +842,7 @@ export function DataTemplateEditor({
                 <span className="text-xs text-muted-foreground font-normal">(optional — for live preview)</span>
               </Label>
               <div className="flex gap-2">
-                {/* key only flips between "has value" and "empty" so we remount on clear (needed to reset
-                    the trigger label) but NOT on every campaign switch — remounting mid-interaction was
-                    causing the editor to blank out and the preview harness to bounce back. */}
-                <Select key={campaignId ? '__has__' : '__empty__'} value={campaignId || undefined} onValueChange={(v) => { try { setCampaignId(v); } catch (e) { console.error('[DataTemplateEditor] setCampaignId threw:', e); } }}>
+                <Select key={campaignId ? '__has__' : '__empty__'} value={campaignId || undefined} onValueChange={(v) => setCampaignId(v)}>
                   <SelectTrigger className="h-9 bg-background flex-1">
                     <SelectValue placeholder="Select a campaign..." />
                   </SelectTrigger>

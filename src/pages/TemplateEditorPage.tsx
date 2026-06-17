@@ -1,29 +1,22 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DataTemplateEditor } from "@/components/DataTemplateEditor";
-import { EditorErrorBoundary } from "@/components/EditorErrorBoundary";
 import { Hotspot } from "@/types/viralTemplates";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import type { Json } from "@/integrations/supabase/types";
-import { markTemplateEditorExitIntent, rememberTemplateEditorRoute } from "@/lib/templateEditorRecovery";
 
 export default function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isNewTemplate = id === "new";
   // Track the actual saved ID — starts as the URL param for existing templates
   const [savedId, setSavedId] = useState<string | undefined>(isNewTemplate ? undefined : id);
-
-  useEffect(() => {
-    rememberTemplateEditorRoute(`${location.pathname}${location.search}`);
-  }, [location.pathname, location.search]);
 
   // Fetch existing template if editing
   const { data: template, isLoading } = useQuery({
@@ -91,13 +84,11 @@ export default function TemplateEditorPage() {
         title: "Saved",
         description: "Template saved successfully",
       });
-      
+
       // Store the ID so subsequent saves are updates, not inserts
       if (returnedId && !savedId) {
         setSavedId(returnedId);
-        const nextPath = `/template-editor/${returnedId}`;
-        window.history.replaceState(null, "", nextPath);
-        rememberTemplateEditorRoute(nextPath);
+        window.history.replaceState(null, "", `/template-editor/${returnedId}`);
       }
     },
     onError: (error: Error) => {
@@ -172,13 +163,7 @@ export default function TemplateEditorPage() {
   };
 
   const handleCancel = () => {
-    markTemplateEditorExitIntent();
     window.close();
-  };
-
-  const handleBack = () => {
-    markTemplateEditorExitIntent();
-    navigate("/deck-management?tab=templates");
   };
 
   if (isLoading && !isNewTemplate) {
@@ -197,7 +182,7 @@ export default function TemplateEditorPage() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/deck-management?tab=templates" onClick={markTemplateEditorExitIntent}>Template Repository</Link>
+                <Link to="/deck-management?tab=templates">Template Repository</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -212,23 +197,20 @@ export default function TemplateEditorPage() {
 
       {/* Editor */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <EditorErrorBoundary area="Template Editor">
-          <DataTemplateEditor
-            key={id}
-            initialHotspots={(template?.hotspots as unknown as Hotspot[]) || undefined}
-            initialImageUrl={template?.image_url}
-            templateName={template?.name || ""}
-            templateSlug={template?.slug || ""}
-            templateDescription={template?.description || ""}
-            templateId={savedId}
-            onSave={handleSave}
-            onSaveAs={savedId ? handleSaveAs : undefined}
-            onCancel={handleCancel}
-            mode={isNewTemplate ? "create" : "edit"}
-          />
-        </EditorErrorBoundary>
+        <DataTemplateEditor
+          key={id}
+          initialHotspots={(template?.hotspots as unknown as Hotspot[]) || undefined}
+          initialImageUrl={template?.image_url}
+          templateName={template?.name || ""}
+          templateSlug={template?.slug || ""}
+          templateDescription={template?.description || ""}
+          templateId={savedId}
+          onSave={handleSave}
+          onSaveAs={savedId ? handleSaveAs : undefined}
+          onCancel={handleCancel}
+          mode={isNewTemplate ? "create" : "edit"}
+        />
       </div>
-
     </div>
   );
 }
