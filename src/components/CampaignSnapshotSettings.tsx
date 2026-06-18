@@ -22,6 +22,7 @@ interface StatsTemplate {
   id: string;
   name: string | null;
   slug: string;
+  slide_id: string | null;
   cached_snapshot_path: string | null;
   snapshot_rendered_at: string | null;
 }
@@ -93,7 +94,7 @@ function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context,
   const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.svg`;
   const [previewOpen, setPreviewOpen] = useState(false);
   const displayName = campaignTitle || campaignCode;
-  const templateLabel = template.name || template.slug || "Not Linked";
+  const templateLabel = template.slide_id != null ? "[none]" : (template.name || template.slug || "Not Linked");
   const deckSlideLabel = context
     ? `${context.deckSlug}${context.deckPosition != null ? ` / Slide ${context.deckPosition}` : ""}`
     : "—";
@@ -183,7 +184,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
     queryFn: async () => {
       const { data, error } = await supabase
         .from("viral_slide_configs")
-        .select("id, name, slug, cached_snapshot_path, snapshot_rendered_at")
+        .select("id, name, slug, slide_id, cached_snapshot_path, snapshot_rendered_at")
         .in("template_type", ["stats_page", "hybrid"])
         .order("name");
 
