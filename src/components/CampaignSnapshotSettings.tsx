@@ -162,15 +162,16 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
     },
   });
 
-  // Fetch stats_page templates
+  // Fetch stats_page + hybrid templates (both render via the SSR pipeline)
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ["stats-templates-for-campaign"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("viral_slide_configs")
         .select("id, name, slug, cached_snapshot_path, snapshot_rendered_at")
-        .eq("template_type", "stats_page")
+        .in("template_type", ["stats_page", "hybrid"])
         .order("name");
+
       if (error) throw error;
       return data as StatsTemplate[];
     },
