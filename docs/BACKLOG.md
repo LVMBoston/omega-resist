@@ -56,5 +56,19 @@ Items use numbered sections and lettered sub-items per project convention.
 
 ---
 
+## 5. Remove campaign-switch crash diagnostics
+
+**Observation:** Defensive guards (try/catch + explanatory comment) were added to the `DataTemplateEditor.tsx` campaign dropdown to investigate a blank-page → bounce-back bug. The actual fix is the `key={campaignId ? '__has__' : '__empty__'}` remount pattern, which prevents the mid-interaction Select remount that caused the crash. The try/catch wrapper and comment are no longer needed.
+
+**Deferred work:**
+- a. Create at least 3 new templates and switch the preview Campaign multiple times across different campaigns (including ICE OUT FOR GOOD). Confirm no crash, no bounce-back.
+- b. Remove the explanatory comment block (`/* key only flips between … bounce back. */`) around line 764–766 of `src/components/DataTemplateEditor.tsx`.
+- c. Remove the `try { … } catch (e) { console.error(...) }` wrapper around `setCampaignId(v)` in the `onValueChange` handler. Restore to a plain `onValueChange={(v) => setCampaignId(v)}`.
+- d. Keep the `key={campaignId ? '__has__' : '__empty__'}` pattern intact.
+- e. After removal, repeat the verification flow once to confirm no regression.
+- f. Archive this entry under `docs/decisions/template-editor/<YYYY-MM-DD>_campaign-switch-crash-guard-removal_feature-doc_lovable.md` with `Status: Approved & Implemented`.
+
+---
+
 _Add new deferred items as new numbered sections below._
 
