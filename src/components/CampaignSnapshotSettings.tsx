@@ -142,7 +142,7 @@ function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context,
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Snapshot preview — {displayName}</DialogTitle>
+            <DialogTitle>Server-Side Rendering - Snapshot Preview</DialogTitle>
           </DialogHeader>
           <div className="pb-2 border-b">{metaLines}</div>
           <div className="w-full overflow-auto bg-muted/30 rounded-md">
