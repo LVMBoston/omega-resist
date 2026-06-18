@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 interface CampaignSnapshotSettingsProps {
   campaignId: string;
   campaignCode: string;
+  campaignTitle?: string;
 }
 
 interface StatsTemplate {
