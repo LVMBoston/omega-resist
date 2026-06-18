@@ -386,9 +386,11 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
   const snapshotEnabled = campaign?.snapshot_enabled ?? false;
   const intervalMinutes = campaign?.snapshot_interval_minutes ?? 2;
 
-  // Only show templates that are actually linked to this campaign's decks
+  // Only show templates actually linked to this campaign's decks, ordered by deck position
   const campaignTemplates = templateContexts
-    ? templates.filter(t => templateContexts[t.id])
+    ? templates
+        .filter(t => templateContexts[t.id])
+        .sort((a, b) => (templateContexts[a.id]?.deckPosition ?? 0) - (templateContexts[b.id]?.deckPosition ?? 0))
     : [];
 
   return (
