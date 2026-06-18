@@ -105,7 +105,7 @@ function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context,
     <div className="text-xs space-y-0.5">
       <p><span className="font-semibold">Campaign:</span> {displayName}</p>
       <p><span className="font-semibold">Deck:</span> {deckSlideLabel}</p>
-      <p><span className="font-semibold">Linked to template:</span> {templateLabel}</p>
+      <p><span className="font-semibold">Linked to Template:</span> {templateLabel}</p>
       <p><span className="font-semibold">Last saved:</span> {lastSavedLabel}</p>
     </div>
   );
