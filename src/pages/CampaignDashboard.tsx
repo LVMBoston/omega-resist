@@ -654,7 +654,7 @@ export default function CampaignDashboard({
       const result = data?.[0];
       toast({
         title: "Simulation data cleared",
-        description: `${result?.deleted_events ?? 0} simulated events and ${result?.deleted_tokens ?? 0} simulated tokens removed${scope === "current" ? ` for ${selectedCampaign}` : " across all campaigns"}.`
+        description: `${result?.deleted_events ?? 0} simulated events and ${result?.deleted_tokens ?? 0} simulated tokens removed${scope === "current" ? ` for ${campaignTitle}` : " across all campaigns"}.`
       });
     } catch (error) {
       console.error("Simulation cleanup failed:", error);
