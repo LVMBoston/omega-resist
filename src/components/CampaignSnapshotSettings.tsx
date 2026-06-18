@@ -30,6 +30,7 @@ interface TemplateContext {
   deckSlug: string;
   mobilizeCode: string;
   sampleToken: string | null;
+  deckPosition: number | null;
 }
 
 const INTERVAL_OPTIONS = [
@@ -208,24 +209,24 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
       // and must not appear in the SSR list.
       const { data: slideItems, error: siErr } = await supabase
         .from("slide_items")
-        .select("template_id, deck_slug")
+        .select("template_id, deck_slug, position")
         .in("template_id", templateIds)
         .eq("skip_deploy", false);
       if (siErr) throw siErr;
       if (!slideItems || slideItems.length === 0) return {};
 
-      // Build template -> deck_slugs map (a template can be in multiple decks)
-      const templateDeckMap: Record<string, string[]> = {};
+      // Build template -> [{deck_slug, position}] map (a template can be in multiple decks)
+      const templateDeckMap: Record<string, { deckSlug: string; position: number }[]> = {};
       for (const si of slideItems) {
         if (si.template_id) {
           if (!templateDeckMap[si.template_id]) templateDeckMap[si.template_id] = [];
-          if (!templateDeckMap[si.template_id].includes(si.deck_slug)) {
-            templateDeckMap[si.template_id].push(si.deck_slug);
+          if (!templateDeckMap[si.template_id].some(d => d.deckSlug === si.deck_slug)) {
+            templateDeckMap[si.template_id].push({ deckSlug: si.deck_slug, position: si.position });
           }
         }
       }
 
-      const deckSlugs = [...new Set(Object.values(templateDeckMap).flat())];
+      const deckSlugs = [...new Set(Object.values(templateDeckMap).flat().map(d => d.deckSlug))];
 
       // Get events_actions for these deck_slugs filtered by this campaign
       const { data: eoas, error: eoaErr } = await supabase
@@ -284,10 +285,10 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
       // Assemble per-template context
       const result: Record<string, TemplateContext> = {};
       for (const templateId of templateIds) {
-        const deckSlugsForTemplate = templateDeckMap[templateId];
-        if (!deckSlugsForTemplate) continue;
-        // Find the first deck_slug that has a matching EoA for this campaign
-        for (const deckSlug of deckSlugsForTemplate) {
+        const decksForTemplate = templateDeckMap[templateId];
+        if (!decksForTemplate) continue;
+        // Find the first deck that has a matching EoA for this campaign
+        for (const { deckSlug, position } of decksForTemplate) {
           const mobilizeCode = deckMobilizeMap[deckSlug];
           if (mobilizeCode) {
             result[templateId] = {
@@ -295,6 +296,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
               deckSlug,
               mobilizeCode,
               sampleToken: mobilizeTokenMap[mobilizeCode] ?? fallbackToken,
+              deckPosition: position,
             };
             break;
           }
