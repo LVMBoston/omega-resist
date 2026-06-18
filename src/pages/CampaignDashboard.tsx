@@ -1250,6 +1250,7 @@ export default function CampaignDashboard({
               <CampaignSnapshotSettings
                 campaignId={selectedCampaignId}
                 campaignCode={selectedCampaign}
+                campaignTitle={campaignTitle}
               />
             ) : (
               <Card>
