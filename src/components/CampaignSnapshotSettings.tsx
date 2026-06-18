@@ -144,7 +144,7 @@ function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context 
   );
 }
 
-export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignSnapshotSettingsProps) {
+export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTitle }: CampaignSnapshotSettingsProps) {
   const queryClient = useQueryClient();
   const [renderingTemplates, setRenderingTemplates] = useState<Set<string>>(new Set());
 
