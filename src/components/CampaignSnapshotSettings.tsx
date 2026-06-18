@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 interface CampaignSnapshotSettingsProps {
   campaignId: string;
   campaignCode: string;
+  campaignTitle?: string;
 }
 
 interface StatsTemplate {
@@ -88,13 +89,14 @@ function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: stri
   );
 }
 
-function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId: string; campaignCode: string; context: TemplateContext | undefined }) {
+function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context }: { templateId: string; campaignCode: string; campaignTitle?: string; context: TemplateContext | undefined }) {
   const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.svg`;
   const [previewOpen, setPreviewOpen] = useState(false);
+  const displayName = campaignTitle || campaignCode;
 
   return (
     <div className="mt-2 space-y-0.5 text-xs text-muted-foreground border-t pt-2">
-      <p><span className="font-medium">Campaign:</span> {campaignCode}</p>
+      <p><span className="font-medium">Campaign:</span> {displayName}</p>
       {context ? (
         <>
           <p><span className="font-medium">Deck / Instance:</span> {context.deckSlug} / {context.mobilizeCode}</p>
@@ -126,13 +128,13 @@ function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Snapshot preview — {campaignCode}</DialogTitle>
+            <DialogTitle>Snapshot preview — {displayName}</DialogTitle>
           </DialogHeader>
           <div className="w-full overflow-auto bg-muted/30 rounded-md">
             {/* Rendered via <img> so Supabase's Content-Disposition: attachment and sandbox CSP on public SVGs don't apply */}
             <img
               src={pngUrl}
-              alt={`Snapshot for ${campaignCode}`}
+              alt={`Snapshot for ${displayName}`}
               className="w-full h-auto block"
             />
           </div>
@@ -142,7 +144,7 @@ function TemplateDiagnostics({ templateId, campaignCode, context }: { templateId
   );
 }
 
-export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignSnapshotSettingsProps) {
+export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTitle }: CampaignSnapshotSettingsProps) {
   const queryClient = useQueryClient();
   const [renderingTemplates, setRenderingTemplates] = useState<Set<string>>(new Set());
 
@@ -475,11 +477,6 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
                         {templateContexts?.[template.id]?.deckPosition != null
                           ? `Slide ${templateContexts[template.id].deckPosition}`
                           : (template.name || template.slug)}
-                        {template.name && templateContexts?.[template.id]?.deckPosition != null && (
-                          <span className="ml-2 text-xs text-muted-foreground font-normal">
-                            ({template.name})
-                          </span>
-                        )}
                       </p>
                       <SnapshotStatusBadge
                         renderedAt={snapshotAges?.[template.id] ?? null}
@@ -503,8 +500,10 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
                   <TemplateDiagnostics
                     templateId={template.id}
                     campaignCode={campaignCode}
+                    campaignTitle={campaignTitle}
                     context={templateContexts?.[template.id]}
                   />
+
                 </div>
               ))}
             </div>

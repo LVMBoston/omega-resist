@@ -654,7 +654,7 @@ export default function CampaignDashboard({
       const result = data?.[0];
       toast({
         title: "Simulation data cleared",
-        description: `${result?.deleted_events ?? 0} simulated events and ${result?.deleted_tokens ?? 0} simulated tokens removed${scope === "current" ? ` for ${selectedCampaign}` : " across all campaigns"}.`
+        description: `${result?.deleted_events ?? 0} simulated events and ${result?.deleted_tokens ?? 0} simulated tokens removed${scope === "current" ? ` for ${campaignTitle}` : " across all campaigns"}.`
       });
     } catch (error) {
       console.error("Simulation cleanup failed:", error);
@@ -901,7 +901,7 @@ export default function CampaignDashboard({
               <AlertDialogHeader>
                 <AlertDialogTitle>{pendingSimulationClearScope === "all" ? "Clear simulation data for all campaigns?" : "Clear simulation data for this campaign?"}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will remove simulated-only events and tokens {pendingSimulationClearScope === "all" ? "across every campaign" : `for ${selectedCampaign || "the selected campaign"}`}. Real campaign data will not be deleted.
+                  This will remove simulated-only events and tokens {pendingSimulationClearScope === "all" ? "across every campaign" : `for ${campaignTitle || "the selected campaign"}`}. Real campaign data will not be deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -1250,6 +1250,7 @@ export default function CampaignDashboard({
               <CampaignSnapshotSettings
                 campaignId={selectedCampaignId}
                 campaignCode={selectedCampaign}
+                campaignTitle={campaignTitle}
               />
             ) : (
               <Card>
