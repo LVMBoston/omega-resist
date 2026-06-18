@@ -40,4 +40,21 @@ Items use numbered sections and lettered sub-items per project convention.
 
 ---
 
+## 4. Scope per-hotspot template inheritance with slide-level overrides
+
+**Observation:** Today a slide either has its own `viral_slide_configs` row (which overrides the shared template entirely) or it has none (and renders the shared template verbatim). There is no middle ground. Once a slide is detached — including via Export/Import of a template's hotspots into a deck slide — future edits to the source template never propagate. The Thomas/Luttig deck Slide 5 hit this: its hotspot layout came from `links-landscape` via Export/Import, so it now carries all the manual `live_number` text and link URLs locally, with no link back to the template.
+
+**Deferred work — scoping only, not implementation:**
+- a. Define a per-hotspot override model: store slide-level overrides as a patch keyed by hotspot `id`, merged on top of the referenced template at render time.
+- b. Decide which fields are overridable vs inherited (e.g. `manualHtml`, `url`, `liveNumberStyle` typically overridden; `iconId`, `type`, position usually inherited).
+- c. Spec how Export/Import should record provenance (source template id) so an imported layout can opt into inheritance instead of becoming a hard fork.
+- d. Identify all touch points: schema (`viral_slide_configs` or a new overrides table), editor (FullResolutionHotspotEditor — show "inherited from template" badges), DeckViewer renderer, and the SSR snapshot pipeline (`render-stats-snapshot`) — both renderers must stay at parity.
+- e. Migration story for existing standalone per-slide rows (like Slide 5) that want to be retroactively re-linked to a template without losing manual edits.
+- f. Produce a feature doc under `docs/decisions/templates/` before any implementation work.
+
+**Related:** Slide 5 of `thomas-luttig` deck (per-slide config `754379ce-8871-4df0-bc02-e5201e9f19cc`, source template `links-landscape` `00474742-c45a-4166-80c4-5e99a03fae93`).
+
+---
+
 _Add new deferred items as new numbered sections below._
+
