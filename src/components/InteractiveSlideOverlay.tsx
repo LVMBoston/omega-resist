@@ -10,7 +10,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import { BsShare, BsShareFill } from "react-icons/bs";
 import { createPortal } from "react-dom";
 import mailIcon from "@/assets/mail-icon.png";
-import externalLinkIcon from "@/assets/external-link-icon.png";
+import externalLinkIcon from "@/assets/external-link-icon.svg";
 import textIcon from "@/assets/text-icon.svg";
 import shareIcon from "@/assets/share-icon.png";
 import emailLinksIcon from "@/assets/email-links-icon.svg";
@@ -20,12 +20,15 @@ import { Hotspot } from "@/types/viralTemplates";
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-/** Renders a custom PNG icon with an onError fallback to a Lucide SVG icon.
- *  On iOS, skips the PNG entirely and renders the Lucide fallback immediately. */
+/** Renders a custom icon with an onError fallback to a Lucide SVG icon.
+ *  On iOS, PNGs sometimes load (HTTP 200) but never paint, so we skip them
+ *  and use the Lucide fallback immediately. SVGs render fine on iOS, so
+ *  they bypass the iOS short-circuit and load normally. */
 const FallbackImg = ({ src, alt, style, fallback }: { 
   src: string; alt: string; style: React.CSSProperties; fallback: React.ReactNode;
 }) => {
-  const [failed, setFailed] = useState(isIOS);
+  const isSvg = typeof src === "string" && src.toLowerCase().includes(".svg");
+  const [failed, setFailed] = useState(isIOS && !isSvg);
   if (failed) return <>{fallback}</>;
   return (
     <img
