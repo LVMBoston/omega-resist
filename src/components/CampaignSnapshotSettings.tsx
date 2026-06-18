@@ -89,20 +89,34 @@ function SnapshotStatusBadge({ renderedAt, intervalMinutes }: { renderedAt: stri
   );
 }
 
-function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context }: { templateId: string; campaignCode: string; campaignTitle?: string; context: TemplateContext | undefined }) {
+function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context, template, renderedAt }: { templateId: string; campaignCode: string; campaignTitle?: string; context: TemplateContext | undefined; template: StatsTemplate; renderedAt: string | null }) {
   const pngUrl = `${SUPABASE_URL}/storage/v1/object/public/slide-snapshots/${templateId}/snapshot-${campaignCode}.svg`;
   const [previewOpen, setPreviewOpen] = useState(false);
   const displayName = campaignTitle || campaignCode;
+  const templateLabel = template.name || template.slug || "Not Linked";
+  const deckSlideLabel = context
+    ? `${context.deckSlug}${context.deckPosition != null ? ` / Slide ${context.deckPosition}` : ""}`
+    : "—";
+  const lastSavedLabel = renderedAt
+    ? `${new Date(renderedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} (local time)`
+    : "Never";
+
+  const metaLines = (
+    <div className="text-xs space-y-0.5">
+      <p><span className="font-semibold">Campaign:</span> {displayName}</p>
+      <p><span className="font-semibold">Deck:</span> {deckSlideLabel}</p>
+      <p><span className="font-semibold">Linked to template:</span> {templateLabel}</p>
+      <p><span className="font-semibold">Last saved:</span> {lastSavedLabel}</p>
+    </div>
+  );
 
   return (
-    <div className="mt-2 space-y-0.5 text-xs text-muted-foreground border-t pt-2">
-      <p><span className="font-medium">Campaign:</span> {displayName}</p>
-      {context ? (
-        <>
-          <p><span className="font-medium">Deck / Instance:</span> {context.deckSlug} / {context.mobilizeCode}</p>
-          <p><span className="font-medium">viralToken:</span> {context.sampleToken ?? "none found"}</p>
-        </>
-      ) : (
+    <div className="mt-2 space-y-2 text-xs text-muted-foreground border-t pt-2">
+      {metaLines}
+      {context && (
+        <p><span className="font-medium">viralToken:</span> {context.sampleToken ?? "none found"}</p>
+      )}
+      {!context && (
         <p className="italic">No deck linkage found for this campaign</p>
       )}
       <p className="inline-flex items-center gap-3 flex-wrap">
@@ -130,6 +144,7 @@ function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context 
           <DialogHeader>
             <DialogTitle>Snapshot preview — {displayName}</DialogTitle>
           </DialogHeader>
+          <div className="pb-2 border-b">{metaLines}</div>
           <div className="w-full overflow-auto bg-muted/30 rounded-md">
             {/* Rendered via <img> so Supabase's Content-Disposition: attachment and sandbox CSP on public SVGs don't apply */}
             <img
