@@ -901,7 +901,7 @@ export default function CampaignDashboard({
               <AlertDialogHeader>
                 <AlertDialogTitle>{pendingSimulationClearScope === "all" ? "Clear simulation data for all campaigns?" : "Clear simulation data for this campaign?"}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will remove simulated-only events and tokens {pendingSimulationClearScope === "all" ? "across every campaign" : `for ${selectedCampaign || "the selected campaign"}`}. Real campaign data will not be deleted.
+                  This will remove simulated-only events and tokens {pendingSimulationClearScope === "all" ? "across every campaign" : `for ${campaignTitle || "the selected campaign"}`}. Real campaign data will not be deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
