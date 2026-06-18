@@ -40,7 +40,8 @@ Deno.serve(async (req) => {
     const { data: slideItems, error: slideError } = await supabase
       .from("slide_items")
       .select("deck_slug")
-      .eq("template_id", template_id);
+      .eq("template_id", template_id)
+      .eq("skip_deploy", false);
 
     if (slideError) throw new Error(`Failed to fetch slide_items: ${slideError.message}`);
     
