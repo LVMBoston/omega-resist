@@ -10,7 +10,7 @@ import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { MapLegend } from "@/components/MapLegend";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 
-const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
+const ACTION_TYPES = new Set(["sms", "email", "social", "external_link", "email_links"]);
 
 interface HybridSlideProps {
   imageUrl: string;
