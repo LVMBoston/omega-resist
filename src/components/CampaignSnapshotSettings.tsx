@@ -471,7 +471,16 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
                 >
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <p className="font-medium text-sm">{template.name || template.slug}</p>
+                      <p className="font-medium text-sm">
+                        {templateContexts?.[template.id]?.deckPosition != null
+                          ? `Slide ${templateContexts[template.id].deckPosition}`
+                          : (template.name || template.slug)}
+                        {template.name && templateContexts?.[template.id]?.deckPosition != null && (
+                          <span className="ml-2 text-xs text-muted-foreground font-normal">
+                            ({template.name})
+                          </span>
+                        )}
+                      </p>
                       <SnapshotStatusBadge
                         renderedAt={snapshotAges?.[template.id] ?? null}
                         intervalMinutes={intervalMinutes}
