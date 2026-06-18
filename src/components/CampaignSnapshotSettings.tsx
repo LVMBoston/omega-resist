@@ -477,11 +477,6 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
                         {templateContexts?.[template.id]?.deckPosition != null
                           ? `Slide ${templateContexts[template.id].deckPosition}`
                           : (template.name || template.slug)}
-                        {template.name && templateContexts?.[template.id]?.deckPosition != null && (
-                          <span className="ml-2 text-xs text-muted-foreground font-normal">
-                            ({template.name})
-                          </span>
-                        )}
                       </p>
                       <SnapshotStatusBadge
                         renderedAt={snapshotAges?.[template.id] ?? null}
@@ -505,8 +500,10 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
                   <TemplateDiagnostics
                     templateId={template.id}
                     campaignCode={campaignCode}
+                    campaignTitle={campaignTitle}
                     context={templateContexts?.[template.id]}
                   />
+
                 </div>
               ))}
             </div>
