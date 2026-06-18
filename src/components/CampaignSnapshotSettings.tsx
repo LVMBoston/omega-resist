@@ -518,6 +518,8 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
                     campaignCode={campaignCode}
                     campaignTitle={campaignTitle}
                     context={templateContexts?.[template.id]}
+                    template={template}
+                    renderedAt={snapshotAges?.[template.id] ?? template.snapshot_rendered_at ?? null}
                   />
 
                 </div>
