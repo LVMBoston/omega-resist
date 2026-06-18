@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
         .from("slide_items")
         .select("template_id")
         .in("deck_slug", deckSlugs)
-        .not("template_id", "is", null);
+        .not("template_id", "is", null)
+        .eq("skip_deploy", false);
 
       if (slideError || !slideItems || slideItems.length === 0) {
         console.log(`[refresh-all-snapshots] No templates for campaign ${campaign.code}`);
