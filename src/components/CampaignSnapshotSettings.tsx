@@ -203,11 +203,14 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode }: CampaignS
 
       const templateIds = templates.map(t => t.id);
 
-      // Get slide_items for these templates to find deck_slugs
+      // Get slide_items for these templates to find deck_slugs.
+      // Exclude skip_deploy slides — they are not part of the deployed deck
+      // and must not appear in the SSR list.
       const { data: slideItems, error: siErr } = await supabase
         .from("slide_items")
         .select("template_id, deck_slug")
-        .in("template_id", templateIds);
+        .in("template_id", templateIds)
+        .eq("skip_deploy", false);
       if (siErr) throw siErr;
       if (!slideItems || slideItems.length === 0) return {};
 
