@@ -89,14 +89,19 @@ const InteractiveSlideOverlay = ({
       let city: string | null = null;
       let state: string | null = null;
       let siteName: string | null = null;
+      let tokenLevel: number | null = null;
 
-      // Try to derive campaign_id and mobilize_code from the token
+      // Try to derive campaign_id, mobilize_code, and viewer level from the token
       if (viralToken) {
         const { data: tokenData } = await supabase
           .from("tokens")
-          .select("eoa_id")
+          .select("eoa_id, level")
           .eq("token", viralToken)
           .maybeSingle();
+
+        if (tokenData) {
+          tokenLevel = tokenData.level ?? null;
+        }
 
         if (tokenData?.eoa_id) {
           const { data: eoaData } = await supabase
@@ -116,11 +121,16 @@ const InteractiveSlideOverlay = ({
         }
       }
 
+      // Viewer is on the organizer's own seed (L00) → use L00 template (organizer-voiced).
+      // Viewer is on any forwarded link (L01+) → use L01 template (friend-voiced).
+      const templateKey = tokenLevel === 0 ? "l00_template" : "l01_template";
+      console.log("📨 Resolving share templates", { viralToken, tokenLevel, templateKey });
+
       // Use resolve_message_template RPC if we have campaign context
       if (campaignId) {
         const [emailRes, smsRes] = await Promise.all([
-          supabase.rpc("resolve_message_template", { p_campaign_id: campaignId, p_mobilize_code: mobilizeCode, p_category: "email", p_key: "l01_template" }),
-          supabase.rpc("resolve_message_template", { p_campaign_id: campaignId, p_mobilize_code: mobilizeCode, p_category: "sms", p_key: "l01_template" }),
+          supabase.rpc("resolve_message_template", { p_campaign_id: campaignId, p_mobilize_code: mobilizeCode, p_category: "email", p_key: templateKey }),
+          supabase.rpc("resolve_message_template", { p_campaign_id: campaignId, p_mobilize_code: mobilizeCode, p_category: "sms", p_key: templateKey }),
         ]);
         if (emailRes.data) setEmailTemplate(emailRes.data as any);
         if (smsRes.data) setSmsTemplate(smsRes.data as any);
@@ -130,13 +140,13 @@ const InteractiveSlideOverlay = ({
           .from("settings")
           .select("value")
           .eq("category", "email")
-          .eq("key", "l01_template")
+          .eq("key", templateKey)
           .maybeSingle();
         const { data: smsData } = await supabase
           .from("settings")
           .select("value")
           .eq("category", "sms")
-          .eq("key", "l01_template")
+          .eq("key", templateKey)
           .maybeSingle();
         if (emailData) setEmailTemplate(emailData.value as any);
         if (smsData) setSmsTemplate(smsData.value as any);
