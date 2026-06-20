@@ -411,6 +411,25 @@ export const FullResolutionHotspotEditor = ({
     onChange?.(updatedHotspots);
   };
 
+  // Bake the live map pan/zoom into each map hotspot's savedBounds so the
+  // current on-screen map view is what gets persisted on Save Slide / Update Template.
+  // This means users no longer have to remember to click "Save Current View".
+  const hotspotsWithLiveMapView = (): Hotspot[] => {
+    return hotspots.map((h) => {
+      if (h.type !== 'map') return h;
+      const liveBounds = mapBounds[h.id];
+      if (!liveBounds) return h;
+      const existingConfig = (h as any).mapConfig || {
+        mapStyle: 'channel_colors' as const,
+        showClustering: false,
+      };
+      return {
+        ...h,
+        mapConfig: { ...existingConfig, savedBounds: liveBounds },
+      } as Hotspot;
+    });
+  };
+
   const deleteHotspot = (id: string) => {
     const updatedHotspots = hotspots.filter((h) => h.id !== id);
     setHotspots(updatedHotspots);
@@ -1185,11 +1204,11 @@ export const FullResolutionHotspotEditor = ({
                     </Button>
                   )}
                   {onUpdateTemplate && (
-                    <Button onClick={() => onUpdateTemplate(hotspots)} variant="outline" size="sm">
+                    <Button onClick={() => onUpdateTemplate(hotspotsWithLiveMapView())} variant="outline" size="sm">
                       {updateTemplateLabel}
                     </Button>
                   )}
-                  <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
+                  <Button onClick={() => onSave(hotspotsWithLiveMapView())} variant="default" size="sm">
                     {saveLabel}
                   </Button>
                 </div>
