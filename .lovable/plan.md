@@ -1,58 +1,48 @@
+# Plan — Extract a campaign brief from an existing description
 
-# Plan — Restore "Email all links" mailbox, then harmonize text rendering
+## What you'll see
 
-## 1. Diagnosis
+1. On a campaign that doesn't have a brief yet (like Conservative Fracture), a new button appears: **"Extract brief from description (AI)"**.
+   a. Location: Campaign Detail page (`/campaigns/:id`), in a small admin panel near the description. This is the same page you'd edit a campaign on, so it's the natural home.
+   b. If a brief already exists, the button label switches to **"Re-extract brief from description"** and warns it will overwrite.
+2. Clicking it calls AI, reads the existing free-form description, and proposes a structured brief: what / why / when / where / who / ask, plus key facts, do-not-say, and tone.
+3. A modal pops up showing the proposed brief in a read-only preview with two buttons: **Save** (writes to `campaigns.brief`) or **Cancel**.
+4. Once saved, the next time AI drafts an SMS or email for this campaign, it'll automatically use the structured brief — no other change needed, because the message drafter already reads `campaigns.brief` when present.
 
-The mailbox you see in the Deck Editor is an **action hotspot** of type `email_links` — a clickable icon (`src/assets/email-links-icon.svg`) rendered live by `InteractiveSlideOverlay`. Clicking it builds a `mailto:` with all external-link hotspots on the slide (subject + numbered list) — that wiring already exists in `handleEmailLinks` (`InteractiveSlideOverlay.tsx:840`).
+## What this does NOT do (deferred — note added to file)
 
-In the snapshot renderer (`supabase/functions/render-stats-snapshot/index.ts:781`), action hotspots are intentionally **excluded** from the SVG bake so they remain interactive client-side overlays:
+- It does not add the full guided wizard (the multi-field editor with per-field Suggest buttons) to existing campaigns. That's the "real" fix and is still deferred. We'll add a short note to `docs/decisions/messaging/2026-06-04_campaign-brief-wizard_feature-doc_lovable.md` saying: extraction shipped as an interim tool; full edit-brief-on-existing-campaign wizard still pending.
 
-```ts
-const ACTION_TYPES = new Set(["sms", "email", "social", "external_link"]);
-const textHotspots = hotspots.filter(h => !ACTION_TYPES.has(h.type) && h.type !== "chart" ...);
-```
+## Technical detail
 
-`email_links` is **missing from this set**, so the SSR treats it as a text hotspot. With no text content it bakes a blank/empty box where the mailbox should be, and that blank box covers/replaces what the live overlay would have drawn. Same root cause on PC and iOS — the snapshot is identical.
+1. **Edge function** — `supabase/functions/draft-campaign-brief/index.ts`
+   a. Add a new `mode: "extract_brief"` that takes `{ campaignTitle, description }` and returns a JSON object matching the `CampaignBrief` shape (what/why/when/where/who/ask as strings, key_facts and do_not_say as string arrays capped at 5, tone as one of the 4 enums).
+   b. Use the existing Lovable AI gateway call with `google/gemini-2.5-flash` and `response_format: { type: "json_object" }`. Validate the parsed object before returning; clamp arrays to 5; fall back tone to `informative` if missing/invalid.
+   c. Reuse the existing 429 / 402 / error handling.
 
-The runtime overlay (`InteractiveSlideOverlay`) already handles `email_links` correctly: it draws the mailbox icon, supports the optional label, and clicking it calls `handleEmailLinks(hotspot)` → opens `mailto:` with subject + numbered list of every `external_link` hotspot on the slide.
+2. **Frontend** — new small component `src/components/ExtractBriefButton.tsx`
+   a. Props: `campaignId`, `campaignTitle`, `description`, `existingBrief`, `onSaved`.
+   b. Calls `supabase.functions.invoke("draft-campaign-brief", { body: { mode: "extract_brief", campaignTitle, description } })`.
+   c. Shows result in a `Dialog` with the brief rendered as labeled read-only blocks (reusing the same field labels from `CampaignBriefWizard`).
+   d. On Save: `supabase.from("campaigns").update({ brief }).eq("id", campaignId)`, toast success, call `onSaved`.
 
-## 2. Part 1 — Restore the mailbox (do first)
+3. **Mount point** — `src/pages/CampaignDetail.tsx`
+   a. Add the button in the existing description/admin area. Pass current description and brief from the loaded campaign row.
+   b. After save, refetch the campaign so the UI reflects "brief: present".
 
-a. **`supabase/functions/render-stats-snapshot/index.ts`** — add `"email_links"` to `ACTION_TYPES` so the snapshot skips baking it. The mailbox then comes from the live overlay on top of the snapshot.
+4. **Doc note** — append to `docs/decisions/messaging/2026-06-04_campaign-brief-wizard_feature-doc_lovable.md`:
 
-b. **Redeploy `render-stats-snapshot`** and re-snapshot Slide 5 of `thomas-luttig` via the Server Refresh control.
+   ```
+   ## Update — 2026-06-20
+   Shipped interim tool: "Extract brief from description (AI)" button on Campaign Detail.
+   It one-shot generates a structured brief from the existing free-form description and
+   saves it to campaigns.brief, so AI message drafts get the structured facts immediately.
 
-c. **Verify in browser** at the preview URL on a desktop viewport:
-   - Mailbox icon appears top-right of Slide 5.
-   - Clicking it opens the OS mail composer with subject "Here are the links you requested…" (or the override `emailLinksSubject` if set) and the numbered link list in the body.
-   - If `emailLinksShowLabels` is on, the small black caption pill appears under the icon.
+   Still deferred (real fix): the full guided wizard for editing briefs on existing
+   campaigns. The extraction tool is a stopgap — it's not editable inline beyond
+   review/save. Build the full editor next.
+   ```
 
-d. **Verify on iOS** (user-driven): open `https://omega-resist.lovable.app/deck/thomas-luttig` Slide 5, tap the mailbox, confirm Mail composer opens with the same payload.
+## After approval, decision-log filing
 
-e. **No DB / no schema change.** No edits to the editor, overlay, or DeckViewer — those already work.
-
-## 3. Part 2 — Harmonize text rendering (do after Part 1 is confirmed)
-
-This is the larger investigation. Out of scope for this turn beyond noting the approach:
-
-a. **Re-open the Parity Harness** (`src/pages/ParityHarness.tsx` at route `/parity-harness`) — already designed for side-by-side editor (`ManualEntryRenderer`) vs SSR (`renderManualHtml`) comparison across §2.1–§2.7 cases.
-
-b. **Add new cases that mirror Slide 5's actual rendering**: the cream "LINKS" header pill and each cream link pill — centered horizontally, top-aligned vertically, in a wide short box on the noisy gray background. Slide 5's visible drift between editor and SSR (vertical centering vs top-justify on the longer pills) suggests `verticalAlign` + auto-shrink interaction is the divergence.
-
-c. Once a failing case is reproduced in the harness, fix the divergence in **either** `ManualEntryRenderer` **or** `manualHtml.ts` so both algorithms agree.
-
-d. Re-run the harness end-to-end to confirm parity across all sections.
-
-Part 2 will be presented as its own plan once Part 1 is verified.
-
-## 4. Files touched in this plan
-
-| Part | File | Change |
-|------|------|--------|
-| 1a | `supabase/functions/render-stats-snapshot/index.ts` | Add `"email_links"` to the `ACTION_TYPES` set |
-
-No DB migrations. No frontend edits.
-
-## 5. Decision-log
-
-This is a **new plan**. After implementation, archive as `docs/decisions/snapshots/2026-06-18_email-links-snapshot-passthrough_bug-fix_lovable.md` with `Status: Approved & Implemented`.
+This update extends the existing plan **"Campaign Brief Wizard" (`docs/decisions/messaging/2026-06-04_campaign-brief-wizard_feature-doc_lovable.md`)**, so per the decision log rule I'll append it there as a new `## Update — 2026-06-20` section rather than creating a new doc. The same "deferred" note above doubles as that decision-log entry.

@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 type Tone = "urgent" | "informative" | "hopeful" | "defiant";
-type Mode = "suggest_field" | "synthesize_description" | "suggest_title";
+type Mode = "suggest_field" | "synthesize_description" | "suggest_title" | "extract_brief";
 type FieldKey = "what" | "why" | "when" | "where" | "who" | "ask";
 
 interface Brief {
@@ -29,6 +29,7 @@ interface Body {
   campaignTitle?: string;
   brief?: Brief;
   field?: FieldKey; // required when mode === "suggest_field"
+  description?: string; // required when mode === "extract_brief"
 }
 
 const FIELD_GUIDANCE: Record<FieldKey, string> = {
@@ -85,6 +86,27 @@ function buildPrompt(b: Body): { system: string; user: string } {
     };
   }
 
+  if (b.mode === "extract_brief") {
+    const desc = (b.description || "").trim() || "(no description provided)";
+    return {
+      system: [
+        "You extract a structured campaign brief from a free-form campaign description.",
+        "Return ONLY a valid JSON object — no prose, no markdown, no code fences.",
+        "Schema:",
+        '{ "what": string, "why": string, "when": string, "where": string, "who": string, "ask": string, "key_facts": string[] (max 5), "do_not_say": string[] (max 5), "tone": "urgent"|"informative"|"hopeful"|"defiant" }',
+        "Rules:",
+        "- Use only facts present in the description. Do not invent dates, locations, names, or numbers.",
+        "- If a field is not in the description, use an empty string (or empty array for the list fields).",
+        "- Follow the field guidance:",
+        ...Object.entries(FIELD_GUIDANCE).map(([k, v]) => `  ${k}: ${v}`),
+        "- key_facts: concrete factual claims AI must include in drafts (names, dates, numbers, quotes). Max 5.",
+        "- do_not_say: phrases/framings to avoid, only if the description implies any. Max 5. Empty array is fine.",
+        "- tone: pick the single best match for the description. Default to 'informative' if unclear.",
+      ].join("\n"),
+      user: `Campaign name: ${title}\n\nDescription:\n${desc}\n\nReturn the JSON brief now.`,
+    };
+  }
+
   // suggest_title
   return {
     system: [
@@ -111,8 +133,11 @@ serve(async (req) => {
 
     const raw = (await req.json()) as Partial<Body>;
     const errors: string[] = [];
-    if (!raw.mode || !["suggest_field", "synthesize_description", "suggest_title"].includes(raw.mode)) {
+    if (!raw.mode || !["suggest_field", "synthesize_description", "suggest_title", "extract_brief"].includes(raw.mode)) {
       errors.push("invalid mode");
+    }
+    if (raw.mode === "extract_brief" && !(raw.description && raw.description.trim())) {
+      errors.push("description is required for extract_brief");
     }
     if (raw.mode === "suggest_field") {
       if (!raw.field || !["what", "why", "when", "where", "who", "ask"].includes(raw.field)) {
@@ -128,6 +153,7 @@ serve(async (req) => {
 
     const body = raw as Body;
     const { system, user } = buildPrompt(body);
+    const wantsJson = body.mode === "extract_brief";
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -141,6 +167,7 @@ serve(async (req) => {
           { role: "system", content: system },
           { role: "user", content: user },
         ],
+        ...(wantsJson ? { response_format: { type: "json_object" } } : {}),
       }),
     });
 
@@ -167,15 +194,52 @@ serve(async (req) => {
 
     const data = await aiResp.json();
     let text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
-    // Strip wrapping quotes if any
-    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
-      text = text.slice(1, -1).trim();
-    }
     if (!text) {
       return new Response(JSON.stringify({ error: "Empty response from AI" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (wantsJson) {
+      // Strip code fences if the model added them
+      text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        return new Response(JSON.stringify({ error: "AI did not return valid JSON" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const validTones: Tone[] = ["urgent", "informative", "hopeful", "defiant"];
+      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      const strArr = (v: unknown) =>
+        Array.isArray(v)
+          ? v.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean).slice(0, 5)
+          : [];
+      const toneVal = str(parsed.tone) as Tone;
+      const brief: Brief = {
+        what: str(parsed.what),
+        why: str(parsed.why),
+        when: str(parsed.when),
+        where: str(parsed.where),
+        who: str(parsed.who),
+        ask: str(parsed.ask),
+        key_facts: strArr(parsed.key_facts),
+        do_not_say: strArr(parsed.do_not_say),
+        tone: validTones.includes(toneVal) ? toneVal : "informative",
+      };
+      return new Response(JSON.stringify({ brief }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Strip wrapping quotes if any
+    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+      text = text.slice(1, -1).trim();
     }
 
     return new Response(JSON.stringify({ text }), {

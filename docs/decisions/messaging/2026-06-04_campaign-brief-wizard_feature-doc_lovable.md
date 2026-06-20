@@ -49,3 +49,18 @@ Shape:
 - Adding the wizard to Campaign Detail for editing briefs of existing campaigns.
 - Backfilling briefs for existing campaigns.
 - Surfacing the brief inside narrative/report generation directly (today they read `description`, which is now richer).
+
+## Update — 2026-06-20
+
+Status: Approved & Implemented
+
+Shipped an interim tool: an **"Extract brief from description (AI)"** button on the Campaign Detail page (under the description, near the EoA badge). One click sends the existing free-form description to AI, which returns a structured brief (what/why/when/where/who/ask + key_facts + do_not_say + tone). A modal previews the brief; clicking Save writes it to `campaigns.brief`. From that point on, the AI message drafter automatically uses the structured brief — no other code changed.
+
+If the campaign already has a brief, the button label switches to **"Re-extract brief from description"** and a confirm prompt warns it will overwrite.
+
+### Note — better solution still to come
+
+This is a stopgap, not the real fix. Still deferred:
+
+- The full guided wizard (the multi-field editor with per-field ✨ Suggest buttons used in the new-campaign flow) is **not** yet available for editing briefs on existing campaigns. The extraction modal is review-only — you can't tweak a field inline before saving.
+- Next step: mount `CampaignBriefWizard` on Campaign Detail as a proper editor, and add an "Extract from description" action inside it (instead of the standalone button). That replaces this interim button.

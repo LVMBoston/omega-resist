@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import CampaignEoaManager from "./CampaignEoaManager";
+import ExtractBriefButton from "@/components/ExtractBriefButton";
 import CampaignDashboard from "./CampaignDashboard";
 import CampaignChapters from "@/components/CampaignChapters";
 import { useQuery } from "@tanstack/react-query";
@@ -139,6 +140,14 @@ export default function CampaignDetail() {
             </div>
             {campaign?.description && (
               <p className="text-sm text-muted-foreground mt-2">{campaign.description}</p>
+            )}
+            {campaign && (
+              <ExtractBriefButton
+                campaignId={campaign.id}
+                campaignTitle={campaign.title || ""}
+                description={campaign.description || null}
+                existingBrief={(campaign.brief as never) || null}
+              />
             )}
           </CardHeader>
           {stats && (
