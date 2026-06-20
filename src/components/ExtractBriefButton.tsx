@@ -12,20 +12,9 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import CampaignBriefWizard, { CampaignBrief } from "@/components/CampaignBriefWizard";
 
-type Tone = "urgent" | "informative" | "hopeful" | "defiant";
-
-interface Brief {
-  what?: string;
-  why?: string;
-  when?: string;
-  where?: string;
-  who?: string;
-  ask?: string;
-  key_facts?: string[];
-  do_not_say?: string[];
-  tone?: Tone;
-}
+type Brief = CampaignBrief;
 
 interface Props {
   campaignId: string;
@@ -33,15 +22,6 @@ interface Props {
   description: string | null;
   existingBrief: Brief | null;
 }
-
-const FIELD_LABELS: Array<[keyof Brief, string]> = [
-  ["what", "What is happening?"],
-  ["why", "Why does it matter?"],
-  ["when", "When?"],
-  ["where", "Where?"],
-  ["who", "Who is the ask for?"],
-  ["ask", "The ask"],
-];
 
 export default function ExtractBriefButton({
   campaignId,
@@ -131,64 +111,21 @@ export default function ExtractBriefButton({
           <DialogHeader>
             <DialogTitle>Proposed brief</DialogTitle>
             <DialogDescription>
-              AI extracted this from the campaign description. Review, then Save to overwrite the
-              current brief — or Cancel to discard.
+              AI extracted this from the campaign description. Edit any field, then Save to overwrite
+              the current brief — or Cancel to discard.
             </DialogDescription>
           </DialogHeader>
 
           {draft && (
-            <div className="space-y-4 py-2">
-              {FIELD_LABELS.map(([key, label]) => {
-                const v = (draft[key] as string) || "";
-                return (
-                  <div key={key}>
-                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      {label}
-                    </div>
-                    <div className="text-sm whitespace-pre-wrap mt-1">
-                      {v || <span className="italic text-muted-foreground">(not in description)</span>}
-                    </div>
-                  </div>
-                );
-              })}
-
-              <div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Key facts AI must include
-                </div>
-                {draft.key_facts && draft.key_facts.length > 0 ? (
-                  <ul className="text-sm list-disc pl-5 mt-1">
-                    {draft.key_facts.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-sm italic text-muted-foreground mt-1">(none)</div>
-                )}
-              </div>
-
-              <div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Things AI must NOT say
-                </div>
-                {draft.do_not_say && draft.do_not_say.length > 0 ? (
-                  <ul className="text-sm list-disc pl-5 mt-1">
-                    {draft.do_not_say.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-sm italic text-muted-foreground mt-1">(none)</div>
-                )}
-              </div>
-
-              <div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Tone
-                </div>
-                <div className="text-sm mt-1 capitalize">{draft.tone || "informative"}</div>
-              </div>
-            </div>
+            <CampaignBriefWizard
+              campaignTitle={campaignTitle}
+              onTitleChange={() => {}}
+              brief={draft}
+              onBriefChange={setDraft}
+              description=""
+              onDescriptionChange={() => {}}
+              hideSynthesis
+            />
           )}
 
           <DialogFooter>
