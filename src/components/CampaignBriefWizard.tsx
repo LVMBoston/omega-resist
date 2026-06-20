@@ -81,6 +81,7 @@ export default function CampaignBriefWizard({
   onBriefChange,
   description,
   onDescriptionChange,
+  hideSynthesis = false,
 }: Props) {
   const { toast } = useToast();
   const [busyField, setBusyField] = useState<string | null>(null);
