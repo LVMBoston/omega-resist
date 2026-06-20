@@ -2505,6 +2505,7 @@ Add Slide(s)
                 }
               }}
               onSave={handleSaveHotspots}
+              onUpdateTemplate={hotspotEditorSlide.template_id ? handleUpdateTemplate : undefined}
               onCancel={() => {
                 if (selectedSlide?.id === hotspotEditorSlide.id) {
                   setPreviewHotspots(initialHotspots as Hotspot[]);
