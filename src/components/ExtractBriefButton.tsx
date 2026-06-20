@@ -12,20 +12,9 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import CampaignBriefWizard, { CampaignBrief } from "@/components/CampaignBriefWizard";
 
-type Tone = "urgent" | "informative" | "hopeful" | "defiant";
-
-interface Brief {
-  what?: string;
-  why?: string;
-  when?: string;
-  where?: string;
-  who?: string;
-  ask?: string;
-  key_facts?: string[];
-  do_not_say?: string[];
-  tone?: Tone;
-}
+type Brief = CampaignBrief;
 
 interface Props {
   campaignId: string;
@@ -33,15 +22,6 @@ interface Props {
   description: string | null;
   existingBrief: Brief | null;
 }
-
-const FIELD_LABELS: Array<[keyof Brief, string]> = [
-  ["what", "What is happening?"],
-  ["why", "Why does it matter?"],
-  ["when", "When?"],
-  ["where", "Where?"],
-  ["who", "Who is the ask for?"],
-  ["ask", "The ask"],
-];
 
 export default function ExtractBriefButton({
   campaignId,
