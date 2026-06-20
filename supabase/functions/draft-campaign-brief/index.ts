@@ -86,6 +86,27 @@ function buildPrompt(b: Body): { system: string; user: string } {
     };
   }
 
+  if (b.mode === "extract_brief") {
+    const desc = (b.description || "").trim() || "(no description provided)";
+    return {
+      system: [
+        "You extract a structured campaign brief from a free-form campaign description.",
+        "Return ONLY a valid JSON object — no prose, no markdown, no code fences.",
+        "Schema:",
+        '{ "what": string, "why": string, "when": string, "where": string, "who": string, "ask": string, "key_facts": string[] (max 5), "do_not_say": string[] (max 5), "tone": "urgent"|"informative"|"hopeful"|"defiant" }',
+        "Rules:",
+        "- Use only facts present in the description. Do not invent dates, locations, names, or numbers.",
+        "- If a field is not in the description, use an empty string (or empty array for the list fields).",
+        "- Follow the field guidance:",
+        ...Object.entries(FIELD_GUIDANCE).map(([k, v]) => `  ${k}: ${v}`),
+        "- key_facts: concrete factual claims AI must include in drafts (names, dates, numbers, quotes). Max 5.",
+        "- do_not_say: phrases/framings to avoid, only if the description implies any. Max 5. Empty array is fine.",
+        "- tone: pick the single best match for the description. Default to 'informative' if unclear.",
+      ].join("\n"),
+      user: `Campaign name: ${title}\n\nDescription:\n${desc}\n\nReturn the JSON brief now.`,
+    };
+  }
+
   // suggest_title
   return {
     system: [
