@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import CampaignEoaManager from "./CampaignEoaManager";
+import ExtractBriefButton from "@/components/ExtractBriefButton";
 import CampaignDashboard from "./CampaignDashboard";
 import CampaignChapters from "@/components/CampaignChapters";
 import { useQuery } from "@tanstack/react-query";
