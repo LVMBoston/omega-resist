@@ -328,6 +328,54 @@ export default function DeckEditor() {
   const [overrideUploading, setOverrideUploading] = useState(false);
   const overrideFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Byte sizes of slide background assets, keyed by content_url. Resolved via HEAD requests.
+  const [slideSizes, setSlideSizes] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const urls = Array.from(new Set(
+      slides
+        .map(s => (s as any).image_url_override || s.content_url)
+        .filter((u): u is string => !!u && !u.startsWith('solid:') && /^https?:\/\//.test(u))
+    ));
+    const missing = urls.filter(u => !(u in slideSizes));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(missing.map(async (url) => {
+        try {
+          const res = await fetch(url, { method: 'HEAD' });
+          const len = res.headers.get('content-length');
+          return [url, len ? parseInt(len, 10) : 0] as const;
+        } catch {
+          return [url, 0] as const;
+        }
+      }));
+      if (cancelled) return;
+      setSlideSizes(prev => {
+        const next = { ...prev };
+        for (const [u, n] of entries) next[u] = n;
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [slides]);
+
+  const formatBytes = (bytes: number): string => {
+    if (!bytes) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const getSlideBytes = (s: Slide | null): number => {
+    if (!s) return 0;
+    const url = (s as any).image_url_override || s.content_url;
+    if (!url) return 0;
+    return slideSizes[url] || 0;
+  };
+
+  const deckTotalBytes = slides.reduce((sum, s) => sum + getSlideBytes(s), 0);
+
   // Resolve deck shape (aspect ratio + orientation) ONCE from the deck row.
   // If the row has no recorded value yet, probe the first available image and
   // persist it back so every subsequent load is deterministic.
