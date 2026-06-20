@@ -50,15 +50,15 @@ const EXACT_MAP: Record<string, DerivedUtmMedium> = {
 
 // Substring keyword -> canonical medium. Order matters: longer / more specific first.
 const SUBSTRING_RULES: Array<[RegExp, DerivedUtmMedium]> = [
-  [/email|mail/i, "em"],
-  [/sms|text/i, "sms"],
+  [/email|mail|\bem\b/i, "em"],
+  [/sms|text|\btx\b/i, "sms"],
   [/facebook|\bfb\b/i, "fb"],
   [/twitter|\bx\b/i, "x"],
   [/linkedin|\bli\b/i, "li"],
   [/bluesky|\bbs\b/i, "bs"],
   [/social/i, "social"],
   [/p2p/i, "p2p"],
-  [/qr/i, "qr"],
+  [/\bqr\b|qrcode/i, "qr"],
 ];
 
 /**
