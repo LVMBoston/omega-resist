@@ -36,6 +36,7 @@ interface Props {
   onBriefChange: (next: CampaignBrief) => void;
   description: string;
   onDescriptionChange: (next: string) => void;
+  hideSynthesis?: boolean;
 }
 
 const FIELD_META: Record<BriefFieldKey, { label: string; helper: string; placeholder: string }> = {
