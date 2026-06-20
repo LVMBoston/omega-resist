@@ -2516,6 +2516,12 @@ Add Slide(s)
                 setHotspotEditorSlide(null);
               }}
               saveLabel="Save Slide"
+              selectedCampaignId={editorCampaignId}
+              selectedCampaignCode={editorCampaignCode}
+              onCampaignChange={(id, code) => {
+                setEditorCampaignId(id);
+                setEditorCampaignCode(code);
+              }}
             />
           </DialogContent>
         </Dialog>
