@@ -739,8 +739,28 @@ Deno.serve(async (req) => {
     let bgDataUrl: string | null = null;
     let bgSolidColor: string | null = null;
     // Default canvas if we can't derive aspect ratio from a background image.
-    // Landscape 16:9 matches the default deck orientation.
+    // Prefer the deck's recorded aspect ratio so portrait decks don't fall
+    // back to a 16:9 landscape canvas when a background image is missing.
     let { width, height } = defaultSolidCanvas();
+    try {
+      const deckSlug = (template as any).deck_slug as string | null;
+      if (deckSlug) {
+        const { data: deckRow } = await supabase
+          .from("decks")
+          .select("aspect_ratio")
+          .eq("slug", deckSlug)
+          .maybeSingle();
+        const r = deckRow?.aspect_ratio ? Number(deckRow.aspect_ratio) : null;
+        if (r && isFinite(r) && r > 0) {
+          const derived = deriveCanvasFromImage(Math.round(r * 1000), 1000);
+          width = derived.width;
+          height = derived.height;
+          console.log(`[render-stats-snapshot] Canvas seeded from deck aspect ${r}: ${width}x${height}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`[render-stats-snapshot] Could not seed canvas from deck aspect:`, e);
+    }
 
     if (imageUrl.startsWith("solid:")) {
       bgSolidColor = imageUrl.replace("solid:", "");
