@@ -96,3 +96,16 @@ A `supabase/functions/import-powerpoint` edge function is already scaffolded in 
 
 _Add new deferred items as new numbered sections below._
 
+---
+
+## 7. Revisit EoA input form (UTM ID and medium derivation UX)
+
+**Observation:** The form used to create and edit Events/Actions (EoAs) presents the UTM ID and derived medium in ways that confuse organizers. The UTM ID field determines the share channel badge (`via em`, `via sms`, `via qr`), but there is no inline guidance explaining which tokens map to which medium. Organizers enter values like `sv-em-1` expecting an email EoA and see `via qr` because the token does not match exact-keyword or word-boundary rules. The correction path (editing UTM ID, then using Fix channels to rewrite stored URLs) is not obvious.
+
+**Deferred work:**
+- a. Evaluate whether the form should show a live preview of the derived medium badge next to the UTM ID input so organizers know what they are creating before saving.
+- b. Consider adding a helper tooltip or inline hint listing the keyword tokens that map to each medium (e.g., `em`, `email`, `mail` → email; `sms`, `tx`, `text` → SMS; `qr`, `qrcode` → QR).
+- c. Review whether the Mobilize Code / Zip Code selector and UTM ID field layout makes the relationship between Event Code, UTM ID, and medium clear enough.
+- d. Decide if the form should warn when a UTM ID will fall back to `qr` because no keyword matched, or if the fallback logic itself should be adjusted.
+- e. Archive any design decision under `docs/decisions/eoa/` once scoped.
+
