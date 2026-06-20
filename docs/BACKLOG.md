@@ -70,5 +70,29 @@ Items use numbered sections and lettered sub-items per project convention.
 
 ---
 
+---
+
+## 6. Direct PowerPoint (.pptx) import into Deck Builder
+
+**Observation:** The Deck Builder already supports importing slide images via ZIP archives and multi-file selection, plus direct Google Slides import via a connected service account. However, there is no direct `.pptx` upload path. Organizers who receive a PowerPoint file (e.g., from a colleague, from a OneDrive share link, or from PowerPoint's own export) must currently export slides as PNG images first, then ZIP or multi-select those images into the Deck Builder.
+
+A `supabase/functions/import-powerpoint` edge function is already scaffolded in `config.toml` but has no implementation or UI wiring.
+
+**Workaround today (option a):**
+- In PowerPoint: File → Export → PNG → Save All Slides.
+- In Deck Builder: Use the existing "Image Files" tab (multi-select) or ZIP import. Slides are auto-sorted via natural numeric ordering.
+
+**Deferred work:**
+- a. **Direct `.pptx` upload (option b):** Build a "PPTX File" tab in the New Deck / Import flow that accepts a downloaded `.pptx` file, renders each slide to an image (client-side via a library like `pptx2html`/`pptxjs`, or server-side via the existing edge function scaffold), and creates deck slides automatically. Must handle slide ordering, aspect ratio detection, and image compression consistent with the existing import pipeline.
+- b. **OneDrive link import (option c):** Wire up a Microsoft OneDrive connector so an organizer can paste a `1drv.ms` or `sharepoint.com` share link. The system would fetch the `.pptx` via Microsoft Graph API, then run the same render pipeline as (a). This requires a Lovable workspace connector for Microsoft/OneDrive and OAuth consent.
+- c. **Decide scope:** Evaluate whether (a) alone is sufficient, or if (c) is needed for the primary user workflow. OneDrive share links are common in campaign environments where designers distribute drafts via shared folders.
+- d. **Edge function implementation:** Write the body of `supabase/functions/import-powerpoint` if server-side rendering is chosen; otherwise implement client-side `.pptx` parsing.
+- e. **UI wiring:** Add the new import tab to the deck creation / import screen, reuse existing natural-sort and re-import purge logic from the ZIP/Image import path.
+- f. **Before implementation, produce a feature doc under `docs/decisions/deck-editor/` with `Status: Approved & Implemented` once built.**
+
+**Related:** `supabase/config.toml` line 15 (`[functions.import-powerpoint]`); existing Google Slides import at `supabase/functions/import-google-slides/`.
+
+---
+
 _Add new deferred items as new numbered sections below._
 
