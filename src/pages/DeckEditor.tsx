@@ -293,6 +293,8 @@ export default function DeckEditor() {
   const [pendingUploads, setPendingUploads] = useState<{ file: File | Blob; position?: number }[]>([]);
   const [pendingDeletes, setPendingDeletes] = useState<Slide[]>([]);
   const [hotspotChanges, setHotspotChanges] = useState<{ [slideId: string]: any }>({});
+  const [editorCampaignId, setEditorCampaignId] = useState("");
+  const [editorCampaignCode, setEditorCampaignCode] = useState("");
   const [hasDeployedTokens, setHasDeployedTokens] = useState(false);
   const [deploymentDialogOpen, setDeploymentDialogOpen] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
