@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 type Tone = "urgent" | "informative" | "hopeful" | "defiant";
-type Mode = "suggest_field" | "synthesize_description" | "suggest_title";
+type Mode = "suggest_field" | "synthesize_description" | "suggest_title" | "extract_brief";
 type FieldKey = "what" | "why" | "when" | "where" | "who" | "ask";
 
 interface Brief {
@@ -29,6 +29,7 @@ interface Body {
   campaignTitle?: string;
   brief?: Brief;
   field?: FieldKey; // required when mode === "suggest_field"
+  description?: string; // required when mode === "extract_brief"
 }
 
 const FIELD_GUIDANCE: Record<FieldKey, string> = {
