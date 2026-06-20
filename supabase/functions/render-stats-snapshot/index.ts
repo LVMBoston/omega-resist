@@ -1084,7 +1084,10 @@ Deno.serve(async (req) => {
         }
 
         if (clipOverflow) svgParts += `</g>`;
-        return svgParts;
+        return {
+          z: typeof hotspot.zIndex === "number" ? hotspot.zIndex : 1,
+          svg: svgParts,
+        };
       }
 
       // === Standard hotspot rendering ===
