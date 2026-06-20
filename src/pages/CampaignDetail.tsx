@@ -141,6 +141,14 @@ export default function CampaignDetail() {
             {campaign?.description && (
               <p className="text-sm text-muted-foreground mt-2">{campaign.description}</p>
             )}
+            {campaign && (
+              <ExtractBriefButton
+                campaignId={campaign.id}
+                campaignTitle={campaign.title || ""}
+                description={campaign.description || null}
+                existingBrief={(campaign.brief as never) || null}
+              />
+            )}
           </CardHeader>
           {stats && (
             <CardContent>
