@@ -1071,6 +1071,47 @@ export default function DeckEditor() {
     }
   };
 
+  const handleUpdateTemplate = async (hotspots: any[]) => {
+    const target = hotspotEditorSlide ?? selectedSlide;
+    if (!target?.template_id) return;
+
+    const { templateType } = classifyHotspots(hotspots);
+
+    const { error } = await supabase
+      .from('viral_slide_configs')
+      .update({
+        hotspots: hotspots as any,
+        template_type: templateType,
+      })
+      .eq('id', target.template_id);
+
+    if (error) {
+      toast.error('Failed to update template');
+      console.error(error);
+      return;
+    }
+
+    // Update local template state so the sidebar badges reflect changes immediately
+    setTemplates(prev => prev.map(t =>
+      t.id === target.template_id
+        ? { ...t, hotspots, template_type: templateType }
+        : t
+    ));
+
+    // Clear any staged hotspot changes for this slide since the template now has the canonical data
+    setHotspotChanges(prev => {
+      const next = { ...prev };
+      delete next[target.id];
+      return next;
+    });
+
+    // Update preview and cancel baseline
+    setPreviewHotspots(hotspots as Hotspot[]);
+    setInitialHotspots(hotspots);
+
+    toast.success('Template updated. All linked slides will use these hotspots.');
+  };
+
   const handleAddInteractiveSlide = async (template: Template) => {
     if (!slug) return;
 
@@ -2464,6 +2505,7 @@ Add Slide(s)
                 }
               }}
               onSave={handleSaveHotspots}
+              onUpdateTemplate={hotspotEditorSlide.template_id ? handleUpdateTemplate : undefined}
               onCancel={() => {
                 if (selectedSlide?.id === hotspotEditorSlide.id) {
                   setPreviewHotspots(initialHotspots as Hotspot[]);
