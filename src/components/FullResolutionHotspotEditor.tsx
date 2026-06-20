@@ -155,6 +155,21 @@ export const FullResolutionHotspotEditor = ({
   const [localCampaignCode, setLocalCampaignCode] = useState<string>("");
   const campaignId = isCampaignControlled ? selectedCampaignId : localCampaignId;
   const campaignCode = isCampaignControlled ? selectedCampaignCode : localCampaignCode;
+
+  const setCampaignId = (id: string) => {
+    if (isCampaignControlled) {
+      const campaign = campaigns.find(c => c.id === id);
+      onCampaignChange?.(id, campaign?.code ?? "");
+    } else {
+      setLocalCampaignId(id);
+    }
+  };
+
+  const setCampaignCode = (code: string) => {
+    if (!isCampaignControlled) {
+      setLocalCampaignCode(code);
+    }
+  };
   const [campaigns, setCampaigns] = useState<{ id: string; code: string; title: string }[]>([]);
   const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
   const userClearedCampaign = useRef(false);
