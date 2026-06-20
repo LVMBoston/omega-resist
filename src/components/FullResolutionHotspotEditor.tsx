@@ -117,6 +117,9 @@ interface FullResolutionHotspotEditorProps {
   saveLabel?: string;
   cancelLabel?: string;
   updateTemplateLabel?: string;
+  selectedCampaignId?: string;
+  selectedCampaignCode?: string;
+  onCampaignChange?: (id: string, code: string) => void;
 }
 
 export const FullResolutionHotspotEditor = ({
