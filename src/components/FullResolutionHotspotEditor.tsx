@@ -117,6 +117,9 @@ interface FullResolutionHotspotEditorProps {
   saveLabel?: string;
   cancelLabel?: string;
   updateTemplateLabel?: string;
+  selectedCampaignId?: string;
+  selectedCampaignCode?: string;
+  onCampaignChange?: (id: string, code: string) => void;
 }
 
 export const FullResolutionHotspotEditor = ({
@@ -129,6 +132,9 @@ export const FullResolutionHotspotEditor = ({
   saveLabel = "Save & Close",
   cancelLabel = "Exit",
   updateTemplateLabel = "Update Template",
+  selectedCampaignId,
+  selectedCampaignCode,
+  onCampaignChange,
 }: FullResolutionHotspotEditorProps) => {
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
@@ -144,8 +150,26 @@ export const FullResolutionHotspotEditor = ({
   const [oEmbedError, setOEmbedError] = useState<string | null>(null);
 
   // Campaign selector state for data hotspot preview
-  const [campaignId, setCampaignId] = useState<string>("");
-  const [campaignCode, setCampaignCode] = useState<string>("");
+  const isCampaignControlled = selectedCampaignId !== undefined && selectedCampaignCode !== undefined && onCampaignChange !== undefined;
+  const [localCampaignId, setLocalCampaignId] = useState<string>("");
+  const [localCampaignCode, setLocalCampaignCode] = useState<string>("");
+  const campaignId = isCampaignControlled ? selectedCampaignId : localCampaignId;
+  const campaignCode = isCampaignControlled ? selectedCampaignCode : localCampaignCode;
+
+  const setCampaignId = (id: string) => {
+    if (isCampaignControlled) {
+      const campaign = campaigns.find(c => c.id === id);
+      onCampaignChange?.(id, campaign?.code ?? "");
+    } else {
+      setLocalCampaignId(id);
+    }
+  };
+
+  const setCampaignCode = (code: string) => {
+    if (!isCampaignControlled) {
+      setLocalCampaignCode(code);
+    }
+  };
   const [campaigns, setCampaigns] = useState<{ id: string; code: string; title: string }[]>([]);
   const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
   const userClearedCampaign = useRef(false);
