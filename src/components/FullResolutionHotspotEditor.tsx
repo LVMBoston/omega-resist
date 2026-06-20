@@ -1160,6 +1160,11 @@ export const FullResolutionHotspotEditor = ({
                       {cancelLabel}
                     </Button>
                   )}
+                  {onUpdateTemplate && (
+                    <Button onClick={() => onUpdateTemplate(hotspots)} variant="outline" size="sm">
+                      {updateTemplateLabel}
+                    </Button>
+                  )}
                   <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
                     {saveLabel}
                   </Button>
