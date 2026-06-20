@@ -153,6 +153,7 @@ serve(async (req) => {
 
     const body = raw as Body;
     const { system, user } = buildPrompt(body);
+    const wantsJson = body.mode === "extract_brief";
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -166,6 +167,7 @@ serve(async (req) => {
           { role: "system", content: system },
           { role: "user", content: user },
         ],
+        ...(wantsJson ? { response_format: { type: "json_object" } } : {}),
       }),
     });
 
@@ -192,15 +194,52 @@ serve(async (req) => {
 
     const data = await aiResp.json();
     let text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
-    // Strip wrapping quotes if any
-    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
-      text = text.slice(1, -1).trim();
-    }
     if (!text) {
       return new Response(JSON.stringify({ error: "Empty response from AI" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (wantsJson) {
+      // Strip code fences if the model added them
+      text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        return new Response(JSON.stringify({ error: "AI did not return valid JSON" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const validTones: Tone[] = ["urgent", "informative", "hopeful", "defiant"];
+      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      const strArr = (v: unknown) =>
+        Array.isArray(v)
+          ? v.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean).slice(0, 5)
+          : [];
+      const toneVal = str(parsed.tone) as Tone;
+      const brief: Brief = {
+        what: str(parsed.what),
+        why: str(parsed.why),
+        when: str(parsed.when),
+        where: str(parsed.where),
+        who: str(parsed.who),
+        ask: str(parsed.ask),
+        key_facts: strArr(parsed.key_facts),
+        do_not_say: strArr(parsed.do_not_say),
+        tone: validTones.includes(toneVal) ? toneVal : "informative",
+      };
+      return new Response(JSON.stringify({ brief }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Strip wrapping quotes if any
+    if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+      text = text.slice(1, -1).trim();
     }
 
     return new Response(JSON.stringify({ text }), {
