@@ -251,28 +251,30 @@ export default function CampaignBriefWizard({
         </Select>
       </div>
 
-      <div className="rounded-md border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-sm font-medium">Campaign description</Label>
-            <p className="text-[11px] text-muted-foreground">
-              Synthesized from the brief above. Used by message drafts, narratives, and reports. Edit freely.
-            </p>
+      {!hideSynthesis && (
+        <div className="rounded-md border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Campaign description</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Synthesized from the brief above. Used by message drafts, narratives, and reports. Edit freely.
+              </p>
+            </div>
+            <div className="flex gap-1">
+              {renderSuggestBtn("description", synthesizeDescription, description ? "Regenerate" : "Synthesize")}
+            </div>
           </div>
-          <div className="flex gap-1">
-            {renderSuggestBtn("description", synthesizeDescription, description ? "Regenerate" : "Synthesize")}
+          <Textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder="Click Synthesize to draft from the brief, or type your own description."
+            rows={4}
+          />
+          <div className="flex justify-end">
+            {renderSuggestBtn("title", suggestTitle, "Suggest a better name")}
           </div>
         </div>
-        <Textarea
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="Click Synthesize to draft from the brief, or type your own description."
-          rows={4}
-        />
-        <div className="flex justify-end">
-          {renderSuggestBtn("title", suggestTitle, "Suggest a better name")}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
