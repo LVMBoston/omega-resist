@@ -125,8 +125,10 @@ export const FullResolutionHotspotEditor = ({
   onChange,
   onSave,
   onCancel,
+  onUpdateTemplate,
   saveLabel = "Save & Close",
   cancelLabel = "Exit",
+  updateTemplateLabel = "Update Template",
 }: FullResolutionHotspotEditorProps) => {
   const [hotspots, setHotspots] = useState<Hotspot[]>(initialHotspots);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
