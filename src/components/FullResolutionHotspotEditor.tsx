@@ -113,8 +113,10 @@ interface FullResolutionHotspotEditorProps {
   onChange?: (hotspots: Hotspot[]) => void;
   onSave: (hotspots: Hotspot[]) => void;
   onCancel?: () => void;
+  onUpdateTemplate?: (hotspots: Hotspot[]) => void;
   saveLabel?: string;
   cancelLabel?: string;
+  updateTemplateLabel?: string;
 }
 
 export const FullResolutionHotspotEditor = ({
