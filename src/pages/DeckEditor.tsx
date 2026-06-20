@@ -2221,6 +2221,14 @@ Add Slide(s)
                     <div className="text-muted-foreground">Deck</div>
                     <div className="font-medium break-all">{selectedSlide.deck_slug}</div>
                   </div>
+                  <div>
+                    <div className="text-muted-foreground">Size</div>
+                    <div className="font-medium">
+                      {formatBytes(getSlideBytes(selectedSlide))}
+                      <span className="text-muted-foreground"> / {formatBytes(deckTotalBytes)} deck</span>
+                    </div>
+                  </div>
+
                   
                   {/* Edit Hotspots — available for any slide type */}
                   {selectedSlide.type !== 'vimeo' && selectedSlide.type !== 'video' && (
