@@ -133,8 +133,11 @@ serve(async (req) => {
 
     const raw = (await req.json()) as Partial<Body>;
     const errors: string[] = [];
-    if (!raw.mode || !["suggest_field", "synthesize_description", "suggest_title"].includes(raw.mode)) {
+    if (!raw.mode || !["suggest_field", "synthesize_description", "suggest_title", "extract_brief"].includes(raw.mode)) {
       errors.push("invalid mode");
+    }
+    if (raw.mode === "extract_brief" && !(raw.description && raw.description.trim())) {
+      errors.push("description is required for extract_brief");
     }
     if (raw.mode === "suggest_field") {
       if (!raw.field || !["what", "why", "when", "where", "who", "ask"].includes(raw.field)) {
