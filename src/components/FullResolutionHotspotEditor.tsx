@@ -1185,11 +1185,11 @@ export const FullResolutionHotspotEditor = ({
                     </Button>
                   )}
                   {onUpdateTemplate && (
-                    <Button onClick={() => onUpdateTemplate(hotspots)} variant="outline" size="sm">
+                    <Button onClick={() => onUpdateTemplate(hotspotsWithLiveMapView())} variant="outline" size="sm">
                       {updateTemplateLabel}
                     </Button>
                   )}
-                  <Button onClick={() => onSave(hotspots)} variant="default" size="sm">
+                  <Button onClick={() => onSave(hotspotsWithLiveMapView())} variant="default" size="sm">
                     {saveLabel}
                   </Button>
                 </div>
