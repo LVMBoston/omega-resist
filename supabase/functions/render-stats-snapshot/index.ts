@@ -1044,7 +1044,11 @@ Deno.serve(async (req) => {
           | { kind: "text"; x: number; yRel: number; size: number; weight: string; text: string }
           | { kind: "advance"; delta: number };
         const ops: DrawOp[] = [];
-        let yRel = storyFontSize; // baseline of first line, relative to top padding
+        // Baseline of first line, relative to top padding. We reserve enough
+        // headroom for the title font so that a __TITLE__ first line doesn't
+        // get its top clipped by the hotspot's top edge (title is larger than
+        // body, so using storyFontSize as the first baseline crops the caps).
+        let yRel = titleFontSize;
 
         for (const rawLine of rawLines) {
           if (rawLine.trim() === "") {
