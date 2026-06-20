@@ -748,30 +748,35 @@ Deno.serve(async (req) => {
     } else {
       bgDataUrl = await fetchImageAsDataUrl(imageUrl);
       if (!bgDataUrl) {
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch background image" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        // Background image is missing/unreachable (e.g. deleted from storage,
+        // transient CDN error, case-mismatched extension). Fall back to a
+        // neutral solid color so the snapshot still renders rather than
+        // 500-ing the whole request.
+        console.warn(
+          `[render-stats-snapshot] Background image unavailable, falling back to solid color. url=${imageUrl}`
         );
-      }
-      // Derive canvas dimensions from the background image's natural aspect
-      // ratio. The editor renders hotspots over the image with object-contain,
-      // so the snapshot canvas must match the image shape — otherwise a
-      // landscape template renders into a portrait canvas (or vice versa) and
-      // hotspot percentages land in the wrong places and at the wrong sizes.
-      try {
-        const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
-        // Strip data URL prefix to get raw bytes
-        const b64 = bgDataUrl.split(",")[1] || "";
-        const bin = atob(b64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const img = await Image.decode(bytes);
-        const derived = deriveCanvasFromImage(img.width, img.height);
-        width = derived.width;
-        height = derived.height;
-        console.log(`[render-stats-snapshot] Canvas derived from image: ${img.width}x${img.height} -> ${width}x${height}`);
-      } catch (e) {
-        console.warn(`[render-stats-snapshot] Could not derive canvas from image, falling back to ${width}x${height}:`, e);
+        bgSolidColor = "#1e293b"; // slate-800 neutral fallback
+      } else {
+        // Derive canvas dimensions from the background image's natural aspect
+        // ratio. The editor renders hotspots over the image with object-contain,
+        // so the snapshot canvas must match the image shape — otherwise a
+        // landscape template renders into a portrait canvas (or vice versa) and
+        // hotspot percentages land in the wrong places and at the wrong sizes.
+        try {
+          const { Image } = await import("https://deno.land/x/imagescript@1.2.17/mod.ts");
+          // Strip data URL prefix to get raw bytes
+          const b64 = bgDataUrl.split(",")[1] || "";
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const img = await Image.decode(bytes);
+          const derived = deriveCanvasFromImage(img.width, img.height);
+          width = derived.width;
+          height = derived.height;
+          console.log(`[render-stats-snapshot] Canvas derived from image: ${img.width}x${img.height} -> ${width}x${height}`);
+        } catch (e) {
+          console.warn(`[render-stats-snapshot] Could not derive canvas from image, falling back to ${width}x${height}:`, e);
+        }
       }
     }
 
