@@ -288,8 +288,9 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       const chapterList = Array.from(groups.values());
       setChapters(chapterList);
 
-      // Lock-by-default: any chapter scope without an entry in the persisted lock set
-      // starts with all 4 fields locked. Campaign-level (scope=null) is NOT auto-locked.
+      // Lock-by-default: any scope (campaign-level OR per-chapter) without an entry
+      // in the persisted lock set starts with all 4 fields locked. User must
+      // explicitly unlock fields before generating.
       try {
         const raw = localStorage.getItem(lockStorageKey);
         const stored: string[] = raw ? JSON.parse(raw) : [];
@@ -297,9 +298,13 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
         const scopesSeen = new Set<string>();
         for (const k of stored) {
           const scope = k.split(":")[0];
-          if (scope && scope !== "campaign") scopesSeen.add(scope);
+          if (scope) scopesSeen.add(scope);
         }
         let changed = false;
+        if (!scopesSeen.has("campaign")) {
+          for (const f of ALL_GEN_FIELDS) storedSet.add(`campaign:${f}`);
+          changed = true;
+        }
         for (const ch of chapterList) {
           if (!scopesSeen.has(ch.mobilize_code)) {
             for (const f of ALL_GEN_FIELDS) {
