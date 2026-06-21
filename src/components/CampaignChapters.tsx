@@ -681,26 +681,45 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={pendingBulkOverwrite !== null} onOpenChange={(o) => { if (!o) setPendingBulkOverwrite(null); }}>
+      <AlertDialog open={pendingBulkGenerate !== null} onOpenChange={(o) => { if (!o) setPendingBulkGenerate(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace existing drafts?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkOverwrite
-                ? `This will replace your current draft${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} in ${pendingBulkOverwrite.fieldsToOverwrite.length} field${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} (${pendingBulkOverwrite.fieldsToOverwrite.map(f => GEN_FIELD_LABELS[f]).join(", ")}) with new AI-generated versions.`
-                : ""}
+            <AlertDialogTitle>Generate {pendingBulkGenerate?.toGenerate.length ?? 0} message draft{(pendingBulkGenerate?.toGenerate.length ?? 0) === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div>
+                  Scope: <span className="font-medium">{pendingBulkGenerate?.scope === null ? "Campaign default" : pendingBulkGenerate?.scope}</span>
+                </div>
+                {pendingBulkGenerate && pendingBulkGenerate.toGenerate.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Will be written:</span>{" "}
+                    {pendingBulkGenerate.toGenerate.map((f) => GEN_FIELD_LABELS[f]).join(", ")}
+                  </div>
+                )}
+                {pendingBulkGenerate && pendingBulkGenerate.toOverwrite.length > 0 && (
+                  <div className="text-amber-700 dark:text-amber-400">
+                    Overwriting existing text in: {pendingBulkGenerate.toOverwrite.map((f) => GEN_FIELD_LABELS[f]).join(", ")}
+                  </div>
+                )}
+                {pendingBulkGenerate && pendingBulkGenerate.locked.length > 0 && (
+                  <div className="text-muted-foreground">
+                    Skipped (locked): {pendingBulkGenerate.locked.map((f) => GEN_FIELD_LABELS[f]).join(", ")}
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingBulkOverwrite(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setPendingBulkGenerate(null)} autoFocus>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              const p = pendingBulkOverwrite;
-              setPendingBulkOverwrite(null);
-              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS.filter((f) => !isLocked(p.scope, f)));
-            }}>Replace all</AlertDialogAction>
+              const p = pendingBulkGenerate;
+              setPendingBulkGenerate(null);
+              if (p) runBulkGenerate(p.scope, p.toGenerate);
+            }}>Generate {pendingBulkGenerate?.toGenerate.length ?? 0} draft{(pendingBulkGenerate?.toGenerate.length ?? 0) === 1 ? "" : "s"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
