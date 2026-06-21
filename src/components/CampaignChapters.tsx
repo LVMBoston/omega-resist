@@ -331,6 +331,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     }
   };
 
+  const draftStorageKey = `campaign-message-drafts:${campaignId}`;
+
   const fetchOverrides = async () => {
     const { data } = await supabase
       .from("campaign_message_overrides")
@@ -352,10 +354,29 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       }
     }
 
-    setCampaignOverrides({ ...campaignOvr });
+    // Originals always reflect what's in the database.
     setCampaignOverridesOriginal({ ...campaignOvr });
-    setChapterOverrides({ ...chapterOvr });
     setChapterOverridesOriginal(JSON.parse(JSON.stringify(chapterOvr)));
+
+    // Hydrate any unsaved local drafts on top of the saved values so pasted
+    // text survives navigating away before clicking Save.
+    let draftCampaign: OverrideValues | null = null;
+    let draftChapters: Record<string, OverrideValues> = {};
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { campaign?: OverrideValues; chapters?: Record<string, OverrideValues> };
+        if (parsed.campaign) draftCampaign = { ...EMPTY_OVERRIDES, ...parsed.campaign };
+        if (parsed.chapters) draftChapters = parsed.chapters;
+      }
+    } catch { /* ignore */ }
+
+    setCampaignOverrides(draftCampaign ?? { ...campaignOvr });
+    const mergedChapters: Record<string, OverrideValues> = { ...chapterOvr };
+    for (const [code, vals] of Object.entries(draftChapters)) {
+      mergedChapters[code] = { ...EMPTY_OVERRIDES, ...vals };
+    }
+    setChapterOverrides(mergedChapters);
   };
 
   const fetchGlobalDefaults = async () => {
@@ -378,6 +399,29 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       setGlobalDefaults(defaults);
     }
   };
+
+  // Persist unsaved drafts to localStorage on every edit so pasted/typed text
+  // survives navigating away before clicking Save. Only stores fields that
+  // differ from the saved originals.
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const campaignDirty = JSON.stringify(campaignOverrides) !== JSON.stringify(campaignOverridesOriginal);
+      const dirtyChapters: Record<string, OverrideValues> = {};
+      for (const [code, vals] of Object.entries(chapterOverrides)) {
+        const orig = chapterOverridesOriginal[code] || EMPTY_OVERRIDES;
+        if (JSON.stringify(vals) !== JSON.stringify(orig)) dirtyChapters[code] = vals;
+      }
+      if (!campaignDirty && Object.keys(dirtyChapters).length === 0) {
+        localStorage.removeItem(draftStorageKey);
+      } else {
+        localStorage.setItem(draftStorageKey, JSON.stringify({
+          campaign: campaignDirty ? campaignOverrides : undefined,
+          chapters: dirtyChapters,
+        }));
+      }
+    } catch { /* ignore */ }
+  }, [campaignOverrides, chapterOverrides, campaignOverridesOriginal, chapterOverridesOriginal, loading, draftStorageKey]);
 
   const saveOverrides = async (mobilize_code: string | null, values: OverrideValues) => {
     const rows: any[] = [];
