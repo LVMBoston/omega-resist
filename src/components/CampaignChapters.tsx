@@ -41,7 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy, Sparkles, Lock, Unlock } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import ChapterForm from "@/components/ChapterForm";
 
@@ -113,6 +113,31 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [bulkGenerating, setBulkGenerating] = useState<string | null>(null); // scope key while bulk running
   const [pendingBulkOverwrite, setPendingBulkOverwrite] = useState<{ scope: string | null; fieldsToOverwrite: GenField[] } | null>(null);
 
+
+  // Per-field locks (client-side, persisted in localStorage). Key format: `${scope|"campaign"}:${field}`
+  const lockStorageKey = `campaign-message-locks:${campaignId}`;
+  const [lockedFields, setLockedFields] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`campaign-message-locks:${campaignId}`);
+      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const persistLocks = (next: Set<string>) => {
+    try { localStorage.setItem(lockStorageKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+  };
+  const lockKey = (scope: string | null, field: GenField) => `${scope ?? "campaign"}:${field}`;
+  const isLocked = (scope: string | null, field: GenField) => lockedFields.has(lockKey(scope, field));
+  const toggleLock = (scope: string | null, field: GenField) => {
+    setLockedFields((prev) => {
+      const next = new Set(prev);
+      const k = lockKey(scope, field);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      persistLocks(next);
+      return next;
+    });
+  };
 
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
@@ -191,6 +216,10 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   };
 
   const handleGenerateClick = (scope: string | null, field: GenField, currentValue: string) => {
+    if (isLocked(scope, field)) {
+      toast({ title: "Field is locked", description: "Unlock this field before regenerating it." });
+      return;
+    }
     if (currentValue.trim().length > 0) {
       setPendingOverwrite({ scope, field });
       return;
@@ -215,12 +244,17 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
 
   const handleBulkGenerateClick = (scope: string | null) => {
     const current = scope === null ? campaignOverrides : (chapterOverrides[scope] || { ...EMPTY_OVERRIDES });
-    const fieldsToOverwrite = ALL_GEN_FIELDS.filter((f) => (current[f] || "").trim().length > 0);
+    const unlockedFields = ALL_GEN_FIELDS.filter((f) => !isLocked(scope, f));
+    if (unlockedFields.length === 0) {
+      toast({ title: "All fields locked", description: "Unlock at least one field to generate." });
+      return;
+    }
+    const fieldsToOverwrite = unlockedFields.filter((f) => (current[f] || "").trim().length > 0);
     if (fieldsToOverwrite.length > 0) {
       setPendingBulkOverwrite({ scope, fieldsToOverwrite });
       return;
     }
-    runBulkGenerate(scope, ALL_GEN_FIELDS);
+    runBulkGenerate(scope, unlockedFields);
   };
 
 
@@ -487,7 +521,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                 campaignOverrides,
                 (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })),
                 (field) => getPlaceholder(field),
-                { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate }
+                { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate, isLocked: (f) => isLocked(null, f), onToggleLock: (f) => toggleLock(null, f) }
               )}
 
               <div className="flex gap-2 pt-2">
@@ -552,7 +586,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                         [chapter.mobilize_code]: { ...(prev[chapter.mobilize_code] || { ...EMPTY_OVERRIDES }), [field]: value },
                       })),
                       (field) => getPlaceholder(field, chapter.mobilize_code),
-                      { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate }
+                      { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate, isLocked: (f) => isLocked(chapter.mobilize_code, f), onToggleLock: (f) => toggleLock(chapter.mobilize_code, f) }
                     )}
 
                     <div className="flex gap-2 pt-2">
@@ -626,7 +660,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
             <AlertDialogAction onClick={() => {
               const p = pendingBulkOverwrite;
               setPendingBulkOverwrite(null);
-              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS);
+              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS.filter((f) => !isLocked(p.scope, f)));
             }}>Replace all</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -662,13 +696,34 @@ interface GenProps {
   onGenerate: (scope: string | null, field: GenField, currentValue: string) => void;
   generatingField: string | null;
   canGenerate: boolean;
+  isLocked: (field: GenField) => boolean;
+  onToggleLock: (field: GenField) => void;
+}
+
+function LockButton({ field, gen }: { field: GenField; gen?: GenProps }) {
+  if (!gen) return null;
+  const locked = gen.isLocked(field);
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={`h-7 w-7 shrink-0 ${locked ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+      onClick={() => gen.onToggleLock(field)}
+      title={locked ? "Unlock — allow AI to regenerate this field" : "Lock — prevent AI from regenerating this field"}
+      aria-pressed={locked}
+    >
+      {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+    </Button>
+  );
 }
 
 function GenerateButton({ field, value, gen }: { field: GenField; value: string; gen?: GenProps }) {
   if (!gen) return null;
   const key = `${gen.scope ?? "campaign"}:${field}`;
   const isBusy = gen.generatingField === key;
-  const disabled = !gen.canGenerate || gen.generatingField !== null;
+  const locked = gen.isLocked(field);
+  const disabled = !gen.canGenerate || gen.generatingField !== null || locked;
   return (
     <Button
       type="button"
@@ -676,7 +731,7 @@ function GenerateButton({ field, value, gen }: { field: GenField; value: string;
       size="sm"
       className="h-7 px-2 text-xs"
       disabled={disabled}
-      title={!gen.canGenerate ? "Add a campaign name and description first" : "Generate this message with AI"}
+      title={locked ? "Field is locked — unlock to regenerate" : (!gen.canGenerate ? "Add a campaign name and description first" : "Generate this message with AI")}
       onClick={() => gen.onGenerate(gen.scope, field, value)}
     >
       {isBusy ? (
@@ -757,6 +812,8 @@ function renderOverrideFields(
         <Label className="text-xs">{label}</Label>
         <div className="flex items-center gap-1">
           <GenerateButton field={field} value={values[field]} gen={gen} />
+          <LockButton field={field} gen={gen} />
+
           <CopyButton text={values[field] || getPlaceholder(field)} />
         </div>
       </div>
