@@ -56,8 +56,8 @@ function briefBlock(b: Brief | undefined): string | null {
 function buildPrompt(b: Body): { system: string; user: string } {
   const isSMS = b.channel === "sms";
   const lengthRule = isSMS
-    ? "MUST be 280 characters or fewer (including the {{link}} placeholder). No subject line."
-    : "Write 2–4 short paragraphs. Place {{link}} on its own line where the reader is invited to act. No subject line, no signature.";
+    ? "MUST be 280 characters or fewer (including the {{link}} placeholder). No subject line. If you use more than one paragraph, separate paragraphs with a blank line (two newline characters \\n\\n) — never run paragraphs together."
+    : "Write 2–4 short paragraphs. Separate every paragraph with a blank line (two newline characters \\n\\n) — never run paragraphs together as one block. Place {{link}} on its own line where the reader is invited to act. No subject line, no signature.";
 
   const audience =
     b.level === "l00"
