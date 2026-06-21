@@ -144,6 +144,15 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     });
   };
 
+  const lockAllForScope = (scope: string | null) => {
+    setLockedFields((prev) => {
+      const next = new Set(prev);
+      for (const f of ALL_GEN_FIELDS) next.add(lockKey(scope, f));
+      persistLocks(next);
+      return next;
+    });
+  };
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
 
@@ -499,8 +508,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const toggleChapter = (code: string) => {
     setExpandedChapters((prev) => {
       const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+        lockAllForScope(code);
+      }
       return next;
     });
   };
@@ -530,7 +543,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       </div>
 
       {/* Campaign-level overrides */}
-      <Collapsible open={campaignOverridesOpen} onOpenChange={setCampaignOverridesOpen}>
+      <Collapsible open={campaignOverridesOpen} onOpenChange={(o) => { setCampaignOverridesOpen(o); if (o) lockAllForScope(null); }}>
         <Card>
           <CardHeader className="pb-2">
             <CollapsibleTrigger asChild>
