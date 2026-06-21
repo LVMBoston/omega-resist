@@ -114,6 +114,31 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [pendingBulkOverwrite, setPendingBulkOverwrite] = useState<{ scope: string | null; fieldsToOverwrite: GenField[] } | null>(null);
 
 
+  // Per-field locks (client-side, persisted in localStorage). Key format: `${scope|"campaign"}:${field}`
+  const lockStorageKey = `campaign-message-locks:${campaignId}`;
+  const [lockedFields, setLockedFields] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`campaign-message-locks:${campaignId}`);
+      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const persistLocks = (next: Set<string>) => {
+    try { localStorage.setItem(lockStorageKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+  };
+  const lockKey = (scope: string | null, field: GenField) => `${scope ?? "campaign"}:${field}`;
+  const isLocked = (scope: string | null, field: GenField) => lockedFields.has(lockKey(scope, field));
+  const toggleLock = (scope: string | null, field: GenField) => {
+    setLockedFields((prev) => {
+      const next = new Set(prev);
+      const k = lockKey(scope, field);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      persistLocks(next);
+      return next;
+    });
+  };
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
 
