@@ -41,7 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, RotateCcw, Save, Loader2, Copy, Sparkles, Lock, Unlock } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import ChapterForm from "@/components/ChapterForm";
 
