@@ -508,8 +508,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const toggleChapter = (code: string) => {
     setExpandedChapters((prev) => {
       const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+        lockAllForScope(code);
+      }
       return next;
     });
   };
