@@ -252,16 +252,13 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const handleBulkGenerateClick = (scope: string | null) => {
     const current = scope === null ? campaignOverrides : (chapterOverrides[scope] || { ...EMPTY_OVERRIDES });
     const unlockedFields = ALL_GEN_FIELDS.filter((f) => !isLocked(scope, f));
+    const lockedList = ALL_GEN_FIELDS.filter((f) => isLocked(scope, f));
     if (unlockedFields.length === 0) {
       toast({ title: "All fields locked", description: "Unlock at least one field to generate." });
       return;
     }
-    const fieldsToOverwrite = unlockedFields.filter((f) => (current[f] || "").trim().length > 0);
-    if (fieldsToOverwrite.length > 0) {
-      setPendingBulkOverwrite({ scope, fieldsToOverwrite });
-      return;
-    }
-    runBulkGenerate(scope, unlockedFields);
+    const toOverwrite = unlockedFields.filter((f) => (current[f] || "").trim().length > 0);
+    setPendingBulkGenerate({ scope, toGenerate: unlockedFields, toOverwrite, locked: lockedList });
   };
 
 
