@@ -696,13 +696,34 @@ interface GenProps {
   onGenerate: (scope: string | null, field: GenField, currentValue: string) => void;
   generatingField: string | null;
   canGenerate: boolean;
+  isLocked: (field: GenField) => boolean;
+  onToggleLock: (field: GenField) => void;
+}
+
+function LockButton({ field, gen }: { field: GenField; gen?: GenProps }) {
+  if (!gen) return null;
+  const locked = gen.isLocked(field);
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={`h-7 w-7 shrink-0 ${locked ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+      onClick={() => gen.onToggleLock(field)}
+      title={locked ? "Unlock — allow AI to regenerate this field" : "Lock — prevent AI from regenerating this field"}
+      aria-pressed={locked}
+    >
+      {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+    </Button>
+  );
 }
 
 function GenerateButton({ field, value, gen }: { field: GenField; value: string; gen?: GenProps }) {
   if (!gen) return null;
   const key = `${gen.scope ?? "campaign"}:${field}`;
   const isBusy = gen.generatingField === key;
-  const disabled = !gen.canGenerate || gen.generatingField !== null;
+  const locked = gen.isLocked(field);
+  const disabled = !gen.canGenerate || gen.generatingField !== null || locked;
   return (
     <Button
       type="button"
@@ -710,7 +731,7 @@ function GenerateButton({ field, value, gen }: { field: GenField; value: string;
       size="sm"
       className="h-7 px-2 text-xs"
       disabled={disabled}
-      title={!gen.canGenerate ? "Add a campaign name and description first" : "Generate this message with AI"}
+      title={locked ? "Field is locked — unlock to regenerate" : (!gen.canGenerate ? "Add a campaign name and description first" : "Generate this message with AI")}
       onClick={() => gen.onGenerate(gen.scope, field, value)}
     >
       {isBusy ? (
