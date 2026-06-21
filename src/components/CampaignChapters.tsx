@@ -144,6 +144,15 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     });
   };
 
+  const lockAllForScope = (scope: string | null) => {
+    setLockedFields((prev) => {
+      const next = new Set(prev);
+      for (const f of ALL_GEN_FIELDS) next.add(lockKey(scope, f));
+      persistLocks(next);
+      return next;
+    });
+  };
+
   // Global defaults for placeholders
   const [globalDefaults, setGlobalDefaults] = useState<OverrideValues>({ ...EMPTY_OVERRIDES });
 
