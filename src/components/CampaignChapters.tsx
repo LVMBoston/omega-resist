@@ -286,7 +286,35 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           });
         }
       }
-      setChapters(Array.from(groups.values()));
+      const chapterList = Array.from(groups.values());
+      setChapters(chapterList);
+
+      // Lock-by-default: any chapter scope without an entry in the persisted lock set
+      // starts with all 4 fields locked. Campaign-level (scope=null) is NOT auto-locked.
+      try {
+        const raw = localStorage.getItem(lockStorageKey);
+        const stored: string[] = raw ? JSON.parse(raw) : [];
+        const storedSet = new Set(stored);
+        const scopesSeen = new Set<string>();
+        for (const k of stored) {
+          const scope = k.split(":")[0];
+          if (scope && scope !== "campaign") scopesSeen.add(scope);
+        }
+        let changed = false;
+        for (const ch of chapterList) {
+          if (!scopesSeen.has(ch.mobilize_code)) {
+            for (const f of ALL_GEN_FIELDS) {
+              storedSet.add(`${ch.mobilize_code}:${f}`);
+            }
+            changed = true;
+          }
+        }
+        if (changed) {
+          const next = Array.from(storedSet);
+          localStorage.setItem(lockStorageKey, JSON.stringify(next));
+          setLockedFields(new Set(next));
+        }
+      } catch { /* ignore */ }
     }
   };
 
