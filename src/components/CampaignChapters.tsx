@@ -580,6 +580,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                       bulkGenerating={bulkGenerating === chapter.mobilize_code}
                       anyFieldGenerating={generatingField !== null}
                       onBulkGenerate={() => handleBulkGenerateClick(chapter.mobilize_code)}
+                      isLocked={(f) => isLocked(chapter.mobilize_code, f)}
+                      onToggleLock={(f) => toggleLock(chapter.mobilize_code, f)}
                     />
                     {renderOverrideFields(
                       ovr,
