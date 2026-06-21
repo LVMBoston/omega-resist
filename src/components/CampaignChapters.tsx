@@ -112,6 +112,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
   const [bulkGenerating, setBulkGenerating] = useState<string | null>(null); // scope key while bulk running
   const [pendingBulkOverwrite, setPendingBulkOverwrite] = useState<{ scope: string | null; fieldsToOverwrite: GenField[] } | null>(null);
+  const [pendingBulkGenerate, setPendingBulkGenerate] = useState<{
+    scope: string | null;
+    toGenerate: GenField[];
+    toOverwrite: GenField[];
+    locked: GenField[];
+  } | null>(null);
 
 
   // Per-field locks (client-side, persisted in localStorage). Key format: `${scope|"campaign"}:${field}`
