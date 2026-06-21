@@ -521,7 +521,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                 campaignOverrides,
                 (field, value) => setCampaignOverrides((prev) => ({ ...prev, [field]: value })),
                 (field) => getPlaceholder(field),
-                { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate }
+                { scope: null, onGenerate: handleGenerateClick, generatingField, canGenerate, isLocked: (f) => isLocked(null, f), onToggleLock: (f) => toggleLock(null, f) }
               )}
 
               <div className="flex gap-2 pt-2">
