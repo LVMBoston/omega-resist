@@ -660,7 +660,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
             <AlertDialogAction onClick={() => {
               const p = pendingBulkOverwrite;
               setPendingBulkOverwrite(null);
-              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS);
+              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS.filter((f) => !isLocked(p.scope, f)));
             }}>Replace all</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
