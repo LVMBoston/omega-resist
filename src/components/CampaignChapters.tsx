@@ -586,7 +586,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                         [chapter.mobilize_code]: { ...(prev[chapter.mobilize_code] || { ...EMPTY_OVERRIDES }), [field]: value },
                       })),
                       (field) => getPlaceholder(field, chapter.mobilize_code),
-                      { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate }
+                      { scope: chapter.mobilize_code, onGenerate: handleGenerateClick, generatingField, canGenerate, isLocked: (f) => isLocked(chapter.mobilize_code, f), onToggleLock: (f) => toggleLock(chapter.mobilize_code, f) }
                     )}
 
                     <div className="flex gap-2 pt-2">
