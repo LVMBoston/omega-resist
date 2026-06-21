@@ -400,6 +400,29 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     }
   };
 
+  // Persist unsaved drafts to localStorage on every edit so pasted/typed text
+  // survives navigating away before clicking Save. Only stores fields that
+  // differ from the saved originals.
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const campaignDirty = JSON.stringify(campaignOverrides) !== JSON.stringify(campaignOverridesOriginal);
+      const dirtyChapters: Record<string, OverrideValues> = {};
+      for (const [code, vals] of Object.entries(chapterOverrides)) {
+        const orig = chapterOverridesOriginal[code] || EMPTY_OVERRIDES;
+        if (JSON.stringify(vals) !== JSON.stringify(orig)) dirtyChapters[code] = vals;
+      }
+      if (!campaignDirty && Object.keys(dirtyChapters).length === 0) {
+        localStorage.removeItem(draftStorageKey);
+      } else {
+        localStorage.setItem(draftStorageKey, JSON.stringify({
+          campaign: campaignDirty ? campaignOverrides : undefined,
+          chapters: dirtyChapters,
+        }));
+      }
+    } catch { /* ignore */ }
+  }, [campaignOverrides, chapterOverrides, campaignOverridesOriginal, chapterOverridesOriginal, loading, draftStorageKey]);
+
   const saveOverrides = async (mobilize_code: string | null, values: OverrideValues) => {
     const rows: any[] = [];
     const deleteConditions: { category: string; key: string }[] = [];
