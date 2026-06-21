@@ -812,6 +812,8 @@ function renderOverrideFields(
         <Label className="text-xs">{label}</Label>
         <div className="flex items-center gap-1">
           <GenerateButton field={field} value={values[field]} gen={gen} />
+          <LockButton field={field} gen={gen} />
+
           <CopyButton text={values[field] || getPlaceholder(field)} />
         </div>
       </div>
