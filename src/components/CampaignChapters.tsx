@@ -331,6 +331,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
     }
   };
 
+  const draftStorageKey = `campaign-message-drafts:${campaignId}`;
+
   const fetchOverrides = async () => {
     const { data } = await supabase
       .from("campaign_message_overrides")
@@ -352,10 +354,29 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       }
     }
 
-    setCampaignOverrides({ ...campaignOvr });
+    // Originals always reflect what's in the database.
     setCampaignOverridesOriginal({ ...campaignOvr });
-    setChapterOverrides({ ...chapterOvr });
     setChapterOverridesOriginal(JSON.parse(JSON.stringify(chapterOvr)));
+
+    // Hydrate any unsaved local drafts on top of the saved values so pasted
+    // text survives navigating away before clicking Save.
+    let draftCampaign: OverrideValues | null = null;
+    let draftChapters: Record<string, OverrideValues> = {};
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { campaign?: OverrideValues; chapters?: Record<string, OverrideValues> };
+        if (parsed.campaign) draftCampaign = { ...EMPTY_OVERRIDES, ...parsed.campaign };
+        if (parsed.chapters) draftChapters = parsed.chapters;
+      }
+    } catch { /* ignore */ }
+
+    setCampaignOverrides(draftCampaign ?? { ...campaignOvr });
+    const mergedChapters: Record<string, OverrideValues> = { ...chapterOvr };
+    for (const [code, vals] of Object.entries(draftChapters)) {
+      mergedChapters[code] = { ...EMPTY_OVERRIDES, ...vals };
+    }
+    setChapterOverrides(mergedChapters);
   };
 
   const fetchGlobalDefaults = async () => {
