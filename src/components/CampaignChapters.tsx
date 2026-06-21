@@ -216,6 +216,10 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   };
 
   const handleGenerateClick = (scope: string | null, field: GenField, currentValue: string) => {
+    if (isLocked(scope, field)) {
+      toast({ title: "Field is locked", description: "Unlock this field before regenerating it." });
+      return;
+    }
     if (currentValue.trim().length > 0) {
       setPendingOverwrite({ scope, field });
       return;
@@ -240,12 +244,17 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
 
   const handleBulkGenerateClick = (scope: string | null) => {
     const current = scope === null ? campaignOverrides : (chapterOverrides[scope] || { ...EMPTY_OVERRIDES });
-    const fieldsToOverwrite = ALL_GEN_FIELDS.filter((f) => (current[f] || "").trim().length > 0);
+    const unlockedFields = ALL_GEN_FIELDS.filter((f) => !isLocked(scope, f));
+    if (unlockedFields.length === 0) {
+      toast({ title: "All fields locked", description: "Unlock at least one field to generate." });
+      return;
+    }
+    const fieldsToOverwrite = unlockedFields.filter((f) => (current[f] || "").trim().length > 0);
     if (fieldsToOverwrite.length > 0) {
       setPendingBulkOverwrite({ scope, fieldsToOverwrite });
       return;
     }
-    runBulkGenerate(scope, ALL_GEN_FIELDS);
+    runBulkGenerate(scope, unlockedFields);
   };
 
 
