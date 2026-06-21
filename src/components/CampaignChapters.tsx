@@ -59,7 +59,7 @@ const GEN_FIELD_LABELS: Record<GenField, string> = {
   emailL00: "Email L00",
   emailL01: "Email L01",
 };
-
+const ALL_GEN_FIELDS: GenField[] = ["smsL00", "smsL01", "emailL00", "emailL01"];
 
 interface CampaignChaptersProps {
   campaignId: string;
