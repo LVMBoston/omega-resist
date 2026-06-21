@@ -539,7 +539,7 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
       </div>
 
       {/* Campaign-level overrides */}
-      <Collapsible open={campaignOverridesOpen} onOpenChange={setCampaignOverridesOpen}>
+      <Collapsible open={campaignOverridesOpen} onOpenChange={(o) => { setCampaignOverridesOpen(o); if (o) lockAllForScope(null); }}>
         <Card>
           <CardHeader className="pb-2">
             <CollapsibleTrigger asChild>
