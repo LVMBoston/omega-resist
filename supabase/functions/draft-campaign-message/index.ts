@@ -57,7 +57,7 @@ function buildPrompt(b: Body): { system: string; user: string } {
   const isSMS = b.channel === "sms";
   const lengthRule = isSMS
     ? "MUST be 280 characters or fewer (including the {{link}} placeholder). No subject line. If you use more than one paragraph, separate paragraphs with a blank line (two newline characters \\n\\n) — never run paragraphs together."
-    : "Write 2–4 short paragraphs. Separate every paragraph with a blank line (two newline characters \\n\\n) — never run paragraphs together as one block. Place {{link}} on its own line where the reader is invited to act. No subject line, no signature.";
+    : "Write 2–4 short paragraphs. Separate every paragraph with a blank line (two newline characters \\n\\n) — never run paragraphs together as one block. No subject line, no signature.";
 
   const audience =
     b.level === "l00"
@@ -69,7 +69,8 @@ function buildPrompt(b: Body): { system: string; user: string } {
     audience,
     `Channel: ${b.channel.toUpperCase()}. Level: ${b.level.toUpperCase()}.`,
     lengthRule,
-    `Allowed placeholders: {{link}}, {{city}}, {{state}}, {{site_name}}. Use {{link}} exactly once. Never invent other {{...}} tokens.`,
+    `Allowed placeholders: {{link}}, {{city}}, {{state}}. Use {{link}} exactly once. Never invent other {{...}} tokens. Do NOT use {{site_name}} — write the campaign name in plain text instead.`,
+    `Place {{link}} on its own line, preceded by a blank line (\\n\\n). Do NOT put {{link}} inline inside a sentence.`,
     `Plain text only — no markdown, no headings, no bullet lists.`,
     `${TONE_GUIDANCE[b.tone]}`,
     `Always begin the message with a brief greeting such as "Hi", "Hello", "Hey", or "Friends" — followed by a comma, then the first sentence. Do not skip the greeting.`,
