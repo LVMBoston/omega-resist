@@ -232,11 +232,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const runBulkGenerate = async (scope: string | null, fields: GenField[]) => {
     const scopeKey = scope ?? "campaign";
     setBulkGenerating(scopeKey);
+    sonnerToast(`Generating ${fields.length} message draft${fields.length === 1 ? "" : "s"}…`);
     try {
       for (const field of fields) {
         await runGenerate(scope, field);
       }
-      toast({ title: "AI drafts ready", description: `Generated ${fields.length} message${fields.length === 1 ? "" : "s"}.` });
+      sonnerToast.success(`Confirmed: ${fields.length} message draft${fields.length === 1 ? "" : "s"} generated.`);
     } finally {
       setBulkGenerating(null);
     }
