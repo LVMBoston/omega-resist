@@ -59,7 +59,7 @@ const GEN_FIELD_LABELS: Record<GenField, string> = {
   emailL00: "Email L00",
   emailL01: "Email L01",
 };
-
+const ALL_GEN_FIELDS: GenField[] = ["smsL00", "smsL01", "emailL00", "emailL01"];
 
 interface CampaignChaptersProps {
   campaignId: string;
@@ -516,6 +516,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                 bulkGenerating={bulkGenerating === "campaign"}
                 anyFieldGenerating={generatingField !== null}
                 onBulkGenerate={() => handleBulkGenerateClick(null)}
+                isLocked={(f) => isLocked(null, f)}
+                onToggleLock={(f) => toggleLock(null, f)}
               />
               {renderOverrideFields(
                 campaignOverrides,
@@ -578,6 +580,8 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
                       bulkGenerating={bulkGenerating === chapter.mobilize_code}
                       anyFieldGenerating={generatingField !== null}
                       onBulkGenerate={() => handleBulkGenerateClick(chapter.mobilize_code)}
+                      isLocked={(f) => isLocked(chapter.mobilize_code, f)}
+                      onToggleLock={(f) => toggleLock(chapter.mobilize_code, f)}
                     />
                     {renderOverrideFields(
                       ovr,
@@ -751,10 +755,23 @@ interface BulkGenerateBarProps {
   bulkGenerating: boolean;
   anyFieldGenerating: boolean;
   onBulkGenerate: () => void;
+  isLocked: (field: GenField) => boolean;
+  onToggleLock: (field: GenField) => void;
 }
 
-function BulkGenerateBar({ scope, tone, setTone, canGenerate, bulkGenerating, anyFieldGenerating, onBulkGenerate }: BulkGenerateBarProps) {
+function BulkGenerateBar({ scope, tone, setTone, canGenerate, bulkGenerating, anyFieldGenerating, onBulkGenerate, isLocked, onToggleLock }: BulkGenerateBarProps) {
   const disabled = !canGenerate || anyFieldGenerating;
+  const allLocked = ALL_GEN_FIELDS.every((f) => isLocked(f));
+  const anyLocked = ALL_GEN_FIELDS.some((f) => isLocked(f));
+  const handleBulkLock = () => {
+    if (allLocked) {
+      ALL_GEN_FIELDS.forEach((f) => onToggleLock(f));
+    } else {
+      ALL_GEN_FIELDS.forEach((f) => {
+        if (!isLocked(f)) onToggleLock(f);
+      });
+    }
+  };
   return (
     <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -776,19 +793,31 @@ function BulkGenerateBar({ scope, tone, setTone, canGenerate, bulkGenerating, an
             <SelectItem value="defiant">Defiant</SelectItem>
           </SelectContent>
         </Select>
-        <Button
-          type="button"
-          size="sm"
-          onClick={onBulkGenerate}
-          disabled={disabled}
-          className="ml-auto"
-        >
-          {bulkGenerating ? (
-            <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Generating all 4…</>
-          ) : (
-            <><Sparkles className="mr-2 h-3 w-3" />Generate all 4 drafts</>
-          )}
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 shrink-0 ${allLocked ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+            onClick={handleBulkLock}
+            title={allLocked ? "Unlock all 4 fields" : anyLocked ? "Lock remaining unlocked fields" : "Lock all 4 fields"}
+            aria-pressed={allLocked}
+          >
+            {allLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onBulkGenerate}
+            disabled={disabled || allLocked}
+          >
+            {bulkGenerating ? (
+              <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Generating all 4…</>
+            ) : (
+              <><Sparkles className="mr-2 h-3 w-3" />Generate all 4 drafts</>
+            )}
+          </Button>
+        </div>
       </div>
       {!canGenerate && (
         <p className="text-xs text-muted-foreground">
