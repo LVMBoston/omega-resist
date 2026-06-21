@@ -111,7 +111,12 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const [generatingField, setGeneratingField] = useState<string | null>(null);
   const [pendingOverwrite, setPendingOverwrite] = useState<{ scope: string | null; field: GenField } | null>(null);
   const [bulkGenerating, setBulkGenerating] = useState<string | null>(null); // scope key while bulk running
-  const [pendingBulkOverwrite, setPendingBulkOverwrite] = useState<{ scope: string | null; fieldsToOverwrite: GenField[] } | null>(null);
+  const [pendingBulkGenerate, setPendingBulkGenerate] = useState<{
+    scope: string | null;
+    toGenerate: GenField[];
+    toOverwrite: GenField[];
+    locked: GenField[];
+  } | null>(null);
 
 
   // Per-field locks (client-side, persisted in localStorage). Key format: `${scope|"campaign"}:${field}`
@@ -246,16 +251,13 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
   const handleBulkGenerateClick = (scope: string | null) => {
     const current = scope === null ? campaignOverrides : (chapterOverrides[scope] || { ...EMPTY_OVERRIDES });
     const unlockedFields = ALL_GEN_FIELDS.filter((f) => !isLocked(scope, f));
+    const lockedList = ALL_GEN_FIELDS.filter((f) => isLocked(scope, f));
     if (unlockedFields.length === 0) {
       toast({ title: "All fields locked", description: "Unlock at least one field to generate." });
       return;
     }
-    const fieldsToOverwrite = unlockedFields.filter((f) => (current[f] || "").trim().length > 0);
-    if (fieldsToOverwrite.length > 0) {
-      setPendingBulkOverwrite({ scope, fieldsToOverwrite });
-      return;
-    }
-    runBulkGenerate(scope, unlockedFields);
+    const toOverwrite = unlockedFields.filter((f) => (current[f] || "").trim().length > 0);
+    setPendingBulkGenerate({ scope, toGenerate: unlockedFields, toOverwrite, locked: lockedList });
   };
 
 
@@ -283,7 +285,35 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
           });
         }
       }
-      setChapters(Array.from(groups.values()));
+      const chapterList = Array.from(groups.values());
+      setChapters(chapterList);
+
+      // Lock-by-default: any chapter scope without an entry in the persisted lock set
+      // starts with all 4 fields locked. Campaign-level (scope=null) is NOT auto-locked.
+      try {
+        const raw = localStorage.getItem(lockStorageKey);
+        const stored: string[] = raw ? JSON.parse(raw) : [];
+        const storedSet = new Set(stored);
+        const scopesSeen = new Set<string>();
+        for (const k of stored) {
+          const scope = k.split(":")[0];
+          if (scope && scope !== "campaign") scopesSeen.add(scope);
+        }
+        let changed = false;
+        for (const ch of chapterList) {
+          if (!scopesSeen.has(ch.mobilize_code)) {
+            for (const f of ALL_GEN_FIELDS) {
+              storedSet.add(`${ch.mobilize_code}:${f}`);
+            }
+            changed = true;
+          }
+        }
+        if (changed) {
+          const next = Array.from(storedSet);
+          localStorage.setItem(lockStorageKey, JSON.stringify(next));
+          setLockedFields(new Set(next));
+        }
+      } catch { /* ignore */ }
     }
   };
 
@@ -650,26 +680,45 @@ export default function CampaignChapters({ campaignId }: CampaignChaptersProps) 
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={pendingBulkOverwrite !== null} onOpenChange={(o) => { if (!o) setPendingBulkOverwrite(null); }}>
+      <AlertDialog open={pendingBulkGenerate !== null} onOpenChange={(o) => { if (!o) setPendingBulkGenerate(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace existing drafts?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingBulkOverwrite
-                ? `This will replace your current draft${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} in ${pendingBulkOverwrite.fieldsToOverwrite.length} field${pendingBulkOverwrite.fieldsToOverwrite.length === 1 ? "" : "s"} (${pendingBulkOverwrite.fieldsToOverwrite.map(f => GEN_FIELD_LABELS[f]).join(", ")}) with new AI-generated versions.`
-                : ""}
+            <AlertDialogTitle>Generate {pendingBulkGenerate?.toGenerate.length ?? 0} message draft{(pendingBulkGenerate?.toGenerate.length ?? 0) === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div>
+                  Scope: <span className="font-medium">{pendingBulkGenerate?.scope === null ? "Campaign default" : pendingBulkGenerate?.scope}</span>
+                </div>
+                {pendingBulkGenerate && pendingBulkGenerate.toGenerate.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Will be written:</span>{" "}
+                    {pendingBulkGenerate.toGenerate.map((f) => GEN_FIELD_LABELS[f]).join(", ")}
+                  </div>
+                )}
+                {pendingBulkGenerate && pendingBulkGenerate.toOverwrite.length > 0 && (
+                  <div className="text-amber-700 dark:text-amber-400">
+                    Overwriting existing text in: {pendingBulkGenerate.toOverwrite.map((f) => GEN_FIELD_LABELS[f]).join(", ")}
+                  </div>
+                )}
+                {pendingBulkGenerate && pendingBulkGenerate.locked.length > 0 && (
+                  <div className="text-muted-foreground">
+                    Skipped (locked): {pendingBulkGenerate.locked.map((f) => GEN_FIELD_LABELS[f]).join(", ")}
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingBulkOverwrite(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setPendingBulkGenerate(null)} autoFocus>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              const p = pendingBulkOverwrite;
-              setPendingBulkOverwrite(null);
-              if (p) runBulkGenerate(p.scope, ALL_GEN_FIELDS.filter((f) => !isLocked(p.scope, f)));
-            }}>Replace all</AlertDialogAction>
+              const p = pendingBulkGenerate;
+              setPendingBulkGenerate(null);
+              if (p) runBulkGenerate(p.scope, p.toGenerate);
+            }}>Generate {pendingBulkGenerate?.toGenerate.length ?? 0} draft{(pendingBulkGenerate?.toGenerate.length ?? 0) === 1 ? "" : "s"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }

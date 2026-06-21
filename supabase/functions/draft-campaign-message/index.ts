@@ -72,6 +72,7 @@ function buildPrompt(b: Body): { system: string; user: string } {
     `Allowed placeholders: {{link}}, {{city}}, {{state}}, {{site_name}}. Use {{link}} exactly once. Never invent other {{...}} tokens.`,
     `Plain text only — no markdown, no headings, no bullet lists.`,
     `${TONE_GUIDANCE[b.tone]}`,
+    `Always begin the message with a brief greeting such as "Hi", "Hello", "Hey", or "Friends" — followed by a comma, then the first sentence. Do not skip the greeting.`,
     `Return ONLY the message body. Do not add commentary, quotes, or labels like "SMS:".`,
   ].join("\n");
 

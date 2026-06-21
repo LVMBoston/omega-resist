@@ -57,3 +57,25 @@ d. The same bar appears on every expanded chapter card.
 e. On a campaign with no description, the pill shows amber
    "Needs campaign description" and both bulk and per-field Generate
    buttons are visibly disabled with an inline explanation.
+
+## Update — 2026-06-21
+
+**Status: Approved & Implemented**
+
+Three additions to harden AI message drafting against accidental output and improve message quality:
+
+1. **Greeting required.** The `draft-campaign-message` edge function's system prompt now instructs the model to always open every SMS and email with a brief greeting ("Hi", "Hello", "Hey", or "Friends"), followed by a comma, then the first sentence. Applies to all four field types at every scope (campaign default + chapter, L00 + L01).
+
+2. **Always-on confirm dialog for bulk generate.** Previously, the bulk "Generate all 4 drafts" button only prompted when existing text would be overwritten. Now **every** click opens a confirm dialog that lists:
+   a. The scope (campaign default or named chapter).
+   b. Which fields will be written.
+   c. Which fields have existing text that will be overwritten (highlighted amber).
+   d. Which fields are locked and will be skipped.
+   The dialog's default focus is on **Cancel**; the confirm button reads "Generate N draft(s)".
+
+3. **Lock-by-default for chapter rows.** When the chapter list loads, any chapter scope without a saved lock state in `localStorage` (key `campaign-message-locks:${campaignId}`) starts with all 4 of its fields locked. The campaign-level scope is **not** auto-locked — it remains how the user authors hand-written defaults. Existing chapters with any prior lock state are left untouched. The user must explicitly unlock fields on a new chapter before bulk-generation can run.
+
+Files touched:
+a. `supabase/functions/draft-campaign-message/index.ts`
+b. `src/components/CampaignChapters.tsx`
+c. This file.
