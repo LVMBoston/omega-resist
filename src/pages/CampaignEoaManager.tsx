@@ -1516,8 +1516,16 @@ export default function CampaignEoaManager() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center mb-2">
-              <CardTitle>
+              <CardTitle className="flex items-center gap-2">
                 Event/Actions for {campaign.title}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p className="text-sm">To create a test EoA, set its Mobilize Code to something starting with TEST (e.g., TEST, TEST-rally). Events from test EoAs are marked as simulated and excluded from real campaign data.</p>
+                  </TooltipContent>
+                </Tooltip>
               </CardTitle>
               <div className="flex gap-2">
                 {(userRole === "admin" || userRole === "manager") && (
