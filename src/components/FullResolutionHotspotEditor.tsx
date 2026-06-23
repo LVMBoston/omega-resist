@@ -38,7 +38,7 @@ import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   icon?: React.ComponentType<{ className?: string; size?: number }>;
   imageUrl?: string;
   width: number;
@@ -48,7 +48,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   label: string;
   x: number;
   y: number;
@@ -62,6 +62,8 @@ interface Hotspot {
   fallbackUrl?: string;
   emailLinksSubject?: string;
   emailLinksShowLabels?: boolean;
+  supportEmail?: string;
+  supportSubject?: string;
   isTransparent?: boolean;
   // Data hotspot fields
   metricKey?: string;
@@ -84,6 +86,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 5, height: 4 },
   // Email variants
   { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 5, height: 4 },
+  { id: "email-support", label: "Support", type: "email_support", imageUrl: mailIcon, width: 5, height: 4 },
   // Social variants
   { id: "social-facebook", label: "Facebook (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-instagram", label: "Instagram (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
@@ -105,7 +108,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "image-paste", label: "Image", type: "image", icon: ImageIcon as any, width: 30, height: 30 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map" | "image";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "live_number" | "chart" | "map" | "image";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -282,6 +285,7 @@ export const FullResolutionHotspotEditor = ({
     social: shareIcon,
     external_link: externalLinkIcon,
     email_links: emailLinksIcon,
+    email_support: mailIcon,
     video: playButtonIcon,
     live_number: null,
     chart: null,
@@ -295,6 +299,7 @@ export const FullResolutionHotspotEditor = ({
     social: null,
     external_link: null,
     email_links: null,
+    email_support: null,
     video: null,
     live_number: Hash,
     chart: BarChart3,
@@ -308,6 +313,7 @@ export const FullResolutionHotspotEditor = ({
     social: "Social",
     external_link: "Link",
     email_links: "Email Links",
+    email_support: "Support",
     video: "Video",
     live_number: "Number",
     chart: "Chart",
