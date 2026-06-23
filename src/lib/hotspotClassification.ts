@@ -5,7 +5,7 @@
  */
 
 export const ACTION_HOTSPOT_TYPES = new Set([
-  'sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'video', 'vimeo', 'youtube'
+  'sms', 'email', 'social', 'external_link', 'app_download', 'email_links', 'email_support', 'video', 'vimeo', 'youtube'
 ]);
 
 export const DATA_HOTSPOT_TYPES = new Set([
