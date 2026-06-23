@@ -890,6 +890,16 @@ const InteractiveSlideOverlay = ({
         };
       case "email_links":
         return () => { if (hotspot) handleEmailLinks(hotspot); };
+      case "email_support":
+        return () => {
+          const addr = (hotspot?.supportEmail || "").trim();
+          if (!addr) {
+            toast({ variant: "destructive", title: "No support address set", description: "This support button has no email address configured." });
+            return;
+          }
+          const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
+          window.location.href = `mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`;
+        };
       case "social":
       case "form_trigger":
       case "custom":

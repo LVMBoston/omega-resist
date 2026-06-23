@@ -139,6 +139,9 @@ export interface Hotspot {
   emailLinksSubject?: string;      // Subject line for mailto
   emailLinksShowLabels?: boolean;  // Show label text on overlay at runtime
   isTransparent?: boolean;         // Hide icon — transparent tap target over slide image
+  // Support email hotspot properties
+  supportEmail?: string;           // Recipient address for email_support mailto
+  supportSubject?: string;         // Optional subject line for email_support mailto
   // Image hotspot properties
   imageSrc?: string;               // Public URL of pasted/uploaded image
   imageNaturalRatio?: number;      // naturalWidth / naturalHeight — used to lock aspect ratio
@@ -206,6 +209,7 @@ export type HotspotActionType =
   | 'map'              // Map visualization
   | 'app_download'     // Universal app store redirect
   | 'email_links'      // Bundle sibling external_link URLs into mailto
+  | 'email_support'    // Mailto to a specific support address with optional subject
   | 'video'            // Unified video player (auto-detects YouTube or Vimeo from URL)
   | 'vimeo'            // @deprecated — use 'video'; kept for backward compat with existing data
   | 'youtube'          // @deprecated — use 'video'; kept for backward compat with existing data

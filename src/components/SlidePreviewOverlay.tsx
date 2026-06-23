@@ -42,6 +42,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   social: Share2,
   external_link: LinkIcon,
   email_links: Mail,
+  email_support: Mail,
   video: Video,
   vimeo: Video,     // legacy
   youtube: Video,   // legacy

@@ -38,7 +38,7 @@ import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   icon?: React.ComponentType<{ className?: string; size?: number }>;
   imageUrl?: string;
   width: number;
@@ -48,7 +48,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
   label: string;
   x: number;
   y: number;
@@ -62,6 +62,8 @@ interface Hotspot {
   fallbackUrl?: string;
   emailLinksSubject?: string;
   emailLinksShowLabels?: boolean;
+  supportEmail?: string;
+  supportSubject?: string;
   isTransparent?: boolean;
   // Data hotspot fields
   metricKey?: string;
@@ -84,6 +86,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "sms-ios", label: "Text Message", type: "sms", imageUrl: textIcon, width: 5, height: 4 },
   // Email variants
   { id: "email-ios", label: "Email", type: "email", imageUrl: mailIcon, width: 5, height: 4 },
+  { id: "email-support", label: "Support", type: "email_support", imageUrl: mailIcon, width: 5, height: 4 },
   // Social variants
   { id: "social-facebook", label: "Facebook (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
   { id: "social-instagram", label: "Instagram (placeholder)", type: "social", imageUrl: SOCIAL_PLACEHOLDER, width: 5, height: 4 },
@@ -105,7 +108,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "image-paste", label: "Image", type: "image", icon: ImageIcon as any, width: 30, height: 30 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "video" | "live_number" | "chart" | "map" | "image";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "live_number" | "chart" | "map" | "image";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -282,6 +285,7 @@ export const FullResolutionHotspotEditor = ({
     social: shareIcon,
     external_link: externalLinkIcon,
     email_links: emailLinksIcon,
+    email_support: mailIcon,
     video: playButtonIcon,
     live_number: null,
     chart: null,
@@ -295,6 +299,7 @@ export const FullResolutionHotspotEditor = ({
     social: null,
     external_link: null,
     email_links: null,
+    email_support: null,
     video: null,
     live_number: Hash,
     chart: BarChart3,
@@ -308,6 +313,7 @@ export const FullResolutionHotspotEditor = ({
     social: "Social",
     external_link: "Link",
     email_links: "Email Links",
+    email_support: "Support",
     video: "Video",
     live_number: "Number",
     chart: "Chart",
@@ -321,7 +327,7 @@ export const FullResolutionHotspotEditor = ({
     if (!isPlacing || !selectedIconPreset || !imageRef.current) return;
 
     // Check if a hotspot of this type already exists (allow multiple for some types)
-    const allowMultiple = ['external_link', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map', 'image'];
+    const allowMultiple = ['external_link', 'email_support', 'video', 'vimeo', 'youtube', 'live_number', 'chart', 'map', 'image'];
     if (!allowMultiple.includes(selectedIconPreset.type)) {
       const existingTypeHotspot = hotspots.find(h => h.type === selectedIconPreset.type);
       if (existingTypeHotspot) {
@@ -363,6 +369,7 @@ export const FullResolutionHotspotEditor = ({
       ...(selectedIconPreset.type === "external_link" && { url: "" }),
       ...(selectedIconPreset.type === "video" && { url: "" }),
       ...(selectedIconPreset.type === "email_links" && { emailLinksSubject: "", emailLinksShowLabels: false }),
+      ...(selectedIconPreset.type === "email_support" && { supportEmail: "", supportSubject: "" }),
       // Data hotspot defaults
       ...(selectedIconPreset.type === "live_number" && {
         liveNumberStyle: {
@@ -1095,7 +1102,7 @@ export const FullResolutionHotspotEditor = ({
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Action</div>
                   <div className="grid grid-cols-6 gap-2 mb-3">
-                    {(["sms", "email", "social", "external_link", "email_links", "video"] as IconCategory[]).map((category) => {
+                    {(["sms", "email", "social", "external_link", "email_links", "email_support", "video"] as IconCategory[]).map((category) => {
                       const CategoryIcon = categoryIcons[category];
                       const categoryImageUrl = categoryImages[category];
                       return (
@@ -1641,6 +1648,35 @@ export const FullResolutionHotspotEditor = ({
                                 updateHotspot(selectedHotspotData.id, { emailLinksSubject: e.target.value } as any)
                               }
                               placeholder="Resources for Action"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedHotspotData.type === "email_support" && (
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Support Email Address</Label>
+                            <Input
+                              type="email"
+                              value={(selectedHotspotData as any).supportEmail || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { supportEmail: e.target.value } as any)
+                              }
+                              placeholder="support@example.org"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Tapping this hotspot opens the viewer's email app with this address pre-filled.
+                            </p>
+                          </div>
+                          <div>
+                            <Label>Subject (optional)</Label>
+                            <Input
+                              value={(selectedHotspotData as any).supportSubject || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { supportSubject: e.target.value } as any)
+                              }
+                              placeholder="Support request"
                             />
                           </div>
                         </div>
