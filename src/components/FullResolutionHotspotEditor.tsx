@@ -1679,6 +1679,27 @@ export const FullResolutionHotspotEditor = ({
                               placeholder="Support request"
                             />
                           </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full flex items-center gap-2"
+                            disabled={!(selectedHotspotData as any).supportEmail}
+                            onClick={() => {
+                              const addr = (selectedHotspotData as any).supportEmail;
+                              const subj = (selectedHotspotData as any).supportSubject;
+                              if (!addr) return;
+                              const href = `mailto:${addr}${subj ? `?subject=${encodeURIComponent(subj)}` : ""}`;
+                              window.location.href = href;
+                              toast({
+                                title: "Test Support Email",
+                                description: `Opening mail app to ${addr}`,
+                              });
+                            }}
+                          >
+                            <Mail className="w-4 h-4" />
+                            Test Support Email
+                          </Button>
                         </div>
                       )}
 
