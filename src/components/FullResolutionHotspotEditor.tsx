@@ -1653,6 +1653,35 @@ export const FullResolutionHotspotEditor = ({
                         </div>
                       )}
 
+                      {selectedHotspotData.type === "email_support" && (
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Support Email Address</Label>
+                            <Input
+                              type="email"
+                              value={(selectedHotspotData as any).supportEmail || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { supportEmail: e.target.value } as any)
+                              }
+                              placeholder="support@example.org"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Tapping this hotspot opens the viewer's email app with this address pre-filled.
+                            </p>
+                          </div>
+                          <div>
+                            <Label>Subject (optional)</Label>
+                            <Input
+                              value={(selectedHotspotData as any).supportSubject || ""}
+                              onChange={(e) =>
+                                updateHotspot(selectedHotspotData.id, { supportSubject: e.target.value } as any)
+                              }
+                              placeholder="Support request"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {selectedHotspotData.type === 'external_link' && selectedHotspotData.url && (
                         <div>
                           <Button
