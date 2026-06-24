@@ -909,7 +909,7 @@ Deno.serve(async (req) => {
 
       // Read styling from liveNumberStyle
       const style = hotspot.liveNumberStyle || {};
-      
+
       let fontSize = 24;
       if (style.fontSize) {
         const parsed = parseInt(String(style.fontSize), 10);
@@ -918,15 +918,35 @@ Deno.serve(async (req) => {
       // Honor the editor's fontSize literally — no silent rescaling.
       const scaledFontSize = fontSize;
 
-      const fontWeight = style.fontWeight === "bold" || style.fontWeight === "700" ? "bold" : "normal";
-      const color = style.color || "#000000";
+      // Parity defaults match StatsPageSlide.tsx (editor):
+      //   fontWeight default 700, color default #1a1a1a,
+      //   fontFamily default system-ui stack. Pass raw fontWeight through
+      //   instead of collapsing non-bold/700 values to "normal".
+      const rawFontWeight = style.fontWeight ?? "700";
+      const fontWeight = String(rawFontWeight);
+      const color = style.color || "#1a1a1a";
       const bgColor = style.backgroundColor || "transparent";
       const textAlign = style.textAlign || "center";
+      const fontFamily = style.fontFamily || "system-ui, -apple-system, sans-serif";
+
+      // Parse padding (px). Editor accepts "8px" or "8"; we keep it numeric.
+      let paddingPx = 0;
+      if (style.padding != null) {
+        const p = parseInt(String(style.padding), 10);
+        if (!isNaN(p)) paddingPx = p;
+      }
+
+      // Parse border radius. Editor accepts "8px"; SSR rx is numeric.
+      let borderRadiusPx = 0;
+      if (style.borderRadius != null) {
+        const r = parseInt(String(style.borderRadius), 10);
+        if (!isNaN(r)) borderRadiusPx = r;
+      }
 
       let svgParts = "";
-      // Background rect
+      // Background rect — honor editor's borderRadius instead of hard-coded rx=2.
       if (bgColor && bgColor !== "transparent") {
-        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
+        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="${borderRadiusPx}"/>`;
       }
 
       // Editor parity: when style.clipOverflow === false, do NOT wrap
