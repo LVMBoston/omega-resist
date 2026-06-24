@@ -282,7 +282,7 @@ export function renderManualHtml(
   box: RenderBox,
   style: RenderStyle,
 ): string {
-  const blocks = parseManualHtml(html);
+  const blocks = parseManualHtml(html, style.align);
   // Match ManualEntryRenderer's contentStyle padding: "8px 10px"
   const padX = 10;
   const padY = 8;
