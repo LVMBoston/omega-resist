@@ -36,9 +36,9 @@ function decodeEntities(s: string): string {
     .replace(/&nbsp;/g, " ");
 }
 
-function readAlign(attrs: string): "left" | "center" | "right" {
+function readAlign(attrs: string): "left" | "center" | "right" | undefined {
   const m = attrs.match(/text-align\s*:\s*(left|center|right)/i);
-  return (m?.[1]?.toLowerCase() as "left" | "center" | "right") || "left";
+  return (m?.[1]?.toLowerCase() as "left" | "center" | "right") || undefined;
 }
 
 export function parseInline(html: string): ManualRun[][] {
@@ -85,7 +85,10 @@ export function parseInline(html: string): ManualRun[][] {
   });
 }
 
-export function parseManualHtml(html: string): ManualBlock[] {
+export function parseManualHtml(
+  html: string,
+  defaultAlign: "left" | "center" | "right" = "left",
+): ManualBlock[] {
   const blocks: ManualBlock[] = [];
   // Strip dangerous tags AND their inner contents (script/style/iframe).
   // This mirrors the editor's DOMPurify behavior so a `<script>alert(1)</script>`
@@ -105,7 +108,7 @@ export function parseManualHtml(html: string): ManualBlock[] {
       blocks.push({
         kind: "paragraph",
         lines: parseInline(inner),
-        align: readAlign(attrs),
+        align: readAlign(attrs) ?? defaultAlign,
       });
     } else if (tag === "ul" || tag === "ol") {
       const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
@@ -115,7 +118,7 @@ export function parseManualHtml(html: string): ManualBlock[] {
         blocks.push({
           kind: tag === "ul" ? "li_bullet" : "li_number",
           lines: parseInline(li[1] || ""),
-          align: "left",
+          align: defaultAlign,
           number: tag === "ol" ? n : undefined,
         });
         n++;
@@ -126,7 +129,7 @@ export function parseManualHtml(html: string): ManualBlock[] {
     blocks.push({
       kind: "paragraph",
       lines: parseInline(src),
-      align: "left",
+      align: defaultAlign,
     });
   }
   return blocks;
@@ -279,7 +282,7 @@ export function renderManualHtml(
   box: RenderBox,
   style: RenderStyle,
 ): string {
-  const blocks = parseManualHtml(html);
+  const blocks = parseManualHtml(html, style.align);
   // Match ManualEntryRenderer's contentStyle padding: "8px 10px"
   const padX = 10;
   const padY = 8;
