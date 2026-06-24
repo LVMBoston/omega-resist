@@ -1135,16 +1135,20 @@ Deno.serve(async (req) => {
       }
 
       // === Standard hotspot rendering ===
+      // Honor style.padding for the text inset (editor parity). Fall back to a
+      // 4px sliver so word-wrap math never divides by zero when padding is 0.
+      const padInset = paddingPx;
+      const wrapInset = Math.max(padInset, 4);
+
       // Map textAlign to SVG text-anchor and x position
       let textAnchor: "start" | "middle" | "end" = "middle";
       let textX = x + hsWidth / 2;
-      const sidePadding = 4;
       if (textAlign === "left") {
         textAnchor = "start";
-        textX = x + sidePadding;
+        textX = x + padInset;
       } else if (textAlign === "right") {
         textAnchor = "end";
-        textX = x + hsWidth - sidePadding;
+        textX = x + hsWidth - padInset;
       }
 
       // Word-wrap each \n-separated line so long text doesn't overflow.
@@ -1153,7 +1157,7 @@ Deno.serve(async (req) => {
       const avgCharWidth = scaledFontSize * 0.52;
       const maxCharsPerLine = Math.max(
         1,
-        Math.floor((hsWidth - sidePadding * 2) / avgCharWidth),
+        Math.floor((hsWidth - wrapInset * 2) / avgCharWidth),
       );
       const rawLines = metricValue.split("\n");
       const lines: string[] = [];
@@ -1172,9 +1176,9 @@ Deno.serve(async (req) => {
       const vAlignRaw = (style.verticalAlign || "center").toLowerCase();
       let startY: number;
       if (vAlignRaw === "top") {
-        startY = y + scaledFontSize * 0.95;
+        startY = y + padInset + scaledFontSize * 0.95;
       } else if (vAlignRaw === "bottom") {
-        startY = y + hsHeight - totalTextHeight + scaledFontSize * 0.85;
+        startY = y + hsHeight - padInset - totalTextHeight + scaledFontSize * 0.85;
       } else {
         // center / middle (default)
         startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
@@ -1190,7 +1194,7 @@ Deno.serve(async (req) => {
         svgParts += `<g clip-path="url(#${clipId})">`;
       }
 
-      svgParts += `<text font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
+      svgParts += `<text font-family="${escapeXml(fontFamily)}" font-size="${scaledFontSize}" font-weight="${escapeXml(fontWeight)}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
       lines.forEach((line, i) => {
         svgParts += `<tspan x="${textX}" y="${startY + i * lineHeight}">${escapeXml(line)}</tspan>`;
       });
