@@ -36,9 +36,9 @@ function decodeEntities(s: string): string {
     .replace(/&nbsp;/g, " ");
 }
 
-function readAlign(attrs: string): "left" | "center" | "right" {
+function readAlign(attrs: string): "left" | "center" | "right" | undefined {
   const m = attrs.match(/text-align\s*:\s*(left|center|right)/i);
-  return (m?.[1]?.toLowerCase() as "left" | "center" | "right") || "left";
+  return (m?.[1]?.toLowerCase() as "left" | "center" | "right") || undefined;
 }
 
 export function parseInline(html: string): ManualRun[][] {
