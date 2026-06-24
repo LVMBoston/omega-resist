@@ -826,6 +826,18 @@ export const FullResolutionHotspotEditor = ({
             </div>
           )}
 
+          {/* Click-catcher overlay when locked — lets the user select the map to reveal X/Y/W/H/Z controls */}
+          {isMapLocked && (
+            <div
+              className="absolute inset-0 z-[1000] cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedHotspot(hotspot.id);
+              }}
+              title="Click to select map and edit settings"
+            />
+          )}
+
           {/* Lock toggle */}
           <button
             type="button"
