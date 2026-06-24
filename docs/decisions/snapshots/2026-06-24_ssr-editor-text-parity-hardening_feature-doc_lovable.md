@@ -78,3 +78,22 @@ plain-text regression cases.
 - `supabase/functions/render-stats-snapshot/index.ts`
 - `src/pages/ParityHarness.tsx`
 - `docs/decisions/snapshots/2026-06-24_ssr-editor-text-parity-hardening_feature-doc_lovable.md` (this file)
+
+## Update — 2026-06-24 (manual_entry alignment parity)
+
+7a. Bug: Center justification set via the hotspot style panel
+(`liveNumberStyle.textAlign = "center"`) was honored by the in-app
+renderer (inherited CSS `text-align` on the wrapper) but ignored by
+the SSR renderer for `manual_entry` rich text. SSR's `parseManualHtml`
+hard-defaulted every `<p>`/`<li>` block to `align: "left"` unless the
+paragraph itself carried an inline `text-align` style (which TipTap
+only writes when the user explicitly clicks the align toolbar).
+
+7b. Fix in `supabase/functions/render-stats-snapshot/manualHtml.ts`:
+`readAlign` now returns `undefined` when no inline align is present,
+`parseManualHtml` accepts a `defaultAlign` parameter, and
+`renderManualHtml` passes `style.align` (the hotspot-level value) as
+that default. Result: SSR mirrors browser CSS inheritance.
+
+7c. Files touched: `supabase/functions/render-stats-snapshot/manualHtml.ts`.
+
