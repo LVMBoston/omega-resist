@@ -1244,25 +1244,32 @@ const InteractiveSlideOverlay = ({
             style={transparentStyle}
           >
             {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
-            {!hotspot.isTransparent && hotspot.type === 'email_links' && hotspot.emailLinksShowLabels && hotspot.label && (
-              <span
-                style={{
-                  position: 'absolute',
-                  bottom: '-20px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#fff',
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  whiteSpace: 'nowrap',
-                  pointerEvents: 'none',
-                }}
-              >
-                {hotspot.label}
-              </span>
+            {!hotspot.isTransparent && hotspot.label && hotspot.label.trim().length > 0 && (
+              (hotspot.type === 'email_support' ||
+                (hotspot.type === 'email_links' && hotspot.emailLinksShowLabels)) && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    ...(hotspot.labelPosition === 'top'
+                      ? { bottom: '100%', marginBottom: '4px' }
+                      : { top: '100%', marginTop: '4px' }),
+                    left: 0,
+                    width: '100%',
+                    fontSize: `${Math.max(11, Math.min(buttonWidth * 0.15, 18))}px`,
+                    fontWeight: 700,
+                    color: '#fff',
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    whiteSpace: 'pre-line',
+                    textAlign: 'center',
+                    pointerEvents: 'none',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {hotspot.label}
+                </span>
+              )
             )}
           </button>
         );
