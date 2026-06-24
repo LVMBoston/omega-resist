@@ -713,7 +713,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[render-stats-snapshot] Starting render for template: ${template_id}, campaign: ${campaign_code}`);
+    const RENDERER_VERSION = "2026-06-24-parity-2";
+    console.log(`[render-stats-snapshot] Starting render (v=${RENDERER_VERSION}) for template: ${template_id}, campaign: ${campaign_code}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
