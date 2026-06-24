@@ -141,19 +141,20 @@ function TemplateDiagnostics({ templateId, campaignCode, campaignTitle, context,
       </p>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Server-Side Rendering - Snapshot Preview</DialogTitle>
           </DialogHeader>
-          <div className="pb-2 border-b">{metaLines}</div>
-          <div className="w-full overflow-auto bg-muted/30 rounded-md">
+          <div className="pb-2 border-b shrink-0">{metaLines}</div>
+          <div className="flex-1 min-h-0 w-full overflow-auto bg-muted/30 rounded-md flex items-start justify-center p-2">
             {/* Rendered via <img> so Supabase's Content-Disposition: attachment and sandbox CSP on public SVGs don't apply */}
             <img
               src={pngUrl}
               alt={`Snapshot for ${displayName}`}
-              className="w-full h-auto block"
+              className="max-w-full max-h-full w-auto h-auto object-contain block"
             />
           </div>
+
         </DialogContent>
       </Dialog>
     </div>
