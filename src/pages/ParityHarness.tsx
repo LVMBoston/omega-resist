@@ -158,6 +158,23 @@ const CASES: Case[] = [
     html: "<p>Square box, small.</p>", width: 220, height: 220 },
   { id: "2.7d", section: "2.7", label: "Large square (520×520)",
     html: "<p>Square box, large.</p>", width: 520, height: 520 },
+
+  // ===== §2.8 Stoddard regression — plain text, narrow boxes =====
+  // Reproduces the three-tan-box layout from the user's 2026-06-24 report:
+  // tall title box must wrap; short "Last updated" / "EDT note" boxes must
+  // wrap rather than clip a single SVG line.
+  { id: "2.8a", section: "2.8", label: "Title box: wraps to 2 lines",
+    html: "<p><strong>Live Map of Stoddard &amp; Patti's European Adventure</strong></p><p>(updates every 10 minutes)</p>",
+    width: 720, height: 260, baseFontSize: 28, verticalAlign: "top" },
+  { id: "2.8b", section: "2.8", label: "Last updated label (narrow)",
+    html: "<p>Last updated:</p>",
+    width: 220, height: 70, baseFontSize: 24, verticalAlign: "middle" },
+  { id: "2.8c", section: "2.8", label: "Timestamp value (must wrap)",
+    html: "<p>Jun 24, 2026 2:10 PM UTC</p>",
+    width: 380, height: 70, baseFontSize: 24, verticalAlign: "middle" },
+  { id: "2.8d", section: "2.8", label: "EDT note (must wrap)",
+    html: "<p>Note: EDT = UTC - 4 hours</p>",
+    width: 320, height: 70, baseFontSize: 24, verticalAlign: "middle" },
 ];
 
 const FONT_STACK = "'Inter', -apple-system, system-ui, sans-serif";
