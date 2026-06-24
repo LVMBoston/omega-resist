@@ -713,7 +713,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[render-stats-snapshot] Starting render for template: ${template_id}, campaign: ${campaign_code}`);
+    const RENDERER_VERSION = "2026-06-24-parity-2";
+    console.log(`[render-stats-snapshot] Starting render (v=${RENDERER_VERSION}) for template: ${template_id}, campaign: ${campaign_code}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -909,7 +910,7 @@ Deno.serve(async (req) => {
 
       // Read styling from liveNumberStyle
       const style = hotspot.liveNumberStyle || {};
-      
+
       let fontSize = 24;
       if (style.fontSize) {
         const parsed = parseInt(String(style.fontSize), 10);
@@ -918,15 +919,35 @@ Deno.serve(async (req) => {
       // Honor the editor's fontSize literally — no silent rescaling.
       const scaledFontSize = fontSize;
 
-      const fontWeight = style.fontWeight === "bold" || style.fontWeight === "700" ? "bold" : "normal";
-      const color = style.color || "#000000";
+      // Parity defaults match StatsPageSlide.tsx (editor):
+      //   fontWeight default 700, color default #1a1a1a,
+      //   fontFamily default system-ui stack. Pass raw fontWeight through
+      //   instead of collapsing non-bold/700 values to "normal".
+      const rawFontWeight = style.fontWeight ?? "700";
+      const fontWeight = String(rawFontWeight);
+      const color = style.color || "#1a1a1a";
       const bgColor = style.backgroundColor || "transparent";
       const textAlign = style.textAlign || "center";
+      const fontFamily = style.fontFamily || "system-ui, -apple-system, sans-serif";
+
+      // Parse padding (px). Editor accepts "8px" or "8"; we keep it numeric.
+      let paddingPx = 0;
+      if (style.padding != null) {
+        const p = parseInt(String(style.padding), 10);
+        if (!isNaN(p)) paddingPx = p;
+      }
+
+      // Parse border radius. Editor accepts "8px"; SSR rx is numeric.
+      let borderRadiusPx = 0;
+      if (style.borderRadius != null) {
+        const r = parseInt(String(style.borderRadius), 10);
+        if (!isNaN(r)) borderRadiusPx = r;
+      }
 
       let svgParts = "";
-      // Background rect
+      // Background rect — honor editor's borderRadius instead of hard-coded rx=2.
       if (bgColor && bgColor !== "transparent") {
-        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="2"/>`;
+        svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="${borderRadiusPx}"/>`;
       }
 
       // Editor parity: when style.clipOverflow === false, do NOT wrap
@@ -1115,16 +1136,20 @@ Deno.serve(async (req) => {
       }
 
       // === Standard hotspot rendering ===
+      // Honor style.padding for the text inset (editor parity). Fall back to a
+      // 4px sliver so word-wrap math never divides by zero when padding is 0.
+      const padInset = paddingPx;
+      const wrapInset = Math.max(padInset, 4);
+
       // Map textAlign to SVG text-anchor and x position
       let textAnchor: "start" | "middle" | "end" = "middle";
       let textX = x + hsWidth / 2;
-      const sidePadding = 4;
       if (textAlign === "left") {
         textAnchor = "start";
-        textX = x + sidePadding;
+        textX = x + padInset;
       } else if (textAlign === "right") {
         textAnchor = "end";
-        textX = x + hsWidth - sidePadding;
+        textX = x + hsWidth - padInset;
       }
 
       // Word-wrap each \n-separated line so long text doesn't overflow.
@@ -1133,7 +1158,7 @@ Deno.serve(async (req) => {
       const avgCharWidth = scaledFontSize * 0.52;
       const maxCharsPerLine = Math.max(
         1,
-        Math.floor((hsWidth - sidePadding * 2) / avgCharWidth),
+        Math.floor((hsWidth - wrapInset * 2) / avgCharWidth),
       );
       const rawLines = metricValue.split("\n");
       const lines: string[] = [];
@@ -1152,9 +1177,9 @@ Deno.serve(async (req) => {
       const vAlignRaw = (style.verticalAlign || "center").toLowerCase();
       let startY: number;
       if (vAlignRaw === "top") {
-        startY = y + scaledFontSize * 0.95;
+        startY = y + padInset + scaledFontSize * 0.95;
       } else if (vAlignRaw === "bottom") {
-        startY = y + hsHeight - totalTextHeight + scaledFontSize * 0.85;
+        startY = y + hsHeight - padInset - totalTextHeight + scaledFontSize * 0.85;
       } else {
         // center / middle (default)
         startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
@@ -1170,7 +1195,7 @@ Deno.serve(async (req) => {
         svgParts += `<g clip-path="url(#${clipId})">`;
       }
 
-      svgParts += `<text font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
+      svgParts += `<text font-family="${escapeXml(fontFamily)}" font-size="${scaledFontSize}" font-weight="${escapeXml(fontWeight)}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
       lines.forEach((line, i) => {
         svgParts += `<tspan x="${textX}" y="${startY + i * lineHeight}">${escapeXml(line)}</tspan>`;
       });
