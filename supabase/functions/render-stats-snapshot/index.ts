@@ -1116,18 +1116,49 @@ Deno.serve(async (req) => {
 
       // === Standard hotspot rendering ===
       // Map textAlign to SVG text-anchor and x position
-      let textAnchor = "middle";
+      let textAnchor: "start" | "middle" | "end" = "middle";
       let textX = x + hsWidth / 2;
+      const sidePadding = 4;
       if (textAlign === "left") {
         textAnchor = "start";
-        textX = x + 4;
+        textX = x + sidePadding;
       } else if (textAlign === "right") {
         textAnchor = "end";
-        textX = x + hsWidth - 4;
+        textX = x + hsWidth - sidePadding;
       }
 
-      // Vertical center
-      const textY = y + hsHeight / 2 + scaledFontSize * 0.35;
+      // Word-wrap each \n-separated line so long text doesn't overflow.
+      // Uses the same ~0.52 × fontSize per character heuristic as the
+      // campaign_story / manual-html branches for parity.
+      const avgCharWidth = scaledFontSize * 0.52;
+      const maxCharsPerLine = Math.max(
+        1,
+        Math.floor((hsWidth - sidePadding * 2) / avgCharWidth),
+      );
+      const rawLines = metricValue.split("\n");
+      const lines: string[] = [];
+      for (const rl of rawLines) {
+        if (rl.length === 0) {
+          lines.push("");
+        } else {
+          for (const wl of wordWrap(rl, maxCharsPerLine)) lines.push(wl);
+        }
+      }
+
+      const lineHeight = scaledFontSize * 1.2;
+      const totalTextHeight = lineHeight * lines.length;
+
+      // Vertical alignment — honor style.verticalAlign (top / center / bottom).
+      const vAlignRaw = (style.verticalAlign || "center").toLowerCase();
+      let startY: number;
+      if (vAlignRaw === "top") {
+        startY = y + scaledFontSize * 0.95;
+      } else if (vAlignRaw === "bottom") {
+        startY = y + hsHeight - totalTextHeight + scaledFontSize * 0.85;
+      } else {
+        // center / middle (default)
+        startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
+      }
 
       // Clip text to hotspot bounding box (matches client-side overflow:hidden).
       // When style.clipOverflow === false, skip the clipPath wrapper so text
@@ -1139,22 +1170,14 @@ Deno.serve(async (req) => {
         svgParts += `<g clip-path="url(#${clipId})">`;
       }
 
-      // Text - support line breaks (\n) with multiple tspan elements
-      const lines = metricValue.split("\n");
-      if (lines.length <= 1) {
-        svgParts += `<text x="${textX}" y="${textY}" font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">${escapeXml(metricValue)}</text>`;
-      } else {
-        const lineHeight = scaledFontSize * 1.2;
-        const totalTextHeight = lineHeight * lines.length;
-        const startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
-        svgParts += `<text font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
-        lines.forEach((line, i) => {
-          svgParts += `<tspan x="${textX}" y="${startY + i * lineHeight}">${escapeXml(line)}</tspan>`;
-        });
-        svgParts += `</text>`;
-      }
+      svgParts += `<text font-family="Inter, sans-serif" font-size="${scaledFontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
+      lines.forEach((line, i) => {
+        svgParts += `<tspan x="${textX}" y="${startY + i * lineHeight}">${escapeXml(line)}</tspan>`;
+      });
+      svgParts += `</text>`;
 
       if (clipOverflow) svgParts += `</g>`;
+
 
       return {
         z: typeof hotspot.zIndex === "number" ? hotspot.zIndex : 1,
