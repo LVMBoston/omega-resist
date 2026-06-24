@@ -127,106 +127,27 @@ export function MapHotspotRenderer({
 
       setLoading(true);
       try {
-        // Get campaign ID from code
-        const { data: campaign } = await supabase
-          .from("campaigns")
-          .select("id")
-          .eq("code", campaignCode)
-          .maybeSingle();
+        // Use SECURITY DEFINER RPC so the public deck viewer (anon role)
+        // can load map markers without direct access to url_events/tokens.
+        const { data: rows, error } = await supabase.rpc(
+          "get_campaign_map_events",
+          { _campaign_code: campaignCode }
+        );
 
-        if (!campaign) {
-          console.warn("MapHotspotRenderer: Campaign not found:", campaignCode);
+        if (error) {
+          console.error("MapHotspotRenderer: RPC error:", error);
           setLoading(false);
           return;
         }
 
-        // Get EoAs for this campaign
-        const { data: eoas } = await supabase
-          .from("events_actions")
-          .select("id")
-          .eq("campaign_id", campaign.id);
-
-        if (!eoas || eoas.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        const eoaIds = eoas.map((e) => e.id);
-
-        // Get tokens for these EoAs
-        const { data: tokens } = await supabase
-          .from("tokens")
-          .select("token, level, utm_medium")
-          .in("eoa_id", eoaIds)
-          .eq("is_simulated", false);
-
-        if (!tokens || tokens.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        const tokenIds = tokens.map((t) => t.token);
-        const tokenLookup = new Map(tokens.map((t) => [t.token, t]));
-
-        // Get view events with coordinates
-        const { data: events } = await supabase
-          .from("url_events")
-          .select("id, token, latitude, longitude, event_type")
-          .in("token", tokenIds)
-          .eq("event_type", "view")
-          .eq("is_simulated", false)
-          .not("latitude", "is", null)
-          .not("longitude", "is", null);
-
-        if (!events) {
-          setLoading(false);
-          return;
-        }
-
-        // Count spawns per L00 token
-        const spawnCounts = new Map<string, number>();
-        tokens.forEach((t) => {
-          if (t.level === 0) {
-            spawnCounts.set(t.token, 0);
-          }
-        });
-        tokens.forEach((t) => {
-          if (t.level > 0) {
-            // This is a simplification - ideally we'd trace to root_token
-            // For now, we'll mark L00s that have any children
-          }
-        });
-
-        // Get spawn counts for L00 tokens
-        const l00Tokens = tokens.filter((t) => t.level === 0).map((t) => t.token);
-        if (l00Tokens.length > 0) {
-          const { data: childTokens } = await supabase
-            .from("tokens")
-            .select("root_token")
-            .in("root_token", l00Tokens)
-            .gt("level", 0)
-            .eq("is_simulated", false);
-
-          if (childTokens) {
-            childTokens.forEach((ct) => {
-              if (ct.root_token) {
-                spawnCounts.set(ct.root_token, (spawnCounts.get(ct.root_token) || 0) + 1);
-              }
-            });
-          }
-        }
-
-        const points: EventPoint[] = events.map((e) => {
-          const tokenData = tokenLookup.get(e.token);
-          return {
-            eventId: e.id,
-            latitude: e.latitude!,
-            longitude: e.longitude!,
-            utmMedium: tokenData?.utm_medium || "qr",
-            level: tokenData?.level || 0,
-            spawnCount: spawnCounts.get(e.token) || 0,
-          };
-        });
+        const points: EventPoint[] = (rows || []).map((r: any) => ({
+          eventId: r.event_id,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          utmMedium: r.utm_medium || "qr",
+          level: r.level ?? 0,
+          spawnCount: r.spawn_count ?? 0,
+        }));
 
         setEventPoints(points);
       } catch (error) {
