@@ -18,17 +18,13 @@ import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
 
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
 /** Renders a custom icon with an onError fallback to a Lucide SVG icon.
- *  On iOS, PNGs sometimes load (HTTP 200) but never paint, so we skip them
- *  and use the Lucide fallback immediately. SVGs render fine on iOS, so
- *  they bypass the iOS short-circuit and load normally. */
-const FallbackImg = ({ src, alt, style, fallback }: { 
+ *  Tries the real asset on all platforms; only swaps to the Lucide fallback
+ *  if the image actually fails to load. */
+const FallbackImg = ({ src, alt, style, fallback }: {
   src: string; alt: string; style: React.CSSProperties; fallback: React.ReactNode;
 }) => {
-  const isSvg = typeof src === "string" && src.toLowerCase().includes(".svg");
-  const [failed, setFailed] = useState(isIOS && !isSvg);
+  const [failed, setFailed] = useState(false);
   if (failed) return <>{fallback}</>;
   return (
     <img
