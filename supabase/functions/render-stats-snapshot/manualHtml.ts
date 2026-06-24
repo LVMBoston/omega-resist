@@ -85,7 +85,10 @@ export function parseInline(html: string): ManualRun[][] {
   });
 }
 
-export function parseManualHtml(html: string): ManualBlock[] {
+export function parseManualHtml(
+  html: string,
+  defaultAlign: "left" | "center" | "right" = "left",
+): ManualBlock[] {
   const blocks: ManualBlock[] = [];
   // Strip dangerous tags AND their inner contents (script/style/iframe).
   // This mirrors the editor's DOMPurify behavior so a `<script>alert(1)</script>`
@@ -105,7 +108,7 @@ export function parseManualHtml(html: string): ManualBlock[] {
       blocks.push({
         kind: "paragraph",
         lines: parseInline(inner),
-        align: readAlign(attrs),
+        align: readAlign(attrs) ?? defaultAlign,
       });
     } else if (tag === "ul" || tag === "ol") {
       const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
@@ -115,7 +118,7 @@ export function parseManualHtml(html: string): ManualBlock[] {
         blocks.push({
           kind: tag === "ul" ? "li_bullet" : "li_number",
           lines: parseInline(li[1] || ""),
-          align: "left",
+          align: defaultAlign,
           number: tag === "ol" ? n : undefined,
         });
         n++;
@@ -126,7 +129,7 @@ export function parseManualHtml(html: string): ManualBlock[] {
     blocks.push({
       kind: "paragraph",
       lines: parseInline(src),
-      align: "left",
+      align: defaultAlign,
     });
   }
   return blocks;
