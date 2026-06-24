@@ -1,37 +1,59 @@
-## 1. Always open with a greeting
+## 1. What I found
 
-a. In `supabase/functions/draft-campaign-message/index.ts`, append to the system prompt: *"Always begin the message with a brief greeting such as 'Hi', 'Hello', 'Hey', or 'Friends' — followed by a comma, then the first sentence."*
-b. No client changes; this affects every newly generated SMS and email at every level (campaign + chapter, L00 + L01).
+1a. The fresh snapshot proves the deployed server output is still drawing the middle row as one clipped SVG text line.
 
-## 2. Confirm dialog on every bulk generate (option 2a)
+1b. The local `render-stats-snapshot` source has wrap logic now, but it still does not match the Deck Editor for several style values.
 
-a. In `src/components/CampaignChapters.tsx`, change `handleBulkGenerateClick` so that **every** click of "Generate all 4 drafts" opens a confirm dialog — not only when fields already have text.
-b. The dialog lists, for the chosen scope (campaign default or a named chapter):
-   - which of the 4 fields will be written (unlocked)
-   - which will be skipped (locked)
-   - which currently have text that will be overwritten
-c. Buttons: **Cancel** (default focus) and **Generate N drafts**.
-d. The existing `pendingBulkOverwrite` state is reused/renamed to `pendingBulkGenerate` so we don't add a second dialog component.
+1c. The current `/parity-harness` only tests rich-text manual entries. It does not test the plain `manualLabel` / metric text branch that is producing the clipped "Last updated" boxes in your screenshot.
 
-## 3. Lock-by-default for chapter rows (option 2d)
+## 2. Remaining hard-coded rendering mismatches
 
-a. When a chapter row is rendered and there is no entry yet in `localStorage` under `campaign-message-locks:${campaignId}` for that chapter's `mobilize_code`, treat all 4 of its fields as **locked** and persist that initial state.
-b. The campaign-level (scope = null) defaults are **not** locked by default — those are the ones you author by hand, and you've already filled them in. Only per-chapter scopes get the default lock.
-c. Existing chapters that already have any lock state in localStorage are left untouched (no surprise relocking of work in progress).
-d. With all 4 locked, the chapter's "Generate all 4 drafts" button stays disabled (already wired via `allLocked`) and individual generate buttons are disabled per field. The user must explicitly click 🔓 on the fields they want drafted.
+2a. `padding`: Deck Editor honors `style.padding`; SSR uses a hard-coded `4px` side inset only for wrap math.
 
-## 4. Verification
+2b. `borderRadius`: Deck Editor honors `style.borderRadius`; SSR hard-codes the background radius to `2`.
 
-a. Generate one SMS and one email at L00 and L01; confirm each output starts with a greeting word followed by a comma. Screenshot the result.
-b. On a campaign with empty chapter fields, click "Generate all 4 drafts" on the campaign-level row — confirm the new dialog appears before any network request is made (check Network tab: no POST to `draft-campaign-message` until **Generate** is clicked).
-c. Open a campaign that has at least one chapter you have never touched — confirm all 4 lock icons render in the locked (amber) state and the chapter's bulk button is disabled.
-d. Unlock one field on that chapter, click bulk generate, confirm the dialog shows "1 will be generated, 3 skipped (locked)".
-e. Reload the page — confirm the lock state persists.
+2c. `fontFamily`: Deck Editor honors `style.fontFamily`; SSR hard-codes `Inter, sans-serif`.
 
-## 5. Files touched
+2d. `fontWeight`: Deck Editor defaults to `700`; SSR defaults to `normal` unless the value is exactly `bold` or `700`.
 
-a. `supabase/functions/draft-campaign-message/index.ts` — greeting rule in system prompt.
-b. `src/components/CampaignChapters.tsx` — confirm-always dialog for bulk generate; lock-by-default initialization for chapter scopes.
-c. `docs/decisions/messaging/2026-06-04_ai-drafts-prominent-controls_feature-doc_lovable.md` — append `## Update — 2026-06-21` section recording the greeting rule, the always-on confirm dialog, and lock-by-default for chapters. This updates an existing plan rather than creating a new one.
+2e. `color`: Deck Editor defaults to `#1a1a1a`; SSR defaults to `#000000`.
 
-No DB changes, no new edge functions, no new routes.
+2f. `clipOverflow`: Deck Editor can allow overflow when `clipOverflow === false`; SSR already has that guard, so this part is okay.
+
+## 3. Fix plan
+
+3a. Update the standard plain-text branch in `supabase/functions/render-stats-snapshot/index.ts` so it uses the same defaults and style fields as `StatsPageSlide.tsx`.
+
+3b. Use parsed `style.padding` for text position and wrap width instead of the hard-coded `4px` inset.
+
+3c. Use parsed `style.borderRadius` on background rectangles instead of hard-coded `rx="2"`.
+
+3d. Pass through `style.fontFamily`, `style.fontWeight`, and the editor color default.
+
+3e. Add a debug-safe marker/version log to the function so we can confirm the deployed edge function is the new code, not a stale deployment.
+
+## 4. Parity harness plan
+
+4a. Extend `src/pages/ParityHarness.tsx` with plain-text fixtures, not only rich-text fixtures.
+
+4b. Add the exact problem shape: three adjacent tan boxes where the middle and right values must wrap instead of clipping.
+
+4c. Add top, center, and bottom vertical-alignment fixtures for plain text.
+
+4d. Add a padding/border-radius/font-family fixture so future hard-coded regressions are visible.
+
+## 5. Verification plan
+
+5a. Run the renderer tests that already cover snapshot canvas behavior.
+
+5b. Deploy `render-stats-snapshot` after the code change.
+
+5c. Trigger a fresh snapshot render for the Stoddard campaign.
+
+5d. Check edge logs for the new version marker to prove the latest function handled the render.
+
+5e. Use browser testing to view the fresh SSR preview and `/parity-harness`, then confirm by screenshot that the text wraps rather than clipping.
+
+## 6. Decision log
+
+6a. Archive this approved plan as a new decision document: `docs/decisions/snapshots/2026-06-24_ssr-editor-text-parity-hardening_feature-doc_lovable.md`.
