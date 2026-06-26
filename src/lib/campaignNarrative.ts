@@ -435,6 +435,10 @@ function generateFullStory(data: NarrativeData): string {
   // strips the markers but keeps the text, so the editor shows the same header
   // the SSR snapshot does.
   lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+  // Blank line so the title is its own paragraph block — required for
+  // splitCampaignStoryAtMidpoint to pin it to the first (left) column.
+  lines.push("");
+
 
   if (dataSource === "simulated") {
     lines.push("Simulation report — not real field activity.");
