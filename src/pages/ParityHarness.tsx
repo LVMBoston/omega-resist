@@ -16,6 +16,7 @@ import {
   renderManualHtml,
   type RenderStyle,
 } from "../../supabase/functions/_shared/render/manualHtml";
+import { renderPlainTextSvg } from "../../supabase/functions/_shared/render/plainText";
 
 type Case = {
   id: string;
