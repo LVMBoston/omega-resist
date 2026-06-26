@@ -107,5 +107,22 @@ _Add new deferred items as new numbered sections below._
 - b. Consider adding a helper tooltip or inline hint listing the keyword tokens that map to each medium (e.g., `em`, `email`, `mail` → email; `sms`, `tx`, `text` → SMS; `qr`, `qrcode` → QR).
 - c. Review whether the Mobilize Code / Zip Code selector and UTM ID field layout makes the relationship between Event Code, UTM ID, and medium clear enough.
 - d. Decide if the form should warn when a UTM ID will fall back to `qr` because no keyword matched, or if the fallback logic itself should be adjusted.
-- e. Archive any design decision under `docs/decisions/eoa/` once scoped.
+  - e. Archive any design decision under `docs/decisions/eoa/` once scoped.
+
+---
+
+## 8. PWA fullscreen / "Add to Home Screen" support
+
+**Observation:** When decks are viewed on iOS Safari, the top browser chrome (address bar and bottom toolbar) reduce usable screen area. A previous discussion explored a pseudo-fullscreen approach (collapsing the URL bar via scroll tricks), but the risks (persistent bottom toolbar, fragile behavior, content clipping) outweigh the benefit. The better path is a Progressive Web App (PWA) with `display: standalone`, letting users launch the deck from a home-screen icon in true fullscreen.
+
+**Deferred work:**
+  - a. Create a web app manifest (`manifest.webmanifest`) with `display: "standalone"`, app name, short name, theme color, background color, and icon entries.
+  - b. Add iOS-specific meta tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`) and `apple-touch-icon` links in the app's HTML head.
+  - c. Generate or supply app icons in required sizes for the manifest and iOS touch icon.
+  - d. Add a contextual hint (e.g., a toast or inline banner) on iOS Safari explaining how to tap **Share → Add to Home Screen** to install the app.
+  - e. Ensure the PWA `start_url` and `scope` encompass both public deck viewer routes (`/s/:deckId`) and the main app so installed launches land correctly.
+  - f. Before implementation, review the built-in PWA skill rules (manifest-only vs offline service worker scope) and decide whether this item needs offline caching or strictly installability/home-screen behavior.
+  - g. Archive the design decision under `docs/decisions/pwa/` once scoped.
+
+**Related:** Discussion deferred on 2026-06-26. No app code changes yet.
 
