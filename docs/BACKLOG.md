@@ -141,4 +141,31 @@ _Add new deferred items as new numbered sections below._
   - f. Apply the cutoff to the `ActivityMonitor` admin-wide live feed (currently shows all events across all campaigns regardless of per-campaign overrides) — needs a per-row campaign lookup.
   - g. Archive a design decision under `docs/decisions/reporting-start/`.
 
+---
+
+## 11. Editor ↔ SSR shared-render module (general regression prevention)
+
+**Observation:** The Deck Editor and the SSR snapshot renderer (`supabase/functions/render-stats-snapshot/`) keep drifting apart because shared logic is duplicated in both codebases. Recent regressions traced to this pattern: campaign-story narrative wording mismatch (2026-06-26), font-size multiplier mismatch, default style drift, manual-HTML alignment. The existing "parity rule" is enforced only by discipline (a memory entry); there is no code-level gate. `ParityHarness.tsx` covers a few hotspot text cases but not the narrative builder or most defaults.
+
+**Goal:** Make parity a structural property of the codebase, not a discipline rule.
+
+**Deferred work:**
+  - a. Create `src/shared/render/` — pure-logic module imported by both the client (Vite) and the SSR edge function (Deno, relative import). No Supabase, no DOM, no runtime-specific APIs. Header comment on each file enforces the rule.
+  - b. Move `formatNarrative` (currently in `src/lib/campaignNarrative.ts` and reimplemented inside SSR) into the shared module first — fixes the current narrative-mismatch bug.
+  - c. Collapse the duplicated `campaignStorySplit.ts` (one in `src/lib/`, one in `supabase/functions/render-stats-snapshot/`) into the shared copy.
+  - d. Move hotspot default styles (font size, family, weight, color, padding, line-height, text-align, vertical-align — keyed by hotspot type) into `src/shared/render/hotspotDefaults.ts`. Replace inline literals on both sides with imports.
+  - e. Move `textLayout.ts` (word-wrapping, line-height, vertical-alignment math) and `manualHtml.ts` (manual-entry HTML normalization) into the shared module.
+  - f. Move `mapMarkerRules.ts` (marker shape/size/color rules) last — largest surface, most map-library interaction.
+  - g. Keep data-fetching split: client uses Supabase JS, SSR uses Deno fetch. Both produce the same `NarrativeData` shape — that shape is the contract.
+  - h. Add an ESLint rule or CI grep that fails if `src/lib/campaignNarrative.ts` or any SSR file redeclares a symbol exported from `src/shared/render/`.
+  - i. Expand `ParityHarness.tsx` fixtures to cover every hotspot type, both orientations, every `campaign_story` segment (`full`, `first`, `second`), and edge cases (empty data, wrapping strings, custom fontSize/textAlign/verticalAlign).
+  - j. Add a Vitest gate that runs the shared formatters on both fixture inputs and asserts equality on comparable fields. Pure-logic comparison only — no headless browser needed for v1. Fails the build on drift.
+  - k. Each migration step (b → f) ships independently. If a step uncovers a hidden divergence (one side was doing something the other wasn't), surface it as a separate decision rather than silently picking a winner.
+  - l. Archive the design decision under `docs/decisions/snapshots/<YYYY-MM-DD>_editor-ssr-shared-render-module_feature-doc_lovable.md` when implementation starts.
+
+**What this does not fix:** divergence inside data-fetching queries (different filter on one side vs the other), or pure rendering-engine differences (browser font metrics vs server SVG font metrics). The harness will surface those so they can be decided case by case.
+
+**Related memory:** `mem://standards/editor-ssr-render-parity`.
+
+
 
