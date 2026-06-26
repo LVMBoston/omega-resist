@@ -422,6 +422,10 @@ export default function CampaignDashboard({
       endOfDay.setHours(23, 59, 59, 999);
       query = query.lte("occurred_at", endOfDay.toISOString());
     }
+    // Honor campaign-level Official Start cutoff
+    if (officialStartAt) {
+      query = query.gte("occurred_at", new Date(officialStartAt).toISOString());
+    }
     const {
       data,
       error
