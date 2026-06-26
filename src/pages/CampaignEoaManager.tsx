@@ -498,10 +498,22 @@ export default function CampaignEoaManager() {
       fetchEoas();
     }
   };
-  // Format floating local time using shared utility
+  // Format floating local time using shared utility (used for EoA start_date / end_date,
+  // which are stored as naive wall-clock with a nominal Z).
   const formatDateTime = (date: string | null) => {
     if (!date) return "—";
     return formatFloatingLocalTime(date);
+  };
+  // Format a true UTC instant (e.g. url_events.first_view_at, campaigns.official_start_at)
+  // in the viewer's local timezone.
+  const formatInstantLocal = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString(undefined, {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit",
+    });
   };
 
   // Derive selectedRows from rowSelection (one-way sync to avoid circular dependency)
@@ -976,8 +988,8 @@ export default function CampaignEoaManager() {
         if (!effective) return "—";
         const usingOfficial = !!officialStart && effective === officialStart;
         return (
-          <span title={usingOfficial ? "Floored by campaign Official Start" : undefined}>
-            {formatDateTime(effective)}
+          <span title={usingOfficial ? "Floored by campaign Official Start (shown in your local timezone)" : "Shown in your local timezone"}>
+            {formatInstantLocal(effective)}
             {usingOfficial && (
               <span className="ml-1 text-xs text-muted-foreground">(campaign)</span>
             )}
