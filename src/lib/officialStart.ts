@@ -103,6 +103,7 @@ export function useOfficialStart(opts: { campaignId?: string | null; campaignCod
       }
       return (data?.official_start_at as string | null) ?? null;
     },
-    staleTime: 60_000,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
   });
 }

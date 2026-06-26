@@ -61,6 +61,9 @@ export default function CampaignOfficialStartControl({ campaignId, officialStart
     });
     qc.invalidateQueries({ queryKey: ["campaign-detail", campaignId] });
     qc.invalidateQueries({ queryKey: ["campaign-detail-stats"] });
+    // Campaign Dashboard ("Campaign Visibility") reads the cutoff via this key.
+    // Invalidate so the dashboard picks up the new start without a hard refresh.
+    qc.invalidateQueries({ queryKey: ["official-start"] });
   };
 
   return (
