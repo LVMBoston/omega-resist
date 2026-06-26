@@ -99,6 +99,7 @@ import {
   tspanStartY,
   LINE_HEIGHT_RATIO,
 } from "../_shared/render/textLayout.ts";
+import { renderPlainTextSvg } from "../_shared/render/plainText.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
