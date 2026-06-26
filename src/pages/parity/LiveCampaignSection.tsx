@@ -95,14 +95,23 @@ export function LiveCampaignSection() {
     })();
   }, [campaignId]);
 
-  // 3. When a deck is picked, load its slides + template configs.
+  // 3. When a deck is picked, load its slides + template configs + aspect ratio.
   useEffect(() => {
     if (!deckSlug) {
       setSlides([]);
       setSlideId("");
+      setDeckAspect(null);
       return;
     }
     setLoadingSlides(true);
+    (async () => {
+      const { data: deckRow } = await supabase
+        .from("decks")
+        .select("aspect_ratio")
+        .eq("slug", deckSlug)
+        .maybeSingle();
+      const r = deckRow?.aspect_ratio ? Number(deckRow.aspect_ratio) : null;
+      setDeckAspect(r && isFinite(r) && r > 0 ? r : null);
     (async () => {
       const { data: items, error } = await supabase
         .from("slide_items")
