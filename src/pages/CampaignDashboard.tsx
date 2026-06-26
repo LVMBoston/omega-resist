@@ -1271,6 +1271,7 @@ export default function CampaignDashboard({
                 showNoSpawns={showNoSpawns}
                 refreshKey={mapRefreshKey}
                 dataSource={dataSourceFilter}
+                officialStartAt={officialStartAt}
               />
             </div>
           </TabsContent>
