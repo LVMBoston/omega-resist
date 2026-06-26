@@ -43,6 +43,14 @@ export function useChartData(): UseChartDataResult {
     setError(null);
 
     try {
+      // Fetch campaign for official_start_at override
+      const { data: campaignRow } = await supabase
+        .from("campaigns")
+        .select("official_start_at")
+        .eq("code", campaignCode)
+        .maybeSingle();
+      const officialStart = (campaignRow as any)?.official_start_at as string | null | undefined;
+
       // Get tokens for this campaign
       const { data: tokens, error: tokensError } = await supabase
         .from("tokens")
@@ -59,14 +67,16 @@ export function useChartData(): UseChartDataResult {
 
       const tokenStrings = tokens.map((t) => t.token);
 
-      // Get view events for these tokens
-      const { data: events, error: eventsError } = await supabase
+      // Get view events for these tokens (respect official_start_at)
+      let eventsQuery = supabase
         .from("url_events")
         .select("token, occurred_at")
         .in("token", tokenStrings)
         .eq("event_type", "view")
         .is("deleted_at", null)
         .order("occurred_at", { ascending: true });
+      if (officialStart) eventsQuery = eventsQuery.gte("occurred_at", officialStart);
+      const { data: events, error: eventsError } = await eventsQuery;
 
       if (eventsError) throw eventsError;
 
