@@ -90,6 +90,7 @@ import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 import { renderManualHtml } from "./manualHtml.ts";
 import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
+import { resolveLiveNumberStyle } from "../_shared/render/hotspotDefaults.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
