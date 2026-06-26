@@ -54,6 +54,11 @@ interface SamizdatMapProps {
   refreshKey?: number;
   /** Filter by real, simulated, or both data sources */
   dataSource?: "real" | "simulated" | "both";
+  /**
+   * Campaign-level "Official start" cutoff. Events occurring before this
+   * timestamp are excluded as pre-launch / test. Null/undefined = no cutoff.
+   */
+  officialStartAt?: string | null;
 }
 
 // 3-state engagement model (PRD_Share_Flow_Visualization.md)
@@ -255,6 +260,7 @@ const SamizdatMap = ({
   showNoSpawns = false,
   refreshKey,
   dataSource = "real",
+  officialStartAt = null,
 }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -684,7 +690,16 @@ const SamizdatMap = ({
       const { data: intlEvents, error: intlError } = await intlQuery;
 
       // Combine both event sets
-      const events = [...(eventsWithZip || []), ...(intlEvents || [])];
+      const allEvents = [...(eventsWithZip || []), ...(intlEvents || [])];
+
+      // Apply Official Start cutoff (pre-launch / test events are dropped)
+      const cutoffMs = officialStartAt ? new Date(officialStartAt).getTime() : null;
+      const events = cutoffMs != null && Number.isFinite(cutoffMs)
+        ? allEvents.filter((e) => {
+            const t = new Date(e.occurred_at).getTime();
+            return !Number.isFinite(t) || t >= cutoffMs;
+          })
+        : allEvents;
 
       if ((eventsError && intlError) || !events.length) {
         console.log("No view events found");
@@ -692,6 +707,7 @@ const SamizdatMap = ({
         setLoading(false);
         return;
       }
+
 
       // Step 3a: Batch-fetch IANA timezones from zip_codes for all unique zip codes
       const tzZips = [...new Set(events.map(e => e.zip_code).filter(Boolean))] as string[];
@@ -921,7 +937,7 @@ const SamizdatMap = ({
 
     fetchEventData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eoaIdsKey, refreshKey, dataSource]); // Use stable string key; refreshKey triggers re-fetch on realtime events
+  }, [eoaIdsKey, refreshKey, dataSource, officialStartAt]); // Use stable string key; refreshKey triggers re-fetch on realtime events
 
   // Store updateViewportStats in a ref to avoid map recreation
   const updateViewportStatsRef = useRef(updateViewportStats);

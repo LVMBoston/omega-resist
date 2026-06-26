@@ -1,45 +1,86 @@
-# Campaign Reporting Start Override
+# Extend Official Start cutoff to all user-visible reports
 
-## 1. Goal
-Let an admin set an **official campaign start date/time** on a campaign. Events that happened before it are bucketed as **"pre-launch / test"** and excluded from headline metrics, narratives, map, and snapshots. When the override is empty, today's behavior (start = first real event) is unchanged.
+## 1. Background
+On 2026-06-26 we added a per-campaign `official_start_at` override. It is currently honored by:
+- `useLiveMetrics` (headline numbers)
+- `useChartData` (weekly chart)
+- `campaignNarrative` (story narratives)
+- `MapHotspotRenderer` / `get_campaign_map_events` RPC (deck map on shared link)
+- `render-stats-snapshot` edge function (snapshots)
+- `CampaignEoaManager` Start Date/Time column
 
-## 2. UX
+It is **not** honored anywhere else. Below is the audit of every user-visible report that still shows pre-launch / test events when an override is set, and the proposed fix.
 
-a. **Where it lives:** on the Campaign edit form (Campaign Detail / Campaign Manager), **not** the EoA creation page. Rationale: the answer was "per-campaign override," so a single field on the campaign is the right home and avoids confusion about which EoA's value wins.
+## 2. Reports still showing pre-launch events
 
-b. **Control:** one optional `datetime-local` field labeled **"Official start (optional)"** with helper text: *"Events before this time are treated as pre-launch / test and excluded from headline metrics."* A "Clear" button resets it to null (default behavior returns).
+### 2a. Campaign Dashboard — Real-time Map (`SamizdatMap.tsx`)
+The "Real-time map" on `/campaign-dashboard` is `SamizdatMap`, which queries `url_events` directly (lines ~664, 675, 734) with no cutoff. Pre-launch markers, chain animation, and counts all include test events.
 
-c. **Visibility cue:** when set, show a small badge on the dashboard header — `Official start: Jun 26, 2026 9:00 AM` — with a tooltip explaining the bucket.
+### 2b. Campaign Dashboard — Event Listing tab (`CampaignDashboard.tsx` `fetchEvents` / `fetchEventsV2`)
+The Events table, CSV/clipboard export, and the auto-computed default date range (line 762, `allDates = eventsV2Data.map(...)`) all ignore the override. The min-date pill therefore reports a pre-launch date.
 
-d. **Pre-launch bucket display:** on Campaign Dashboard, add a muted "Pre-launch / test" row to the summary strip showing counts of excluded scans/views/shares, so nothing feels hidden.
+### 2c. Campaign Dashboard — summary counters
+The header KPI strip and per-EoA totals reuse the unfiltered `events` array. Without the cutoff they double-count test scans.
 
-## 3. Data model
+### 2d. Campaign Analytics page (`CampaignAnalytics.tsx`)
+Viral coefficient, conversion funnel, amplification, engagement, and cycle-time queries all read `url_events` (or RPCs that do) without filtering on `official_start_at`.
 
-a. Add column `campaigns.official_start_at timestamptz null`.
-b. No backfill. Null = "use first real event" (current behavior).
-c. No change to `url_events` or `tokens` — events are never deleted or rewritten; filtering is purely at read time.
+### 2e. Shared public dashboard (`SharedDashboardMap.tsx`, `SharedDashboard.tsx`)
+External `/shared/:code` viewers see pre-launch markers and pre-launch event counts.
 
-## 4. Reporting changes (read-time filter)
+### 2f. Activity Monitor (`ActivityMonitor.tsx` + `ActivityMap.tsx`)
+Admin-facing live view. Per backlog 10b we previously chose to leave this unfiltered for debugging; this plan adds a toggle (default = honor cutoff, "Show pre-launch events" reveals them) instead of leaving the inconsistency.
 
-All of these accept the campaign's `official_start_at` and split events into **headline** (>= start) vs **pre-launch** (< start):
+### 2g. Event Story panels (`EventStoryPanel.tsx`, `EventStoryDialog.tsx`)
+"First share", "fastest hop", "active since" anchors read raw `url_events`. They mis-report the campaign's start moment.
 
-a. `useLiveMetrics` — filter event stream by `occurred_at >= official_start_at`; expose `preLaunchCounts` alongside headline counts.
-b. `useChartData` — same filter; timeline x-axis begins at `official_start_at` when set.
-c. `campaignNarrative.ts` — "earliest event" / "fastest share" / propagation windows use filtered set; narrative skips pre-launch entirely (per Data Integrity Rule, no fabricated content).
-d. `SamizdatMap` / `get_campaign_map_events` RPC — add optional `_since timestamptz` parameter; UI passes `official_start_at`. Pre-launch markers omitted from the main map; optional toggle "Show pre-launch events" greyed out by default.
-e. `render-stats-snapshot` edge function — read `official_start_at` from the campaign row and apply the same filter to every metric and the map layer, so snapshots match the live dashboard.
-f. CSV/PDF exports — same filter; pre-launch counts appear in a separate footer line.
+### 2h. PDF & CSV exports (`campaignPdfExport.ts`, `exportCampaignData.ts`)
+Both pull raw events; printed reports and downloaded CSVs include pre-launch rows with no marker.
 
-## 5. What does NOT change
-- Token minting, short URLs, IP/zip privacy logic, EoA creation flow.
-- Historical data is preserved; the override is reversible at any time.
-- Per-EoA start dates are not introduced (explicitly rejected to keep semantics simple).
+### 2i. Virality Dashboard (`virality/analytics.ts`, `virality/queries.ts`, `ViralityDashboard.tsx`)
+Cross-campaign aggregates ignore each campaign's cutoff, so the "fastest first share" / "earliest L01" leaderboards can be won by a test event.
 
-## 6. Technical notes (for the developer)
-- Migration: `ALTER TABLE public.campaigns ADD COLUMN official_start_at timestamptz;` plus regenerate types.
-- RPC: extend `get_campaign_map_events(_campaign_code text)` → `get_campaign_map_events(_campaign_code text, _since timestamptz default null)`; old callers unaffected.
-- Snapshot renderer: reads the new column once per render; no schema changes elsewhere.
-- All filtering uses `occurred_at >= official_start_at` (inclusive) so the boundary minute is counted as live.
+### 2j. Campaign Dashboard header — missing badge
+There is no visible indicator that an override is active, so an operator looking at a filtered chart has no cue why numbers differ from the raw DB.
 
-## 7. Decision log
-After implementation, archive this plan to `docs/decisions/campaigns/2026-06-26_campaign-official-start-override_feature-doc_lovable.md` with `Status: Approved & Implemented`. This is a **new plan** (not an update to an existing one).
+## 3. Proposed fix (shared shape)
+
+a. **Shared helper.** Add `src/lib/officialStart.ts` exporting:
+   - `applyOfficialStartFilter(events, officialStartAt)` — pure client-side filter on `occurred_at`.
+   - `useOfficialStart(campaignIdOrCode)` — react-query hook that returns `{ officialStartAt, preLaunchPredicate, headlinePredicate }`.
+   - `splitEvents(events, officialStartAt)` → `{ headline, preLaunch }` so any panel can show a muted "Pre-launch / test: N" counter (item 4 of the original plan).
+
+b. **Server-side filter for RPCs.** Extend the analytics RPCs used by `CampaignAnalytics` and `ViralityDashboard` with an optional `_since timestamptz` parameter (same pattern already used by `get_campaign_map_events`). Default `NULL` preserves legacy callers.
+
+c. **`SamizdatMap`.** Accept `officialStartAt` as a prop from `CampaignDashboard` and filter the three `url_events` selects + chain-derivation sort. Markers excluded by the cutoff are dropped entirely (not greyed) to match the deck map's behavior.
+
+d. **`CampaignDashboard`.** Fetch `campaigns.official_start_at` alongside the campaign row; pass it to `SamizdatMap`, apply it inside `fetchEvents` / `fetchEventsV2`, and derive the default date-range min from headline events only. Show a small badge in the header (`Official start: Jun 24, 2026 12:00 AM`) and a muted "Pre-launch / test: N excluded" chip when N > 0.
+
+e. **`CampaignAnalytics`.** Pass the cutoff into every RPC call and into client-side aggregations. No UI change beyond the same header badge.
+
+f. **`SharedDashboard*`.** Cutoff already exists on the campaign row available to public viewers (read via the existing public RPC); apply it to the shared map and KPI strip.
+
+g. **`ActivityMonitor`.** Add an admin-only "Show pre-launch events" switch in the filter bar; default off when the selected campaign has an override, on otherwise.
+
+h. **`EventStoryPanel` / `EventStoryDialog`.** Use `splitEvents` so "first share", "fastest hop", and timeline anchors are computed only from headline events.
+
+i. **`campaignPdfExport` / `exportCampaignData`.** Filter rows before render/serialization; append a footer line `Pre-launch / test events excluded: N` whenever the override is set.
+
+j. **`virality/analytics.ts` & `queries.ts`.** Join `campaigns.official_start_at` and apply the cutoff per campaign in the aggregation step.
+
+## 4. What does NOT change
+- No schema changes beyond optional `_since` parameters on existing RPCs.
+- `url_events` rows are never deleted or rewritten. The override remains reversible.
+- Per-EoA overrides (backlog 10d) remain deferred.
+
+## 5. Verification (per Visual Bug Debugging Rule)
+For each surface above, in a browser session on a campaign with `official_start_at` set in the future-of-some-events:
+- Confirm pre-launch markers/rows disappear from headline views.
+- Confirm the "Pre-launch / test: N" counter equals the count of excluded rows.
+- Confirm clearing the override restores the prior numbers.
+- Take screenshots of: Campaign Dashboard map + Event listing, Campaign Analytics, Shared Dashboard, and a fresh SSR snapshot.
+
+## 6. Decision log
+On approval and implementation, archive this plan as:
+`docs/decisions/reporting-start/2026-06-26_official-start-cutoff-rollout_feature-doc_lovable.md`
+with `Status: Approved & Implemented`. This is an **update** to the existing plan recorded at `docs/decisions/campaigns/2026-06-26_campaign-official-start-override_feature-doc_lovable.md`; append it there as a `## Update — 2026-06-26` section as well, per the Decision Log Rule. Backlog item #10 (a, b, c, e) is fully resolved by this work; 10d (per-EoA override) and 10f (decision archive) remain.

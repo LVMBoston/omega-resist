@@ -38,6 +38,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { EventStoryDialog } from "@/components/EventStoryDialog";
 import { CampaignSnapshotSettings } from "@/components/CampaignSnapshotSettings";
 import { CampaignNarrativeButton } from "@/components/CampaignNarrativeDialog";
+import { useOfficialStart, applyOfficialStartFilter, splitEvents, formatOfficialStart } from "@/lib/officialStart";
 interface UrlEvent {
   id: string;
   token: string;
@@ -191,6 +192,14 @@ export default function CampaignDashboard({
   // Get filter values from URL params or use prop
   const selectedCampaignId = propCampaignId || searchParams.get("campaignId") || "";
   const selectedCampaign = searchParams.get("campaign") || "";
+
+  // Campaign-level "Official start" cutoff. When set, events before this
+  // moment are bucketed as pre-launch / test and excluded from the map,
+  // listings, KPI counters, and exports below.
+  const { data: officialStartAt } = useOfficialStart({
+    campaignId: selectedCampaignId || null,
+    campaignCode: selectedCampaign || null,
+  });
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = normalizeDataSource(searchParams.get("dataSource"));
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
@@ -377,7 +386,7 @@ export default function CampaignDashboard({
     if (selectedCampaign) {
       fetchEvents();
     }
-  }, [selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate]);
+  }, [selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, officialStartAt]);
   const fetchEvents = async () => {
     setEventsLoading(true);
     let query = supabase.from("url_events").select(`
@@ -412,6 +421,10 @@ export default function CampaignDashboard({
       const endOfDay = new Date(endDate);
       endOfDay.setHours(23, 59, 59, 999);
       query = query.lte("occurred_at", endOfDay.toISOString());
+    }
+    // Honor campaign-level Official Start cutoff
+    if (officialStartAt) {
+      query = query.gte("occurred_at", new Date(officialStartAt).toISOString());
     }
     const {
       data,
@@ -737,8 +750,8 @@ export default function CampaignDashboard({
     enabled: !!selectedCampaign
   });
 
-  // Compute eventsV2 filtered by chain view mode
-  const filteredEventsV2 = eventsV2Data ? eventsV2Data.filter((event: any) => {
+  // Compute eventsV2 filtered by chain view mode AND official-start cutoff
+  const filteredEventsV2 = eventsV2Data ? applyOfficialStartFilter(eventsV2Data as any[], officialStartAt).filter((event: any) => {
     if (chainViewMode === "chain" && selectedChainToken) {
       return event.tokens?.l00_instance === selectedChainToken || event.tokens?.root_token === selectedChainRootToken;
     }
@@ -757,24 +770,25 @@ export default function CampaignDashboard({
     return 0;
   });
 
-  // Compute eventsV2 metrics summary
+  // Compute eventsV2 metrics summary (headline events only — honors Official Start cutoff)
   const eventsV2Metrics = eventsV2Data ? (() => {
-    const allDates = eventsV2Data.map((e: any) => new Date(e.occurred_at));
+    const headline = applyOfficialStartFilter(eventsV2Data as any[], officialStartAt);
+    const allDates = headline.map((e: any) => new Date(e.occurred_at));
     const earliest = allDates.length > 0 ? new Date(Math.min(...allDates.map((d: Date) => d.getTime()))) : null;
     const latest = allDates.length > 0 ? new Date(Math.max(...allDates.map((d: Date) => d.getTime()))) : null;
-    const mobilizeCodes = new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean));
-    const qrViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'qr').length;
-    const smsViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'sms').length;
-    const emailViewsCount = eventsV2Data.filter((e: any) => ['email', 'mail', 'em'].includes(e.tokens?.utm_medium)).length;
-    const unknownViewsCount = eventsV2Data.filter((e: any) => !['qr','sms','email','mail','em'].includes(e.tokens?.utm_medium || '')).length;
-    const gpsLocationCount = eventsV2Data.filter((e: any) => e.location_source === 'gps').length;
-    const cellTowerLocationCount = eventsV2Data.filter((e: any) => e.location_source !== 'gps').length;
+    const mobilizeCodes = new Set(headline.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean));
+    const qrViewsCount = headline.filter((e: any) => e.tokens?.utm_medium === 'qr').length;
+    const smsViewsCount = headline.filter((e: any) => e.tokens?.utm_medium === 'sms').length;
+    const emailViewsCount = headline.filter((e: any) => ['email', 'mail', 'em'].includes(e.tokens?.utm_medium)).length;
+    const unknownViewsCount = headline.filter((e: any) => !['qr','sms','email','mail','em'].includes(e.tokens?.utm_medium || '')).length;
+    const gpsLocationCount = headline.filter((e: any) => e.location_source === 'gps').length;
+    const cellTowerLocationCount = headline.filter((e: any) => e.location_source !== 'gps').length;
     return {
       earliestTimestamp: earliest ? format(earliest, "MMM d, h:mm a") : "—",
       latestTimestamp: latest ? format(latest, "MMM d, h:mm a") : "—",
       uniqueMobilizeCodes: mobilizeCodes.size,
       totalRows: filteredEventsV2.length,
-      totalUnfilteredRows: eventsV2Data.length,
+      totalUnfilteredRows: headline.length,
       qrViewsCount, smsViewsCount, emailViewsCount, unknownViewsCount,
       gpsLocationCount, cellTowerLocationCount,
     };
@@ -794,6 +808,10 @@ export default function CampaignDashboard({
   const formatLevel = (level: number) => `L${String(level).padStart(2, '0')}`;
 
   const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || selectedCampaign;
+  const officialStartLabel = formatOfficialStart(officialStartAt);
+  const preLaunchCount = eventsV2Data
+    ? splitEvents(eventsV2Data as any[], officialStartAt).preLaunch.length
+    : 0;
 
   // Tokens with spawn info for chapter/no-spawn filtering
   const {
@@ -829,6 +847,18 @@ export default function CampaignDashboard({
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Campaign Visibility</h1>
           <p className="text-muted-foreground">Real-time viral tracking and analytics</p>
+          {officialStartLabel && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="outline" className="border-primary/40 text-primary">
+                Official start: {officialStartLabel}
+              </Badge>
+              {preLaunchCount > 0 && (
+                <Badge variant="outline" className="border-muted text-muted-foreground">
+                  Pre-launch / test: {preLaunchCount} excluded
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {campaignsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
@@ -1241,6 +1271,7 @@ export default function CampaignDashboard({
                 showNoSpawns={showNoSpawns}
                 refreshKey={mapRefreshKey}
                 dataSource={dataSourceFilter}
+                officialStartAt={officialStartAt}
               />
             </div>
           </TabsContent>
