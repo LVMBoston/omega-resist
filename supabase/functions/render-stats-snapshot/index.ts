@@ -90,6 +90,7 @@ import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 import { renderManualHtml } from "./manualHtml.ts";
 import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
+import { resolveLiveNumberStyle } from "../_shared/render/hotspotDefaults.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
@@ -891,41 +892,24 @@ Deno.serve(async (req) => {
       const hsWidth = ((hotspot.width || 10) / 100) * width;
       const hsHeight = ((hotspot.height || 5) / 100) * height;
 
-      // Read styling from liveNumberStyle
+      // Read styling from liveNumberStyle.
+      // Single source of truth — `../_shared/render/hotspotDefaults`. Both
+      // the editor (StatsPageSlide / HybridSlide) and SSR call
+      // resolveLiveNumberStyle so they cannot drift on default font size /
+      // weight / color / alignment / padding.
       const style = hotspot.liveNumberStyle || {};
-
-      let fontSize = 24;
-      if (style.fontSize) {
-        const parsed = parseInt(String(style.fontSize), 10);
-        if (!isNaN(parsed)) fontSize = parsed;
-      }
-      // Honor the editor's fontSize literally — no silent rescaling.
-      const scaledFontSize = fontSize;
-
-      // Parity defaults match StatsPageSlide.tsx (editor):
-      //   fontWeight default 700, color default #1a1a1a,
-      //   fontFamily default system-ui stack. Pass raw fontWeight through
-      //   instead of collapsing non-bold/700 values to "normal".
-      const rawFontWeight = style.fontWeight ?? "700";
-      const fontWeight = String(rawFontWeight);
-      const color = style.color || "#1a1a1a";
-      const bgColor = style.backgroundColor || "transparent";
-      const textAlign = style.textAlign || "center";
-      const fontFamily = style.fontFamily || "system-ui, -apple-system, sans-serif";
-
-      // Parse padding (px). Editor accepts "8px" or "8"; we keep it numeric.
-      let paddingPx = 0;
-      if (style.padding != null) {
-        const p = parseInt(String(style.padding), 10);
-        if (!isNaN(p)) paddingPx = p;
-      }
-
-      // Parse border radius. Editor accepts "8px"; SSR rx is numeric.
-      let borderRadiusPx = 0;
-      if (style.borderRadius != null) {
-        const r = parseInt(String(style.borderRadius), 10);
-        if (!isNaN(r)) borderRadiusPx = r;
-      }
+      const isStory =
+        hotspot.metricKey === "campaign_story" || /\n/.test(metricValue);
+      const resolved = resolveLiveNumberStyle(style, { isStory });
+      const scaledFontSize = resolved.fontSize;
+      const fontWeight = resolved.fontWeight;
+      const color = resolved.color;
+      const bgColor = resolved.backgroundColor;
+      const textAlign = resolved.textAlign;
+      const fontFamily = resolved.fontFamily;
+      const paddingPx = resolved.paddingPx;
+      const borderRadiusPx = resolved.borderRadiusPx;
+      const clipOverflow = resolved.clipOverflow;
 
       let svgParts = "";
       // Background rect — honor editor's borderRadius instead of hard-coded rx=2.
@@ -933,10 +917,6 @@ Deno.serve(async (req) => {
         svgParts += `<rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}" fill="${escapeXml(bgColor)}" rx="${borderRadiusPx}"/>`;
       }
 
-      // Editor parity: when style.clipOverflow === false, do NOT wrap
-      // text in a clipPath so it can spill outside the hotspot box, just
-      // like the in-app renderers.
-      const clipOverflow = style.clipOverflow !== false;
 
       // === Manual entry with rich-text HTML (preferred over manualLabel) ===
       if (

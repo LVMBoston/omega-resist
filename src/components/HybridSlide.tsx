@@ -10,6 +10,7 @@ import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { MapLegend } from "@/components/MapLegend";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 import { applyStorySegment } from "@/lib/campaignStorySplit";
+import { resolveLiveNumberStyle } from "@/shared/render/hotspotDefaults";
 
 const ACTION_TYPES = new Set(["sms", "email", "social", "external_link", "email_links", "email_support"]);
 
@@ -361,10 +362,10 @@ export const HybridSlide = ({
 
           const isStory =
             hotspot.metricKey === "campaign_story" || /\n/.test(value);
-          const baseFontSize = parseInt(String(style.fontSize || "24"), 10) || 24;
-          // Honor the editor's chosen fontSize literally for parity with SSR
-          // (render-stats-snapshot removed its 0.5 multiplier on 2026-06-26).
-          const storyFontSize = baseFontSize;
+          // Single source of truth — `@/shared/render/hotspotDefaults`. Both
+          // the editor and the SSR renderer call resolveLiveNumberStyle so
+          // they cannot drift on default font size / weight / color / align.
+          const resolved = resolveLiveNumberStyle(style as any, { isStory });
 
 
           // Map legend — static visual key matching MapHotspotRenderer symbols
@@ -385,7 +386,7 @@ export const HybridSlide = ({
                 }}
               >
                 <MapLegend
-                  fontSize={baseFontSize}
+                  fontSize={resolved.fontSize}
                   color={style.color || "#1a1a1a"}
                   fontFamily={style.fontFamily}
                   fontWeight={style.fontWeight || "600"}
@@ -415,7 +416,7 @@ export const HybridSlide = ({
                   html={hotspot.manualHtml || ""}
                   width={width}
                   height={height}
-                  baseFontSize={baseFontSize}
+                  baseFontSize={resolved.fontSize}
                   color={style.color || "#1a1a1a"}
                   backgroundColor={style.backgroundColor}
                   fontFamily={style.fontFamily}
@@ -425,32 +426,33 @@ export const HybridSlide = ({
             );
           }
 
-          const clipOverflow = style.clipOverflow !== false;
-          const vAlign = style.verticalAlign || (isStory ? "top" : "center");
-          const hAlign = isStory ? (style.textAlign || "left") : (style.textAlign || "center");
           const alignItemsCls =
-            vAlign === "top" ? "items-start" : vAlign === "bottom" ? "items-end" : "items-center";
+            resolved.verticalAlign === "top" ? "items-start"
+              : resolved.verticalAlign === "bottom" ? "items-end"
+              : "items-center";
           const justifyCls =
-            hAlign === "left" ? "justify-start" : hAlign === "right" ? "justify-end" : "justify-center";
+            resolved.textAlign === "left" ? "justify-start"
+              : resolved.textAlign === "right" ? "justify-end"
+              : "justify-center";
 
           return (
             <div
               key={hotspot.id}
-              className={`absolute ${clipOverflow ? "overflow-hidden" : "overflow-visible"} flex ${alignItemsCls} ${justifyCls}`}
+              className={`absolute ${resolved.clipOverflow ? "overflow-hidden" : "overflow-visible"} flex ${alignItemsCls} ${justifyCls}`}
               style={{
                 left: `${left}px`,
                 top: `${top}px`,
                 width: `${width}px`,
                 height: `${height}px`,
-                fontSize: isStory ? `${storyFontSize}px` : style.fontSize || "24px",
-                lineHeight: isStory ? 1.25 : undefined,
-                fontWeight: style.fontWeight || "700",
-                color: style.color || "#1a1a1a",
-                backgroundColor: style.backgroundColor || "transparent",
-                textAlign: hAlign,
-                fontFamily: style.fontFamily || "system-ui, -apple-system, sans-serif",
-                padding: isStory ? "12px" : style.padding || "0",
-                borderRadius: style.borderRadius || "0",
+                fontSize: `${resolved.fontSize}px`,
+                lineHeight: resolved.lineHeight,
+                fontWeight: resolved.fontWeight,
+                color: resolved.color,
+                backgroundColor: resolved.backgroundColor,
+                textAlign: resolved.textAlign,
+                fontFamily: resolved.fontFamily,
+                padding: `${resolved.paddingPx}px`,
+                borderRadius: `${resolved.borderRadiusPx}px`,
                 pointerEvents: "none",
                 whiteSpace: "pre-line",
                 wordBreak: "break-word",
