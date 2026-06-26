@@ -127,11 +127,20 @@ export function MapHotspotRenderer({
 
       setLoading(true);
       try {
+        // Look up the campaign's official_start_at (if any) and pass it as
+        // _since so pre-launch / test events don't pollute the public map.
+        const { data: campaignRow } = await supabase
+          .from("campaigns")
+          .select("official_start_at")
+          .eq("code", campaignCode)
+          .maybeSingle();
+        const since = (campaignRow as any)?.official_start_at as string | null | undefined;
+
         // Use SECURITY DEFINER RPC so the public deck viewer (anon role)
         // can load map markers without direct access to url_events/tokens.
         const { data: rows, error } = await supabase.rpc(
           "get_campaign_map_events",
-          { _campaign_code: campaignCode }
+          { _campaign_code: campaignCode, ...(since ? { _since: since } : {}) } as any
         );
 
         if (error) {
