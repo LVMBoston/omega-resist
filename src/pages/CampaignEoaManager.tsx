@@ -39,6 +39,7 @@ interface Campaign {
   id: string;
   code: string;
   title: string;
+  official_start_at: string | null;
 }
 interface EventAction {
   id: string;
@@ -295,7 +296,7 @@ export default function CampaignEoaManager() {
     const {
       data,
       error
-    } = await supabase.from("campaigns").select("id, code, title").eq("id", campaignId).single();
+    } = await supabase.from("campaigns").select("id, code, title, official_start_at").eq("id", campaignId).single();
     if (error) {
       toast({
         variant: "destructive",
@@ -967,7 +968,21 @@ export default function CampaignEoaManager() {
       header: "Start Date/Time",
       cell: ({ row }) => {
         const firstView = getFirstViewTime(row.original);
-        return firstView ? formatDateTime(firstView) : "—";
+        const officialStart = campaign?.official_start_at || null;
+        // When a campaign-level Official Start is set, it floors the reporting clock for every EoA.
+        const effective = officialStart
+          ? (firstView && new Date(firstView) > new Date(officialStart) ? firstView : officialStart)
+          : firstView;
+        if (!effective) return "—";
+        const usingOfficial = !!officialStart && effective === officialStart;
+        return (
+          <span title={usingOfficial ? "Floored by campaign Official Start" : undefined}>
+            {formatDateTime(effective)}
+            {usingOfficial && (
+              <span className="ml-1 text-xs text-muted-foreground">(campaign)</span>
+            )}
+          </span>
+        );
       },
     },
     {
