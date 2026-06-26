@@ -131,8 +131,9 @@ async function renderStaticMap(
 
     // ---- Fetch event points (mirrors MapHotspotRenderer logic) ----
     const { data: campaign } = await supabase
-      .from("campaigns").select("id").eq("code", campaignCode).maybeSingle();
+      .from("campaigns").select("id, official_start_at").eq("code", campaignCode).maybeSingle();
     if (!campaign) return null;
+    const since: string | null = (campaign as any).official_start_at || null;
 
     const { data: eoas } = await supabase
       .from("events_actions").select("id").eq("campaign_id", campaign.id);
@@ -153,10 +154,12 @@ async function renderStaticMap(
     }
 
     const tokenIds = tokens.map((t: any) => t.token);
-    const { data: events } = await supabase
-      .from("url_events").select("token, latitude, longitude")
+    let evtQuery: any = supabase
+      .from("url_events").select("token, latitude, longitude, occurred_at")
       .in("token", tokenIds).eq("event_type", "view").eq("is_simulated", false)
       .not("latitude", "is", null).not("longitude", "is", null);
+    if (since) evtQuery = evtQuery.gte("occurred_at", since);
+    const { data: events } = await evtQuery;
     if (!events || events.length === 0) return null;
 
     // ---- Resolve viewport ----
