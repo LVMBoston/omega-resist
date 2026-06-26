@@ -373,9 +373,10 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       try {
         const narrativeData = await fetchNarrativeData(campaign.code, campaign.id);
         const { fullStory } = generateCampaignNarrative(narrativeData);
-        // Strip __TITLE__ sentinels but keep the title text — they're only for dialog rendering
-        const cleanStory = fullStory.replace(/__TITLE__(.*?)__TITLE__/, "$1");
-        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: cleanStory, source: "narrative" });
+        // Keep __TITLE__ sentinels in the stored value so applyStorySegment can pin
+        // the title to the first column. HybridSlide/StatsPageSlide strip the
+        // markers after segmenting (see those components).
+        metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: fullStory, source: "narrative" });
       } catch (narrativeErr) {
         console.warn("[useLiveMetrics] campaign_story generation failed:", narrativeErr);
         metricResults.push({ key: "campaign_story", label: METRIC_LABELS.campaign_story, value: "--", source: "fallback" });
