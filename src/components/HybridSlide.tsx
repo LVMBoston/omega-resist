@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { MapLegend } from "@/components/MapLegend";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
+import { applyStorySegment } from "@/lib/campaignStorySplit";
 
 const ACTION_TYPES = new Set(["sms", "email", "social", "external_link", "email_links", "email_support"]);
 
@@ -347,6 +348,10 @@ export const HybridSlide = ({
             value = hotspot.manualLabel || "—";
           } else if (hotspot.metricKey && metricsMap[hotspot.metricKey] !== undefined) {
             value = String(metricsMap[hotspot.metricKey]);
+          }
+
+          if (hotspot.metricKey === "campaign_story" && hotspot.storySegment && hotspot.storySegment !== "full") {
+            value = applyStorySegment(value, hotspot.storySegment);
           }
 
           const isStory =
