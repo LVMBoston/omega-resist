@@ -586,13 +586,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
       const m = (evt as any).tokens?.utm_medium;
       if (m) mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
     }
-    const totalMediums = Array.from(mediumCounts.values()).reduce((s, c) => s + c, 0);
-    const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
-    const mediumLine = totalMediums > 0
-      ? Array.from(mediumCounts.entries())
-          .map(([m, c]) => `${Math.round((c / totalMediums) * 100)}% ${mediumLabels[m] || m}`)
-          .join(", ")
-      : "";
+    // mediumCounts is consumed by formatCampaignStory below.
 
     // Speed origin/destination cities — data fetching stays here; the
     // narrative string itself is built by the shared formatter below.
