@@ -738,8 +738,8 @@ export default function CampaignDashboard({
     enabled: !!selectedCampaign
   });
 
-  // Compute eventsV2 filtered by chain view mode
-  const filteredEventsV2 = eventsV2Data ? eventsV2Data.filter((event: any) => {
+  // Compute eventsV2 filtered by chain view mode AND official-start cutoff
+  const filteredEventsV2 = eventsV2Data ? applyOfficialStartFilter(eventsV2Data as any[], officialStartAt).filter((event: any) => {
     if (chainViewMode === "chain" && selectedChainToken) {
       return event.tokens?.l00_instance === selectedChainToken || event.tokens?.root_token === selectedChainRootToken;
     }
