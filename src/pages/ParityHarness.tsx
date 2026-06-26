@@ -395,6 +395,7 @@ export default function ParityHarness() {
   const sections = Array.from(new Set(CASES.map((c) => c.section)));
   const showPlain = sectionFilter === "3" || showAll;
   const showStory = sectionFilter === "4" || showAll;
+  const showLive = sectionFilter === "5" || showAll;
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", background: "#2b2b2b", minHeight: "100vh", color: "#eee" }}>
