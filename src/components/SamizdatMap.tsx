@@ -937,7 +937,7 @@ const SamizdatMap = ({
 
     fetchEventData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eoaIdsKey, refreshKey, dataSource]); // Use stable string key; refreshKey triggers re-fetch on realtime events
+  }, [eoaIdsKey, refreshKey, dataSource, officialStartAt]); // Use stable string key; refreshKey triggers re-fetch on realtime events
 
   // Store updateViewportStats in a ref to avoid map recreation
   const updateViewportStatsRef = useRef(updateViewportStats);
