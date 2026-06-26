@@ -31,6 +31,7 @@ import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
+import { applyStorySegment } from "@/shared/render/campaignStorySplit";
 import { DATA_HOTSPOT_TYPES } from "@/lib/hotspotClassification";
 import { MapLegend } from "@/components/MapLegend";
 import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
@@ -70,6 +71,7 @@ interface Hotspot {
   manualLabel?: string;
   manualHtml?: string;
   liveNumberStyle?: Record<string, any>;
+  storySegment?: "full" | "first" | "second";
   chartConfig?: any;
   mapConfig?: any;
   // Image hotspot fields
@@ -230,8 +232,18 @@ export const FullResolutionHotspotEditor = ({
         if (h.metricKey === 'manual_entry') {
           newDisplayValues[h.id] = h.manualLabel || "—";
         } else {
-          const val = metricsMap[h.metricKey];
-          newDisplayValues[h.id] = val !== undefined ? String(val) : "0";
+          const raw = metricsMap[h.metricKey];
+          let val = raw !== undefined ? String(raw) : "0";
+          if (h.metricKey === 'campaign_story') {
+            if (h.storySegment && h.storySegment !== 'full') {
+              val = applyStorySegment(val, h.storySegment);
+            }
+            // Strip __TITLE__ sentinels after segmenting so the title-pin
+            // logic in the splitter still works but the markers never reach
+            // the rendered string. Mirrors HybridSlide (the viewer path).
+            val = val.replace(/__TITLE__(.*?)__TITLE__/g, "$1");
+          }
+          newDisplayValues[h.id] = val;
         }
       }
     });
