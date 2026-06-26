@@ -796,6 +796,17 @@ export default function CampaignDashboard({
 
   const campaignTitle = campaigns?.find(c => c.code === selectedCampaign)?.title || selectedCampaign;
 
+  // Official start cutoff (campaign-level override). When set, events before
+  // this moment are bucketed as pre-launch / test and excluded from headline
+  // reporting, the map, listings, and counters below.
+  const { data: officialStartAt } = useOfficialStart({
+    campaignId: selectedCampaignId || null,
+    campaignCode: selectedCampaign || null,
+  });
+  const officialStartLabel = formatOfficialStart(officialStartAt);
+  const eventsSplit = splitEvents(eventsV2Data as any[] | undefined, officialStartAt);
+  const preLaunchCount = eventsSplit.preLaunch.length;
+
   // Tokens with spawn info for chapter/no-spawn filtering
   const {
     data: tokenSpawnData
