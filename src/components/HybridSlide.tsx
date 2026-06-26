@@ -357,7 +357,10 @@ export const HybridSlide = ({
           const isStory =
             hotspot.metricKey === "campaign_story" || /\n/.test(value);
           const baseFontSize = parseInt(String(style.fontSize || "24"), 10) || 24;
-          const storyFontSize = Math.max(11, Math.round(baseFontSize * 0.5));
+          // Honor the editor's chosen fontSize literally for parity with SSR
+          // (render-stats-snapshot removed its 0.5 multiplier on 2026-06-26).
+          const storyFontSize = baseFontSize;
+
 
           // Map legend — static visual key matching MapHotspotRenderer symbols
           if (hotspot.metricKey === "map_legend") {

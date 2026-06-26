@@ -430,9 +430,16 @@ function generateFullStory(data: NarrativeData): string {
 
   const lines: string[] = [];
 
+  // Campaign title header — mirrors SSR (render-stats-snapshot/index.ts) which
+  // emits `__TITLE__Campaign: <name>__TITLE__` as the first line. useLiveMetrics
+  // strips the markers but keeps the text, so the editor shows the same header
+  // the SSR snapshot does.
+  lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+
   if (dataSource === "simulated") {
     lines.push("Simulation report — not real field activity.");
   }
+
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
