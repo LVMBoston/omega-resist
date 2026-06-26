@@ -386,7 +386,7 @@ export default function CampaignDashboard({
     if (selectedCampaign) {
       fetchEvents();
     }
-  }, [selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate]);
+  }, [selectedCampaign, eventTypeFilter, dataSourceFilter, startDate, endDate, officialStartAt]);
   const fetchEvents = async () => {
     setEventsLoading(true);
     let query = supabase.from("url_events").select(`
