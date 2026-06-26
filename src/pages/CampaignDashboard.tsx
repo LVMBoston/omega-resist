@@ -770,24 +770,25 @@ export default function CampaignDashboard({
     return 0;
   });
 
-  // Compute eventsV2 metrics summary
+  // Compute eventsV2 metrics summary (headline events only — honors Official Start cutoff)
   const eventsV2Metrics = eventsV2Data ? (() => {
-    const allDates = eventsV2Data.map((e: any) => new Date(e.occurred_at));
+    const headline = applyOfficialStartFilter(eventsV2Data as any[], officialStartAt);
+    const allDates = headline.map((e: any) => new Date(e.occurred_at));
     const earliest = allDates.length > 0 ? new Date(Math.min(...allDates.map((d: Date) => d.getTime()))) : null;
     const latest = allDates.length > 0 ? new Date(Math.max(...allDates.map((d: Date) => d.getTime()))) : null;
-    const mobilizeCodes = new Set(eventsV2Data.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean));
-    const qrViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'qr').length;
-    const smsViewsCount = eventsV2Data.filter((e: any) => e.tokens?.utm_medium === 'sms').length;
-    const emailViewsCount = eventsV2Data.filter((e: any) => ['email', 'mail', 'em'].includes(e.tokens?.utm_medium)).length;
-    const unknownViewsCount = eventsV2Data.filter((e: any) => !['qr','sms','email','mail','em'].includes(e.tokens?.utm_medium || '')).length;
-    const gpsLocationCount = eventsV2Data.filter((e: any) => e.location_source === 'gps').length;
-    const cellTowerLocationCount = eventsV2Data.filter((e: any) => e.location_source !== 'gps').length;
+    const mobilizeCodes = new Set(headline.map((e: any) => e.tokens?.events_actions?.mobilize_code).filter(Boolean));
+    const qrViewsCount = headline.filter((e: any) => e.tokens?.utm_medium === 'qr').length;
+    const smsViewsCount = headline.filter((e: any) => e.tokens?.utm_medium === 'sms').length;
+    const emailViewsCount = headline.filter((e: any) => ['email', 'mail', 'em'].includes(e.tokens?.utm_medium)).length;
+    const unknownViewsCount = headline.filter((e: any) => !['qr','sms','email','mail','em'].includes(e.tokens?.utm_medium || '')).length;
+    const gpsLocationCount = headline.filter((e: any) => e.location_source === 'gps').length;
+    const cellTowerLocationCount = headline.filter((e: any) => e.location_source !== 'gps').length;
     return {
       earliestTimestamp: earliest ? format(earliest, "MMM d, h:mm a") : "—",
       latestTimestamp: latest ? format(latest, "MMM d, h:mm a") : "—",
       uniqueMobilizeCodes: mobilizeCodes.size,
       totalRows: filteredEventsV2.length,
-      totalUnfilteredRows: eventsV2Data.length,
+      totalUnfilteredRows: headline.length,
       qrViewsCount, smsViewsCount, emailViewsCount, unknownViewsCount,
       gpsLocationCount, cellTowerLocationCount,
     };
