@@ -315,6 +315,7 @@ export default function ParityHarness() {
 
   const sections = Array.from(new Set(CASES.map((c) => c.section)));
   const showPlain = sectionFilter === "3" || showAll;
+  const showStory = sectionFilter === "4" || showAll;
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", background: "#2b2b2b", minHeight: "100vh", color: "#eee" }}>
@@ -328,6 +329,7 @@ export default function ParityHarness() {
           <button key={s} onClick={() => setParams({ section: s })} style={btnStyle(sectionFilter === s)}>§{s}</button>
         ))}
         <button onClick={() => setParams({ section: "3" })} style={btnStyle(sectionFilter === "3")}>§3 plain</button>
+        <button onClick={() => setParams({ section: "4" })} style={btnStyle(sectionFilter === "4")}>§4 story split</button>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {CASES.map((x) => (
@@ -336,11 +338,17 @@ export default function ParityHarness() {
         ))}
       </div>
 
-      {!showPlain && visible.map((c) => <CasePair key={c.id} c={c} />)}
+      {!showPlain && !showStory && visible.map((c) => <CasePair key={c.id} c={c} />)}
       {showPlain && (
         <>
           <h2 style={{ fontSize: 16, marginTop: 24, marginBottom: 12 }}>§3 Plain-text hotspots</h2>
           {PLAIN_CASES.map((c) => <PlainCasePair key={c.id} c={c} />)}
+        </>
+      )}
+      {showStory && (
+        <>
+          <h2 style={{ fontSize: 16, marginTop: 24, marginBottom: 12 }}>§4 Campaign-story segment split</h2>
+          {STORY_CASES.map((s) => <StoryCasePair key={s.id} c={s} />)}
         </>
       )}
     </div>
