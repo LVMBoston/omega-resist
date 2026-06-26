@@ -854,25 +854,9 @@ Deno.serve(async (req) => {
     }
 
 
-    // Helper: word-wrap a line to fit within maxChars
-    function wordWrap(text: string, maxChars: number): string[] {
-      if (text.length <= maxChars) return [text];
-      const words = text.split(" ");
-      const result: string[] = [];
-      let current = "";
-      for (const word of words) {
-        if (current.length === 0) {
-          current = word;
-        } else if (current.length + 1 + word.length <= maxChars) {
-          current += " " + word;
-        } else {
-          result.push(current);
-          current = word;
-        }
-      }
-      if (current) result.push(current);
-      return result;
-    }
+    // Word-wrap + vertical-alignment helpers live in
+    // `../_shared/render/textLayout.ts` so the editor parity harness and SSR
+    // share the exact same algorithm.
 
     // Emoji regex for detecting emoji-prefixed lines
     const emojiPrefixRe = /^([\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2702}-\u{27B0}]\uFE0F?\s?)/u;
