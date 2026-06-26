@@ -260,6 +260,7 @@ const SamizdatMap = ({
   showNoSpawns = false,
   refreshKey,
   dataSource = "real",
+  officialStartAt = null,
 }: SamizdatMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
