@@ -31,14 +31,18 @@ interface SlideRow {
   hotspots: unknown;
 }
 
-const BOX_W = 360;
-const BOX_H = 640;
+// Portrait defaults (used when deck aspect ratio < 1 or unknown).
+const PORTRAIT_W = 360;
+const PORTRAIT_H = 640;
+// Landscape panes get the full available container width and stack vertically.
+const LANDSCAPE_MAX_W = 880;
 
 export function LiveCampaignSection() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string>("");
   const [deckSlugs, setDeckSlugs] = useState<string[]>([]);
   const [deckSlug, setDeckSlug] = useState<string>("");
+  const [deckAspect, setDeckAspect] = useState<number | null>(null);
   const [slides, setSlides] = useState<SlideRow[]>([]);
   const [slideId, setSlideId] = useState<string>("");
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
