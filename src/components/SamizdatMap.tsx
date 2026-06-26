@@ -690,7 +690,16 @@ const SamizdatMap = ({
       const { data: intlEvents, error: intlError } = await intlQuery;
 
       // Combine both event sets
-      const events = [...(eventsWithZip || []), ...(intlEvents || [])];
+      const allEvents = [...(eventsWithZip || []), ...(intlEvents || [])];
+
+      // Apply Official Start cutoff (pre-launch / test events are dropped)
+      const cutoffMs = officialStartAt ? new Date(officialStartAt).getTime() : null;
+      const events = cutoffMs != null && Number.isFinite(cutoffMs)
+        ? allEvents.filter((e) => {
+            const t = new Date(e.occurred_at).getTime();
+            return !Number.isFinite(t) || t >= cutoffMs;
+          })
+        : allEvents;
 
       if ((eventsError && intlError) || !events.length) {
         console.log("No view events found");
@@ -698,6 +707,7 @@ const SamizdatMap = ({
         setLoading(false);
         return;
       }
+
 
       // Step 3a: Batch-fetch IANA timezones from zip_codes for all unique zip codes
       const tzZips = [...new Set(events.map(e => e.zip_code).filter(Boolean))] as string[];
