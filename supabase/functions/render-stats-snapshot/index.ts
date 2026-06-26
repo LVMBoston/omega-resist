@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { formatCampaignStory } from "../../../src/shared/render/campaignStory.ts";
+
 
 
 const corsHeaders = {
@@ -584,32 +586,16 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
       const m = (evt as any).tokens?.utm_medium;
       if (m) mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
     }
-    const totalMediums = Array.from(mediumCounts.values()).reduce((s, c) => s + c, 0);
-    const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
-    const mediumLine = totalMediums > 0
-      ? Array.from(mediumCounts.entries())
-          .map(([m, c]) => `${Math.round((c / totalMediums) * 100)}% ${mediumLabels[m] || m}`)
-          .join(", ")
-      : "";
+    // mediumCounts is consumed by formatCampaignStory below.
 
-    // Speed narrative with "Fastest share:" prefix and geographic origin/destination
-    let speedNarrative = "";
+    // Speed origin/destination cities — data fetching stays here; the
+    // narrative string itself is built by the shared formatter below.
+    let speedOriginCity: string | null = null;
+    let speedDestCity: string | null = null;
     if (speedEntries.length >= 2) {
-      const l0Time = new Date(speedEntries[0][1].minted_at);
-      const last = speedEntries[speedEntries.length - 1];
-      const diffHours = Math.round((new Date(last[1].minted_at).getTime() - l0Time.getTime()) / (1000 * 60 * 60));
-      let timePart: string;
-      if (diffHours < 1) timePart = "under an hour";
-      else if (diffHours < 24) timePart = `just ${diffHours} hours`;
-      else { const d = Math.round(diffHours / 24); timePart = `${d} day${d > 1 ? "s" : ""}`; }
-      speedNarrative = `Fastest share: From the first card drop shared to the first Level ${last[0]} share took ${timePart}.`;
-
-      // Geographic origin/destination
-      let originCity: string | null = null;
-      let destCity: string | null = null;
       try {
-        // Origin: first L1 token → first view event with city
         const firstL1 = speedEntries.find(([lvl]) => lvl === 1);
+        const lastEntry = speedEntries[speedEntries.length - 1];
         if (firstL1) {
           const l1Token = firstL1[1];
           const originEvents = await fetchWithRetry(
@@ -623,15 +609,14 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
           );
           if (originEvents && Array.isArray(originEvents) && originEvents.length > 0) {
             const oe = originEvents[0];
-            originCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
+            speedOriginCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
           }
-          // Destination: first max-level token on same l00_instance
-          if (l1Token.l00_instance && last[0] > 1) {
+          if (l1Token.l00_instance && lastEntry[0] > 1) {
             const destTokens = await fetchWithRetry(
               () => supabase.from("tokens")
                 .select("token")
                 .eq("utm_campaign", campaignCode)
-                .eq("level", last[0])
+                .eq("level", lastEntry[0])
                 .eq("l00_instance", l1Token.l00_instance)
                 .eq("is_simulated", false)
                 .is("deleted_at", null)
@@ -651,85 +636,38 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
               );
               if (destEvents && Array.isArray(destEvents) && destEvents.length > 0) {
                 const de = destEvents[0];
-                destCity = de.region ? `${de.city}, ${de.region}` : de.city;
+                speedDestCity = de.region ? `${de.city}, ${de.region}` : de.city;
               }
             }
           }
-        }
-        if (originCity && destCity) {
-          speedNarrative = speedNarrative.slice(0, -1) + `; ${originCity} to ${destCity}.`;
         }
       } catch (e) {
         console.warn("[render-stats-snapshot] Speed geo lookup failed:", e);
       }
     }
 
-    // Geographic narrative
-    let geoNarrative = "";
-    if (zipCountNum > 0) {
-      geoNarrative = `The content reached ${zipCountNum} different zip codes`;
-      if (stateCount > 0) geoNarrative += ` across ${stateCount} state${stateCount > 1 ? "s" : ""}`;
-      geoNarrative += ".";
-      if (intlCountries.length > 0) geoNarrative += ` It even crossed borders, reaching ${intlCountries.join(", ")}.`;
-    }
-
-    // Closing — deterministic
-    const closings = [
-      "No ad budget. No algorithm. Every view came because one person decided another person needed to see it.",
-      "No ads. No tricks. Just people passing something along because it mattered to them.",
-      "No promotion. No platform boost. This spread the old-fashioned way — person to person, because it resonated.",
-      "Zero dollars spent. Every single view was a conscious act of solidarity — someone choosing to share.",
-    ];
-    const closingIndex = (seedCount + spawnsNum) % closings.length;
-
-    const storyLines: string[] = [];
-    storyLines.push(`__TITLE__Campaign: ${campaignInfo.title || campaignCode}__TITLE__`);
-    const storyNow = new Date();
-    const dateStr = storyNow.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const timeStr = storyNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
-    storyLines.push(`Date of this report: ${dateStr} ${timeStr}`);
-    const startDate = new Date(since || campaignInfo.created_at || Date.now());
-    const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    storyLines.push(`Started ${startFormatted}`);
-    storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
-    if (lastShareAt) {
-      const lastShare = new Date(lastShareAt);
-      const lastShareDateStr = lastShare.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-      const lastShareTimeStr = lastShare.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" });
-      storyLines.push(`Last share: ${lastShareDateStr} ${lastShareTimeStr}`);
-    }
-    storyLines.push("");
-    let seedLine = `🌱 ${seedCount} seeds planted. ${spawnsNum} sprouted into viral chains. (A seed is a QR scan not shared.)`;
-    if (seedCount > 0 && spawnsNum > 0) {
-      seedLine += ` That's a ${Math.round((spawnsNum / seedCount) * 100)}% sprout rate — ${spawnsNum} people didn't just look, they shared.`;
-    }
-    storyLines.push(seedLine);
-    if (mediumLine) {
-      storyLines.push(`📱 Opens by medium: ${mediumLine}.`);
-    }
-    storyLines.push("");
-    if (maxDepth > 0) {
-      let chainLine = `🔗 Longest chain: ${maxDepth} levels deep.`;
-      if (maxDepth >= 3) chainLine += " Someone scanned a card → shared it → that person shared it → and it kept going.";
-      else if (maxDepth === 2) chainLine += " A scan became a share, which became another share.";
-      else chainLine += " Seeds turned into shares.";
-      storyLines.push(chainLine);
-      storyLines.push("");
-    }
-    if (speedNarrative) {
-      storyLines.push(`⚡ ${speedNarrative}`);
-      storyLines.push("");
-    }
-    storyLines.push(`👀 The content was viewed ${viewCountNum} times — sometimes more than once by the same person.`);
-    if (geoNarrative) {
-      storyLines.push(`📍 ${geoNarrative}`);
-      storyLines.push("");
-    }
-    storyLines.push("");
-    storyLines.push(closings[closingIndex]);
-    storyLines.push("");
-
-    metrics.campaign_story = storyLines.join("\n");
+    metrics.campaign_story = formatCampaignStory({
+      campaignTitle: campaignInfo.title || campaignCode,
+      activeAnchorMs: activeAnchorMs,
+      nowMs: Date.now(),
+      seedCount,
+      sproutCount: spawnsNum,
+      viewCount: viewCountNum,
+      zipCount: zipCountNum,
+      stateCount,
+      internationalCountries: intlCountries as string[],
+      maxDepth,
+      propagationSpeed: speedEntries.map(([lvl, t]) => ({
+        level: lvl,
+        firstMintAt: (t as any).minted_at,
+      })),
+      shareMediums: Array.from(mediumCounts.entries()).map(([medium, count]) => ({
+        medium, count,
+      })),
+      lastShareAt,
+      speedOriginCity,
+      speedDestCity,
+    });
   } else {
     metrics.campaign_story = "--";
   }

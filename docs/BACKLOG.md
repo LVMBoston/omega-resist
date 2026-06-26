@@ -150,8 +150,8 @@ _Add new deferred items as new numbered sections below._
 **Goal:** Make parity a structural property of the codebase, not a discipline rule.
 
 **Deferred work:**
-  - a. Create `src/shared/render/` — pure-logic module imported by both the client (Vite) and the SSR edge function (Deno, relative import). No Supabase, no DOM, no runtime-specific APIs. Header comment on each file enforces the rule.
-  - b. Move `formatNarrative` (currently in `src/lib/campaignNarrative.ts` and reimplemented inside SSR) into the shared module first — fixes the current narrative-mismatch bug.
+  - a. ~~Create `src/shared/render/` — pure-logic module imported by both the client (Vite) and the SSR edge function (Deno, relative import). No Supabase, no DOM, no runtime-specific APIs. Header comment on each file enforces the rule.~~ **Shipped 2026-06-26** — see `src/shared/render/README.md`.
+  - b. ~~Move `formatNarrative` (currently in `src/lib/campaignNarrative.ts` and reimplemented inside SSR) into the shared module first — fixes the current narrative-mismatch bug.~~ **Shipped 2026-06-26** as `src/shared/render/campaignStory.ts` with Vitest coverage. Wording divergence resolved by picking the editor's prior text as the single source of truth (SSR's "🌱 X seeds planted", "first card drop shared", "sometimes more than once by the same person" retired).
   - c. Collapse the duplicated `campaignStorySplit.ts` (one in `src/lib/`, one in `supabase/functions/render-stats-snapshot/`) into the shared copy.
   - d. Move hotspot default styles (font size, family, weight, color, padding, line-height, text-align, vertical-align — keyed by hotspot type) into `src/shared/render/hotspotDefaults.ts`. Replace inline literals on both sides with imports.
   - e. Move `textLayout.ts` (word-wrapping, line-height, vertical-alignment math) and `manualHtml.ts` (manual-entry HTML normalization) into the shared module.

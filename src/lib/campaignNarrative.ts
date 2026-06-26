@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { formatCampaignStory } from "@/shared/render/campaignStory";
 
 export interface NarrativeData {
   campaignTitle: string;
@@ -351,162 +352,28 @@ export function generateHeadlineOnly(data: NarrativeData): string {
 // ─── Full story tier (verbose narrative with emojis) ─────────────────
 
 function generateFullStory(data: NarrativeData): string {
-  const {
-    campaignTitle,
-    campaignCreatedAt,
-    dataSource,
-    levelCounts,
-    sproutCount,
-    viewCount,
-    zipCount,
-    usStates,
-    internationalCountries,
-    propagationSpeed,
-    maxLevel,
-    shareMediums,
-    lastShareAt,
-  } = data;
-
-  const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
-  const msActive = Date.now() - new Date(campaignCreatedAt).getTime();
-  const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
-  const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-  // Open medium percentages (based on view events, not tokens)
-  const totalOpens = shareMediums.reduce((s, m) => s + m.count, 0);
-  const mediumLabels: Record<string, string> = { sms: "text", em: "email", wa: "WhatsApp", tw: "Twitter", fb: "Facebook" };
-  const mediumLine = totalOpens > 0
-    ? shareMediums
-        .map(m => `${Math.round((m.count / totalOpens) * 100)}% ${mediumLabels[m.medium] || m.medium}`)
-        .join(", ")
-    : "";
-
-  // Propagation speed narrative
-  let speedNarrative = "";
-  if (propagationSpeed.length >= 2) {
-    const l0Time = new Date(propagationSpeed[0].first_mint);
-    const lastLevel = propagationSpeed[propagationSpeed.length - 1];
-    const lastTime = new Date(lastLevel.first_mint);
-    const diffHours = Math.round((lastTime.getTime() - l0Time.getTime()) / (1000 * 60 * 60));
-
-    let timePart: string;
-    if (diffHours < 1) {
-      timePart = "under an hour";
-    } else if (diffHours < 24) {
-      timePart = `just ${diffHours} hours`;
-    } else {
-      const days = Math.round(diffHours / 24);
-      timePart = `${days} day${days > 1 ? "s" : ""}`;
-    }
-    speedNarrative = `Fastest share: From the first open shared to the first Level ${lastLevel.level} share took ${timePart}.`;
-    if (data.speedOriginCity && data.speedDestCity) {
-      // Replace trailing period with geo suffix
-      speedNarrative = speedNarrative.slice(0, -1) + `; ${data.speedOriginCity} to ${data.speedDestCity}.`;
-    }
-  }
-
-  // Geographic narrative
-  let geoNarrative = "";
-  if (zipCount > 0) {
-    const stateCount = usStates.length;
-    geoNarrative = `The content reached ${zipCount} different zip codes`;
-    if (stateCount > 0) {
-      geoNarrative += ` across ${stateCount} state${stateCount > 1 ? "s" : ""}`;
-    }
-    geoNarrative += ".";
-    if (internationalCountries.length > 0) {
-      geoNarrative += ` It even crossed borders, reaching ${internationalCountries.join(", ")}.`;
-    }
-  }
-
-  // Varied closing — deterministic pick based on seedCount to stay stable per campaign
-  const closings = [
-    "No ad budget. No algorithm. Every view came because one person decided another person needed to see it.",
-    "No ads. No tricks. Just people passing something along because it mattered to them.",
-    "No promotion. No platform boost. This spread the old-fashioned way — person to person, because it resonated.",
-    "Zero dollars spent. Every single view was a conscious act of solidarity — someone choosing to share.",
-  ];
-  const closingIndex = (seedCount + sproutCount) % closings.length;
-
-  const lines: string[] = [];
-
-  // Campaign title header — mirrors SSR (render-stats-snapshot/index.ts) which
-  // emits `__TITLE__Campaign: <name>__TITLE__` as the first line. useLiveMetrics
-  // strips the markers but keeps the text, so the editor shows the same header
-  // the SSR snapshot does.
-  lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
-  // Blank line so the title is its own paragraph block — required for
-  // splitCampaignStoryAtMidpoint to pin it to the first (left) column.
-  lines.push("");
-
-
-  if (dataSource === "simulated") {
-    lines.push("Simulation report — not real field activity.");
-  }
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
-  lines.push(`Date of this report: ${dateStr} ${timeStr}`);
-  const startDate = new Date(campaignCreatedAt);
-  const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  lines.push(`Started ${startFormatted}`);
-  lines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
-  if (lastShareAt) {
-    const lastShare = new Date(lastShareAt);
-    const lastShareDateStr = lastShare.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const lastShareTimeStr = lastShare.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZoneName: "short" });
-    lines.push(`Last share: ${lastShareDateStr} ${lastShareTimeStr}`);
-  }
-  lines.push("");
-
-  // Seeds & sprouts
-  let seedLine = `While ${seedCount} seeds were planted, ${sproutCount} became sprouts, beginning a viral chain.`;
-  if (seedCount > 0 && sproutCount > 0) {
-    const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    seedLine += ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look; they shared.`;
-  }
-  lines.push(seedLine);
-  if (mediumLine) {
-    lines.push(`📱 Opens by medium: ${mediumLine}.`);
-  }
-  lines.push("");
-
-  // Depth
-  if (maxLevel > 0) {
-    let chainLine = `🔗 Longest chain: ${maxLevel} levels deep.`;
-    if (maxLevel >= 3) {
-      chainLine += ` Someone opened it → shared it → that person shared it → and it kept going.`;
-    } else if (maxLevel === 2) {
-      chainLine += ` An open became a share, which became another share.`;
-    } else {
-      chainLine += ` Seeds turned into shares.`;
-    }
-    lines.push(chainLine);
-    lines.push("");
-  }
-
-  // Speed
-  if (speedNarrative) {
-    lines.push(`⚡ ${speedNarrative}`);
-    lines.push("");
-  }
-
-  // Views
-  lines.push(`👀 The content was viewed ${viewCount} times — including return visits from people who held onto the message.`);
-
-  // Geography — only include if we have geo data
-  if (geoNarrative) {
-    lines.push(`📍 ${geoNarrative}`);
-    lines.push("");
-  }
-
-  // Closing
-  lines.push(closings[closingIndex]);
-  lines.push("");
-
-
-  return lines.join("\n");
+  const seedCount = data.levelCounts.find((l) => l.level === 0)?.count || 0;
+  return formatCampaignStory({
+    campaignTitle: data.campaignTitle,
+    activeAnchorMs: new Date(data.campaignCreatedAt).getTime(),
+    nowMs: Date.now(),
+    dataSource: data.dataSource,
+    seedCount,
+    sproutCount: data.sproutCount,
+    viewCount: data.viewCount,
+    zipCount: data.zipCount,
+    stateCount: data.usStates.length,
+    internationalCountries: data.internationalCountries,
+    maxDepth: data.maxLevel,
+    propagationSpeed: data.propagationSpeed.map((p) => ({
+      level: p.level,
+      firstMintAt: p.first_mint,
+    })),
+    shareMediums: data.shareMediums,
+    lastShareAt: data.lastShareAt,
+    speedOriginCity: data.speedOriginCity,
+    speedDestCity: data.speedDestCity,
+  });
 }
 
 // ─── Two-tier narrative generator ────────────────────────────────────
