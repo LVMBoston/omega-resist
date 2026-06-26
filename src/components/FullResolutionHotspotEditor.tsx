@@ -31,6 +31,7 @@ import { ChartHotspotRenderer } from "@/components/ChartHotspotRenderer";
 import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer";
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
+import { applyStorySegment } from "@/shared/render/campaignStorySplit";
 import { DATA_HOTSPOT_TYPES } from "@/lib/hotspotClassification";
 import { MapLegend } from "@/components/MapLegend";
 import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
