@@ -410,6 +410,7 @@ export default function ParityHarness() {
         ))}
         <button onClick={() => setParams({ section: "3" })} style={btnStyle(sectionFilter === "3")}>§3 plain</button>
         <button onClick={() => setParams({ section: "4" })} style={btnStyle(sectionFilter === "4")}>§4 story split</button>
+        <button onClick={() => setParams({ section: "5" })} style={btnStyle(sectionFilter === "5")}>§5 live campaign</button>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {CASES.map((x) => (
