@@ -71,6 +71,7 @@ interface Hotspot {
   manualLabel?: string;
   manualHtml?: string;
   liveNumberStyle?: Record<string, any>;
+  storySegment?: "full" | "first" | "second";
   chartConfig?: any;
   mapConfig?: any;
   // Image hotspot fields
