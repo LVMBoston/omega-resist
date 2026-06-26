@@ -1091,64 +1091,23 @@ Deno.serve(async (req) => {
       }
 
       // === Standard hotspot rendering ===
-      // Honor style.padding for the text inset (editor parity). Fall back to a
-      // 4px sliver so word-wrap math never divides by zero when padding is 0.
-      const padInset = paddingPx;
-      const wrapInset = Math.max(padInset, 4);
-
-      // Map textAlign to SVG text-anchor and x position
-      let textAnchor: "start" | "middle" | "end" = "middle";
-      let textX = x + hsWidth / 2;
-      if (textAlign === "left") {
-        textAnchor = "start";
-        textX = x + padInset;
-      } else if (textAlign === "right") {
-        textAnchor = "end";
-        textX = x + hsWidth - padInset;
-      }
-
-      // Word-wrap each \n-separated line so long text doesn't overflow.
-      const maxCharsPerLine = maxCharsForWidth(hsWidth - wrapInset * 2, scaledFontSize);
-      const rawLines = metricValue.split("\n");
-      const lines: string[] = [];
-      for (const rl of rawLines) {
-        if (rl.length === 0) {
-          lines.push("");
-        } else {
-          for (const wl of wordWrap(rl, maxCharsPerLine)) lines.push(wl);
-        }
-      }
-
-      const lineHeight = scaledFontSize * LINE_HEIGHT_RATIO;
-      const totalTextHeight = lineHeight * lines.length;
-
-      // Vertical alignment — honor style.verticalAlign (top / center / bottom).
-      const startY = tspanStartY(
-        y,
-        hsHeight,
-        scaledFontSize,
-        totalTextHeight,
-        padInset,
-        normalizeVAlign(style.verticalAlign, "center"),
+      // Delegated to shared `renderPlainTextSvg` so editor parity tests can
+      // exercise the exact same code path. See `_shared/render/plainText.ts`.
+      svgParts += renderPlainTextSvg(
+        metricValue,
+        { x, y, w: hsWidth, h: hsHeight },
+        {
+          fontSize: scaledFontSize,
+          fontWeight,
+          color,
+          textAlign,
+          verticalAlign: style.verticalAlign,
+          fontFamily,
+          paddingPx,
+          clipOverflow,
+        },
+        `hs-${Math.random().toString(36).slice(2, 8)}`,
       );
-
-      // Clip text to hotspot bounding box (matches client-side overflow:hidden).
-      // When style.clipOverflow === false, skip the clipPath wrapper so text
-      // can spill outside, matching the editor's overflow-visible mode.
-      let clipId: string | null = null;
-      if (clipOverflow) {
-        clipId = `clip-hs-${Math.random().toString(36).slice(2, 8)}`;
-        svgParts += `<defs><clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${hsWidth}" height="${hsHeight}"/></clipPath></defs>`;
-        svgParts += `<g clip-path="url(#${clipId})">`;
-      }
-
-      svgParts += `<text font-family="${escapeXml(fontFamily)}" font-size="${scaledFontSize}" font-weight="${escapeXml(fontWeight)}" fill="${escapeXml(color)}" text-anchor="${textAnchor}">`;
-      lines.forEach((line, i) => {
-        svgParts += `<tspan x="${textX}" y="${startY + i * lineHeight}">${escapeXml(line)}</tspan>`;
-      });
-      svgParts += `</text>`;
-
-      if (clipOverflow) svgParts += `</g>`;
 
 
       return {
