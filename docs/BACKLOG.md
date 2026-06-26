@@ -133,11 +133,12 @@ _Add new deferred items as new numbered sections below._
 **Observation:** 2026-06-26 we shipped a campaign-level `official_start_at` override. When set, events occurring before that moment are excluded from headline metrics, the deck map (`MapHotspotRenderer` + `get_campaign_map_events` RPC), narratives (`campaignNarrative.ts`), `useLiveMetrics`, `useChartData`, and the SSR snapshot renderer (`render-stats-snapshot`). The default (NULL) preserves the previous behavior of starting at the first event. The control lives on the campaign summary card in `CampaignDetail.tsx`.
 
 **Deferred work:**
-  - a. Surface a visible **Pre-launch / test** counter on the Campaign Dashboard (number of events excluded by the cutoff) so admins can sanity-check the cutoff.
-  - b. Apply the cutoff to the admin-internal `SamizdatMap` view-events queries (currently still shows pre-launch test data so operators can debug).
-  - c. Apply the cutoff to `CampaignDashboard.fetchEvents` and the analytics RPCs (viral coefficient, conversion funnel, amplification, engagement, cycle time) for full reporting consistency.
+  - a. ~~Surface a visible **Pre-launch / test** counter on the Campaign Dashboard~~ — **Shipped 2026-06-26** (`CampaignDashboard.tsx` header badge).
+  - b. ~~Apply the cutoff to the admin-internal `SamizdatMap` view-events queries~~ — **Shipped 2026-06-26** (`officialStartAt` prop, client-side filter).
+  - c. ~~Apply the cutoff to `CampaignDashboard.fetchEvents` and the eventsV2 listing/counters~~ — **Shipped 2026-06-26**. Still TODO: analytics RPCs (viral coefficient, conversion funnel, amplification, engagement, cycle time) on the **Analytics** tab and on `/s/:shareCode` (`SharedDashboard.tsx`) — these are server-side aggregates that currently ignore the cutoff. Likely needs a `p_since` arg threaded into each RPC.
   - d. Consider a per-EoA override on top of the campaign-level default for cases where one EoA launches earlier than the rest.
-  - e. Add an "Official start" badge to the Campaign Dashboard header when the override is set.
-  - f. Archive a design decision under `docs/decisions/reporting-start/`.
+  - e. ~~Add an "Official start" badge to the Campaign Dashboard header when the override is set~~ — **Shipped 2026-06-26**.
+  - f. Apply the cutoff to the `ActivityMonitor` admin-wide live feed (currently shows all events across all campaigns regardless of per-campaign overrides) — needs a per-row campaign lookup.
+  - g. Archive a design decision under `docs/decisions/reporting-start/`.
 
 
