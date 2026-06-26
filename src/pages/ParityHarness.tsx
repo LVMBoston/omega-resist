@@ -18,6 +18,7 @@ import {
 } from "../../supabase/functions/_shared/render/manualHtml";
 import { renderPlainTextSvg } from "../../supabase/functions/_shared/render/plainText";
 import { splitCampaignStoryAtMidpoint } from "../../supabase/functions/_shared/render/campaignStorySplit";
+import { LiveCampaignSection } from "./parity/LiveCampaignSection";
 
 type Case = {
   id: string;
