@@ -419,7 +419,7 @@ export default function ParityHarness() {
         ))}
       </div>
 
-      {!showPlain && !showStory && visible.map((c) => <CasePair key={c.id} c={c} />)}
+      {!showPlain && !showStory && !showLive && visible.map((c) => <CasePair key={c.id} c={c} />)}
       {showPlain && (
         <>
           <h2 style={{ fontSize: 16, marginTop: 24, marginBottom: 12 }}>§3 Plain-text hotspots</h2>
@@ -432,6 +432,7 @@ export default function ParityHarness() {
           {STORY_CASES.map((s) => <StoryCasePair key={s.id} c={s} />)}
         </>
       )}
+      {showLive && <LiveCampaignSection />}
     </div>
   );
 }
