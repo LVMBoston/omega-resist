@@ -859,31 +859,17 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_campaign_map_events:
-        | {
-            Args: { _campaign_code: string }
-            Returns: {
-              event_id: string
-              latitude: number
-              level: number
-              longitude: number
-              spawn_count: number
-              token: string
-              utm_medium: string
-            }[]
-          }
-        | {
-            Args: { _campaign_code: string; _since?: string }
-            Returns: {
-              event_id: string
-              latitude: number
-              level: number
-              longitude: number
-              spawn_count: number
-              token: string
-              utm_medium: string
-            }[]
-          }
+      get_campaign_map_events: {
+        Args: { _campaign_code: string; _since?: string }
+        Returns: {
+          event_id: string
+          latitude: number
+          level: number
+          longitude: number
+          spawn_count: number
+          utm_medium: string
+        }[]
+      }
       get_campaign_stats: {
         Args: { campaign_codes: string[] }
         Returns: {
