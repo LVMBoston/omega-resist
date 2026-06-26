@@ -471,7 +471,7 @@ export function MapHotspotRenderer({
     console.log(`MapHotspotRenderer: Rendering ${eventPoints.length} markers`);
 
     eventPoints.forEach((point) => {
-      const color = MEDIUM_COLORS[point.utmMedium?.toLowerCase()] || DEFAULT_COLOR;
+      const color = resolveMarkerFill(point.utmMedium?.toLowerCase());
       const hasSpawns = (point.spawnCount || 0) > 0;
       const svgIcon = getMarkerSVG(color, 12, hasSpawns);
 
