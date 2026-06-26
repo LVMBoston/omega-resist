@@ -250,56 +250,69 @@ export function LiveCampaignSection() {
         const boxH = isLandscape
           ? Math.round(LANDSCAPE_MAX_W / (deckAspect as number))
           : PORTRAIT_H;
-        const gridStyle: React.CSSProperties = isLandscape
-          ? { display: "grid", gridTemplateColumns: "1fr", gap: 24, alignItems: "start" }
-          : { display: "grid", gridTemplateColumns: `${boxW}px ${boxW}px`, gap: 24, alignItems: "start" };
+        // Always stack the three panes top-to-bottom so EDITOR / VIEWER / SSR
+        // can be visually scanned for drift at a glance.
+        const paneStyle: React.CSSProperties = {
+          width: boxW, height: boxH, background: "#000",
+          outline: "1px dashed #888", position: "relative", marginBottom: 16,
+        };
         return (
           <>
             <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 8 }}>
               Deck orientation: {isLandscape ? `landscape (${deckAspect?.toFixed(2)})` : deckAspect ? `portrait (${deckAspect.toFixed(2)})` : "portrait (default)"}
-              {isLandscape ? " — panes stacked top/bottom for full-width comparison" : ""}
+              {" — panes stacked: EDITOR ▸ VIEWER ▸ SSR"}
             </div>
-            <div style={gridStyle}>
-              {/* EDITOR pane */}
-              <div>
-                <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
-                  EDITOR (HybridSlide) · campaign {selectedCampaign.code}
-                </div>
-                <div style={{ width: boxW, height: boxH, background: "#000", outline: "1px dashed #888", position: "relative" }}>
-                  <HybridSlide
-                    imageUrl={selectedSlide.content_url || ""}
-                    hotspots={hotspots}
-                    deckSlug={selectedSlide.deck_slug}
-                    viralToken={null}
-                    templateId={selectedSlide.template_id || undefined}
-                  />
-                  {overlay && snapshotUrl && (
-                    <img
-                      src={snapshotUrl}
-                      alt="SSR overlay"
-                      style={{
-                        position: "absolute", inset: 0,
-                        width: "100%", height: "100%",
-                        objectFit: "contain", opacity: 0.5, pointerEvents: "none",
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
 
-              {/* SSR pane */}
-              <div>
-                <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
-                  SSR (render-stats-snapshot){snapshotUrl ? "" : " — click Render to fetch"}
-                </div>
-                <div style={{ width: boxW, height: boxH, background: "#000", outline: "1px dashed #888", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {snapshotUrl ? (
-                    <img src={snapshotUrl} alt="SSR snapshot" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-                  ) : (
-                    <span style={{ opacity: 0.5, fontSize: 12 }}>(not rendered yet)</span>
-                  )}
-                </div>
-              </div>
+            {/* EDITOR pane — what you see at /deck-editor */}
+            <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
+              EDITOR (FullResolutionHotspotEditor) · campaign {selectedCampaign.code}
+            </div>
+            <div style={paneStyle}>
+              <FullResolutionHotspotEditor
+                imageUrl={selectedSlide.content_url || ""}
+                initialHotspots={hotspots as never[]}
+                onSave={() => {/* read-only in harness */}}
+                selectedCampaignId={campaignId}
+                selectedCampaignCode={selectedCampaign.code}
+                onCampaignChange={() => {/* locked to harness selection */}}
+              />
+            </div>
+
+            {/* VIEWER pane — what end-users see */}
+            <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
+              VIEWER (HybridSlide) · campaign {selectedCampaign.code}
+            </div>
+            <div style={paneStyle}>
+              <HybridSlide
+                imageUrl={selectedSlide.content_url || ""}
+                hotspots={hotspots}
+                deckSlug={selectedSlide.deck_slug}
+                viralToken={null}
+                templateId={selectedSlide.template_id || undefined}
+              />
+              {overlay && snapshotUrl && (
+                <img
+                  src={snapshotUrl}
+                  alt="SSR overlay"
+                  style={{
+                    position: "absolute", inset: 0,
+                    width: "100%", height: "100%",
+                    objectFit: "contain", opacity: 0.5, pointerEvents: "none",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* SSR pane — what the snapshot renderer produces */}
+            <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
+              SSR (render-stats-snapshot){snapshotUrl ? "" : " — click Render to fetch"}
+            </div>
+            <div style={{ ...paneStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {snapshotUrl ? (
+                <img src={snapshotUrl} alt="SSR snapshot" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+              ) : (
+                <span style={{ opacity: 0.5, fontSize: 12 }}>(not rendered yet)</span>
+              )}
             </div>
           </>
         );
