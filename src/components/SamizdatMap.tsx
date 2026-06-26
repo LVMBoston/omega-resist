@@ -54,6 +54,11 @@ interface SamizdatMapProps {
   refreshKey?: number;
   /** Filter by real, simulated, or both data sources */
   dataSource?: "real" | "simulated" | "both";
+  /**
+   * Campaign-level "Official start" cutoff. Events occurring before this
+   * timestamp are excluded as pre-launch / test. Null/undefined = no cutoff.
+   */
+  officialStartAt?: string | null;
 }
 
 // 3-state engagement model (PRD_Share_Flow_Visualization.md)
