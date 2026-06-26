@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 import { applyStorySegment } from "@/lib/campaignStorySplit";
+import { resolveLiveNumberStyle } from "@/shared/render/hotspotDefaults";
 
 
 interface StatsPageSlideProps {
