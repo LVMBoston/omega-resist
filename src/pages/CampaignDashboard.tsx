@@ -192,6 +192,14 @@ export default function CampaignDashboard({
   // Get filter values from URL params or use prop
   const selectedCampaignId = propCampaignId || searchParams.get("campaignId") || "";
   const selectedCampaign = searchParams.get("campaign") || "";
+
+  // Campaign-level "Official start" cutoff. When set, events before this
+  // moment are bucketed as pre-launch / test and excluded from the map,
+  // listings, KPI counters, and exports below.
+  const { data: officialStartAt } = useOfficialStart({
+    campaignId: selectedCampaignId || null,
+    campaignCode: selectedCampaign || null,
+  });
   const eventTypeFilter = searchParams.get("eventType") || "all";
   const dataSourceFilter = normalizeDataSource(searchParams.get("dataSource"));
   const levelFilter = searchParams.get("levels") || "0,1,2,3";
