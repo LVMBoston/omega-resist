@@ -404,8 +404,11 @@ export const StatsPageSlide = ({
           value = String(metricsMap[hotspot.metricKey]);
         }
         
-        if (hotspot.metricKey === 'campaign_story' && hotspot.storySegment && hotspot.storySegment !== 'full') {
-          value = applyStorySegment(value, hotspot.storySegment);
+        if (hotspot.metricKey === 'campaign_story') {
+          if (hotspot.storySegment && hotspot.storySegment !== 'full') {
+            value = applyStorySegment(value, hotspot.storySegment);
+          }
+          value = value.replace(/__TITLE__(.*?)__TITLE__/g, '$1');
         }
 
         const isStory =
