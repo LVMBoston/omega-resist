@@ -468,12 +468,13 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
   // Campaign story — full narrative (inline generation matching client-side generateFullStory)
-  const campaignInfo = await fetchWithRetry<CampaignSnapshotInfo>(
-    () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
-    "campaign info for story"
-  );
+  const campaignInfo = campaignBase as CampaignSnapshotInfo | null;
   if (campaignInfo) {
-    const msActive = Date.now() - new Date(campaignInfo.created_at || Date.now()).getTime();
+    // "Active since" honors official_start_at when set
+    const activeAnchorMs = since
+      ? new Date(since).getTime()
+      : new Date(campaignInfo.created_at || Date.now()).getTime();
+    const msActive = Date.now() - activeAnchorMs;
     const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
     const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const seedCount = parseInt(String(metrics.seeds).replace(/,/g, ""), 10) || 0;
