@@ -251,6 +251,30 @@ export function HotspotCalibrationControls({
         </div>
       </div>
 
+      {/* Story segment — split the campaign story across two side-by-side hotspots for landscape decks */}
+      {hotspot.metricKey === "campaign_story" && (
+        <div className="space-y-2">
+          <Label className="text-xs">Story segment</Label>
+          <Select
+            value={hotspot.storySegment || "full"}
+            onValueChange={(val) => onUpdate({ storySegment: val as 'full' | 'first' | 'second' })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full" className="text-xs">Full story (portrait)</SelectItem>
+              <SelectItem value="first" className="text-xs">First half (left column)</SelectItem>
+              <SelectItem value="second" className="text-xs">Second half (right column)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            For landscape decks: place two campaign_story hotspots side-by-side and set one to First, the other to Second. The title stays in First; the date footer stays in Second.
+          </p>
+        </div>
+      )}
+
+
       {/* Clip overflow toggle — hides text that extends past the box */}
       <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
         <div className="space-y-0.5">

@@ -94,3 +94,37 @@ Synchronized server-side SVG snapshot rendering with client-side dialog formatti
 - **Clipping**: SVG `clipPath` prevents text overflow beyond hotspot bounds.
 - **Content sync**: Added `__TITLE__` markers, "Last share" timestamp query, "Fastest share:" prefix with geographic origin/destination queries.
 - **UTC fix**: Removed manual `" UTC"` suffixes that caused "UTC UTC" duplication with Deno's `timeZoneName: "short"`.
+
+## Update — 2026-06-26
+
+Status: Approved & Implemented
+
+### Landscape two-column support
+
+The campaign_story metric is sized for portrait decks. On landscape decks the
+narrative is too tall to fit. Instead of changing the story content or
+auto-flowing CSS columns (which would break editor/SSR parity), each
+`campaign_story` hotspot now carries an optional `storySegment` field:
+
+- `full` (default) — entire story, today's behavior.
+- `first` — left/top column. Always includes the `__TITLE__` block.
+- `second` — right/bottom column. Always includes the `Date of this report:` footer.
+
+For landscape layouts, place two `campaign_story` hotspots side-by-side and
+set one to First, the other to Second. The split point is computed by
+`splitCampaignStoryAtMidpoint` (in `src/lib/campaignStorySplit.ts` and a
+mirrored Deno copy at `supabase/functions/render-stats-snapshot/campaignStorySplit.ts`)
+by picking the paragraph boundary that minimizes `abs(leftChars − rightChars)`.
+
+### Files touched
+- `src/types/viralTemplates.ts` — added `storySegment` field on `Hotspot`.
+- `src/lib/campaignStorySplit.ts` + `.test.ts` — splitter + 7 unit tests.
+- `supabase/functions/render-stats-snapshot/campaignStorySplit.ts` — Deno mirror.
+- `supabase/functions/render-stats-snapshot/index.ts` — slice story before render.
+- `src/components/StatsPageSlide.tsx`, `src/components/HybridSlide.tsx` — apply slice in editor.
+- `src/components/HotspotCalibrationControls.tsx` — Story segment selector (campaign_story only).
+
+### Parity
+Identical splitter logic runs in the in-app renderer and the SSR snapshot,
+satisfying the editor/SSR parity rule. Portrait decks and any hotspot left
+on `full` render exactly as before.

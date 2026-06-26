@@ -1,59 +1,53 @@
-## 1. What I found
+## 1. Goal
 
-1a. The fresh snapshot proves the deployed server output is still drawing the middle row as one clipped SVG text line.
+Let landscape decks display the Campaign Story across two side-by-side hotspots, with the story content split at the paragraph nearest the midpoint. Portrait decks keep working unchanged (a single hotspot still shows the whole story).
 
-1b. The local `render-stats-snapshot` source has wrap logic now, but it still does not match the Deck Editor for several style values.
+## 2. How it works (plain language)
 
-1c. The current `/parity-harness` only tests rich-text manual entries. It does not test the plain `manualLabel` / metric text branch that is producing the clipped "Last updated" boxes in your screenshot.
+- A new optional control on any `campaign_story` hotspot: **Story segment** with three choices: `Full` (default — today's behavior), `First half`, `Second half`.
+- For landscape layouts, the user places two `campaign_story` hotspots side-by-side and sets one to `First half`, the other to `Second half`. Each renders only its slice of the narrative.
+- The split point is computed automatically: walk the paragraphs, find the boundary whose cumulative character count is closest to half the total. The `__TITLE__` line always stays with `First half`; the `Date of this report:` footer always stays with `Second half`. Blank-line paragraph breaks are preserved.
+- Identical splitting logic runs in both the in-app renderer (`StatsPageSlide` / `HybridSlide`) and the SSR snapshot (`render-stats-snapshot/index.ts`), satisfying the editor/SSR parity rule.
 
-## 2. Remaining hard-coded rendering mismatches
+## 3. Technical details
 
-2a. `padding`: Deck Editor honors `style.padding`; SSR uses a hard-coded `4px` side inset only for wrap math.
+### 3a. Type change
+- `src/types/viralTemplates.ts`: add `storySegment?: 'full' | 'first' | 'second'` on `Hotspot` (optional, defaults to `full`).
 
-2b. `borderRadius`: Deck Editor honors `style.borderRadius`; SSR hard-codes the background radius to `2`.
+### 3b. Shared splitter
+- New helper `splitCampaignStoryAtMidpoint(story: string): { first: string; second: string }` in `src/lib/campaignStorySplit.ts`.
+  - Tokenize into paragraph blocks separated by blank lines.
+  - Keep any `__TITLE__…__TITLE__` block pinned to `first`.
+  - Keep any block starting with `Date of this report:` pinned to `second`.
+  - For remaining blocks, accumulate char counts; the split index is the boundary that minimizes `abs(leftChars − rightChars)`.
+  - Re-join with `\n\n` so existing paragraph-gap rendering still works.
+- Add Vitest unit tests covering: title pinning, footer pinning, even split, odd split, missing footer, single-paragraph fallback.
+- Duplicate the function inside `supabase/functions/render-stats-snapshot/` (Deno can't import from `src/`); add a Deno test alongside the existing `canvas.test.ts` pattern.
 
-2c. `fontFamily`: Deck Editor honors `style.fontFamily`; SSR hard-codes `Inter, sans-serif`.
+### 3c. In-app rendering
+- `src/components/StatsPageSlide.tsx` and `src/components/HybridSlide.tsx`: when `hotspot.metricKey === 'campaign_story'` and `hotspot.storySegment` is `'first'` or `'second'`, replace `value` with the corresponding slice from the splitter before passing it to the existing render path. `'full'`/undefined keeps current behavior.
 
-2d. `fontWeight`: Deck Editor defaults to `700`; SSR defaults to `normal` unless the value is exactly `bold` or `700`.
+### 3d. SSR rendering
+- `supabase/functions/render-stats-snapshot/index.ts`: inside the `campaign_story` branch (line 1047), apply the same slice based on `hotspot.storySegment` before the `metricValue.split("\n")` pass. No other layout logic changes.
 
-2e. `color`: Deck Editor defaults to `#1a1a1a`; SSR defaults to `#000000`.
+### 3e. Editor control
+- `src/components/HotspotCalibrationControls.tsx` (or wherever live-number style controls live for `campaign_story`): add a small select labeled **Story segment** with options Full / First half / Second half. Visible only when `metricKey === 'campaign_story'`.
 
-2f. `clipOverflow`: Deck Editor can allow overflow when `clipOverflow === false`; SSR already has that guard, so this part is okay.
+### 3f. Docs
+- Append an `## Update — 2026-06-26` section to `docs/decisions/campaign-story/2026-02-27_two-tier-story-metric_feature-doc_lovable.md` describing the landscape split (matches the Decision Log Rule, since this updates an existing campaign-story decision).
 
-## 3. Fix plan
+## 4. What does not change
 
-3a. Update the standard plain-text branch in `supabase/functions/render-stats-snapshot/index.ts` so it uses the same defaults and style fields as `StatsPageSlide.tsx`.
+- Portrait decks and any hotspot left on `Full` render exactly as today.
+- The narrative generator (`campaignNarrative.ts`) is untouched — same story content, same data integrity guarantees.
+- No DB migration, no edge function redeploy beyond the existing `render-stats-snapshot` push.
 
-3b. Use parsed `style.padding` for text position and wrap width instead of the hard-coded `4px` inset.
+## 5. Verification
 
-3c. Use parsed `style.borderRadius` on background rectangles instead of hard-coded `rx="2"`.
-
-3d. Pass through `style.fontFamily`, `style.fontWeight`, and the editor color default.
-
-3e. Add a debug-safe marker/version log to the function so we can confirm the deployed edge function is the new code, not a stale deployment.
-
-## 4. Parity harness plan
-
-4a. Extend `src/pages/ParityHarness.tsx` with plain-text fixtures, not only rich-text fixtures.
-
-4b. Add the exact problem shape: three adjacent tan boxes where the middle and right values must wrap instead of clipping.
-
-4c. Add top, center, and bottom vertical-alignment fixtures for plain text.
-
-4d. Add a padding/border-radius/font-family fixture so future hard-coded regressions are visible.
-
-## 5. Verification plan
-
-5a. Run the renderer tests that already cover snapshot canvas behavior.
-
-5b. Deploy `render-stats-snapshot` after the code change.
-
-5c. Trigger a fresh snapshot render for the Stoddard campaign.
-
-5d. Check edge logs for the new version marker to prove the latest function handled the render.
-
-5e. Use browser testing to view the fresh SSR preview and `/parity-harness`, then confirm by screenshot that the text wraps rather than clipping.
+- Vitest unit tests for the splitter.
+- Browser check on `/deck-editor/thomas-luttig`: place two paired hotspots on a landscape slide, set First/Second, screenshot to confirm balanced columns and that title+footer land in the correct columns.
+- Trigger a Server Refresh on a landscape campaign and compare the snapshot PNG to the live editor view for parity.
 
 ## 6. Decision log
 
-6a. Archive this approved plan as a new decision document: `docs/decisions/snapshots/2026-06-24_ssr-editor-text-parity-hardening_feature-doc_lovable.md`.
+This plan **updates the existing decision document** `docs/decisions/campaign-story/2026-02-27_two-tier-story-metric_feature-doc_lovable.md` via a new `## Update — 2026-06-26` section (per the Decision Log Rule).

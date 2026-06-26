@@ -131,6 +131,15 @@ export interface Hotspot {
   manualLabel?: string;  // For manual_entry metric type — plain text fallback
   manualHtml?: string;   // For manual_entry metric type — sanitized rich-text HTML (preferred when present)
   liveNumberStyle?: LiveNumberStyle;
+  /**
+   * For metricKey === 'campaign_story' only. Controls which slice of the
+   * narrative this hotspot renders so landscape decks can place two
+   * side-by-side hotspots that together show the full story.
+   *   'full'   — entire story (default; portrait behavior)
+   *   'first'  — left/top column (includes __TITLE__)
+   *   'second' — right/bottom column (includes 'Date of this report:' footer)
+   */
+  storySegment?: 'full' | 'first' | 'second';
   // Chart hotspot properties
   chartConfig?: ChartConfig;
   // Map hotspot properties

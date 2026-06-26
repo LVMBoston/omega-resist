@@ -7,6 +7,7 @@ import { MapHotspotRenderer } from "@/components/MapHotspotRenderer";
 import { Loader2 } from "lucide-react";
 import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
+import { applyStorySegment } from "@/lib/campaignStorySplit";
 
 
 interface StatsPageSlideProps {
@@ -403,6 +404,10 @@ export const StatsPageSlide = ({
           value = String(metricsMap[hotspot.metricKey]);
         }
         
+        if (hotspot.metricKey === 'campaign_story' && hotspot.storySegment && hotspot.storySegment !== 'full') {
+          value = applyStorySegment(value, hotspot.storySegment);
+        }
+
         const isStory =
           hotspot.metricKey === 'campaign_story' || /\n/.test(value);
         const baseFontSize = parseInt(String(style.fontSize || '24'), 10) || 24;

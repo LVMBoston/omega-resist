@@ -87,6 +87,7 @@ function escapeXml(str: string): string {
 import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 import { renderManualHtml } from "./manualHtml.ts";
+import { applyStorySegment } from "./campaignStorySplit.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
@@ -1056,7 +1057,9 @@ Deno.serve(async (req) => {
         const maxCharsPerLine = Math.floor((hsWidth - padding * 2) / (storyFontSize * 0.52));
         const maxCharsIndented = Math.floor((hsWidth - padding * 2 - emojiIndent) / (storyFontSize * 0.52));
 
-        const rawLines = metricValue.split("\n");
+        // Apply landscape column split if configured on this hotspot.
+        const segmentedValue = applyStorySegment(metricValue, hotspot.storySegment);
+        const rawLines = segmentedValue.split("\n");
 
         // PASS 1 — build a flat list of draw ops with relative Y, so we can
         // measure total height before placing them. This lets us honor the
