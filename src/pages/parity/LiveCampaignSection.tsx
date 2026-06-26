@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { HybridSlide } from "@/components/HybridSlide";
+import { FullResolutionHotspotEditor } from "@/components/FullResolutionHotspotEditor";
 import { Loader2, RefreshCw } from "lucide-react";
 
 interface Campaign {
