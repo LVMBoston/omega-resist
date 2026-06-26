@@ -1066,12 +1066,7 @@ Deno.serve(async (req) => {
 
         // Total content height (last baseline + descent approximation).
         const totalH = yRel + padding;
-        const vAlignRaw = (style.verticalAlign || "top").toLowerCase();
-        const freeSpace = Math.max(0, hsHeight - totalH);
-        const yOffset =
-          vAlignRaw === "bottom" ? freeSpace
-          : vAlignRaw === "center" || vAlignRaw === "middle" ? freeSpace / 2
-          : 0;
+        const yOffset = freeSpaceOffset(totalH, hsHeight, normalizeVAlign(style.verticalAlign, "top"));
 
         // Optional clip to hotspot bounds (editor parity with clipOverflow).
         let clipId: string | null = null;
