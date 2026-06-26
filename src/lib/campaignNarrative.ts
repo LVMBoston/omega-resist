@@ -251,7 +251,12 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
 
   return {
     campaignTitle: campaignRes.data?.title || campaignCode,
-    campaignCreatedAt: campaignRes.data?.created_at || new Date().toISOString(),
+    // Prefer the admin-set Official Start when present; otherwise fall back to
+    // campaign created_at. This drives "Started …" and "Campaign active for …".
+    campaignCreatedAt:
+      (campaignRes.data as any)?.official_start_at ||
+      campaignRes.data?.created_at ||
+      new Date().toISOString(),
     dataSource,
     levelCounts,
     sproutCount: parentTokens.size || 0,

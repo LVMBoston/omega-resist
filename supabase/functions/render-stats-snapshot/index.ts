@@ -688,7 +688,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     const dateStr = storyNow.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const timeStr = storyNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZoneName: "short" });
     storyLines.push(`Date of this report: ${dateStr} ${timeStr}`);
-    const startDate = new Date(campaignInfo.created_at || Date.now());
+    const startDate = new Date(since || campaignInfo.created_at || Date.now());
     const startFormatted = startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     storyLines.push(`Started ${startFormatted}`);
     storyLines.push(`Campaign active for ${daysActive} days ${hoursRemainder} hours`);
