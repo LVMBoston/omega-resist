@@ -64,6 +64,7 @@ export type Database = {
           description: string | null
           display_order: number
           id: string
+          official_start_at: string | null
           snapshot_enabled: boolean | null
           snapshot_interval_minutes: number | null
           title: string
@@ -77,6 +78,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
+          official_start_at?: string | null
           snapshot_enabled?: boolean | null
           snapshot_interval_minutes?: number | null
           title: string
@@ -90,6 +92,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
+          official_start_at?: string | null
           snapshot_enabled?: boolean | null
           snapshot_interval_minutes?: number | null
           title?: string
@@ -857,14 +860,13 @@ export type Database = {
         }[]
       }
       get_campaign_map_events: {
-        Args: { _campaign_code: string }
+        Args: { _campaign_code: string; _since?: string }
         Returns: {
           event_id: string
           latitude: number
           level: number
           longitude: number
           spawn_count: number
-          token: string
           utm_medium: string
         }[]
       }

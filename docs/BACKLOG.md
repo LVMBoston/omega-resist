@@ -126,3 +126,18 @@ _Add new deferred items as new numbered sections below._
 
 **Related:** Discussion deferred on 2026-06-26. No app code changes yet.
 
+---
+
+## 10. Official start cutoff — follow-up polish
+
+**Observation:** 2026-06-26 we shipped a campaign-level `official_start_at` override. When set, events occurring before that moment are excluded from headline metrics, the deck map (`MapHotspotRenderer` + `get_campaign_map_events` RPC), narratives (`campaignNarrative.ts`), `useLiveMetrics`, `useChartData`, and the SSR snapshot renderer (`render-stats-snapshot`). The default (NULL) preserves the previous behavior of starting at the first event. The control lives on the campaign summary card in `CampaignDetail.tsx`.
+
+**Deferred work:**
+  - a. Surface a visible **Pre-launch / test** counter on the Campaign Dashboard (number of events excluded by the cutoff) so admins can sanity-check the cutoff.
+  - b. Apply the cutoff to the admin-internal `SamizdatMap` view-events queries (currently still shows pre-launch test data so operators can debug).
+  - c. Apply the cutoff to `CampaignDashboard.fetchEvents` and the analytics RPCs (viral coefficient, conversion funnel, amplification, engagement, cycle time) for full reporting consistency.
+  - d. Consider a per-EoA override on top of the campaign-level default for cases where one EoA launches earlier than the rest.
+  - e. Add an "Official start" badge to the Campaign Dashboard header when the override is set.
+  - f. Archive a design decision under `docs/decisions/reporting-start/`.
+
+

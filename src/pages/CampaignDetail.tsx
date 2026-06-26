@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import CampaignOfficialStartControl from "@/components/CampaignOfficialStartControl";
 
 interface CampaignStats {
   realDataRows: number;
@@ -147,6 +148,12 @@ export default function CampaignDetail() {
                 campaignTitle={campaign.title || ""}
                 description={campaign.description || null}
                 existingBrief={(campaign.brief as never) || null}
+              />
+            )}
+            {campaign && (
+              <CampaignOfficialStartControl
+                campaignId={campaign.id}
+                officialStartAt={(campaign as any).official_start_at}
               />
             )}
           </CardHeader>

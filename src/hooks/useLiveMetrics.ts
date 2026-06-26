@@ -189,7 +189,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         async () =>
           await supabase
             .from("campaigns")
-            .select("id, title, code, description")
+            .select("id, title, code, description, official_start_at")
             .eq(isUuid ? "id" : "code", campaignIdOrCode)
             .maybeSingle()
       );
@@ -223,22 +223,28 @@ export function useLiveMetrics(): UseLiveMetricsResult {
       let firstOpenTimestamp: string | null = null;
 
       if (tokenStrings.length > 0) {
+        const officialStart = (campaign as any).official_start_at as string | null | undefined;
         const eventsData = await withRetry<any[]>(
           "url_events",
-          async () =>
-            await supabase
+          async () => {
+            let q = supabase
               .from("url_events")
               .select("event_type, country_code, zip_code, utm_snapshot, occurred_at")
               .in("token", tokenStrings)
-              .is("deleted_at", null)
+              .is("deleted_at", null);
+            if (officialStart) q = q.gte("occurred_at", officialStart);
+            return await q;
+          }
         );
         events = eventsData || [];
 
-        // Find earliest view event timestamp
+        // Find earliest view event timestamp (respects official_start_at if set)
         const viewEvents = events.filter((e) => e.event_type === "view" && e.occurred_at);
         if (viewEvents.length > 0) {
           viewEvents.sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
-          firstOpenTimestamp = viewEvents[0].occurred_at;
+          firstOpenTimestamp = officialStart || viewEvents[0].occurred_at;
+        } else if (officialStart) {
+          firstOpenTimestamp = officialStart;
         }
       }
 

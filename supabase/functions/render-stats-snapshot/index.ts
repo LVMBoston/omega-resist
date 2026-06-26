@@ -131,8 +131,9 @@ async function renderStaticMap(
 
     // ---- Fetch event points (mirrors MapHotspotRenderer logic) ----
     const { data: campaign } = await supabase
-      .from("campaigns").select("id").eq("code", campaignCode).maybeSingle();
+      .from("campaigns").select("id, official_start_at").eq("code", campaignCode).maybeSingle();
     if (!campaign) return null;
+    const since: string | null = (campaign as any).official_start_at || null;
 
     const { data: eoas } = await supabase
       .from("events_actions").select("id").eq("campaign_id", campaign.id);
@@ -153,10 +154,12 @@ async function renderStaticMap(
     }
 
     const tokenIds = tokens.map((t: any) => t.token);
-    const { data: events } = await supabase
-      .from("url_events").select("token, latitude, longitude")
+    let evtQuery: any = supabase
+      .from("url_events").select("token, latitude, longitude, occurred_at")
       .in("token", tokenIds).eq("event_type", "view").eq("is_simulated", false)
       .not("latitude", "is", null).not("longitude", "is", null);
+    if (since) evtQuery = evtQuery.gte("occurred_at", since);
+    const { data: events } = await evtQuery;
     if (!events || events.length === 0) return null;
 
     // ---- Resolve viewport ----
@@ -368,9 +371,21 @@ async function renderStaticMap(
 // Calculate campaign metrics
 async function calculateMetrics(supabase: any, campaignCode: string): Promise<Record<string, string | number>> {
   const metrics: Record<string, string | number> = {};
-  
+
+  // Resolve campaign + optional official_start_at cutoff (pre-launch / test
+  // events are excluded from every metric and narrative below).
+  const campaignBase = await fetchWithRetry<any>(
+    () => supabase.from("campaigns").select("title, created_at, official_start_at").eq("code", campaignCode).maybeSingle(),
+    "campaign base for metrics"
+  );
+  const since: string | null = (campaignBase as any)?.official_start_at || null;
+
   const tokens = await fetchWithRetry(
-    () => supabase.from("tokens").select("token, level, utm_medium").eq("utm_campaign", campaignCode).is("deleted_at", null),
+    () => {
+      let q = supabase.from("tokens").select("token, level, utm_medium, minted_at").eq("utm_campaign", campaignCode).is("deleted_at", null);
+      if (since) q = q.gte("minted_at", since);
+      return q;
+    },
     "tokens query"
   ) || [];
 
@@ -379,7 +394,11 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   
   if (tokenStrings.length > 0) {
     events = await fetchWithRetry(
-      () => supabase.from("url_events").select("event_type, country_code, zip_code, utm_snapshot, occurred_at").in("token", tokenStrings).is("deleted_at", null),
+      () => {
+        let q = supabase.from("url_events").select("event_type, country_code, zip_code, utm_snapshot, occurred_at").in("token", tokenStrings).is("deleted_at", null);
+        if (since) q = q.gte("occurred_at", since);
+        return q;
+      },
       "url_events query"
     ) || [];
   }
@@ -396,7 +415,11 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   if (l00Count > 0 && sharesCount > 0) {
     const l00TokenStrings = new Set(tokenArray.filter((t: any) => t.level === 0).map((t: any) => t.token));
     const childTokens = await fetchWithRetry(
-      () => supabase.from("tokens").select("parent_token").eq("utm_campaign", campaignCode).is("deleted_at", null).gt("level", 0),
+      () => {
+        let q = supabase.from("tokens").select("parent_token, minted_at").eq("utm_campaign", campaignCode).is("deleted_at", null).gt("level", 0);
+        if (since) q = q.gte("minted_at", since);
+        return q;
+      },
       "child tokens for seeds_with_spawns"
     ) || [];
     const childArray = Array.isArray(childTokens) ? childTokens : [];
@@ -448,12 +471,13 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
   // Campaign story — full narrative (inline generation matching client-side generateFullStory)
-  const campaignInfo = await fetchWithRetry<CampaignSnapshotInfo>(
-    () => supabase.from("campaigns").select("title, created_at").eq("code", campaignCode).maybeSingle(),
-    "campaign info for story"
-  );
+  const campaignInfo = campaignBase as CampaignSnapshotInfo | null;
   if (campaignInfo) {
-    const msActive = Date.now() - new Date(campaignInfo.created_at || Date.now()).getTime();
+    // "Active since" honors official_start_at when set
+    const activeAnchorMs = since
+      ? new Date(since).getTime()
+      : new Date(campaignInfo.created_at || Date.now()).getTime();
+    const msActive = Date.now() - activeAnchorMs;
     const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
     const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const seedCount = parseInt(String(metrics.seeds).replace(/,/g, ""), 10) || 0;
@@ -468,38 +492,50 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
     // States for geographic narrative
     const statesData = await fetchWithRetry(
-      () => supabase.from("url_events")
-        .select("region, tokens!inner(utm_campaign)")
-        .eq("tokens.utm_campaign", campaignCode)
-        .eq("is_simulated", false)
-        .eq("country", "United States")
-        .is("deleted_at", null)
-        .not("region", "is", null),
+      () => {
+        let q = supabase.from("url_events")
+          .select("region, tokens!inner(utm_campaign)")
+          .eq("tokens.utm_campaign", campaignCode)
+          .eq("is_simulated", false)
+          .eq("country", "United States")
+          .is("deleted_at", null)
+          .not("region", "is", null);
+        if (since) q = q.gte("occurred_at", since);
+        return q;
+      },
       "states for story"
     ) || [];
     const stateCount = new Set((statesData as any[]).map((r: any) => r.region).filter(Boolean)).size;
 
     // International countries
     const intlData = await fetchWithRetry(
-      () => supabase.from("url_events")
-        .select("country, tokens!inner(utm_campaign)")
-        .eq("tokens.utm_campaign", campaignCode)
-        .eq("is_simulated", false)
-        .is("deleted_at", null)
-        .not("country", "is", null)
-        .neq("country", "United States"),
+      () => {
+        let q = supabase.from("url_events")
+          .select("country, tokens!inner(utm_campaign)")
+          .eq("tokens.utm_campaign", campaignCode)
+          .eq("is_simulated", false)
+          .is("deleted_at", null)
+          .not("country", "is", null)
+          .neq("country", "United States");
+        if (since) q = q.gte("occurred_at", since);
+        return q;
+      },
       "intl countries for story"
     ) || [];
     const intlCountries = [...new Set((intlData as any[]).map((r: any) => r.country).filter(Boolean))];
 
     // Propagation speed from tokens
     const speedTokens = await fetchWithRetry(
-      () => supabase.from("tokens")
-        .select("token, level, minted_at, l00_instance")
-        .eq("utm_campaign", campaignCode)
-        .eq("is_simulated", false)
-        .is("deleted_at", null)
-        .order("minted_at", { ascending: true }),
+      () => {
+        let q = supabase.from("tokens")
+          .select("token, level, minted_at, l00_instance")
+          .eq("utm_campaign", campaignCode)
+          .eq("is_simulated", false)
+          .is("deleted_at", null)
+          .order("minted_at", { ascending: true });
+        if (since) q = q.gte("minted_at", since);
+        return q;
+      },
       "speed tokens for story"
     ) || [];
     const speedMap = new Map<number, any>();
@@ -511,14 +547,18 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
     // Last share — most recent L1+ token
     let lastShareAt: string | null = null;
     const lastShareData = await fetchWithRetry(
-      () => supabase.from("tokens")
-        .select("minted_at")
-        .eq("utm_campaign", campaignCode)
-        .eq("is_simulated", false)
-        .is("deleted_at", null)
-        .gt("level", 0)
-        .order("minted_at", { ascending: false })
-        .limit(1),
+      () => {
+        let q = supabase.from("tokens")
+          .select("minted_at")
+          .eq("utm_campaign", campaignCode)
+          .eq("is_simulated", false)
+          .is("deleted_at", null)
+          .gt("level", 0)
+          .order("minted_at", { ascending: false })
+          .limit(1);
+        if (since) q = q.gte("minted_at", since);
+        return q;
+      },
       "last share for story"
     );
     if (lastShareData && Array.isArray(lastShareData) && lastShareData.length > 0) {
@@ -527,12 +567,16 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
 
     // Open events by share medium (count view events, not tokens)
     const mediumData = await fetchWithRetry(
-      () => supabase.from("url_events")
-        .select("tokens!inner(utm_medium, utm_campaign)")
-        .eq("tokens.utm_campaign", campaignCode)
-        .eq("is_simulated", false)
-        .is("deleted_at", null)
-        .eq("event_type", "view"),
+      () => {
+        let q = supabase.from("url_events")
+          .select("tokens!inner(utm_medium, utm_campaign)")
+          .eq("tokens.utm_campaign", campaignCode)
+          .eq("is_simulated", false)
+          .is("deleted_at", null)
+          .eq("event_type", "view");
+        if (since) q = q.gte("occurred_at", since);
+        return q;
+      },
       "open mediums for story"
     ) || [];
     const mediumCounts = new Map<string, number>();

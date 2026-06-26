@@ -52,66 +52,79 @@ export async function fetchNarrativeAvailability(campaignCode: string): Promise<
 export async function fetchNarrativeData(campaignCode: string, campaignId: string, dataSource: NarrativeDataSource = "real"): Promise<NarrativeData> {
   const isSimulated = dataSource === "simulated";
 
+  // Resolve campaign first so we can apply the optional official_start_at cutoff
+  // to every event/token query below. Pre-launch / test activity is excluded.
+  const { data: campaignBase } = await supabase
+    .from("campaigns")
+    .select("title, created_at, official_start_at")
+    .eq("id", campaignId)
+    .single();
+  const since = (campaignBase as any)?.official_start_at as string | null | undefined;
+  const sinceEvt = <T extends { gte: (col: string, v: any) => T }>(q: T): T =>
+    since ? q.gte("occurred_at", since) : q;
+  const sinceTok = <T extends { gte: (col: string, v: any) => T }>(q: T): T =>
+    since ? q.gte("minted_at", since) : q;
+
   // Run queries in parallel
   const [campaignRes, levelRes, sproutsRes, geoRes, statesRes, intlRes, viewsRes, speedRes, mediumRes, lastShareRes] = await Promise.all([
-    supabase.from("campaigns").select("title, created_at").eq("id", campaignId).single(),
-    supabase.from("tokens")
+    Promise.resolve({ data: campaignBase, error: null } as any),
+    sinceTok(supabase.from("tokens")
       .select("level")
       .eq("utm_campaign", campaignCode)
       .eq("is_simulated", isSimulated)
-      .is("deleted_at", null),
-    supabase.from("tokens")
+      .is("deleted_at", null)),
+    sinceTok(supabase.from("tokens")
       .select("token, parent_token")
       .eq("utm_campaign", campaignCode)
       .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .gt("level", 0)
-      .not("parent_token", "is", null),
-    supabase.from("url_events")
+      .not("parent_token", "is", null)),
+    sinceEvt(supabase.from("url_events")
       .select("zip_code, region, country, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", isSimulated)
-      .is("deleted_at", null),
-    supabase.from("url_events")
+      .is("deleted_at", null)),
+    sinceEvt(supabase.from("url_events")
       .select("region, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", isSimulated)
       .eq("country", "United States")
       .is("deleted_at", null)
-      .not("region", "is", null),
-    supabase.from("url_events")
+      .not("region", "is", null)),
+    sinceEvt(supabase.from("url_events")
       .select("country, tokens!inner(utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .neq("country", "United States")
-      .not("country", "is", null),
-    supabase.from("url_events")
+      .not("country", "is", null)),
+    sinceEvt(supabase.from("url_events")
       .select("id, tokens!inner(utm_campaign)", { count: "exact", head: true })
       .eq("tokens.utm_campaign", campaignCode)
       .eq("event_type", "view")
       .eq("is_simulated", isSimulated)
-      .is("deleted_at", null),
-    supabase.from("tokens")
+      .is("deleted_at", null)),
+    sinceTok(supabase.from("tokens")
       .select("level, minted_at, events_actions!inner(campaign_id)")
       .eq("events_actions.campaign_id", campaignId)
       .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
-      .order("minted_at", { ascending: true }),
-    supabase.from("url_events")
+      .order("minted_at", { ascending: true })),
+    sinceEvt(supabase.from("url_events")
       .select("tokens!inner(utm_medium, utm_campaign)")
       .eq("tokens.utm_campaign", campaignCode)
       .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
-      .eq("event_type", "view"),
-    supabase.from("tokens")
+      .eq("event_type", "view")),
+    sinceTok(supabase.from("tokens")
       .select("minted_at")
       .eq("utm_campaign", campaignCode)
       .gt("level", 0)
       .eq("is_simulated", isSimulated)
       .is("deleted_at", null)
       .order("minted_at", { ascending: false })
-      .limit(1),
+      .limit(1)),
   ]);
 
   const levelTotals = new Map<number, number>();
