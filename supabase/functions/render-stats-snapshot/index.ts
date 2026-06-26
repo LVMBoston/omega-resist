@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { formatCampaignStory } from "../../../src/shared/render/campaignStory.ts";
+import { formatCampaignStory } from "../_shared/render/campaignStory.ts";
 
 
 
@@ -89,7 +89,7 @@ function escapeXml(str: string): string {
 import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 import { renderManualHtml } from "./manualHtml.ts";
-import { applyStorySegment } from "./campaignStorySplit.ts";
+import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,

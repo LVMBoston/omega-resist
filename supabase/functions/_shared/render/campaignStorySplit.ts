@@ -1,8 +1,22 @@
-// Deno copy of src/lib/campaignStorySplit.ts — keep in sync.
-// Splits a campaign_story narrative at the paragraph boundary closest to
-// the character-count midpoint so two side-by-side hotspots can render
-// the full story in landscape layouts.
-
+/**
+ * Shared (editor + SSR) campaign story splitter.
+ *
+ * Splits a campaign_story narrative into two roughly-equal halves at the
+ * paragraph boundary closest to the midpoint by character count.
+ *
+ * Rules:
+ *  - The __TITLE__…__TITLE__ block (if present) is always pinned to `first`.
+ *  - A trailing paragraph beginning with "Date of this report:" is always
+ *    pinned to `second` so the footer stays in the right-hand column.
+ *  - Remaining paragraphs are distributed so the split index minimizes the
+ *    absolute character-count difference between the two halves.
+ *  - Paragraphs are separated by a blank line ("\n\n") to preserve the
+ *    existing campaign-story paragraph-gap rendering in both the editor
+ *    and the SSR snapshot renderer.
+ *
+ * Pure logic only — no Supabase, DOM, or Deno-specific APIs.
+ * See src/shared/render/README.md for parity rules.
+ */
 export type StorySegment = "full" | "first" | "second";
 
 export function splitCampaignStoryAtMidpoint(story: string): {
