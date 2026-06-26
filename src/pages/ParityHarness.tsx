@@ -17,6 +17,7 @@ import {
   type RenderStyle,
 } from "../../supabase/functions/_shared/render/manualHtml";
 import { renderPlainTextSvg } from "../../supabase/functions/_shared/render/plainText";
+import { splitCampaignStoryAtMidpoint } from "../../supabase/functions/_shared/render/campaignStorySplit";
 
 type Case = {
   id: string;
