@@ -847,6 +847,18 @@ export default function CampaignDashboard({
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Campaign Visibility</h1>
           <p className="text-muted-foreground">Real-time viral tracking and analytics</p>
+          {officialStartLabel && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="outline" className="border-primary/40 text-primary">
+                Official start: {officialStartLabel}
+              </Badge>
+              {preLaunchCount > 0 && (
+                <Badge variant="outline" className="border-muted text-muted-foreground">
+                  Pre-launch / test: {preLaunchCount} excluded
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {campaignsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
