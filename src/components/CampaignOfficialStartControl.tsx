@@ -65,7 +65,7 @@ export default function CampaignOfficialStartControl({ campaignId, officialStart
 
   return (
     <div className="mt-3 flex flex-wrap items-end gap-3 rounded-md border border-dashed p-3 bg-muted/30">
-      <div className="flex-1 min-w-[240px]">
+      <div className="max-w-[280px]">
         <Label className="text-xs flex items-center gap-1">
           <Clock className="h-3 w-3" /> Official start (optional)
         </Label>
