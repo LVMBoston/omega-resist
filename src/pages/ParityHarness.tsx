@@ -178,6 +178,84 @@ const CASES: Case[] = [
     width: 320, height: 70, baseFontSize: 24, verticalAlign: "middle" },
 ];
 
+// =====================================================================
+// §3 Plain-text hotspots (live_number / label / plain story)
+// Exercises the shared `renderPlainTextSvg` helper used by SSR — the
+// same code path standard hotspots take in the snapshot pipeline.
+// =====================================================================
+type PlainCase = {
+  id: string;
+  label: string;
+  text: string;
+  width: number;
+  height: number;
+  fontSize: number;
+  fontWeight?: string;
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
+};
+
+const PLAIN_CASES: PlainCase[] = [
+  { id: "3.1a", label: "Short centered metric (24pt)", text: "1,284", width: 280, height: 120, fontSize: 48, textAlign: "center", verticalAlign: "middle" },
+  { id: "3.1b", label: "Label, left-aligned top", text: "Last updated:", width: 220, height: 70, fontSize: 24, textAlign: "left", verticalAlign: "top" },
+  { id: "3.1c", label: "Long timestamp must wrap", text: "Jun 24, 2026 2:10 PM UTC", width: 220, height: 90, fontSize: 24, textAlign: "left", verticalAlign: "middle" },
+  { id: "3.1d", label: "Right-aligned bottom", text: "Bottom right", width: 300, height: 100, fontSize: 22, textAlign: "right", verticalAlign: "bottom" },
+  { id: "3.1e", label: "Multi-line via \\n", text: "Line A\nLine B\nLine C", width: 320, height: 200, fontSize: 22, textAlign: "center", verticalAlign: "middle" },
+  { id: "3.1f", label: "Wrap into 3+ lines", text: "A center-aligned paragraph long enough to wrap onto multiple lines inside this narrow hotspot.", width: 260, height: 220, fontSize: 20, textAlign: "center", verticalAlign: "middle" },
+  { id: "3.1g", label: "XML special chars", text: "A & B <c> \"quoted\"", width: 360, height: 80, fontSize: 22, textAlign: "left", verticalAlign: "middle" },
+];
+
+function PlainCasePair({ c }: { c: PlainCase }) {
+  const fw = c.fontWeight ?? "700";
+  const ta = c.textAlign ?? "center";
+  const va = c.verticalAlign ?? "middle";
+  const ssr = renderPlainTextSvg(
+    c.text,
+    { x: 0, y: 0, w: c.width, h: c.height },
+    {
+      fontSize: c.fontSize,
+      fontWeight: fw,
+      color: COLOR,
+      textAlign: ta,
+      verticalAlign: va,
+      fontFamily: FONT_STACK,
+      paddingPx: 0,
+      clipOverflow: false,
+    },
+    `pc-${c.id.replace(/\./g, "-")}`,
+  );
+  const flexAlign = va === "top" ? "flex-start" : va === "bottom" ? "flex-end" : "center";
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+        <strong>{c.id}</strong> — {c.label} · {c.width}×{c.height} · {c.fontSize}pt · {ta}/{va}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: `${c.width}px ${c.width}px`, gap: 24, alignItems: "start" }}>
+        <div>
+          <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>EDITOR (CSS mirror)</div>
+          <div style={{
+            width: c.width, height: c.height, background: BG, outline: "1px dashed #888",
+            display: "flex", alignItems: flexAlign, justifyContent: ta === "left" ? "flex-start" : ta === "right" ? "flex-end" : "center",
+            padding: 0, overflow: "hidden",
+          }}>
+            <div style={{
+              fontFamily: FONT_STACK, fontSize: c.fontSize, fontWeight: fw, color: COLOR,
+              textAlign: ta, whiteSpace: "pre-wrap", lineHeight: 1.2, width: "100%",
+            }}>{c.text}</div>
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>SSR (renderPlainTextSvg)</div>
+          <div style={{ width: c.width, height: c.height, background: BG, outline: "1px dashed #888" }}>
+            <svg width={c.width} height={c.height} viewBox={`0 0 ${c.width} ${c.height}`} xmlns="http://www.w3.org/2000/svg"
+              dangerouslySetInnerHTML={{ __html: ssr }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const FONT_STACK = "'Inter', -apple-system, system-ui, sans-serif";
 
 function CasePair({ c }: { c: Case }) {
