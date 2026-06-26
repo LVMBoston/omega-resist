@@ -988,8 +988,8 @@ export default function CampaignEoaManager() {
         if (!effective) return "—";
         const usingOfficial = !!officialStart && effective === officialStart;
         return (
-          <span title={usingOfficial ? "Floored by campaign Official Start" : undefined}>
-            {formatDateTime(effective)}
+          <span title={usingOfficial ? "Floored by campaign Official Start (shown in your local timezone)" : "Shown in your local timezone"}>
+            {formatInstantLocal(effective)}
             {usingOfficial && (
               <span className="ml-1 text-xs text-muted-foreground">(campaign)</span>
             )}
