@@ -1107,13 +1107,7 @@ Deno.serve(async (req) => {
       }
 
       // Word-wrap each \n-separated line so long text doesn't overflow.
-      // Uses the same ~0.52 × fontSize per character heuristic as the
-      // campaign_story / manual-html branches for parity.
-      const avgCharWidth = scaledFontSize * 0.52;
-      const maxCharsPerLine = Math.max(
-        1,
-        Math.floor((hsWidth - wrapInset * 2) / avgCharWidth),
-      );
+      const maxCharsPerLine = maxCharsForWidth(hsWidth - wrapInset * 2, scaledFontSize);
       const rawLines = metricValue.split("\n");
       const lines: string[] = [];
       for (const rl of rawLines) {
@@ -1124,20 +1118,18 @@ Deno.serve(async (req) => {
         }
       }
 
-      const lineHeight = scaledFontSize * 1.2;
+      const lineHeight = scaledFontSize * LINE_HEIGHT_RATIO;
       const totalTextHeight = lineHeight * lines.length;
 
       // Vertical alignment — honor style.verticalAlign (top / center / bottom).
-      const vAlignRaw = (style.verticalAlign || "center").toLowerCase();
-      let startY: number;
-      if (vAlignRaw === "top") {
-        startY = y + padInset + scaledFontSize * 0.95;
-      } else if (vAlignRaw === "bottom") {
-        startY = y + hsHeight - padInset - totalTextHeight + scaledFontSize * 0.85;
-      } else {
-        // center / middle (default)
-        startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
-      }
+      const startY = tspanStartY(
+        y,
+        hsHeight,
+        scaledFontSize,
+        totalTextHeight,
+        padInset,
+        normalizeVAlign(style.verticalAlign, "center"),
+      );
 
       // Clip text to hotspot bounding box (matches client-side overflow:hidden).
       // When style.clipOverflow === false, skip the clipPath wrapper so text
