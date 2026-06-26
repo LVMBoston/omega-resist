@@ -189,7 +189,7 @@ export function useLiveMetrics(): UseLiveMetricsResult {
         async () =>
           await supabase
             .from("campaigns")
-            .select("id, title, code, description")
+            .select("id, title, code, description, official_start_at")
             .eq(isUuid ? "id" : "code", campaignIdOrCode)
             .maybeSingle()
       );
