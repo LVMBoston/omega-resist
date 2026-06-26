@@ -88,9 +88,17 @@ function escapeXml(str: string): string {
 // unit-tested without the Supabase client. See geo.test.ts / canvas.test.ts.
 import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
-import { renderManualHtml } from "./manualHtml.ts";
+import { renderManualHtml } from "../_shared/render/manualHtml.ts";
 import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
 import { resolveLiveNumberStyle } from "../_shared/render/hotspotDefaults.ts";
+import {
+  wordWrap,
+  maxCharsForWidth,
+  normalizeVAlign,
+  freeSpaceOffset,
+  tspanStartY,
+  LINE_HEIGHT_RATIO,
+} from "../_shared/render/textLayout.ts";
 
 async function fetchCartoTile(
   z: number, x: number, y: number, subdomain: string, slug: string,
@@ -846,25 +854,9 @@ Deno.serve(async (req) => {
     }
 
 
-    // Helper: word-wrap a line to fit within maxChars
-    function wordWrap(text: string, maxChars: number): string[] {
-      if (text.length <= maxChars) return [text];
-      const words = text.split(" ");
-      const result: string[] = [];
-      let current = "";
-      for (const word of words) {
-        if (current.length === 0) {
-          current = word;
-        } else if (current.length + 1 + word.length <= maxChars) {
-          current += " " + word;
-        } else {
-          result.push(current);
-          current = word;
-        }
-      }
-      if (current) result.push(current);
-      return result;
-    }
+    // Word-wrap + vertical-alignment helpers live in
+    // `../_shared/render/textLayout.ts` so the editor parity harness and SSR
+    // share the exact same algorithm.
 
     // Emoji regex for detecting emoji-prefixed lines
     const emojiPrefixRe = /^([\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2702}-\u{27B0}]\uFE0F?\s?)/u;
@@ -1074,12 +1066,7 @@ Deno.serve(async (req) => {
 
         // Total content height (last baseline + descent approximation).
         const totalH = yRel + padding;
-        const vAlignRaw = (style.verticalAlign || "top").toLowerCase();
-        const freeSpace = Math.max(0, hsHeight - totalH);
-        const yOffset =
-          vAlignRaw === "bottom" ? freeSpace
-          : vAlignRaw === "center" || vAlignRaw === "middle" ? freeSpace / 2
-          : 0;
+        const yOffset = freeSpaceOffset(totalH, hsHeight, normalizeVAlign(style.verticalAlign, "top"));
 
         // Optional clip to hotspot bounds (editor parity with clipOverflow).
         let clipId: string | null = null;
@@ -1120,13 +1107,7 @@ Deno.serve(async (req) => {
       }
 
       // Word-wrap each \n-separated line so long text doesn't overflow.
-      // Uses the same ~0.52 × fontSize per character heuristic as the
-      // campaign_story / manual-html branches for parity.
-      const avgCharWidth = scaledFontSize * 0.52;
-      const maxCharsPerLine = Math.max(
-        1,
-        Math.floor((hsWidth - wrapInset * 2) / avgCharWidth),
-      );
+      const maxCharsPerLine = maxCharsForWidth(hsWidth - wrapInset * 2, scaledFontSize);
       const rawLines = metricValue.split("\n");
       const lines: string[] = [];
       for (const rl of rawLines) {
@@ -1137,20 +1118,18 @@ Deno.serve(async (req) => {
         }
       }
 
-      const lineHeight = scaledFontSize * 1.2;
+      const lineHeight = scaledFontSize * LINE_HEIGHT_RATIO;
       const totalTextHeight = lineHeight * lines.length;
 
       // Vertical alignment — honor style.verticalAlign (top / center / bottom).
-      const vAlignRaw = (style.verticalAlign || "center").toLowerCase();
-      let startY: number;
-      if (vAlignRaw === "top") {
-        startY = y + padInset + scaledFontSize * 0.95;
-      } else if (vAlignRaw === "bottom") {
-        startY = y + hsHeight - padInset - totalTextHeight + scaledFontSize * 0.85;
-      } else {
-        // center / middle (default)
-        startY = y + (hsHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
-      }
+      const startY = tspanStartY(
+        y,
+        hsHeight,
+        scaledFontSize,
+        totalTextHeight,
+        padInset,
+        normalizeVAlign(style.verticalAlign, "center"),
+      );
 
       // Clip text to hotspot bounding box (matches client-side overflow:hidden).
       // When style.clipOverflow === false, skip the clipPath wrapper so text

@@ -15,7 +15,7 @@ import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import {
   renderManualHtml,
   type RenderStyle,
-} from "../../supabase/functions/render-stats-snapshot/manualHtml";
+} from "../../supabase/functions/_shared/render/manualHtml";
 
 type Case = {
   id: string;
