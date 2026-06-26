@@ -31,14 +31,18 @@ interface SlideRow {
   hotspots: unknown;
 }
 
-const BOX_W = 360;
-const BOX_H = 640;
+// Portrait defaults (used when deck aspect ratio < 1 or unknown).
+const PORTRAIT_W = 360;
+const PORTRAIT_H = 640;
+// Landscape panes get the full available container width and stack vertically.
+const LANDSCAPE_MAX_W = 880;
 
 export function LiveCampaignSection() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string>("");
   const [deckSlugs, setDeckSlugs] = useState<string[]>([]);
   const [deckSlug, setDeckSlug] = useState<string>("");
+  const [deckAspect, setDeckAspect] = useState<number | null>(null);
   const [slides, setSlides] = useState<SlideRow[]>([]);
   const [slideId, setSlideId] = useState<string>("");
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
@@ -91,15 +95,23 @@ export function LiveCampaignSection() {
     })();
   }, [campaignId]);
 
-  // 3. When a deck is picked, load its slides + template configs.
+  // 3. When a deck is picked, load its slides + template configs + aspect ratio.
   useEffect(() => {
     if (!deckSlug) {
       setSlides([]);
       setSlideId("");
+      setDeckAspect(null);
       return;
     }
     setLoadingSlides(true);
     (async () => {
+      const { data: deckRow } = await supabase
+        .from("decks")
+        .select("aspect_ratio")
+        .eq("slug", deckSlug)
+        .maybeSingle();
+      const r = deckRow?.aspect_ratio ? Number(deckRow.aspect_ratio) : null;
+      setDeckAspect(r && isFinite(r) && r > 0 ? r : null);
       const { data: items, error } = await supabase
         .from("slide_items")
         .select("id, position, deck_slug, template_id, content_url")
@@ -231,50 +243,66 @@ export function LiveCampaignSection() {
 
       {loadingSlides && <div style={{ opacity: 0.7 }}>Loading slides…</div>}
 
-      {selectedSlide && selectedCampaign && (
-        <div style={{ display: "grid", gridTemplateColumns: `${BOX_W}px ${BOX_W}px`, gap: 24, alignItems: "start" }}>
-          {/* LEFT — editor / HybridSlide */}
-          <div>
-            <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
-              EDITOR (HybridSlide) · campaign {selectedCampaign.code}
+      {selectedSlide && selectedCampaign && (() => {
+        const isLandscape = deckAspect != null && deckAspect > 1;
+        const boxW = isLandscape ? LANDSCAPE_MAX_W : PORTRAIT_W;
+        const boxH = isLandscape
+          ? Math.round(LANDSCAPE_MAX_W / (deckAspect as number))
+          : PORTRAIT_H;
+        const gridStyle: React.CSSProperties = isLandscape
+          ? { display: "grid", gridTemplateColumns: "1fr", gap: 24, alignItems: "start" }
+          : { display: "grid", gridTemplateColumns: `${boxW}px ${boxW}px`, gap: 24, alignItems: "start" };
+        return (
+          <>
+            <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 8 }}>
+              Deck orientation: {isLandscape ? `landscape (${deckAspect?.toFixed(2)})` : deckAspect ? `portrait (${deckAspect.toFixed(2)})` : "portrait (default)"}
+              {isLandscape ? " — panes stacked top/bottom for full-width comparison" : ""}
             </div>
-            <div style={{ width: BOX_W, height: BOX_H, background: "#000", outline: "1px dashed #888", position: "relative" }}>
-              <HybridSlide
-                imageUrl={selectedSlide.content_url || ""}
-                hotspots={hotspots}
-                deckSlug={selectedSlide.deck_slug}
-                viralToken={null}
-                templateId={selectedSlide.template_id || undefined}
-              />
-              {overlay && snapshotUrl && (
-                <img
-                  src={snapshotUrl}
-                  alt="SSR overlay"
-                  style={{
-                    position: "absolute", inset: 0,
-                    width: "100%", height: "100%",
-                    objectFit: "contain", opacity: 0.5, pointerEvents: "none",
-                  }}
-                />
-              )}
-            </div>
-          </div>
+            <div style={gridStyle}>
+              {/* EDITOR pane */}
+              <div>
+                <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
+                  EDITOR (HybridSlide) · campaign {selectedCampaign.code}
+                </div>
+                <div style={{ width: boxW, height: boxH, background: "#000", outline: "1px dashed #888", position: "relative" }}>
+                  <HybridSlide
+                    imageUrl={selectedSlide.content_url || ""}
+                    hotspots={hotspots}
+                    deckSlug={selectedSlide.deck_slug}
+                    viralToken={null}
+                    templateId={selectedSlide.template_id || undefined}
+                  />
+                  {overlay && snapshotUrl && (
+                    <img
+                      src={snapshotUrl}
+                      alt="SSR overlay"
+                      style={{
+                        position: "absolute", inset: 0,
+                        width: "100%", height: "100%",
+                        objectFit: "contain", opacity: 0.5, pointerEvents: "none",
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
 
-          {/* RIGHT — SSR snapshot */}
-          <div>
-            <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
-              SSR (render-stats-snapshot){snapshotUrl ? "" : " — click Render to fetch"}
+              {/* SSR pane */}
+              <div>
+                <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
+                  SSR (render-stats-snapshot){snapshotUrl ? "" : " — click Render to fetch"}
+                </div>
+                <div style={{ width: boxW, height: boxH, background: "#000", outline: "1px dashed #888", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {snapshotUrl ? (
+                    <img src={snapshotUrl} alt="SSR snapshot" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                  ) : (
+                    <span style={{ opacity: 0.5, fontSize: 12 }}>(not rendered yet)</span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div style={{ width: BOX_W, height: BOX_H, background: "#000", outline: "1px dashed #888", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {snapshotUrl ? (
-                <img src={snapshotUrl} alt="SSR snapshot" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-              ) : (
-                <span style={{ opacity: 0.5, fontSize: 12 }}>(not rendered yet)</span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        );
+      })()}
     </div>
   );
 }
