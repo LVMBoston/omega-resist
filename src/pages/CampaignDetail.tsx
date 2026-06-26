@@ -150,6 +150,12 @@ export default function CampaignDetail() {
                 existingBrief={(campaign.brief as never) || null}
               />
             )}
+            {campaign && (
+              <CampaignOfficialStartControl
+                campaignId={campaign.id}
+                officialStartAt={(campaign as any).official_start_at}
+              />
+            )}
           </CardHeader>
           {stats && (
             <CardContent>
