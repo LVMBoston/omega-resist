@@ -17,6 +17,7 @@ import {
   type RenderStyle,
 } from "../../supabase/functions/_shared/render/manualHtml";
 import { renderPlainTextSvg } from "../../supabase/functions/_shared/render/plainText";
+import { splitCampaignStoryAtMidpoint } from "../../supabase/functions/_shared/render/campaignStorySplit";
 
 type Case = {
   id: string;
@@ -205,6 +206,84 @@ const PLAIN_CASES: PlainCase[] = [
   { id: "3.1g", label: "XML special chars", text: "A & B <c> \"quoted\"", width: 360, height: 80, fontSize: 22, textAlign: "left", verticalAlign: "middle" },
 ];
 
+// §4 Campaign-story segment fixtures.
+// Verifies the splitter pins the title block to `first`, pins "Date of this
+// report:" to `second`, and balances the middle paragraphs by char count.
+type StoryCase = { id: string; label: string; story: string };
+const STORY_CASES: StoryCase[] = [
+  {
+    id: "4.1",
+    label: "Typical story — title pinned left, footer pinned right",
+    story:
+      "__TITLE__Conservative Capture__TITLE__\n\n" +
+      "It started with one seed on Tuesday morning at a coffee shop in Akron, Ohio.\n\n" +
+      "Within six hours, the message had jumped to four states and crossed two time zones.\n\n" +
+      "By the end of day one, 23 distinct zip codes had opened the deck.\n\n" +
+      "Most shares happened by text — quick, personal, and hard to ignore.\n\n" +
+      "Date of this report: Jun 26, 2026",
+  },
+  {
+    id: "4.2",
+    label: "Short story (one paragraph after title)",
+    story:
+      "__TITLE__A Quiet Start__TITLE__\n\n" +
+      "Three seeds, one zip code, one share. That's the whole story so far.",
+  },
+  {
+    id: "4.3",
+    label: "No title, no footer — balanced split only",
+    story:
+      "The first viewer opened the deck at 2:14 PM.\n\n" +
+      "Six minutes later they shared it with a friend.\n\n" +
+      "That friend shared it with two more.\n\n" +
+      "By dinner, the chain had reached level 4.",
+  },
+];
+
+function StoryCasePair({ c }: { c: StoryCase }) {
+  const W = 320;
+  const H = 360;
+  const FS = 14;
+  const split = splitCampaignStoryAtMidpoint(c.story);
+  const cases: { tag: string; text: string }[] = [
+    { tag: "full", text: c.story },
+    { tag: "first", text: split.first },
+    { tag: "second", text: split.second },
+  ];
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+        <strong>{c.id}</strong> — {c.label}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(3, ${W}px)`, gap: 16, alignItems: "start" }}>
+        {cases.map(({ tag, text }) => {
+          const ssr = renderPlainTextSvg(
+            text,
+            { x: 0, y: 0, w: W, h: H },
+            {
+              fontSize: FS, fontWeight: "400", color: COLOR,
+              textAlign: "left", verticalAlign: "top",
+              fontFamily: FONT_STACK, paddingPx: 8, clipOverflow: false,
+            },
+            `story-${c.id}-${tag}`,
+          );
+          return (
+            <div key={tag}>
+              <div style={{ fontSize: 11, marginBottom: 4, opacity: 0.7 }}>
+                {tag.toUpperCase()} · {text.length} chars
+              </div>
+              <div style={{ width: W, height: H, background: BG, outline: "1px dashed #888" }}>
+                <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} xmlns="http://www.w3.org/2000/svg"
+                  dangerouslySetInnerHTML={{ __html: ssr }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PlainCasePair({ c }: { c: PlainCase }) {
   const fw = c.fontWeight ?? "700";
   const ta = c.textAlign ?? "center";
@@ -314,6 +393,7 @@ export default function ParityHarness() {
 
   const sections = Array.from(new Set(CASES.map((c) => c.section)));
   const showPlain = sectionFilter === "3" || showAll;
+  const showStory = sectionFilter === "4" || showAll;
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", background: "#2b2b2b", minHeight: "100vh", color: "#eee" }}>
@@ -327,6 +407,7 @@ export default function ParityHarness() {
           <button key={s} onClick={() => setParams({ section: s })} style={btnStyle(sectionFilter === s)}>§{s}</button>
         ))}
         <button onClick={() => setParams({ section: "3" })} style={btnStyle(sectionFilter === "3")}>§3 plain</button>
+        <button onClick={() => setParams({ section: "4" })} style={btnStyle(sectionFilter === "4")}>§4 story split</button>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {CASES.map((x) => (
@@ -335,11 +416,17 @@ export default function ParityHarness() {
         ))}
       </div>
 
-      {!showPlain && visible.map((c) => <CasePair key={c.id} c={c} />)}
+      {!showPlain && !showStory && visible.map((c) => <CasePair key={c.id} c={c} />)}
       {showPlain && (
         <>
           <h2 style={{ fontSize: 16, marginTop: 24, marginBottom: 12 }}>§3 Plain-text hotspots</h2>
           {PLAIN_CASES.map((c) => <PlainCasePair key={c.id} c={c} />)}
+        </>
+      )}
+      {showStory && (
+        <>
+          <h2 style={{ fontSize: 16, marginTop: 24, marginBottom: 12 }}>§4 Campaign-story segment split</h2>
+          {STORY_CASES.map((s) => <StoryCasePair key={s.id} c={s} />)}
         </>
       )}
     </div>

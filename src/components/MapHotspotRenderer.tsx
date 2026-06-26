@@ -48,28 +48,25 @@ interface EventPoint {
   spawnCount?: number;
 }
 
-// Colors by share medium (utm_medium)
-const MEDIUM_COLORS: Record<string, string> = {
-  qr: "#000099",   // QR code - navy blue
-  em: "#0066ff",   // email - medium blue
-  sms: "#99ccff",  // text/SMS - light blue
-  tx: "#99ccff",   // text alternate code - light blue
-};
+// Marker colors and stroke logic are defined in the canonical shared module
+// so the live editor and SSR snapshot use the same palette and spawn cues.
+import {
+  resolveMarkerFill,
+  resolveMarkerStroke,
+} from "@/shared/render/mapMarkerRules";
 
 // Generate SVG for marker
 const getMarkerSVG = (fillColor: string, size: number = 12, hasSpawns: boolean = false): string => {
   const strokeWidth = 2;
   const halfStroke = strokeWidth / 2;
-  const strokeColor = hasSpawns ? "#22c55e" : "white";
+  const strokeColor = resolveMarkerStroke(hasSpawns);
   const r = (size / 2) - halfStroke;
-  
+
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" 
+    <circle cx="${size / 2}" cy="${size / 2}" r="${r}"
       fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
   </svg>`;
 };
-
-const DEFAULT_COLOR = "#64748b"; // slate-500
 
 // Resolve the CartoDB Positron tile URL based on label density preference.
 // 'auto' hides labels on small displays (rendered width < 500px) and shows
@@ -474,7 +471,7 @@ export function MapHotspotRenderer({
     console.log(`MapHotspotRenderer: Rendering ${eventPoints.length} markers`);
 
     eventPoints.forEach((point) => {
-      const color = MEDIUM_COLORS[point.utmMedium?.toLowerCase()] || DEFAULT_COLOR;
+      const color = resolveMarkerFill(point.utmMedium?.toLowerCase());
       const hasSpawns = (point.spawnCount || 0) > 0;
       const svgIcon = getMarkerSVG(color, 12, hasSpawns);
 

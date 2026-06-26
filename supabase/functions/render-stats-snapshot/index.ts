@@ -118,15 +118,12 @@ async function fetchCartoTile(
   }
 }
 
-const MEDIUM_COLORS_HEX: Record<string, [number, number, number]> = {
-  qr: [0x00, 0x00, 0x99],
-  em: [0x00, 0x66, 0xff],
-  sms: [0x99, 0xcc, 0xff],
-  tx: [0x99, 0xcc, 0xff],
-};
-const DEFAULT_COLOR_HEX: [number, number, number] = [0x64, 0x74, 0x8b];
-const SPAWN_STROKE: [number, number, number] = [0x22, 0xc5, 0x5e];
-const DEFAULT_STROKE: [number, number, number] = [0xff, 0xff, 0xff];
+import {
+  MEDIUM_COLORS_RGB as MEDIUM_COLORS_HEX,
+  DEFAULT_COLOR_RGB as DEFAULT_COLOR_HEX,
+  SPAWN_STROKE_RGB as SPAWN_STROKE,
+  DEFAULT_STROKE_RGB as DEFAULT_STROKE,
+} from "../_shared/render/mapMarkerRules.ts";
 
 // Render a static map image by stitching CartoDB Positron tiles server-side.
 // Matches the live editor (MapHotspotRenderer.tsx) — no Mapbox dependency,
