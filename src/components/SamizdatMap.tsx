@@ -5,7 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw, Search } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw, Search, Globe } from "lucide-react";
 import { MapMagnifier } from "@/components/MapMagnifier";
 import { Slider } from "@/components/ui/slider";
 import { formatElapsedTime } from "@/lib/dateUtils";
@@ -341,6 +341,13 @@ const SamizdatMap = ({
 
   // Token lookup map for tracing parent chain
   const tokenLookupRef = useRef<Record<string, { rootToken: string; parentToken: string | null; level: number }>>({});
+
+  // Fly map to continental US view (zoom 4, centered on geographic center)
+  const flyToUSView = () => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([39.8283, -98.5795], 4);
+    }
+  };
 
   // Toggle an EoA type shape on/off
   const toggleChannel = (shape: EoaShape) => {
@@ -1712,6 +1719,17 @@ const SamizdatMap = ({
                   Fullscreen
                 </>
               )}
+            </Button>
+            {/* US View toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={flyToUSView}
+              className="h-7 px-2 justify-start"
+              title="Zoom to Continental US"
+            >
+              <Globe className="w-4 h-4 mr-1" />
+              US View
             </Button>
             {/* Magnifier loupe toggle */}
             <Button
