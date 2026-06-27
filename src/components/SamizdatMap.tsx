@@ -1720,6 +1720,17 @@ const SamizdatMap = ({
                 </>
               )}
             </Button>
+            {/* US View toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={flyToUSView}
+              className="h-7 px-2 justify-start"
+              title="Zoom to Continental US"
+            >
+              <Globe className="w-4 h-4 mr-1" />
+              US View
+            </Button>
             {/* Magnifier loupe toggle */}
             <Button
               variant={loupeActive ? "default" : "ghost"}
