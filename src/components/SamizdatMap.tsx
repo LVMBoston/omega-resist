@@ -342,6 +342,13 @@ const SamizdatMap = ({
   // Token lookup map for tracing parent chain
   const tokenLookupRef = useRef<Record<string, { rootToken: string; parentToken: string | null; level: number }>>({});
 
+  // Fly map to continental US view (zoom 4, centered on geographic center)
+  const flyToUSView = () => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([39.8283, -98.5795], 4);
+    }
+  };
+
   // Toggle an EoA type shape on/off
   const toggleChannel = (shape: EoaShape) => {
     setEnabledChannels(prev => {
