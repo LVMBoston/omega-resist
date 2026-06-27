@@ -5,7 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw, Search } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, X, Play, Pause, RotateCcw, Search, Globe } from "lucide-react";
 import { MapMagnifier } from "@/components/MapMagnifier";
 import { Slider } from "@/components/ui/slider";
 import { formatElapsedTime } from "@/lib/dateUtils";
