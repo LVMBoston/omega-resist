@@ -1054,10 +1054,10 @@ Deno.serve(async (req) => {
             continue;
           }
           const lineForWrap = cleaned;
-          const emojiMatch = rawLine.match(emojiPrefixRe);
+          const emojiMatch = lineForWrap.match(emojiPrefixRe);
           if (emojiMatch) {
             const emoji = emojiMatch[1];
-            const rest = rawLine.slice(emoji.length);
+            const rest = lineForWrap.slice(emoji.length);
             ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: emoji.trim() });
             const wrappedRest = wordWrap(rest, maxCharsIndented);
             for (const wl of wrappedRest) {
@@ -1066,7 +1066,7 @@ Deno.serve(async (req) => {
             }
             continue;
           }
-          const wrapped = wordWrap(rawLine, maxCharsPerLine);
+          const wrapped = wordWrap(lineForWrap, maxCharsPerLine);
           for (const wl of wrapped) {
             ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: wl });
             yRel += lineHeight;
