@@ -1028,13 +1028,16 @@ Deno.serve(async (req) => {
         // body, so using storyFontSize as the first baseline crops the caps).
         let yRel = titleFontSize;
 
-        for (const rawLine of rawLines) {
+        const TITLE_RE = /^\s*__TITLE__([\s\S]*?)__TITLE__\s*$/;
+        for (const rawLineOrig of rawLines) {
+          const rawLine = rawLineOrig;
           if (rawLine.trim() === "") {
             yRel += paragraphGap;
             continue;
           }
-          if (rawLine.startsWith("__TITLE__") && rawLine.endsWith("__TITLE__")) {
-            const titleText = rawLine.replace(/__TITLE__/g, "");
+          const titleMatch = rawLine.match(TITLE_RE);
+          if (titleMatch) {
+            const titleText = titleMatch[1].trim();
             const titleWrapped = wordWrap(titleText, Math.floor(maxCharsPerLine * (storyFontSize / titleFontSize)));
             for (const tl of titleWrapped) {
               ops.push({ kind: "text", x: x + padding, yRel, size: titleFontSize, weight: "bold", text: tl });
@@ -1043,6 +1046,14 @@ Deno.serve(async (req) => {
             yRel += paragraphGap * 0.3;
             continue;
           }
+          // Defensive: if a stray __TITLE__ marker sneaks through (e.g. value
+          // arrived via a non-campaign_story path), strip the markers so the
+          // user never sees the literal sentinel.
+          const cleaned = rawLine.replace(/__TITLE__/g, "");
+          if (cleaned !== rawLine && cleaned.trim() === "") {
+            continue;
+          }
+          const lineForWrap = cleaned;
           const emojiMatch = rawLine.match(emojiPrefixRe);
           if (emojiMatch) {
             const emoji = emojiMatch[1];
