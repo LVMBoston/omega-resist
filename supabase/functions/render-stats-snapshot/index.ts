@@ -876,6 +876,13 @@ Deno.serve(async (req) => {
       } else if (hotspot.metricKey && metrics[hotspot.metricKey] !== undefined) {
         metricValue = String(metrics[hotspot.metricKey]);
       }
+      // Defensive: never render the raw __TITLE__ sentinel to users. The
+      // campaign_story branch below strips it cleanly as part of title-line
+      // detection; this guards every other code path (generic text,
+      // manual_entry that pasted a story, future metric keys).
+      if (hotspot.metricKey !== "campaign_story") {
+        metricValue = metricValue.replace(/__TITLE__(.*?)__TITLE__/g, "$1");
+      }
 
       const x = (hotspot.x / 100) * width;
       const y = (hotspot.y / 100) * height;
