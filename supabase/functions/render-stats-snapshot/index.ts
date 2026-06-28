@@ -876,6 +876,13 @@ Deno.serve(async (req) => {
       } else if (hotspot.metricKey && metrics[hotspot.metricKey] !== undefined) {
         metricValue = String(metrics[hotspot.metricKey]);
       }
+      // Defensive: never render the raw __TITLE__ sentinel to users. The
+      // campaign_story branch below strips it cleanly as part of title-line
+      // detection; this guards every other code path (generic text,
+      // manual_entry that pasted a story, future metric keys).
+      if (hotspot.metricKey !== "campaign_story") {
+        metricValue = metricValue.replace(/__TITLE__(.*?)__TITLE__/g, "$1");
+      }
 
       const x = (hotspot.x / 100) * width;
       const y = (hotspot.y / 100) * height;
@@ -1028,13 +1035,16 @@ Deno.serve(async (req) => {
         // body, so using storyFontSize as the first baseline crops the caps).
         let yRel = titleFontSize;
 
-        for (const rawLine of rawLines) {
+        const TITLE_RE = /^\s*__TITLE__([\s\S]*?)__TITLE__\s*$/;
+        for (const rawLineOrig of rawLines) {
+          const rawLine = rawLineOrig;
           if (rawLine.trim() === "") {
             yRel += paragraphGap;
             continue;
           }
-          if (rawLine.startsWith("__TITLE__") && rawLine.endsWith("__TITLE__")) {
-            const titleText = rawLine.replace(/__TITLE__/g, "");
+          const titleMatch = rawLine.match(TITLE_RE);
+          if (titleMatch) {
+            const titleText = titleMatch[1].trim();
             const titleWrapped = wordWrap(titleText, Math.floor(maxCharsPerLine * (storyFontSize / titleFontSize)));
             for (const tl of titleWrapped) {
               ops.push({ kind: "text", x: x + padding, yRel, size: titleFontSize, weight: "bold", text: tl });
@@ -1043,10 +1053,18 @@ Deno.serve(async (req) => {
             yRel += paragraphGap * 0.3;
             continue;
           }
-          const emojiMatch = rawLine.match(emojiPrefixRe);
+          // Defensive: if a stray __TITLE__ marker sneaks through (e.g. value
+          // arrived via a non-campaign_story path), strip the markers so the
+          // user never sees the literal sentinel.
+          const cleaned = rawLine.replace(/__TITLE__/g, "");
+          if (cleaned !== rawLine && cleaned.trim() === "") {
+            continue;
+          }
+          const lineForWrap = cleaned;
+          const emojiMatch = lineForWrap.match(emojiPrefixRe);
           if (emojiMatch) {
             const emoji = emojiMatch[1];
-            const rest = rawLine.slice(emoji.length);
+            const rest = lineForWrap.slice(emoji.length);
             ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: emoji.trim() });
             const wrappedRest = wordWrap(rest, maxCharsIndented);
             for (const wl of wrappedRest) {
@@ -1055,7 +1073,7 @@ Deno.serve(async (req) => {
             }
             continue;
           }
-          const wrapped = wordWrap(rawLine, maxCharsPerLine);
+          const wrapped = wordWrap(lineForWrap, maxCharsPerLine);
           for (const wl of wrapped) {
             ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: wl });
             yRel += lineHeight;
