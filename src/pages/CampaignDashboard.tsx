@@ -136,54 +136,61 @@ export default function CampaignDashboard({
     searchParamsString: searchParams.toString()
   });
   
-  const setSelectedChainRootToken = (token: string | null) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (token) {
-      newParams.set("chainRoot", token);
-    } else {
-      newParams.delete("chainRoot");
-      newParams.delete("chainToken");
-    }
-    setSearchParams(newParams);
-  };
-  
-  const setSelectedChainToken = (token: string | null) => {
-    // When setting chainToken, preserve the existing chainRoot
-    const newParams = new URLSearchParams(searchParams);
-    if (token) {
-      newParams.set("chainToken", token);
-      // Also ensure chainRoot is set if we have a token (use rootToken from the map's callback)
-    } else {
-      newParams.delete("chainToken");
-    }
-    setSearchParams(newParams);
-  };
-  
+  const setSelectedChainRootToken = useCallback((token: string | null) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (token) {
+        newParams.set("chainRoot", token);
+      } else {
+        newParams.delete("chainRoot");
+        newParams.delete("chainToken");
+      }
+      return newParams;
+    });
+  }, [setSearchParams]);
+
+  const setSelectedChainToken = useCallback((token: string | null) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (token) {
+        newParams.set("chainToken", token);
+      } else {
+        newParams.delete("chainToken");
+      }
+      return newParams;
+    });
+  }, [setSearchParams]);
+
   // Combined setter to update both chainRoot and chainToken atomically
   const setChainFilter = useCallback((rootToken: string | null, chainToken: string | null) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (rootToken) {
-      newParams.set("chainRoot", rootToken);
-    } else {
-      newParams.delete("chainRoot");
-    }
-    if (chainToken) {
-      newParams.set("chainToken", chainToken);
-    } else {
-      newParams.delete("chainToken");
-    }
-    setSearchParams(newParams);
-  }, [searchParams, setSearchParams]);
-  
-  const setChainViewMode = (mode: "all" | "chain") => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (rootToken) {
+        newParams.set("chainRoot", rootToken);
+      } else {
+        newParams.delete("chainRoot");
+      }
+      if (chainToken) {
+        newParams.set("chainToken", chainToken);
+      } else {
+        newParams.delete("chainToken");
+      }
+      return newParams;
+    });
+  }, [setSearchParams]);
+
+  const setChainViewMode = useCallback((mode: "all" | "chain") => {
     if (mode === "all") {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete("chainRoot");
-      newParams.delete("chainToken");
-      setSearchParams(newParams);
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete("chainRoot");
+        newParams.delete("chainToken");
+        return newParams;
+      });
       setSelectedL00Instance(null);
     }
-  };
+  }, [setSearchParams]);
+
   const {
     toast
   } = useToast();
