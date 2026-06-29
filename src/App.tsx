@@ -40,6 +40,7 @@ import EdgeFunctionHealth from "./pages/EdgeFunctionHealth";
 import RepointQrTool from "./pages/RepointQrTool";
 import RegressionTests from "./pages/RegressionTests";
 import ParityHarness from "./pages/ParityHarness";
+import FridgeLanding from "./pages/FridgeLanding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
