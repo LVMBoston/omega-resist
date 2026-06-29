@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { useChartData, LEVEL_COLORS, WeeklyLevelData } from "@/hooks/useChartData";
+import { useChartData, LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartConfig } from "@/types/viralTemplates";
 import { Loader2 } from "lucide-react";
 
@@ -11,22 +11,32 @@ interface ChartHotspotRendererProps {
   height: number;
 }
 
-export function ChartHotspotRenderer({ 
-  campaignCode, 
-  config, 
-  width, 
-  height 
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+export function ChartHotspotRenderer({
+  campaignCode,
+  config,
+  width,
+  height,
 }: ChartHotspotRendererProps) {
-  const { data, loading, error, fetchChartData } = useChartData();
-  
+  const { data, seriesKeys, seriesLabels, loading, error, fetchChartData } = useChartData();
+
   const showXAxis = config.showXAxis !== false;
   const showYAxis = config.showYAxis === true;
+  const dataSource = config.dataSource || "cumulative_opens_by_level";
+  const timeBucket = config.timeBucket || "week";
+  const yScale = config.yScale || "linear";
+  const yFormat = config.yFormat || "integer";
 
   useEffect(() => {
     if (campaignCode) {
-      fetchChartData(campaignCode);
+      fetchChartData(campaignCode, dataSource, timeBucket);
     }
-  }, [campaignCode, fetchChartData]);
+  }, [campaignCode, dataSource, timeBucket, fetchChartData]);
 
   if (loading) {
     return (
@@ -44,44 +54,61 @@ export function ChartHotspotRenderer({
     );
   }
 
+  // Log scale + zeros breaks Recharts — fall back to linear automatically
+  const hasZero = data.some((d) =>
+    seriesKeys.some((k) => (d as any)[k] === 0),
+  );
+  const effectiveScale = yScale === "log" && hasZero ? "linear" : yScale;
+
+  const tickFormatter = (v: number) =>
+    yFormat === "compact" ? formatCompact(v) : String(v);
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: showXAxis ? 20 : 4 }}>
         {showXAxis && (
-          <XAxis 
-            dataKey="week" 
+          <XAxis
+            dataKey="bucket"
             tick={{ fill: "#666", fontSize: 10 }}
             axisLine={{ stroke: "#ccc" }}
             tickLine={{ stroke: "#ccc" }}
           />
         )}
         {showYAxis && (
-          <YAxis 
+          <YAxis
+            scale={effectiveScale}
+            domain={effectiveScale === "log" ? [1, "auto"] : [0, "auto"]}
+            allowDataOverflow={false}
             tick={{ fill: "#666", fontSize: 10 }}
             axisLine={{ stroke: "#ccc" }}
             tickLine={{ stroke: "#ccc" }}
-            width={30}
+            tickFormatter={tickFormatter}
+            width={36}
           />
         )}
-        <Legend 
-          wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }}
-          iconSize={8}
-        />
-        <Tooltip 
-          contentStyle={{ 
-            backgroundColor: "rgba(255,255,255,0.95)", 
+        <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "2px" }} iconSize={8} />
+        <Tooltip
+          contentStyle={{
+            backgroundColor: "rgba(255,255,255,0.95)",
             border: "1px solid #ccc",
             borderRadius: "4px",
-            fontSize: "12px"
+            fontSize: "12px",
           }}
           labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-          formatter={(value: number, name: string) => [value, name]}
+          formatter={(value: number, name: string) => [
+            yFormat === "compact" ? formatCompact(value) : value,
+            name,
+          ]}
         />
-        <Bar dataKey="L00_seeds" stackId="levels" fill={LEVEL_COLORS.L00_seeds} name="Seeds" />
-        <Bar dataKey="L00_spawns" stackId="levels" fill={LEVEL_COLORS.L00_spawns} name="Sprouts" />
-        <Bar dataKey="L01" stackId="levels" fill={LEVEL_COLORS.L01} name="L01" />
-        <Bar dataKey="L02" stackId="levels" fill={LEVEL_COLORS.L02} name="L02" />
-        <Bar dataKey="L03" stackId="levels" fill={LEVEL_COLORS.L03} name="L03+" />
+        {seriesKeys.map((key) => (
+          <Bar
+            key={key}
+            dataKey={key}
+            stackId="levels"
+            fill={LEVEL_COLORS[key] || "hsl(221, 83%, 50%)"}
+            name={seriesLabels[key] || key}
+          />
+        ))}
       </BarChart>
     </ResponsiveContainer>
   );
