@@ -103,6 +103,8 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "email-links", label: "Email all links", type: "email_links", imageUrl: emailLinksIcon, width: 8, height: 8 },
   // Video variant
   { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
+  // REFRIG: downloads printable QR sheet for the fridge
+  { id: "refrig-fridge", label: "Refrig", type: "refrig", icon: Refrigerator as any, width: 5, height: 4 },
   // Data hotspot presets
   { id: "live-number", label: "Live Number", type: "live_number", icon: Hash as any, width: 20, height: 8 },
   { id: "chart-stacked", label: "Chart", type: "chart", icon: BarChart3 as any, width: 40, height: 30 },
@@ -110,7 +112,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "image-paste", label: "Image", type: "image", icon: ImageIcon as any, width: 30, height: 30 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "live_number" | "chart" | "map" | "image";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "refrig" | "live_number" | "chart" | "map" | "image";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
