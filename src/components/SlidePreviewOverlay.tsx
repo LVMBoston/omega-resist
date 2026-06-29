@@ -1,4 +1,4 @@
-import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark, EyeOff } from "lucide-react";
+import { Mail, MessageSquare, Share2, ExternalLink, BarChart3, Map, Video, Hash, Type, Clock, Calendar, TrendingUp, Users, Eye, MapPin, Bookmark, EyeOff, Refrigerator } from "lucide-react";
 import { LinkIcon } from "@/components/icons/LinkIcon";
 import type { Hotspot } from "@/types/viralTemplates";
 
@@ -47,6 +47,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   vimeo: Video,     // legacy
   youtube: Video,   // legacy
   app_download: ExternalLink,
+  refrig: Refrigerator,
 };
 
 const METRIC_ICONS: Record<string, React.ElementType> = {
