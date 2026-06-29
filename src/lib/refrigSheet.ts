@@ -107,8 +107,31 @@ function wrapText(
   if (line) ctx.fillText(line, x, cursorY);
 }
 
+/**
+ * Delivers the PNG to the user.
+ *
+ * - On desktop browsers: triggers a normal file download via `<a download>`.
+ * - On iOS Safari: `<a download>` is silently ignored and the OS share sheet
+ *   pops up instead. Instead we open the blob in a new tab so the user
+ *   actually sees the PNG and can long-press → "Save to Photos" or print.
+ */
 export function triggerPngDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+    (/Macintosh/.test(ua) && typeof document !== "undefined" && "ontouchend" in document);
+
+  if (isIOS) {
+    // Open the PNG in a new tab. User can long-press to save / print.
+    const w = window.open(url, "_blank");
+    if (!w) {
+      // Popup blocked — fall back to same-tab navigation
+      window.location.href = url;
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return;
+  }
+
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
