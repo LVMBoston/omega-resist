@@ -75,6 +75,7 @@ const App = () => (
             <Route path="/deck/:slug?" element={<DeckViewer />} />
             <Route path="/r/:code" element={<ShortUrlRedirect />} />
             <Route path="/s/:code" element={<ShortUrlRedirect />} />
+            <Route path="/fridge/:token" element={<FridgeLanding />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
             <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
             <Route path="/landing" element={<LandingPage />} />
