@@ -20,7 +20,8 @@ export type DerivedUtmMedium =
   | "fb"
   | "bs"
   | "li"
-  | "x";
+  | "x"
+  | "refrig";
 
 interface EoaLike {
   utm_id?: string | null;
