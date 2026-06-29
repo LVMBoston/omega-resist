@@ -143,7 +143,7 @@ export async function instantiateL00Token(baseToken: string): Promise<{
 
 const MintShareInput = z.object({
   parentToken: z.string().min(1),
-  utmMedium: z.enum(["em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x"])
+  utmMedium: z.enum(["em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x", "refrig"])
 });
 
 const MintShareOutput = z.object({ 
