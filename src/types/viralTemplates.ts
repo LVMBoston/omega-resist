@@ -222,4 +222,5 @@ export type HotspotActionType =
   | 'video'            // Unified video player (auto-detects YouTube or Vimeo from URL)
   | 'vimeo'            // @deprecated — use 'video'; kept for backward compat with existing data
   | 'youtube'          // @deprecated — use 'video'; kept for backward compat with existing data
-  | 'image';           // Pasted image overlay (locked to natural aspect ratio)
+  | 'image'            // Pasted image overlay (locked to natural aspect ratio)
+  | 'refrig';          // Refrigerator: downloads a printable PNG with QR -> /fridge/:token landing
