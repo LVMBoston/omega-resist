@@ -39,7 +39,7 @@ import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image" | "refrig";
   icon?: React.ComponentType<{ className?: string; size?: number }>;
   imageUrl?: string;
   width: number;
