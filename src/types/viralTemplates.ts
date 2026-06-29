@@ -82,11 +82,25 @@ export interface HybridConfig {
 }
 
 // Chart configuration for chart hotspots
+export type ChartDataSource =
+  | 'cumulative_opens_by_level'
+  | 'opens_per_period'
+  | 'shares_per_period'
+  | 'unique_viewers_per_period'
+  | 'new_l00_seeds_per_period';
+
+export type ChartTimeBucket = 'day' | 'week' | 'month';
+export type ChartYScale = 'linear' | 'log';
+export type ChartYFormat = 'integer' | 'compact';
+
 export interface ChartConfig {
   chartType: 'stacked_bar';
-  dataSource: 'cumulative_opens_by_level';
-  showXAxis?: boolean;  // default true
-  showYAxis?: boolean;  // default false
+  dataSource: ChartDataSource;
+  timeBucket?: ChartTimeBucket;   // default 'week'
+  yScale?: ChartYScale;            // default 'linear'
+  yFormat?: ChartYFormat;          // default 'integer'
+  showXAxis?: boolean;             // default true
+  showYAxis?: boolean;             // default false
 }
 
 // Map configuration for map hotspots
