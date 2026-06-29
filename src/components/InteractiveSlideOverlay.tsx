@@ -587,6 +587,8 @@ const InteractiveSlideOverlay = ({
         return <FallbackImg src={emailLinksIcon} alt="Email Links" style={imgStyle} fallback={<MailPlus style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "email-support":
         return <FallbackImg src={mailIcon} alt="Support Email" style={imgStyle} fallback={<Mail style={{ ...svgStyle, color: '#22c55e' }} />} />;
+      case "refrig-fridge":
+        return <Refrigerator style={{ ...svgStyle, color: '#000000' }} />;
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return <MessageSquare style={{ ...svgStyle, color: '#000000' }} />;
