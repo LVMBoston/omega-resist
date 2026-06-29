@@ -970,6 +970,8 @@ const InteractiveSlideOverlay = ({
           const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
           window.location.href = `mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`;
         };
+      case "refrig":
+        return handleRefrig;
       case "social":
       case "form_trigger":
       case "custom":
