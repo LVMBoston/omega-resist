@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX, Refrigerator } from "lucide-react";
 import { detectVideoProvider } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -17,6 +17,7 @@ import emailLinksIcon from "@/assets/email-links-icon.svg";
 import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
+import { composeRefrigSheetPng, triggerPngDownload } from "@/lib/refrigSheet";
 
 /** Renders a custom icon with an onError fallback to a Lucide SVG icon.
  *  Tries the real asset on all platforms; only swaps to the Lucide fallback
