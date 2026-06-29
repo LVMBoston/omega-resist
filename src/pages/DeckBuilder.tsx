@@ -199,7 +199,8 @@ export default function DeckBuilder() {
         isCompressed = true;
       }
       if (isGif) isCompressed = false;
-      const fileName = `${slug}/${i.toString().padStart(3, "0")}-${name}`;
+      const safeName = name.replace(/[^a-zA-Z0-9._-]+/g, "_");
+      const fileName = `${slug}/${i.toString().padStart(3, "0")}-${safeName}`;
       const { error: uploadError } = await supabase.storage.from("slides").upload(fileName, uploadBlob, { contentType: mimeType, upsert: true });
       if (uploadError) throw new Error(`Failed to upload ${name}: ${uploadError.message}`);
       const { data: urlData } = supabase.storage.from("slides").getPublicUrl(fileName);
