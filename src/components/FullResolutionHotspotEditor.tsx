@@ -49,7 +49,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image" | "refrig";
   label: string;
   x: number;
   y: number;
