@@ -1131,7 +1131,7 @@ export const FullResolutionHotspotEditor = ({
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Action</div>
                   <div className="grid grid-cols-6 gap-2 mb-3">
-                    {(["sms", "email", "social", "external_link", "email_links", "email_support", "video"] as IconCategory[]).map((category) => {
+                    {(["sms", "email", "social", "external_link", "email_links", "email_support", "video", "refrig"] as IconCategory[]).map((category) => {
                       const CategoryIcon = categoryIcons[category];
                       const categoryImageUrl = categoryImages[category];
                       return (
