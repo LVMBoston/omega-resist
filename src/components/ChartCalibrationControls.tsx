@@ -128,32 +128,34 @@ export function ChartCalibrationControls({
         </div>
       </div>
 
-      {/* Row 2: position/size + axis toggles */}
-      <div className="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-8 gap-4">
+      {/* Row 2: X | Y */}
+      <div className="grid grid-cols-2 gap-3">
         <SliderWithButtons label="X" value={hotspot.x} onChange={(v) => onUpdate({ x: v })} min={0} max={100} step={0.5} fineStep={0.1} />
         <SliderWithButtons label="Y" value={hotspot.y} onChange={(v) => onUpdate({ y: v })} min={0} max={100} step={0.5} fineStep={0.1} />
+      </div>
+
+      {/* Row 3: W | H | Z */}
+      <div className="grid grid-cols-3 gap-3">
         <SliderWithButtons label="W" value={hotspot.width} onChange={(v) => onUpdate({ width: v })} min={5} max={100} step={0.5} fineStep={0.1} />
-        <SliderWithButtons label="H" value={hotspot.height} onChange={(v) => onUpdate({ height: v })} min={5} max={60} step={0.5} fineStep={0.1} />
+        <SliderWithButtons label="H" value={hotspot.height} onChange={(v) => onUpdate({ height: v })} min={5} max={100} step={0.5} fineStep={0.1} />
         <SliderWithButtons label="Z" value={hotspot.zIndex ?? 1} onChange={(v) => onUpdate({ zIndex: v })} min={0} max={9} step={1} fineStep={1} />
+      </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs">X Axis</Label>
-          <div className="h-8 flex items-center">
-            <Switch
-              checked={config.showXAxis !== false}
-              onCheckedChange={(checked) => updateConfig({ showXAxis: checked })}
-            />
-          </div>
+      {/* Row 4: Axis toggles */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
+          <Label className="text-xs cursor-pointer">Show X Axis</Label>
+          <Switch
+            checked={config.showXAxis !== false}
+            onCheckedChange={(checked) => updateConfig({ showXAxis: checked })}
+          />
         </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Y Axis</Label>
-          <div className="h-8 flex items-center">
-            <Switch
-              checked={config.showYAxis === true}
-              onCheckedChange={(checked) => updateConfig({ showYAxis: checked })}
-            />
-          </div>
+        <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
+          <Label className="text-xs cursor-pointer">Show Y Axis</Label>
+          <Switch
+            checked={config.showYAxis === true}
+            onCheckedChange={(checked) => updateConfig({ showYAxis: checked })}
+          />
         </div>
       </div>
 
