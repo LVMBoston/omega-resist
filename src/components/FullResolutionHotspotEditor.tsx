@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Card, CardContent } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Trash2, X, AlertTriangle, ExternalLink, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock, Image as ImageIcon, Mail } from "lucide-react";
+import { Trash2, X, AlertTriangle, ExternalLink, ChevronUp, ChevronDown, EyeOff, Loader2, CheckCircle2, Hash, BarChart3, MapIcon, Move, Lock, Unlock, Image as ImageIcon, Mail, Refrigerator } from "lucide-react";
 import { fetchOEmbed, type OEmbedResult } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +39,7 @@ import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
 interface IconPreset {
   id: string;
   label: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image" | "refrig";
   icon?: React.ComponentType<{ className?: string; size?: number }>;
   imageUrl?: string;
   width: number;
@@ -49,7 +49,7 @@ interface IconPreset {
 interface Hotspot {
   id: string;
   iconId: string;
-  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image";
+  type: "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "vimeo" | "youtube" | "live_number" | "chart" | "map" | "image" | "refrig";
   label: string;
   x: number;
   y: number;
@@ -103,6 +103,8 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "email-links", label: "Email all links", type: "email_links", imageUrl: emailLinksIcon, width: 8, height: 8 },
   // Video variant
   { id: "video", label: "Video", type: "video", imageUrl: playButtonIcon, width: 5, height: 4 },
+  // REFRIG: downloads printable QR sheet for the fridge
+  { id: "refrig-fridge", label: "Refrig", type: "refrig", icon: Refrigerator as any, width: 5, height: 4 },
   // Data hotspot presets
   { id: "live-number", label: "Live Number", type: "live_number", icon: Hash as any, width: 20, height: 8 },
   { id: "chart-stacked", label: "Chart", type: "chart", icon: BarChart3 as any, width: 40, height: 30 },
@@ -110,7 +112,7 @@ const ICON_PRESETS: IconPreset[] = [
   { id: "image-paste", label: "Image", type: "image", icon: ImageIcon as any, width: 30, height: 30 },
 ];
 
-type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "live_number" | "chart" | "map" | "image";
+type IconCategory = "sms" | "email" | "social" | "external_link" | "email_links" | "email_support" | "video" | "refrig" | "live_number" | "chart" | "map" | "image";
 
 interface FullResolutionHotspotEditorProps {
   imageUrl: string;
@@ -299,6 +301,7 @@ export const FullResolutionHotspotEditor = ({
     email_links: emailLinksIcon,
     email_support: mailIcon,
     video: playButtonIcon,
+    refrig: null,
     live_number: null,
     chart: null,
     map: null,
@@ -313,6 +316,7 @@ export const FullResolutionHotspotEditor = ({
     email_links: null,
     email_support: null,
     video: null,
+    refrig: Refrigerator,
     live_number: Hash,
     chart: BarChart3,
     map: MapIcon,
@@ -327,6 +331,7 @@ export const FullResolutionHotspotEditor = ({
     email_links: "Email Links",
     email_support: "Support",
     video: "Video",
+    refrig: "Refrig",
     live_number: "Number",
     chart: "Chart",
     map: "Map",
@@ -1126,7 +1131,7 @@ export const FullResolutionHotspotEditor = ({
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">Action</div>
                   <div className="grid grid-cols-6 gap-2 mb-3">
-                    {(["sms", "email", "social", "external_link", "email_links", "email_support", "video"] as IconCategory[]).map((category) => {
+                    {(["sms", "email", "social", "external_link", "email_links", "email_support", "video", "refrig"] as IconCategory[]).map((category) => {
                       const CategoryIcon = categoryIcons[category];
                       const categoryImageUrl = categoryImages[category];
                       return (

@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { MessageSquare, Mail, Share2, ExternalLink, X, Link2, MailPlus, Play, Pause, Volume2, VolumeX, Refrigerator } from "lucide-react";
 import { detectVideoProvider } from "@/lib/oEmbedValidation";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -17,6 +17,7 @@ import emailLinksIcon from "@/assets/email-links-icon.svg";
 import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
+import { composeRefrigSheetPng, triggerPngDownload } from "@/lib/refrigSheet";
 
 /** Renders a custom icon with an onError fallback to a Lucide SVG icon.
  *  Tries the real asset on all platforms; only swaps to the Lucide fallback
@@ -471,7 +472,76 @@ const InteractiveSlideOverlay = ({
     }
   };
 
-  // Map iconId to actual icon/image
+  const handleRefrig = async () => {
+    try {
+      console.log("🧊 REFRIG SHARE INITIATED. Parent token:", viralToken);
+      if (!viralToken) {
+        toast({
+          variant: "destructive",
+          title: "Share Link Required",
+          description: "Open this deck via a viral share link first.",
+        });
+        return;
+      }
+
+      // Mint a fresh share token so this REFRIG hop is tracked as its own
+      // lineage row (utm_medium='refrig'). The QR points to /fridge/<token>.
+      const { token } = await mintShare({
+        parentToken: viralToken,
+        utmMedium: "refrig",
+      });
+
+      const landingUrl = `${window.location.origin}/fridge/${token}`;
+
+      // Resolve campaign title (best-effort; falls back to deck slug).
+      let campaignTitle = deckSlug;
+      try {
+        const { data: tokenRow } = await supabase
+          .from("tokens")
+          .select("eoa_id, utm_campaign")
+          .eq("token", token)
+          .maybeSingle();
+        if (tokenRow?.utm_campaign) {
+          const { data: campaign } = await supabase
+            .from("campaigns")
+            .select("title")
+            .eq("code", tokenRow.utm_campaign)
+            .maybeSingle();
+          if (campaign?.title) campaignTitle = campaign.title;
+        }
+      } catch (e) {
+        console.warn("[REFRIG] campaign lookup failed, using deck slug:", e);
+      }
+
+      toast({ title: "Preparing your printable sheet…" });
+
+      const blob = await composeRefrigSheetPng({
+        landingUrl,
+        campaignTitle,
+        subtitle: `Deck: ${deckSlug}`,
+      });
+      triggerPngDownload(blob, "fridge-sheet.png");
+
+      // Log the generation event (best-effort, non-blocking)
+      void supabase.rpc("log_event", {
+        _token: token,
+        _event_type: "refrig_generated",
+      });
+
+      toast({
+        title: "Downloaded fridge-sheet.png",
+        description: "Print it and tape it to your refrigerator.",
+      });
+    } catch (error) {
+      console.error("❌ REFRIG error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not generate the printable sheet.",
+      });
+    }
+  };
+
   const getHotspotIcon = (iconId: string, buttonWidth: number, buttonHeight: number) => {
     // Fill the entire hotspot area, matching the editor's w-full h-full object-contain
     const imgStyle: React.CSSProperties = {
@@ -517,6 +587,8 @@ const InteractiveSlideOverlay = ({
         return <FallbackImg src={emailLinksIcon} alt="Email Links" style={imgStyle} fallback={<MailPlus style={{ ...svgStyle, color: '#22c55e' }} />} />;
       case "email-support":
         return <FallbackImg src={mailIcon} alt="Support Email" style={imgStyle} fallback={<Mail style={{ ...svgStyle, color: '#22c55e' }} />} />;
+      case "refrig-fridge":
+        return <Refrigerator style={{ ...svgStyle, color: '#000000' }} />;
       // Fallback for legacy or unknown icons
       default:
         if (iconId.includes('sms')) return <MessageSquare style={{ ...svgStyle, color: '#000000' }} />;
@@ -898,6 +970,8 @@ const InteractiveSlideOverlay = ({
           const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
           window.location.href = `mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`;
         };
+      case "refrig":
+        return handleRefrig;
       case "social":
       case "form_trigger":
       case "custom":
