@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { formatCampaignStory } from "../_shared/render/campaignStory.ts";
+import { computeCampaignStoryInputs } from "../_shared/render/campaignStoryInputs.ts";
 
 
 
