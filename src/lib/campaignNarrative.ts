@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { formatCampaignStory } from "@/shared/render/campaignStory";
+import { computeCampaignStoryInputs } from "@/shared/render/campaignStoryInputs";
 
 export interface NarrativeData {
   campaignTitle: string;
