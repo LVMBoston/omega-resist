@@ -385,10 +385,11 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   // Resolve campaign + optional official_start_at cutoff (pre-launch / test
   // events are excluded from every metric and narrative below).
   const campaignBase = await fetchWithRetry<any>(
-    () => supabase.from("campaigns").select("title, created_at, official_start_at").eq("code", campaignCode).maybeSingle(),
+    () => supabase.from("campaigns").select("id, title, created_at, official_start_at").eq("code", campaignCode).maybeSingle(),
     "campaign base for metrics"
   );
   const since: string | null = (campaignBase as any)?.official_start_at || null;
+  const campaignId: string | null = (campaignBase as any)?.id || null;
 
   const tokens = await fetchWithRetry(
     () => {
