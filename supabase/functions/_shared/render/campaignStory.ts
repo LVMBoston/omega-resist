@@ -33,6 +33,13 @@ export interface CampaignStoryInput {
   lastShareAt: string | null;
   speedOriginCity: string | null;
   speedDestCity: string | null;
+
+  /**
+   * Emit the leading `__TITLE__Campaign: <title>__TITLE__` block.
+   * Default true (preserves standalone rendering). Pass false when the
+   * slide already renders a separate header hotspot to avoid duplication.
+   */
+  includeTitle?: boolean;
 }
 
 const MEDIUM_LABELS: Record<string, string> = {
