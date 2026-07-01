@@ -75,6 +75,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     lastShareAt,
     speedOriginCity,
     speedDestCity,
+    includeTitle = true,
   } = input;
 
   const msActive = Math.max(0, nowMs - activeAnchorMs);
