@@ -1,5 +1,5 @@
 # Product Requirements Document (PRD) — December 3, 2025
-# Democracy Forge
+# Democracy Forge LVM
 
 **Version**: 2.0  
 **Last Updated**: March 17, 2026  
