@@ -134,9 +134,12 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   const lines: string[] = [];
 
   // Title — wrapped in __TITLE__ markers so the split-into-two-columns
-  // logic can pin it to the left column.
-  lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
-  lines.push(""); // blank line: title is its own paragraph block
+  // logic can pin it to the left column. Suppress when the slide already
+  // renders a separate header hotspot (includeTitle: false).
+  if (includeTitle) {
+    lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+    lines.push(""); // blank line: title is its own paragraph block
+  }
 
   if (dataSource === "simulated") {
     lines.push("Simulation report — not real field activity.");
