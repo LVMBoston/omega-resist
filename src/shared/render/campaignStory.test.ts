@@ -76,4 +76,18 @@ describe("formatCampaignStory", () => {
       "Fastest share: From the first open shared to the first Level 2 share took 1 day; Boston, MA to Austin, TX.",
     );
   });
+
+  it("suppresses the __TITLE__ block when includeTitle: false", () => {
+    const out = formatCampaignStory({ ...baseInput(), includeTitle: false });
+    expect(out).not.toContain("__TITLE__");
+    expect(out).not.toContain("Campaign: Test Campaign");
+    // First non-empty line should be a body line (date-of-report), not the title.
+    const firstNonEmpty = out.split("\n").find((l) => l.trim().length > 0);
+    expect(firstNonEmpty).toMatch(/^Date of this report:/);
+  });
+
+  it("emits __TITLE__ by default (includeTitle omitted)", () => {
+    const out = formatCampaignStory(baseInput());
+    expect(out.split("\n")[0]).toBe("__TITLE__Campaign: Test Campaign__TITLE__");
+  });
 });

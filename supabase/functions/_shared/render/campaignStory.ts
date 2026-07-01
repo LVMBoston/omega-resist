@@ -33,6 +33,13 @@ export interface CampaignStoryInput {
   lastShareAt: string | null;
   speedOriginCity: string | null;
   speedDestCity: string | null;
+
+  /**
+   * Emit the leading `__TITLE__Campaign: <title>__TITLE__` block.
+   * Default true (preserves standalone rendering). Pass false when the
+   * slide already renders a separate header hotspot to avoid duplication.
+   */
+  includeTitle?: boolean;
 }
 
 const MEDIUM_LABELS: Record<string, string> = {
@@ -68,6 +75,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     lastShareAt,
     speedOriginCity,
     speedDestCity,
+    includeTitle = true,
   } = input;
 
   const msActive = Math.max(0, nowMs - activeAnchorMs);
@@ -126,9 +134,12 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   const lines: string[] = [];
 
   // Title — wrapped in __TITLE__ markers so the split-into-two-columns
-  // logic can pin it to the left column.
-  lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
-  lines.push(""); // blank line: title is its own paragraph block
+  // logic can pin it to the left column. Suppress when the slide already
+  // renders a separate header hotspot (includeTitle: false).
+  if (includeTitle) {
+    lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
+    lines.push(""); // blank line: title is its own paragraph block
+  }
 
   if (dataSource === "simulated") {
     lines.push("Simulation report — not real field activity.");

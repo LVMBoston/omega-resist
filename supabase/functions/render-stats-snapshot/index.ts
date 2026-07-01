@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { formatCampaignStory } from "../_shared/render/campaignStory.ts";
+import { computeCampaignStoryInputs } from "../_shared/render/campaignStoryInputs.ts";
 
 
 
@@ -384,10 +385,11 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   // Resolve campaign + optional official_start_at cutoff (pre-launch / test
   // events are excluded from every metric and narrative below).
   const campaignBase = await fetchWithRetry<any>(
-    () => supabase.from("campaigns").select("title, created_at, official_start_at").eq("code", campaignCode).maybeSingle(),
+    () => supabase.from("campaigns").select("id, title, created_at, official_start_at").eq("code", campaignCode).maybeSingle(),
     "campaign base for metrics"
   );
   const since: string | null = (campaignBase as any)?.official_start_at || null;
+  const campaignId: string | null = (campaignBase as any)?.id || null;
 
   const tokens = await fetchWithRetry(
     () => {
@@ -479,205 +481,46 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
   metrics.current_time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
   metrics.last_updated = `${metrics.current_date} ${metrics.current_time}`;
 
-  // Campaign story — full narrative (inline generation matching client-side generateFullStory)
+  // Campaign story — full narrative. Metric inputs (seeds, sprouts, views,
+  // zips, states, mediums, speed, etc.) come from the single shared
+  // `computeCampaignStoryInputs` function that the editor also uses. Any
+  // number-drift between editor and SSR must be fixed in that shared file,
+  // never re-derived here. See docs/decisions/snapshots/2026-07-01_full-editor-ssr-parity.
   const campaignInfo = campaignBase as CampaignSnapshotInfo | null;
-  if (campaignInfo) {
-    // "Active since" honors official_start_at when set
-    const activeAnchorMs = since
-      ? new Date(since).getTime()
-      : new Date(campaignInfo.created_at || Date.now()).getTime();
-    const msActive = Date.now() - activeAnchorMs;
-    const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
-    const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const seedCount = parseInt(String(metrics.seeds).replace(/,/g, ""), 10) || 0;
-    const viewCountNum = parseInt(String(metrics.opens).replace(/,/g, ""), 10) || 0;
-    const zipCountNum = parseInt(String(metrics.neighborhoods).replace(/,/g, ""), 10) || 0;
-    const spawnsNum = parseInt(String(metrics.shares).replace(/,/g, ""), 10) || 0;
-    const maxDepth = Math.max(
-      parseInt(String(metrics.l01_count).replace(/,/g, ""), 10) > 0 ? 1 : 0,
-      parseInt(String(metrics.l02_count).replace(/,/g, ""), 10) > 0 ? 2 : 0,
-      parseInt(String(metrics.l03_count).replace(/,/g, ""), 10) > 0 ? 3 : 0,
-    );
-
-    // States for geographic narrative
-    const statesData = await fetchWithRetry(
-      () => {
-        let q = supabase.from("url_events")
-          .select("region, tokens!inner(utm_campaign)")
-          .eq("tokens.utm_campaign", campaignCode)
-          .eq("is_simulated", false)
-          .eq("country", "United States")
-          .is("deleted_at", null)
-          .not("region", "is", null);
-        if (since) q = q.gte("occurred_at", since);
-        return q;
-      },
-      "states for story"
-    ) || [];
-    const stateCount = new Set((statesData as any[]).map((r: any) => r.region).filter(Boolean)).size;
-
-    // International countries
-    const intlData = await fetchWithRetry(
-      () => {
-        let q = supabase.from("url_events")
-          .select("country, tokens!inner(utm_campaign)")
-          .eq("tokens.utm_campaign", campaignCode)
-          .eq("is_simulated", false)
-          .is("deleted_at", null)
-          .not("country", "is", null)
-          .neq("country", "United States");
-        if (since) q = q.gte("occurred_at", since);
-        return q;
-      },
-      "intl countries for story"
-    ) || [];
-    const intlCountries = [...new Set((intlData as any[]).map((r: any) => r.country).filter(Boolean))];
-
-    // Propagation speed from tokens
-    const speedTokens = await fetchWithRetry(
-      () => {
-        let q = supabase.from("tokens")
-          .select("token, level, minted_at, l00_instance")
-          .eq("utm_campaign", campaignCode)
-          .eq("is_simulated", false)
-          .is("deleted_at", null)
-          .order("minted_at", { ascending: true });
-        if (since) q = q.gte("minted_at", since);
-        return q;
-      },
-      "speed tokens for story"
-    ) || [];
-    const speedMap = new Map<number, any>();
-    for (const t of speedTokens as any[]) {
-      if (!speedMap.has(t.level)) speedMap.set(t.level, t);
+  if (campaignInfo && campaignId) {
+    try {
+      const inputs = await computeCampaignStoryInputs(supabase, {
+        campaignCode,
+        campaignId,
+        dataSource: "real",
+      });
+      const activeAnchorMs = new Date(inputs.campaignActiveAnchor).getTime();
+      metrics.campaign_story = formatCampaignStory({
+        campaignTitle: inputs.campaignTitle,
+        activeAnchorMs,
+        nowMs: Date.now(),
+        seedCount: inputs.seedCount,
+        sproutCount: inputs.sproutCount,
+        viewCount: inputs.viewCount,
+        zipCount: inputs.zipCount,
+        stateCount: inputs.stateCount,
+        internationalCountries: inputs.internationalCountries,
+        maxDepth: inputs.maxDepth,
+        propagationSpeed: inputs.propagationSpeed,
+        shareMediums: inputs.shareMediums,
+        lastShareAt: inputs.lastShareAt,
+        speedOriginCity: inputs.speedOriginCity,
+        speedDestCity: inputs.speedDestCity,
+        includeTitle: true,
+      });
+    } catch (e) {
+      console.error("[render-stats-snapshot] campaign_story build failed:", e);
+      metrics.campaign_story = "--";
     }
-    const speedEntries = Array.from(speedMap.entries()).sort((a, b) => a[0] - b[0]);
-
-    // Last share — most recent L1+ token
-    let lastShareAt: string | null = null;
-    const lastShareData = await fetchWithRetry(
-      () => {
-        let q = supabase.from("tokens")
-          .select("minted_at")
-          .eq("utm_campaign", campaignCode)
-          .eq("is_simulated", false)
-          .is("deleted_at", null)
-          .gt("level", 0)
-          .order("minted_at", { ascending: false })
-          .limit(1);
-        if (since) q = q.gte("minted_at", since);
-        return q;
-      },
-      "last share for story"
-    );
-    if (lastShareData && Array.isArray(lastShareData) && lastShareData.length > 0) {
-      lastShareAt = lastShareData[0].minted_at;
-    }
-
-    // Open events by share medium (count view events, not tokens)
-    const mediumData = await fetchWithRetry(
-      () => {
-        let q = supabase.from("url_events")
-          .select("tokens!inner(utm_medium, utm_campaign)")
-          .eq("tokens.utm_campaign", campaignCode)
-          .eq("is_simulated", false)
-          .is("deleted_at", null)
-          .eq("event_type", "view");
-        if (since) q = q.gte("occurred_at", since);
-        return q;
-      },
-      "open mediums for story"
-    ) || [];
-    const mediumCounts = new Map<string, number>();
-    for (const evt of mediumData as any[]) {
-      const m = (evt as any).tokens?.utm_medium;
-      if (m) mediumCounts.set(m, (mediumCounts.get(m) || 0) + 1);
-    }
-    // mediumCounts is consumed by formatCampaignStory below.
-
-    // Speed origin/destination cities — data fetching stays here; the
-    // narrative string itself is built by the shared formatter below.
-    let speedOriginCity: string | null = null;
-    let speedDestCity: string | null = null;
-    if (speedEntries.length >= 2) {
-      try {
-        const firstL1 = speedEntries.find(([lvl]) => lvl === 1);
-        const lastEntry = speedEntries[speedEntries.length - 1];
-        if (firstL1) {
-          const l1Token = firstL1[1];
-          const originEvents = await fetchWithRetry(
-            () => supabase.from("url_events")
-              .select("city, region")
-              .eq("token", l1Token.token)
-              .not("city", "is", null)
-              .order("occurred_at", { ascending: true })
-              .limit(1),
-            "speed origin city"
-          );
-          if (originEvents && Array.isArray(originEvents) && originEvents.length > 0) {
-            const oe = originEvents[0];
-            speedOriginCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
-          }
-          if (l1Token.l00_instance && lastEntry[0] > 1) {
-            const destTokens = await fetchWithRetry(
-              () => supabase.from("tokens")
-                .select("token")
-                .eq("utm_campaign", campaignCode)
-                .eq("level", lastEntry[0])
-                .eq("l00_instance", l1Token.l00_instance)
-                .eq("is_simulated", false)
-                .is("deleted_at", null)
-                .order("minted_at", { ascending: true })
-                .limit(1),
-              "speed dest token"
-            );
-            if (destTokens && Array.isArray(destTokens) && destTokens.length > 0) {
-              const destEvents = await fetchWithRetry(
-                () => supabase.from("url_events")
-                  .select("city, region")
-                  .eq("token", destTokens[0].token)
-                  .not("city", "is", null)
-                  .order("occurred_at", { ascending: true })
-                  .limit(1),
-                "speed dest city"
-              );
-              if (destEvents && Array.isArray(destEvents) && destEvents.length > 0) {
-                const de = destEvents[0];
-                speedDestCity = de.region ? `${de.city}, ${de.region}` : de.city;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("[render-stats-snapshot] Speed geo lookup failed:", e);
-      }
-    }
-
-    metrics.campaign_story = formatCampaignStory({
-      campaignTitle: campaignInfo.title || campaignCode,
-      activeAnchorMs: activeAnchorMs,
-      nowMs: Date.now(),
-      seedCount,
-      sproutCount: spawnsNum,
-      viewCount: viewCountNum,
-      zipCount: zipCountNum,
-      stateCount,
-      internationalCountries: intlCountries as string[],
-      maxDepth,
-      propagationSpeed: speedEntries.map(([lvl, t]) => ({
-        level: lvl,
-        firstMintAt: (t as any).minted_at,
-      })),
-      shareMediums: Array.from(mediumCounts.entries()).map(([medium, count]) => ({
-        medium, count,
-      })),
-      lastShareAt,
-      speedOriginCity,
-      speedDestCity,
-    });
   } else {
     metrics.campaign_story = "--";
   }
+
 
   // TZ offset note (DST-aware)
   const tzParts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' }).formatToParts(new Date());
@@ -703,7 +546,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const RENDERER_VERSION = "2026-06-24-parity-2";
+    const RENDERER_VERSION = "2026-07-01-parity-full";
     console.log(`[render-stats-snapshot] Starting render (v=${RENDERER_VERSION}) for template: ${template_id}, campaign: ${campaign_code}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
