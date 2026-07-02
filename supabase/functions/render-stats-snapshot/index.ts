@@ -89,7 +89,7 @@ function escapeXml(str: string): string {
 // unit-tested without the Supabase client. See geo.test.ts / canvas.test.ts.
 import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
-import { renderManualHtml } from "../_shared/render/manualHtml.ts";
+import { renderManualHtml, measureTextPx } from "../_shared/render/manualHtml.ts";
 import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
 import { resolveLiveNumberStyle } from "../_shared/render/hotspotDefaults.ts";
 import {
@@ -857,26 +857,44 @@ Deno.serve(async (req) => {
         const paragraphGap = lineHeight * 0.4;
         const emojiIndent = storyFontSize * 1.6;
         const padding = 12;
-        const maxCharsPerLine = Math.floor((hsWidth - padding * 2) / (storyFontSize * 0.52));
-        const maxCharsIndented = Math.floor((hsWidth - padding * 2 - emojiIndent) / (storyFontSize * 0.52));
+        const maxWidthPx = hsWidth - padding * 2;
+        const maxWidthIndentedPx = hsWidth - padding * 2 - emojiIndent;
 
-        // Apply landscape column split if configured on this hotspot, then
-        // strip __TITLE__ sentinels so the title renders as plain body text
-        // — matching the editor (HybridSlide/StatsPageSlide/FullResolution
-        // HotspotEditor all strip markers after segmenting). Rendering it
-        // 1.2× bold here was the source of the editor↔SSR size mismatch.
+        // Pixel-perfect wrap using the Inter font-metrics table (same one
+        // used by the editor-parity manualHtml pipeline). The old char-count
+        // approximation (fontSize × 0.52) overflowed the container for text
+        // heavy in digits/wide chars, breaking editor↔SSR parity.
+        const wrapByPx = (text: string, maxPx: number): string[] => {
+          if (!text) return [""];
+          const out: string[] = [];
+          const tokens = text.split(/(\s+)/);
+          let line = "";
+          let lineW = 0;
+          for (const tok of tokens) {
+            if (!tok) continue;
+            const tokW = measureTextPx(tok, storyFontSize, false);
+            if (line === "" && /^\s+$/.test(tok)) continue;
+            if (lineW + tokW > maxPx && line !== "") {
+              out.push(line.replace(/\s+$/, ""));
+              line = /^\s+$/.test(tok) ? "" : tok;
+              lineW = /^\s+$/.test(tok) ? 0 : tokW;
+              continue;
+            }
+            line += tok;
+            lineW += tokW;
+          }
+          if (line !== "") out.push(line.replace(/\s+$/, ""));
+          return out.length > 0 ? out : [""];
+        };
+
         const segmentedValue = applyStorySegment(metricValue, hotspot.storySegment)
           .replace(/__TITLE__(.*?)__TITLE__/g, "$1");
         const rawLines = segmentedValue.split("\n");
 
-        // PASS 1 — build a flat list of draw ops with relative Y, so we can
-        // measure total height before placing them. This lets us honor the
-        // editor's V-Align (top/center/bottom) for the two-page trick.
         type DrawOp =
           | { kind: "text"; x: number; yRel: number; size: number; weight: string; text: string }
           | { kind: "advance"; delta: number };
         const ops: DrawOp[] = [];
-        // Baseline of first line, relative to top padding.
         let yRel = storyFontSize;
 
         for (const rawLineOrig of rawLines) {
@@ -885,9 +903,6 @@ Deno.serve(async (req) => {
             yRel += paragraphGap;
             continue;
           }
-          // Defensive: if a stray __TITLE__ marker sneaks through (e.g. value
-          // arrived via a non-campaign_story path), strip the markers so the
-          // user never sees the literal sentinel.
           const cleaned = rawLine.replace(/__TITLE__/g, "");
           if (cleaned !== rawLine && cleaned.trim() === "") {
             continue;
@@ -898,14 +913,14 @@ Deno.serve(async (req) => {
             const emoji = emojiMatch[1];
             const rest = lineForWrap.slice(emoji.length);
             ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: emoji.trim() });
-            const wrappedRest = wordWrap(rest, maxCharsIndented);
+            const wrappedRest = wrapByPx(rest, maxWidthIndentedPx);
             for (const wl of wrappedRest) {
               ops.push({ kind: "text", x: x + padding + emojiIndent, yRel, size: storyFontSize, weight: "normal", text: wl });
               yRel += lineHeight;
             }
             continue;
           }
-          const wrapped = wordWrap(lineForWrap, maxCharsPerLine);
+          const wrapped = wrapByPx(lineForWrap, maxWidthPx);
           for (const wl of wrapped) {
             ops.push({ kind: "text", x: x + padding, yRel, size: storyFontSize, weight: "normal", text: wl });
             yRel += lineHeight;
