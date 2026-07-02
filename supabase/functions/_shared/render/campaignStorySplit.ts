@@ -6,8 +6,10 @@
  *
  * Rules:
  *  - The __TITLE__…__TITLE__ block (if present) is always pinned to `first`.
- *  - A trailing paragraph beginning with "Date of this report:" is always
- *    pinned to `second` so the footer stays in the right-hand column.
+ *  - The report-metadata block beginning with "Date of this report:" is
+ *    always pinned to `first` (it's a header, not a footer — it names the
+ *    report date, start date, active duration and last-share time, and
+ *    should sit with the title in the left-hand column).
  *  - Remaining paragraphs are distributed so the split index minimizes the
  *    absolute character-count difference between the two halves.
  *  - Paragraphs are separated by a blank line ("\n\n") to preserve the
