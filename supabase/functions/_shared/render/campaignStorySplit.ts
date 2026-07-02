@@ -50,8 +50,8 @@ export function splitCampaignStoryAtMidpoint(story: string): {
 
   if (middle.length === 0) {
     return {
-      first: titleBlocks.join("\n\n"),
-      second: footerBlocks.join("\n\n"),
+      first: [...titleBlocks, ...footerBlocks].join("\n\n"),
+      second: "",
     };
   }
 
