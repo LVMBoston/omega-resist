@@ -44,6 +44,7 @@ export interface CampaignStoryInput {
 
 const MEDIUM_LABELS: Record<string, string> = {
   sms: "text",
+  social: "text",
   em: "email",
   wa: "WhatsApp",
   tw: "Twitter",
