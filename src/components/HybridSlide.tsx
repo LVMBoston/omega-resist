@@ -10,6 +10,7 @@ import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { MapLegend } from "@/components/MapLegend";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 import { applyStorySegment } from "@/lib/campaignStorySplit";
+import { deriveEffectiveStorySegment } from "@/shared/render/deriveStorySegment";
 import { resolveLiveNumberStyle } from "@/shared/render/hotspotDefaults";
 
 const ACTION_TYPES = new Set(["sms", "email", "social", "external_link", "email_links", "email_support"]);

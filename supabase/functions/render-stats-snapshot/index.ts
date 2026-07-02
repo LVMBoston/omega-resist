@@ -91,6 +91,7 @@ import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 import { renderManualHtml, measureTextPx } from "../_shared/render/manualHtml.ts";
 import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
+import { deriveEffectiveStorySegment } from "../_shared/render/deriveStorySegment.ts";
 import { resolveLiveNumberStyle } from "../_shared/render/hotspotDefaults.ts";
 import {
   wordWrap,
