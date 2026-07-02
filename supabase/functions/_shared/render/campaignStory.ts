@@ -85,13 +85,16 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     (msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
   );
 
-  // Medium percentage line
+  // Medium percentage line (aggregate by display label so aliases like sms + social merge)
   const totalOpens = shareMediums.reduce((s, m) => s + m.count, 0);
+  const labelTotals = new Map<string, number>();
+  for (const m of shareMediums) {
+    const label = MEDIUM_LABELS[m.medium] || m.medium;
+    labelTotals.set(label, (labelTotals.get(label) || 0) + m.count);
+  }
   const mediumLine = totalOpens > 0
-    ? shareMediums
-        .map((m) =>
-          `${Math.round((m.count / totalOpens) * 100)}% ${MEDIUM_LABELS[m.medium] || m.medium}`,
-        )
+    ? Array.from(labelTotals.entries())
+        .map(([label, count]) => `${Math.round((count / totalOpens) * 100)}% ${label}`)
         .join(", ")
     : "";
 
