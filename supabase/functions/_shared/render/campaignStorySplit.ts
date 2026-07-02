@@ -74,8 +74,8 @@ export function splitCampaignStoryAtMidpoint(story: string): {
     }
   }
 
-  const firstParts = [...titleBlocks, ...middle.slice(0, bestIdx)];
-  const secondParts = [...middle.slice(bestIdx), ...footerBlocks];
+  const firstParts = [...titleBlocks, ...footerBlocks, ...middle.slice(0, bestIdx)];
+  const secondParts = [...middle.slice(bestIdx)];
 
   return {
     first: firstParts.join("\n\n"),
