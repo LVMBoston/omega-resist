@@ -10,6 +10,7 @@ import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { MapLegend } from "@/components/MapLegend";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 import { applyStorySegment } from "@/lib/campaignStorySplit";
+import { deriveEffectiveStorySegment } from "@/shared/render/deriveStorySegment";
 import { resolveLiveNumberStyle } from "@/shared/render/hotspotDefaults";
 
 const ACTION_TYPES = new Set(["sms", "email", "social", "external_link", "email_links", "email_support"]);
@@ -352,11 +353,10 @@ export const HybridSlide = ({
           }
 
           if (hotspot.metricKey === "campaign_story") {
-            if (hotspot.storySegment && hotspot.storySegment !== "full") {
-              value = applyStorySegment(value, hotspot.storySegment);
+            const effectiveSegment = deriveEffectiveStorySegment(hotspot, hotspots);
+            if (effectiveSegment !== "full") {
+              value = applyStorySegment(value, effectiveSegment);
             }
-            // Strip __TITLE__ sentinels after segmenting so the splitter can
-            // still pin the title block to the first column.
             value = value.replace(/__TITLE__(.*?)__TITLE__/g, "$1");
           }
 

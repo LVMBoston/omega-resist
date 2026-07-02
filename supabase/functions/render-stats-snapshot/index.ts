@@ -91,6 +91,7 @@ import { TILE_SIZE, lngToWorldX, latToWorldY, zoomForBounds } from "./geo.ts";
 import { deriveCanvasFromImage, defaultSolidCanvas } from "./canvas.ts";
 import { renderManualHtml, measureTextPx } from "../_shared/render/manualHtml.ts";
 import { applyStorySegment } from "../_shared/render/campaignStorySplit.ts";
+import { deriveEffectiveStorySegment } from "../_shared/render/deriveStorySegment.ts";
 import { resolveLiveNumberStyle } from "../_shared/render/hotspotDefaults.ts";
 import {
   wordWrap,
@@ -887,7 +888,8 @@ Deno.serve(async (req) => {
           return out.length > 0 ? out : [""];
         };
 
-        const segmentedValue = applyStorySegment(metricValue, hotspot.storySegment)
+        const effectiveSegment = deriveEffectiveStorySegment(hotspot, hotspots);
+        const segmentedValue = applyStorySegment(metricValue, effectiveSegment)
           .replace(/__TITLE__(.*?)__TITLE__/g, "$1");
         const rawLines = segmentedValue.split("\n");
 

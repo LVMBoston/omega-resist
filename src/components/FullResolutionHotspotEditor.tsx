@@ -32,6 +32,7 @@ import { MapHotspotRenderer, MapControls } from "@/components/MapHotspotRenderer
 import { LEVEL_COLORS } from "@/hooks/useChartData";
 import { useLiveMetrics } from "@/hooks/useLiveMetrics";
 import { applyStorySegment } from "@/shared/render/campaignStorySplit";
+import { deriveEffectiveStorySegment } from "@/shared/render/deriveStorySegment";
 import { DATA_HOTSPOT_TYPES } from "@/lib/hotspotClassification";
 import { MapLegend } from "@/components/MapLegend";
 import type { Hotspot as ViralHotspot } from "@/types/viralTemplates";
@@ -237,12 +238,10 @@ export const FullResolutionHotspotEditor = ({
           const raw = metricsMap[h.metricKey];
           let val = raw !== undefined ? String(raw) : "0";
           if (h.metricKey === 'campaign_story') {
-            if (h.storySegment && h.storySegment !== 'full') {
-              val = applyStorySegment(val, h.storySegment);
+            const effectiveSegment = deriveEffectiveStorySegment(h, hotspots);
+            if (effectiveSegment !== 'full') {
+              val = applyStorySegment(val, effectiveSegment);
             }
-            // Strip __TITLE__ sentinels after segmenting so the title-pin
-            // logic in the splitter still works but the markers never reach
-            // the rendered string. Mirrors HybridSlide (the viewer path).
             val = val.replace(/__TITLE__(.*?)__TITLE__/g, "$1");
           }
           newDisplayValues[h.id] = val;

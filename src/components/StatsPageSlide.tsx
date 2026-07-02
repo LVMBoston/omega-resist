@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { ManualEntryRenderer } from "@/components/ManualEntryRenderer";
 import { hasManualHtmlContent } from "@/lib/manualEntryHtml";
 import { applyStorySegment } from "@/lib/campaignStorySplit";
+import { deriveEffectiveStorySegment } from "@/shared/render/deriveStorySegment";
 import { resolveLiveNumberStyle } from "@/shared/render/hotspotDefaults";
 
 
@@ -406,8 +407,9 @@ export const StatsPageSlide = ({
         }
         
         if (hotspot.metricKey === 'campaign_story') {
-          if (hotspot.storySegment && hotspot.storySegment !== 'full') {
-            value = applyStorySegment(value, hotspot.storySegment);
+          const effectiveSegment = deriveEffectiveStorySegment(hotspot, hotspots);
+          if (effectiveSegment !== 'full') {
+            value = applyStorySegment(value, effectiveSegment);
           }
           value = value.replace(/__TITLE__(.*?)__TITLE__/g, '$1');
         }
