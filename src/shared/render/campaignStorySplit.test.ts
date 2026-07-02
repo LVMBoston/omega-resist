@@ -12,7 +12,7 @@ describe("splitCampaignStoryAtMidpoint", () => {
     expect(r.second).toBe("");
   });
 
-  it("pins __TITLE__ to first and 'Date of this report:' to second", () => {
+  it("pins __TITLE__ and 'Date of this report:' metadata block to first", () => {
     const story = [
       "__TITLE__Hello World__TITLE__",
       "Para one with some words.",
@@ -22,8 +22,8 @@ describe("splitCampaignStoryAtMidpoint", () => {
     ].join("\n\n");
     const r = splitCampaignStoryAtMidpoint(story);
     expect(r.first.startsWith("__TITLE__Hello World__TITLE__")).toBe(true);
-    expect(r.second.includes("Date of this report:")).toBe(true);
-    expect(r.first).not.toContain("Date of this report:");
+    expect(r.first).toContain("Date of this report:");
+    expect(r.second).not.toContain("Date of this report:");
     expect(r.second).not.toContain("__TITLE__");
   });
 
