@@ -12,12 +12,11 @@
  */
 
 import {
-  wordWrap,
-  maxCharsForWidth,
   normalizeVAlign,
   tspanStartY,
   LINE_HEIGHT_RATIO,
 } from "./textLayout.ts";
+import { wrapRunsByWidth } from "./manualHtml.ts";
 
 function escapeXml(s: string): string {
   return s
@@ -74,14 +73,22 @@ export function renderPlainTextSvg(
     textX = x + w - padInset;
   }
 
-  const maxCharsPerLine = maxCharsForWidth(w - wrapInset * 2, style.fontSize);
+  // Pixel-accurate wrap using the Inter font-metrics table. Char-count
+  // approximations (fontSize × 0.52) overflowed the container for text
+  // heavy in digits/wide chars, breaking editor↔SSR parity.
+  const maxWidthPx = w - wrapInset * 2;
+  const weightNum = Number(style.fontWeight);
+  const bold = Number.isFinite(weightNum) ? weightNum >= 600 : /bold/i.test(String(style.fontWeight));
   const rawLines = String(text ?? "").split("\n");
   const lines: string[] = [];
   for (const rl of rawLines) {
     if (rl.length === 0) {
       lines.push("");
     } else {
-      for (const wl of wordWrap(rl, maxCharsPerLine)) lines.push(wl);
+      const wrapped = wrapRunsByWidth([{ text: rl, bold, italic: false }], maxWidthPx, style.fontSize);
+      for (const runLine of wrapped) {
+        lines.push(runLine.map((r) => r.text).join(""));
+      }
     }
   }
 
