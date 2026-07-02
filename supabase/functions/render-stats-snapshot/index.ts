@@ -887,7 +887,8 @@ Deno.serve(async (req) => {
           return out.length > 0 ? out : [""];
         };
 
-        const segmentedValue = applyStorySegment(metricValue, hotspot.storySegment)
+        const effectiveSegment = deriveEffectiveStorySegment(hotspot, hotspots);
+        const segmentedValue = applyStorySegment(metricValue, effectiveSegment)
           .replace(/__TITLE__(.*?)__TITLE__/g, "$1");
         const rawLines = segmentedValue.split("\n");
 

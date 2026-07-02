@@ -352,11 +352,10 @@ export const HybridSlide = ({
           }
 
           if (hotspot.metricKey === "campaign_story") {
-            if (hotspot.storySegment && hotspot.storySegment !== "full") {
-              value = applyStorySegment(value, hotspot.storySegment);
+            const effectiveSegment = deriveEffectiveStorySegment(hotspot, hotspots);
+            if (effectiveSegment !== "full") {
+              value = applyStorySegment(value, effectiveSegment);
             }
-            // Strip __TITLE__ sentinels after segmenting so the splitter can
-            // still pin the title block to the first column.
             value = value.replace(/__TITLE__(.*?)__TITLE__/g, "$1");
           }
 
