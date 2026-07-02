@@ -853,7 +853,6 @@ Deno.serve(async (req) => {
         // either. Previously this branch applied a 0.5 multiplier that broke
         // parity for any campaign whose story hotspot used a non-default size.
         const storyFontSize = scaledFontSize;
-        const titleFontSize = Math.round(storyFontSize * 1.2);
         const lineHeight = storyFontSize * 1.25;
         const paragraphGap = lineHeight * 0.4;
         const emojiIndent = storyFontSize * 1.6;
@@ -861,8 +860,13 @@ Deno.serve(async (req) => {
         const maxCharsPerLine = Math.floor((hsWidth - padding * 2) / (storyFontSize * 0.52));
         const maxCharsIndented = Math.floor((hsWidth - padding * 2 - emojiIndent) / (storyFontSize * 0.52));
 
-        // Apply landscape column split if configured on this hotspot.
-        const segmentedValue = applyStorySegment(metricValue, hotspot.storySegment);
+        // Apply landscape column split if configured on this hotspot, then
+        // strip __TITLE__ sentinels so the title renders as plain body text
+        // — matching the editor (HybridSlide/StatsPageSlide/FullResolution
+        // HotspotEditor all strip markers after segmenting). Rendering it
+        // 1.2× bold here was the source of the editor↔SSR size mismatch.
+        const segmentedValue = applyStorySegment(metricValue, hotspot.storySegment)
+          .replace(/__TITLE__(.*?)__TITLE__/g, "$1");
         const rawLines = segmentedValue.split("\n");
 
         // PASS 1 — build a flat list of draw ops with relative Y, so we can
@@ -872,28 +876,13 @@ Deno.serve(async (req) => {
           | { kind: "text"; x: number; yRel: number; size: number; weight: string; text: string }
           | { kind: "advance"; delta: number };
         const ops: DrawOp[] = [];
-        // Baseline of first line, relative to top padding. We reserve enough
-        // headroom for the title font so that a __TITLE__ first line doesn't
-        // get its top clipped by the hotspot's top edge (title is larger than
-        // body, so using storyFontSize as the first baseline crops the caps).
-        let yRel = titleFontSize;
+        // Baseline of first line, relative to top padding.
+        let yRel = storyFontSize;
 
-        const TITLE_RE = /^\s*__TITLE__([\s\S]*?)__TITLE__\s*$/;
         for (const rawLineOrig of rawLines) {
           const rawLine = rawLineOrig;
           if (rawLine.trim() === "") {
             yRel += paragraphGap;
-            continue;
-          }
-          const titleMatch = rawLine.match(TITLE_RE);
-          if (titleMatch) {
-            const titleText = titleMatch[1].trim();
-            const titleWrapped = wordWrap(titleText, Math.floor(maxCharsPerLine * (storyFontSize / titleFontSize)));
-            for (const tl of titleWrapped) {
-              ops.push({ kind: "text", x: x + padding, yRel, size: titleFontSize, weight: "bold", text: tl });
-              yRel += titleFontSize * 1.35;
-            }
-            yRel += paragraphGap * 0.3;
             continue;
           }
           // Defensive: if a stray __TITLE__ marker sneaks through (e.g. value
