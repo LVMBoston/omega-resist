@@ -43,6 +43,7 @@ import ParityHarness from "./pages/ParityHarness";
 import FridgeLanding from "./pages/FridgeLanding";
 import FridgeStory from "./pages/FridgeStory";
 import FridgeShareRedirect from "./pages/FridgeShareRedirect";
+import FridgePrint from "./pages/FridgePrint";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
             <Route path="/fridge/:token" element={<FridgeLanding />} />
             <Route path="/fs/:token" element={<FridgeStory />} />
             <Route path="/fx/:token" element={<FridgeShareRedirect />} />
+            <Route path="/fp/:token" element={<FridgePrint />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
             <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
             <Route path="/landing" element={<LandingPage />} />

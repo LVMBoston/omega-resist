@@ -9,7 +9,7 @@ import { shortenUrl } from "./shortener";
 const MintL00Input = z.object({
   eoaId: z.string().uuid(),
   deckSlug: z.string().min(1),
-  utmMedium: z.enum(["qr", "em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x", "refrig"])
+  utmMedium: z.enum(["qr", "em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x", "refrig", "print"])
 });
 
 const MintL00Output = z.object({ 
@@ -143,7 +143,7 @@ export async function instantiateL00Token(baseToken: string): Promise<{
 
 const MintShareInput = z.object({
   parentToken: z.string().min(1),
-  utmMedium: z.enum(["em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x", "refrig"])
+  utmMedium: z.enum(["em", "sms", "tx", "social", "p2p", "fb", "bs", "li", "x", "refrig", "print"])
 });
 
 const MintShareOutput = z.object({ 

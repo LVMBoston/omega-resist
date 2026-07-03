@@ -24,6 +24,8 @@ interface ComposeOptions {
   campaignTitle: string;
   /** Three QR codes rendered left → right. */
   qrs: [QrSpec, QrSpec, QrSpec];
+  /** Optional 4th QR rendered small at the bottom (e.g. "Print"). */
+  printQr?: QrSpec;
 }
 
 const PAGE_W = 1500; // 5" @ 300 DPI
@@ -31,12 +33,14 @@ const PAGE_H = 900;  // 3" @ 300 DPI
 const BG = "#2d2d2d";     // dark charcoal, matches mockup
 const FG_TITLE = "#f5d20a"; // yellow, matches mockup
 const FG_LABEL = "#f5d20a";
-const QR_SIZE = 380;
+const QR_SIZE = 340;
+const PRINT_QR_SIZE = 130;
 const QR_FRAME_PAD = 20;
 
 export async function composeRefrigSheetPng({
   campaignTitle,
   qrs,
+  printQr,
 }: ComposeOptions): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = PAGE_W;
@@ -51,12 +55,12 @@ export async function composeRefrigSheetPng({
   // Title
   ctx.fillStyle = FG_TITLE;
   ctx.textAlign = "center";
-  ctx.font = "bold 56px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-  wrapText(ctx, campaignTitle, PAGE_W / 2, 90, PAGE_W - 120, 64);
+  ctx.font = "bold 52px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+  wrapText(ctx, campaignTitle, PAGE_W / 2, 70, PAGE_W - 120, 60);
 
   // Column layout: 3 evenly-spaced columns
   const columnW = PAGE_W / 3;
-  const qrTop = 180;
+  const qrTop = 140;
 
   for (let i = 0; i < 3; i++) {
     const spec = qrs[i];
@@ -80,8 +84,40 @@ export async function composeRefrigSheetPng({
     // Label under the QR
     ctx.fillStyle = FG_LABEL;
     ctx.textAlign = "center";
-    ctx.font = "bold 38px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-    ctx.fillText(spec.label, cx, qrTop + QR_SIZE + 70);
+    ctx.font = "bold 34px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+    ctx.fillText(spec.label, cx, qrTop + QR_SIZE + 52);
+  }
+
+  // Optional print QR — small, centered at the bottom, with label to its right.
+  if (printQr) {
+    const printY = qrTop + QR_SIZE + 90;
+    const labelText = printQr.label;
+
+    ctx.font = "bold 32px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+    const labelW = ctx.measureText(labelText).width;
+    const gap = 24;
+    const groupW = PRINT_QR_SIZE + gap + labelW;
+    const groupLeft = (PAGE_W - groupW) / 2;
+
+    // White frame
+    const pFrame = PRINT_QR_SIZE + 12;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(groupLeft - 6, printY - 6, pFrame, pFrame);
+
+    const pCanvas = document.createElement("canvas");
+    await QRCode.toCanvas(pCanvas, printQr.url, {
+      width: PRINT_QR_SIZE,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#000000", light: "#ffffff" },
+    });
+    ctx.drawImage(pCanvas, groupLeft, printY, PRINT_QR_SIZE, PRINT_QR_SIZE);
+
+    ctx.fillStyle = FG_LABEL;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(labelText, groupLeft + PRINT_QR_SIZE + gap, printY + PRINT_QR_SIZE / 2);
+    ctx.textBaseline = "alphabetic";
   }
 
   return await new Promise<Blob>((resolve, reject) => {
