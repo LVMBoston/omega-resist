@@ -617,7 +617,10 @@ export default function DeckViewer() {
   // iPhone (portrait): fill width, height scales naturally
   // PC/iPad (landscape): fit to height with letterboxing (pillarboxing)
   
-  const isPreviewer = !!user || userRole !== null || searchParams.get("preview") === "1";
+  // Only show preview/admin chrome when explicitly requested via ?preview=1.
+  // Being merely signed-in (e.g. an admin viewing a public share link on iPad)
+  // must NOT reveal the exit/delete controls — those leak back into the app.
+  const isPreviewer = searchParams.get("preview") === "1";
   const handleExitPreview = () => {
     if (window.history.length > 1) {
       navigate(-1);
