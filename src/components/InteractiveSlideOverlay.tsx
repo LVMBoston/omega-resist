@@ -487,16 +487,18 @@ const InteractiveSlideOverlay = ({
       // Mint three child tokens — one per QR on the sheet. Each is tracked
       // as its own lineage row so scans/shares from the fridge sheet can
       // be attributed to their medium.
-      const [storyMint, smsMint, emailMint] = await Promise.all([
+      const [storyMint, smsMint, emailMint, printMint] = await Promise.all([
         mintShare({ parentToken: viralToken, utmMedium: "refrig" }),
         mintShare({ parentToken: viralToken, utmMedium: "sms" }),
         mintShare({ parentToken: viralToken, utmMedium: "em" }),
+        mintShare({ parentToken: viralToken, utmMedium: "print" }),
       ]);
 
       const origin = window.location.origin;
       const storyUrl = `${origin}/fs/${storyMint.token}`;
       const textUrl  = `${origin}/fx/${smsMint.token}?a=sms`;
       const emailUrl = `${origin}/fx/${emailMint.token}?a=em`;
+      const printUrl = `${origin}/fp/${printMint.token}`;
 
       // Resolve campaign title (best-effort; falls back to deck slug).
       let campaignTitle = deckSlug;
@@ -527,6 +529,7 @@ const InteractiveSlideOverlay = ({
           { url: textUrl,  label: "Text Deck" },
           { url: emailUrl, label: "Email Deck" },
         ],
+        printQr: { url: printUrl, label: "Print Sheet" },
       });
       triggerPngDownload(blob, "fridge-sheet.png");
 
