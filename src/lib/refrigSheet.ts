@@ -1,30 +1,42 @@
 /**
- * Composes a printable letter-size PNG containing one large QR code plus
- * short instructions. Pure browser-side (canvas + the `qrcode` npm package).
+ * Composes a 3" x 5" (landscape) printable PNG containing three QR codes
+ * under a campaign title. Designed to be taped to a refrigerator door.
  *
- * Rationale for client-side composition: a single 1275×1650 canvas (letter
- * @ 150 DPI) uses ~8MB of memory — safely within iOS Safari limits even on
- * older devices. Avoids a round-trip and an extra edge function dependency.
+ *   +---------------------------------------------------------+
+ *   |                   {Campaign Title}                      |
+ *   |  [QR: Story]     [QR: Text Deck]   [QR: Email Deck]     |
+ *   |  Display Status     Text Deck          Email Deck       |
+ *   +---------------------------------------------------------+
+ *
+ * Sheet is 5" wide x 3" tall @ 300 DPI = 1500 x 900 px. Pure browser-side
+ * canvas rendering; no server round-trip.
  */
 import QRCode from "qrcode";
 
-interface ComposeOptions {
-  /** Full URL the QR will encode (the /fridge/:token landing page). */
-  landingUrl: string;
-  /** Human-readable campaign title to print at the top of the sheet. */
-  campaignTitle: string;
-  /** Optional short subtitle (e.g. deck slug). */
-  subtitle?: string;
+interface QrSpec {
+  /** Absolute URL the QR encodes. */
+  url: string;
+  /** Label printed under the QR. */
+  label: string;
 }
 
-const PAGE_W = 1275; // 8.5" @ 150 DPI
-const PAGE_H = 1650; // 11"  @ 150 DPI
-const QR_SIZE = 850; // ~5.67" — readable arms-length on old phones
+interface ComposeOptions {
+  campaignTitle: string;
+  /** Three QR codes rendered left → right. */
+  qrs: [QrSpec, QrSpec, QrSpec];
+}
+
+const PAGE_W = 1500; // 5" @ 300 DPI
+const PAGE_H = 900;  // 3" @ 300 DPI
+const BG = "#2d2d2d";     // dark charcoal, matches mockup
+const FG_TITLE = "#f5d20a"; // yellow, matches mockup
+const FG_LABEL = "#f5d20a";
+const QR_SIZE = 380;
+const QR_FRAME_PAD = 20;
 
 export async function composeRefrigSheetPng({
-  landingUrl,
   campaignTitle,
-  subtitle,
+  qrs,
 }: ComposeOptions): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = PAGE_W;
@@ -32,48 +44,45 @@ export async function composeRefrigSheetPng({
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable");
 
-  // White background
-  ctx.fillStyle = "#ffffff";
+  // Background
+  ctx.fillStyle = BG;
   ctx.fillRect(0, 0, PAGE_W, PAGE_H);
 
-  // Title (top)
-  ctx.fillStyle = "#0a0a0a";
+  // Title
+  ctx.fillStyle = FG_TITLE;
   ctx.textAlign = "center";
-  ctx.font = "bold 60px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-  wrapText(ctx, campaignTitle, PAGE_W / 2, 130, PAGE_W - 120, 72);
-
-  if (subtitle) {
-    ctx.font = "32px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-    ctx.fillStyle = "#525252";
-    ctx.fillText(subtitle, PAGE_W / 2, 230);
-  }
-
-  // Render QR on a temp canvas at QR_SIZE then draw centered
-  const qrCanvas = document.createElement("canvas");
-  await QRCode.toCanvas(qrCanvas, landingUrl, {
-    width: QR_SIZE,
-    margin: 2,
-    errorCorrectionLevel: "M",
-    color: { dark: "#000000", light: "#ffffff" },
-  });
-  const qrX = (PAGE_W - QR_SIZE) / 2;
-  const qrY = 310;
-  ctx.drawImage(qrCanvas, qrX, qrY, QR_SIZE, QR_SIZE);
-
-  // Instructions (below QR)
-  ctx.fillStyle = "#0a0a0a";
   ctx.font = "bold 56px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Scan with your phone camera", PAGE_W / 2, qrY + QR_SIZE + 90);
+  wrapText(ctx, campaignTitle, PAGE_W / 2, 90, PAGE_W - 120, 64);
 
-  ctx.font = "36px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-  ctx.fillStyle = "#404040";
-  ctx.fillText("Then tap View, Email, or Text to share", PAGE_W / 2, qrY + QR_SIZE + 150);
+  // Column layout: 3 evenly-spaced columns
+  const columnW = PAGE_W / 3;
+  const qrTop = 180;
 
-  // Printed URL (small, for accessibility)
-  ctx.font = "22px ui-monospace, 'SF Mono', Menlo, Consolas, monospace";
-  ctx.fillStyle = "#737373";
-  ctx.fillText(landingUrl, PAGE_W / 2, PAGE_H - 60);
+  for (let i = 0; i < 3; i++) {
+    const spec = qrs[i];
+    const cx = columnW * i + columnW / 2;
+
+    // White frame behind QR (so black modules stand out on dark bg)
+    const frameSize = QR_SIZE + QR_FRAME_PAD * 2;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cx - frameSize / 2, qrTop - QR_FRAME_PAD, frameSize, frameSize);
+
+    // QR itself
+    const qrCanvas = document.createElement("canvas");
+    await QRCode.toCanvas(qrCanvas, spec.url, {
+      width: QR_SIZE,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#000000", light: "#ffffff" },
+    });
+    ctx.drawImage(qrCanvas, cx - QR_SIZE / 2, qrTop, QR_SIZE, QR_SIZE);
+
+    // Label under the QR
+    ctx.fillStyle = FG_LABEL;
+    ctx.textAlign = "center";
+    ctx.font = "bold 38px system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+    ctx.fillText(spec.label, cx, qrTop + QR_SIZE + 70);
+  }
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -122,10 +131,8 @@ export function triggerPngDownload(blob: Blob, filename: string) {
     (/Macintosh/.test(ua) && typeof document !== "undefined" && "ontouchend" in document);
 
   if (isIOS) {
-    // Open the PNG in a new tab. User can long-press to save / print.
     const w = window.open(url, "_blank");
     if (!w) {
-      // Popup blocked — fall back to same-tab navigation
       window.location.href = url;
     }
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -138,6 +145,5 @@ export function triggerPngDownload(blob: Blob, filename: string) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  // Defer revoke to ensure the download is committed
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }

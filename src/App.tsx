@@ -41,6 +41,8 @@ import RepointQrTool from "./pages/RepointQrTool";
 import RegressionTests from "./pages/RegressionTests";
 import ParityHarness from "./pages/ParityHarness";
 import FridgeLanding from "./pages/FridgeLanding";
+import FridgeStory from "./pages/FridgeStory";
+import FridgeShareRedirect from "./pages/FridgeShareRedirect";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +78,8 @@ const App = () => (
             <Route path="/r/:code" element={<ShortUrlRedirect />} />
             <Route path="/s/:code" element={<ShortUrlRedirect />} />
             <Route path="/fridge/:token" element={<FridgeLanding />} />
+            <Route path="/fs/:token" element={<FridgeStory />} />
+            <Route path="/fx/:token" element={<FridgeShareRedirect />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
             <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
             <Route path="/landing" element={<LandingPage />} />
