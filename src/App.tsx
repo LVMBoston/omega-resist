@@ -81,6 +81,7 @@ const App = () => (
             <Route path="/fridge/:token" element={<FridgeLanding />} />
             <Route path="/fs/:token" element={<FridgeStory />} />
             <Route path="/fx/:token" element={<FridgeShareRedirect />} />
+            <Route path="/fp/:token" element={<FridgePrint />} />
             <Route path="/shared/:shareCode" element={<SharedDashboard />} />
             <Route path="/template-editor/:id" element={<TemplateEditorPage />} />
             <Route path="/landing" element={<LandingPage />} />
