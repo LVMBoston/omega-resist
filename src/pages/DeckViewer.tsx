@@ -698,7 +698,7 @@ export default function DeckViewer() {
                             )}
                           </div>
                         )}
-                        {(userRole === "admin" || userRole === "manager") && slide.type === "spread-word" && (
+                        {isPreviewer && (userRole === "admin" || userRole === "manager") && slide.type === "spread-word" && (
                           <Button
                             variant="destructive"
                             size="icon"
