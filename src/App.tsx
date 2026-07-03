@@ -43,6 +43,7 @@ import ParityHarness from "./pages/ParityHarness";
 import FridgeLanding from "./pages/FridgeLanding";
 import FridgeStory from "./pages/FridgeStory";
 import FridgeShareRedirect from "./pages/FridgeShareRedirect";
+import FridgePrint from "./pages/FridgePrint";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
