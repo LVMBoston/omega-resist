@@ -24,6 +24,8 @@ interface ComposeOptions {
   campaignTitle: string;
   /** Three QR codes rendered left → right. */
   qrs: [QrSpec, QrSpec, QrSpec];
+  /** Optional 4th QR rendered small at the bottom (e.g. "Print"). */
+  printQr?: QrSpec;
 }
 
 const PAGE_W = 1500; // 5" @ 300 DPI
@@ -31,7 +33,8 @@ const PAGE_H = 900;  // 3" @ 300 DPI
 const BG = "#2d2d2d";     // dark charcoal, matches mockup
 const FG_TITLE = "#f5d20a"; // yellow, matches mockup
 const FG_LABEL = "#f5d20a";
-const QR_SIZE = 380;
+const QR_SIZE = 340;
+const PRINT_QR_SIZE = 130;
 const QR_FRAME_PAD = 20;
 
 export async function composeRefrigSheetPng({
