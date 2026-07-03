@@ -484,22 +484,27 @@ const InteractiveSlideOverlay = ({
         return;
       }
 
-      // Mint a fresh share token so this REFRIG hop is tracked as its own
-      // lineage row (utm_medium='refrig'). The QR points to /fridge/<token>.
-      const { token } = await mintShare({
-        parentToken: viralToken,
-        utmMedium: "refrig",
-      });
+      // Mint three child tokens — one per QR on the sheet. Each is tracked
+      // as its own lineage row so scans/shares from the fridge sheet can
+      // be attributed to their medium.
+      const [storyMint, smsMint, emailMint] = await Promise.all([
+        mintShare({ parentToken: viralToken, utmMedium: "refrig" }),
+        mintShare({ parentToken: viralToken, utmMedium: "sms" }),
+        mintShare({ parentToken: viralToken, utmMedium: "em" }),
+      ]);
 
-      const landingUrl = `${window.location.origin}/fridge/${token}`;
+      const origin = window.location.origin;
+      const storyUrl = `${origin}/fs/${storyMint.token}`;
+      const textUrl  = `${origin}/fx/${smsMint.token}?a=sms`;
+      const emailUrl = `${origin}/fx/${emailMint.token}?a=em`;
 
       // Resolve campaign title (best-effort; falls back to deck slug).
       let campaignTitle = deckSlug;
       try {
         const { data: tokenRow } = await supabase
           .from("tokens")
-          .select("eoa_id, utm_campaign")
-          .eq("token", token)
+          .select("utm_campaign")
+          .eq("token", storyMint.token)
           .maybeSingle();
         if (tokenRow?.utm_campaign) {
           const { data: campaign } = await supabase
@@ -516,15 +521,18 @@ const InteractiveSlideOverlay = ({
       toast({ title: "Preparing your printable sheet…" });
 
       const blob = await composeRefrigSheetPng({
-        landingUrl,
         campaignTitle,
-        subtitle: `Deck: ${deckSlug}`,
+        qrs: [
+          { url: storyUrl, label: "Display Status" },
+          { url: textUrl,  label: "Text Deck" },
+          { url: emailUrl, label: "Email Deck" },
+        ],
       });
       triggerPngDownload(blob, "fridge-sheet.png");
 
       // Log the generation event (best-effort, non-blocking)
       void supabase.rpc("log_event", {
-        _token: token,
+        _token: storyMint.token,
         _event_type: "refrig_generated",
       });
 
