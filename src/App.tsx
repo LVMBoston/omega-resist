@@ -13,6 +13,7 @@ import Explainer from "./pages/Explainer";
 import DeckManagement from "./pages/DeckManagement";
 import DeckBuilder from "./pages/DeckBuilder";
 import Auth from "./pages/Auth";
+import OAuthConsent from "./pages/OAuthConsent";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import DeckViewer from "./pages/DeckViewer";
@@ -87,6 +88,7 @@ const App = () => (
             <Route path="/landing" element={<LandingPage />} />
             <Route path="/explainer" element={<Explainer />} />
             <Route path="/parity-harness" element={<ParityHarness />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             
             {/* Routes with sidebar */}
             <Route path="/" element={<LayoutWithSidebar><Navigate to="/campaign-config" replace /></LayoutWithSidebar>} />
