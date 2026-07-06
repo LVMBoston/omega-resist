@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://wznilzguqjwvkysuleta.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "democracy-forge-mcp",
+      "version": "0.1.0",
+      "title": "Democracy Forge"
+    },
+    "tools": [
+      {
+        "name": "list_campaigns",
+        "title": "List campaigns",
+        "description": "List campaigns visible to the signed-in user, ordered by display_order.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max campaigns to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_campaign",
+        "title": "Get campaign",
+        "description": "Fetch a single campaign by its short code (e.g. 'ice-takedown') along with its events/actions.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Campaign short code / slug."
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_campaign_stats",
+        "title": "Get campaign stats",
+        "description": "Get aggregated viral tracking stats (tokens, views, shares by level) for one or more campaign codes.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "codes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1,
+              "maxItems": 20,
+              "description": "List of campaign short codes to aggregate."
+            }
+          },
+          "required": [
+            "codes"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_decks",
+        "title": "List decks",
+        "description": "List all slide decks (slug + display order) visible to the signed-in user.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Max decks to return (default 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_recent_events",
+        "title": "List recent tracking events",
+        "description": "Return the most recent url_events (scans/views/shares) with geo info. Optionally filter by event_type.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max events (default 50)."
+            },
+            "event_type": {
+              "type": "string",
+              "enum": [
+                "scan",
+                "view",
+                "share"
+              ],
+              "description": "Optional filter by event type."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
