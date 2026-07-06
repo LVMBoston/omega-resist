@@ -629,7 +629,21 @@ export type Database = {
             foreignKeyName: "tokens_parent_token_fkey"
             columns: ["parent_token"]
             isOneToOne: false
+            referencedRelation: "token_lineage"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "tokens_parent_token_fkey"
+            columns: ["parent_token"]
+            isOneToOne: false
             referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "tokens_root_token_fkey"
+            columns: ["root_token"]
+            isOneToOne: false
+            referencedRelation: "token_lineage"
             referencedColumns: ["token"]
           },
           {
@@ -700,6 +714,13 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "url_events_token_fkey"
+            columns: ["token"]
+            isOneToOne: false
+            referencedRelation: "token_lineage"
+            referencedColumns: ["token"]
+          },
           {
             foreignKeyName: "url_events_token_fkey"
             columns: ["token"]
@@ -837,7 +858,69 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      token_lineage: {
+        Row: {
+          created_at: string | null
+          deck_slug: string | null
+          eoa_id: string | null
+          is_seed: boolean | null
+          is_simulated: boolean | null
+          l00_instance: string | null
+          level_depth_mismatch: boolean | null
+          minted_via: string | null
+          parent_token: string | null
+          root_token: string | null
+          stored_level: number | null
+          token: string | null
+          true_depth: number | null
+          utm_campaign: string | null
+          utm_medium: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_deck_slug_fkey"
+            columns: ["deck_slug"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "tokens_eoa_id_fkey"
+            columns: ["eoa_id"]
+            isOneToOne: false
+            referencedRelation: "events_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tokens_parent_token_fkey"
+            columns: ["parent_token"]
+            isOneToOne: false
+            referencedRelation: "token_lineage"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "tokens_parent_token_fkey"
+            columns: ["parent_token"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "tokens_root_token_fkey"
+            columns: ["root_token"]
+            isOneToOne: false
+            referencedRelation: "token_lineage"
+            referencedColumns: ["token"]
+          },
+          {
+            foreignKeyName: "tokens_root_token_fkey"
+            columns: ["root_token"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["token"]
+          },
+        ]
+      }
     }
     Functions: {
       clear_simulation_data: {
