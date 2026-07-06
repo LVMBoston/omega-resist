@@ -1020,9 +1020,13 @@ export default function CampaignDashboard({
                           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                           Refresh
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!sortedEventsV2 || sortedEventsV2.length === 0}>
+                        <Button variant="outline" size="sm" onClick={() => runExport("tokens")} disabled={isExportingTokens}>
                           <Download className="h-4 w-4 mr-2" />
-                          Export CSV
+                          {isExportingTokens ? "Exporting…" : "Export Token XLSX"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => runExport("events")} disabled={isExportingEvents}>
+                          <Download className="h-4 w-4 mr-2" />
+                          {isExportingEvents ? "Exporting…" : "Export Event XLSX"}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
