@@ -575,70 +575,44 @@ export default function CampaignDashboard({
     }
   };
 
-  // Export EventsV2 table to CSV
-  const handleExportCSV = () => {
-    if (!sortedEventsV2 || sortedEventsV2.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "No Data",
-        description: "No data available to export."
-      });
+  // Export EventsV2 to XLSX. Two workbooks: one keyed by token, one by event.
+  // Both honor the real/simulated data-source selector; other UI filters are ignored on purpose
+  // so the export always covers the full campaign.
+  const [isExportingTokens, setIsExportingTokens] = useState(false);
+  const [isExportingEvents, setIsExportingEvents] = useState(false);
+
+  const runExport = async (
+    kind: "tokens" | "events",
+  ) => {
+    if (!selectedCampaign) {
+      toast({ variant: "destructive", title: "No campaign selected" });
       return;
     }
-
-    const headers = [
-      "Row #",
-      "Timestamp",
-      "Mobilize Code",
-      "City/Region",
-      "Message Opened (Zipcode)",
-      "Location Method",
-      "Event Level",
-      "utm_medium",
-      "Instance",
-      "utm_content",
-      "Event ID",
-      "Full URL"
-    ];
-
-    const csvRows = sortedEventsV2.map((event: any, index: number) => {
-      const cityRegion = event.city && event.region ? `${event.city}, ${event.region}` : "";
-      const utmContent = event.tokens?.events_actions?.mobilize_code && event.tokens?.events_actions?.utm_id
-        ? `${event.tokens.events_actions.mobilize_code}-${event.tokens.events_actions.utm_id}`
-        : "";
-      
-      return [
-        index + 1,
-        formatTimestamp(event.occurred_at),
-        event.tokens?.events_actions?.mobilize_code || "",
-        cityRegion,
-        event.zip_code || "",
-        event.location_source === 'gps' ? 'GPS' : 'Cell Tower',
-        formatLevel(event.tokens?.level || 0),
-        event.tokens?.utm_medium || "",
-        event.tokens?.l00_instance || "",
-        utmContent,
-        event.id || "",
-        event.tokens?.full_url || ""
-      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
-    });
-
-    const csvContent = [headers.join(","), ...csvRows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `campaign-events-${selectedCampaign}-${format(new Date(), "yyyy-MM-dd-HHmm")}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Export Complete",
-      description: `Exported ${sortedEventsV2.length} rows to CSV.`
-    });
+    const setBusy = kind === "tokens" ? setIsExportingTokens : setIsExportingEvents;
+    setBusy(true);
+    try {
+      const source = (dataSourceFilter === "simulated" ? "simulated"
+        : dataSourceFilter === "real" ? "real"
+        : "all") as "real" | "simulated" | "all";
+      const count = kind === "tokens"
+        ? await exportTokensXlsx(selectedCampaign, source)
+        : await exportEventsXlsx(selectedCampaign, source);
+      toast({
+        title: "Export complete",
+        description: `Exported ${count} ${kind === "tokens" ? "tokens" : "events"} (${source}).`,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Export failed",
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setBusy(false);
+    }
   };
+
 
   const handleClearSimulationData = async (scope: "current" | "all") => {
     if (scope === "current" && !selectedCampaign) {
