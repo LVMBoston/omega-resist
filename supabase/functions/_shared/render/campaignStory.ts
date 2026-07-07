@@ -69,7 +69,9 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     dataSource,
     seedCount,
     sproutCount,
+    intentCount,
     viewCount,
+
     zipCount,
     stateCount,
     internationalCountries,
