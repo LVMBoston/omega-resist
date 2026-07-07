@@ -331,6 +331,8 @@ export async function computeCampaignStoryInputs(
     levelCounts,
     seedCount,
     sproutCount,
+    intentCount,
+
     viewCount: (viewsRes as any).count || 0,
     zipCount: zipCodes.size,
     stateCount: usStates.length,
