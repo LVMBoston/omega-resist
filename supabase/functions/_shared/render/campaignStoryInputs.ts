@@ -33,12 +33,19 @@ export interface CampaignStoryInputResult {
   levelCounts: { level: number; count: number }[];
   seedCount: number;
   sproutCount: number;
+  /**
+   * Seeds with "share intent" — L00 parents that have generated at least
+   * one child share link but no child has been viewed yet. Matches the
+   * orange (amber) border state on the campaign map markers.
+   */
+  intentCount: number;
   viewCount: number;
   zipCount: number;
   stateCount: number;
   usStates: string[];
   internationalCountries: string[];
   maxDepth: number;
+
 
   propagationSpeed: { level: number; firstMintAt: string }[];
   shareMediums: { medium: string; count: number }[];
