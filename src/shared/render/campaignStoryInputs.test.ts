@@ -55,6 +55,8 @@ function mockSupabase(fixtures: {
         return chain;
       },
       eq: () => chain,
+      in: () => chain,
+
       gt: () => chain,
       gte: () => chain,
       is: () => chain,
