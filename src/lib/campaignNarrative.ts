@@ -69,6 +69,8 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     dataSource,
     levelCounts: inputs.levelCounts,
     sproutCount: inputs.sproutCount,
+    intentCount: inputs.intentCount,
+
     viewCount: inputs.viewCount,
     zipCount: inputs.zipCount,
     usStates: inputs.usStates,
