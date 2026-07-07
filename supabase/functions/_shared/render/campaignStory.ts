@@ -19,6 +19,9 @@ export interface CampaignStoryInput {
 
   seedCount: number;
   sproutCount: number;
+  /** Sprouted seeds where no child has been viewed yet (orange map border). */
+  intentCount?: number;
+
   viewCount: number;
   zipCount: number;
   /** Number of distinct US states reached. */
