@@ -173,6 +173,8 @@ function generateFullStory(data: NarrativeData): string {
     dataSource: data.dataSource,
     seedCount,
     sproutCount: data.sproutCount,
+    intentCount: data.intentCount,
+
     viewCount: data.viewCount,
     zipCount: data.zipCount,
     stateCount: data.usStates.length,
