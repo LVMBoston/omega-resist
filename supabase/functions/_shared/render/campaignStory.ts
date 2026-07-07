@@ -188,6 +188,12 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
       ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look; they shared.`;
   }
   lines.push(seedLine);
+  if (typeof intentCount === "number" && intentCount > 0) {
+    lines.push(
+      `🟠 ${intentCount} of those ${intentCount === 1 ? "sprout is" : "sprouts are"} still "share intent" — the share link was generated but no recipient has opened it yet.`,
+    );
+  }
+
   if (mediumLine) {
     lines.push(`📱 Opens by medium: ${mediumLine}.`);
   }
