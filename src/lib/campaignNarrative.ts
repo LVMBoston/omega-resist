@@ -8,6 +8,8 @@ export interface NarrativeData {
   dataSource: NarrativeDataSource;
   levelCounts: { level: number; count: number }[];
   sproutCount: number;
+  intentCount: number;
+
   viewCount: number;
   zipCount: number;
   usStates: string[];
