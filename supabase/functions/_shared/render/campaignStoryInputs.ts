@@ -184,12 +184,39 @@ export async function computeCampaignStoryInputs(
   const seedCount = levelTotals.get(0) || 0;
 
   // Sprouts = DISTINCT L00 parents with children (matches editor definition).
+  const sproutChildren = (sproutsRes.data || []) as any[];
   const parentTokens = new Set(
-    ((sproutsRes.data || []) as any[])
+    sproutChildren
       .map((t) => t.parent_token)
       .filter(Boolean),
   );
   const sproutCount = parentTokens.size;
+
+  // Intent count = sprouted parents where NO child has been viewed yet
+  // (matches the orange/amber map-marker border state in SamizdatMap).
+  let intentCount = 0;
+  if (sproutChildren.length > 0) {
+    const childTokens = sproutChildren.map((t) => t.token).filter(Boolean);
+    const viewsRes = childTokens.length > 0
+      ? await supabase.from("url_events")
+          .select("token")
+          .in("token", childTokens)
+          .eq("event_type", "view")
+          .eq("is_simulated", isSimulated)
+          .is("deleted_at", null)
+      : { data: [] as any[] };
+    const viewedChildren = new Set(
+      ((viewsRes.data || []) as any[]).map((r) => r.token),
+    );
+    const parentsWithViewedChild = new Set<string>();
+    for (const c of sproutChildren) {
+      if (c.parent_token && viewedChildren.has(c.token)) {
+        parentsWithViewedChild.add(c.parent_token);
+      }
+    }
+    intentCount = parentTokens.size - parentsWithViewedChild.size;
+  }
+
 
   // Geography.
   const usStates = [
