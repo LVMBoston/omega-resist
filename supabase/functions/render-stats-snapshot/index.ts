@@ -502,6 +502,8 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
         nowMs: Date.now(),
         seedCount: inputs.seedCount,
         sproutCount: inputs.sproutCount,
+        intentCount: inputs.intentCount,
+
         viewCount: inputs.viewCount,
         zipCount: inputs.zipCount,
         stateCount: inputs.stateCount,

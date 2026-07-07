@@ -8,6 +8,8 @@ export interface NarrativeData {
   dataSource: NarrativeDataSource;
   levelCounts: { level: number; count: number }[];
   sproutCount: number;
+  intentCount: number;
+
   viewCount: number;
   zipCount: number;
   usStates: string[];
@@ -67,6 +69,8 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     dataSource,
     levelCounts: inputs.levelCounts,
     sproutCount: inputs.sproutCount,
+    intentCount: inputs.intentCount,
+
     viewCount: inputs.viewCount,
     zipCount: inputs.zipCount,
     usStates: inputs.usStates,
@@ -169,6 +173,8 @@ function generateFullStory(data: NarrativeData): string {
     dataSource: data.dataSource,
     seedCount,
     sproutCount: data.sproutCount,
+    intentCount: data.intentCount,
+
     viewCount: data.viewCount,
     zipCount: data.zipCount,
     stateCount: data.usStates.length,
