@@ -1632,6 +1632,7 @@ export default function CampaignEoaManager() {
             </div>
           </CardHeader>
           <CardContent>
+            {visualizePayloadDialogOpen && <PayloadReferencePanel />}
             {eoas.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 No events or actions yet. Click "Add Event/Action" to create one.
