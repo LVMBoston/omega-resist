@@ -273,19 +273,6 @@ export async function computeCampaignStoryInputs(
       .filter(Boolean),
   );
 
-  // Propagation speed (first mint per level).
-  const speedMap = new Map<number, any>();
-  for (const t of (speedRes.data || []) as any[]) {
-    if (!speedMap.has(t.level)) speedMap.set(t.level, t);
-  }
-  const speedEntries = Array.from(speedMap.entries()).sort((a, b) =>
-    a[0] - b[0]
-  );
-  const propagationSpeed = speedEntries.map(([level, t]) => ({
-    level,
-    firstMintAt: (t as any).minted_at,
-  }));
-
   // Share mediums (view events, grouped by parent token's utm_medium).
   const mediumCounts = new Map<string, number>();
   for (const evt of (mediumRes.data || []) as any[]) {
@@ -299,61 +286,12 @@ export async function computeCampaignStoryInputs(
   const lastShareAt =
     (lastShareRes.data as any)?.[0]?.minted_at || null;
 
-  // Speed origin/destination cities (best-effort; independent of the rest).
-  let speedOriginCity: string | null = null;
-  let speedDestCity: string | null = null;
-
-  if (maxDepth >= 1 && speedEntries.length >= 2) {
-    try {
-      const firstL1 = speedEntries.find(([lvl]) => lvl === 1);
-      const lastEntry = speedEntries[speedEntries.length - 1];
-      if (firstL1) {
-        const l1Token = firstL1[1] as any;
-        const originRes = await supabase.from("url_events")
-          .select("city, region")
-          .eq("token", l1Token.token)
-          .eq("is_simulated", isSimulated)
-          .is("deleted_at", null)
-          .not("city", "is", null)
-          .order("occurred_at", { ascending: true })
-          .limit(1);
-        const oe = (originRes.data as any)?.[0];
-        if (oe?.city) {
-          speedOriginCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
-        }
-        if (l1Token.l00_instance && lastEntry[0] > 1) {
-          const destTokRes = await supabase.from("tokens")
-            .select("token")
-            .eq("utm_campaign", campaignCode)
-            .eq("level", lastEntry[0])
-            .eq("l00_instance", l1Token.l00_instance)
-            .eq("is_simulated", isSimulated)
-            .is("deleted_at", null)
-            .order("minted_at", { ascending: true })
-            .limit(1);
-          const destTok = (destTokRes.data as any)?.[0];
-          if (destTok?.token) {
-            const destEvtRes = await supabase.from("url_events")
-              .select("city, region")
-              .eq("token", destTok.token)
-              .eq("is_simulated", isSimulated)
-              .is("deleted_at", null)
-              .not("city", "is", null)
-              .order("occurred_at", { ascending: true })
-              .limit(1);
-            const de = (destEvtRes.data as any)?.[0];
-            if (de?.city) {
-              speedDestCity = de.region ? `${de.city}, ${de.region}` : de.city;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      // Non-fatal; speed narrative just omits the city clause.
-      // eslint-disable-next-line no-console
-      console.warn("[campaignStoryInputs] speed geo lookup failed:", e);
-    }
-  }
+  // NOTE: propagationSpeed, speedOriginCity, speedDestCity, and the
+  // linear-chain flags are all computed AFTER the lineage fetch below,
+  // because they must key on true_depth from token_lineage rather than
+  // the clamped tokens.level column. speedRes remains fetched above for
+  // possible future use but is no longer read for the speed narrative.
+  void speedRes;
 
   // ── Two-lane metrics from token_lineage view (depth-corrected). ────
   // Pull the whole campaign lineage in pages of 1000 to bypass the
