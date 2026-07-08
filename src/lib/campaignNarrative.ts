@@ -27,6 +27,8 @@ export interface NarrativeData {
   anyHopCompletionRate: number | null;
   anyHopCompletionNumerator: number;
   anyHopCompletionDenominator: number;
+  longestChainIsLinear: boolean;
+  longestChainTerminalUnopened: boolean;
 }
 
 export type NarrativeDataSource = "real" | "simulated";
