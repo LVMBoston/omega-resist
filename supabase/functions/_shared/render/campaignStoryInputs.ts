@@ -74,11 +74,13 @@ export interface CampaignStoryInputResult {
    */
   propagationSpeed: { level: number; firstMintAt: string }[];
   /**
-   * True when the deepest chain is a single-carrier linear walk
-   * (branching factor 1 at every depth 1..max). Prevents the story
-   * from framing a persistence chain as viral multi-person spread.
+   * True when the deepest chain's tail (>= 3 hops) is single-carrier
+   * (every ancestor along that specific path had exactly one child in
+   * the lineage). Guards against framing persistence as viral spread.
    */
   longestChainIsLinear: boolean;
+  /** Length in hops of that single-carrier tail. Meaningful only when longestChainIsLinear. */
+  singleCarrierTailHops: number;
   /** True when the deepest token in a linear chain has no view event. */
   longestChainTerminalUnopened: boolean;
   shareMediums: { medium: string; count: number }[];
