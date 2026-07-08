@@ -236,15 +236,16 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   // person carrying the message — and explicitly does NOT imply viral
   // multi-person spread.
   if (chainViewers > 0) {
-    if (longestChainIsLinear && maxDepth >= 3) {
-      let carrierLine = `🔗 The deepest chain was carried by a single persistent sharer across ${maxDepth} hops — branching factor 1 at every depth, not multi-person spread`;
+    if (longestChainIsLinear && singleCarrierTailHops >= 3) {
+      const tail = singleCarrierTailHops;
+      let carrierLine = `🔗 The deepest chain's tail is single-carrier persistence: one sharer carried the message across ${tail} consecutive hops with branching factor 1 at each`;
       if (longestChainTerminalUnopened) {
-        carrierLine += `; the last share was never opened`;
+        carrierLine += `; the terminal share was never opened`;
       }
-      carrierLine += `. (Lane B totals: ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"}, orphans excluded.)`;
+      carrierLine += `. Not multi-person spread. (Lane B totals: ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"}, orphans excluded.)`;
       lines.push(carrierLine);
       lines.push(
-        `Depth is persistence here, not reach — see the breadth and landing paragraphs for the reach fact.`,
+        `Depth here is persistence, not reach — breadth and landing paragraphs carry the reach fact.`,
       );
     } else {
       let depthLine = `🔗 That broadcast produced ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"} (Lane B: mint_share descendants, orphans excluded)`;
