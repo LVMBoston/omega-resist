@@ -392,37 +392,62 @@ export async function computeCampaignStoryInputs(
     .sort((a, b) => a[0] - b[0])
     .map(([depth, r]) => ({ level: depth, firstMintAt: r.created_at }));
 
-  // Linear-chain detection: every depth 1..max has exactly one token.
-  // Guards the story from framing single-carrier persistence as spread.
-  let longestChainIsLinear = false;
-  if (maxObservedDepth >= 1) {
-    longestChainIsLinear = true;
-    for (let d = 1; d <= maxObservedDepth; d++) {
-      if ((depthMap.get(d) || 0) !== 1) { longestChainIsLinear = false; break; }
+  // Single-carrier-tail detection.
+  //
+  // The "linear chain" question is really: at the tail of the deepest
+  // chain, how many consecutive hops are single-carrier — i.e., each
+  // ancestor along that specific path has exactly one child in-lineage?
+  // Whole-tree depth-histogram width doesn't answer this: a tree can be
+  // bushy at depth 1 and still have a persistence tail (depths 3..6 all
+  // count 1). We walk from a deepest token up its own ancestor chain
+  // and count consecutive parents-of-one.
+  const childrenCount = new Map<string, number>();
+  for (const r of nonOrphan) {
+    if (r.parent_token) {
+      childrenCount.set(r.parent_token, (childrenCount.get(r.parent_token) || 0) + 1);
     }
   }
+  const parentOf = new Map<string, string | null>();
+  for (const r of nonOrphan) parentOf.set(r.token, r.parent_token || null);
 
-  // Terminal-unopened check for a linear chain (only relevant when linear
-  // and depth >= 1). Small extra query; skipped otherwise.
-  let longestChainTerminalUnopened = false;
   let deepestToken: string | null = null;
-  if (longestChainIsLinear && maxObservedDepth >= 1) {
+  let singleCarrierTailHops = 0;
+  if (maxObservedDepth >= 1) {
     const deepestRow = nonOrphan.find(
       (r) => Number(r.true_depth ?? 0) === maxObservedDepth,
     );
     if (deepestRow?.token) {
       deepestToken = deepestRow.token;
-      try {
-        const { count } = await supabase.from("url_events")
-          .select("id", { count: "exact", head: true })
-          .eq("token", deepestRow.token)
-          .eq("event_type", "view")
-          .eq("is_simulated", isSimulated)
-          .is("deleted_at", null);
-        longestChainTerminalUnopened = (count || 0) === 0;
-      } catch (_e) {
-        // Non-fatal — leave flag false rather than claim unopened.
+      let cur: string | null = deepestToken;
+      while (cur) {
+        const p: string | null = parentOf.get(cur) ?? null;
+        if (!p) break;
+        if ((childrenCount.get(p) || 0) === 1) {
+          singleCarrierTailHops += 1;
+          cur = p;
+        } else break;
       }
+    }
+  }
+  // Treat the deepest chain as single-carrier persistence when the tail
+  // covers at least 3 hops (matches the "someone → someone → someone"
+  // threshold the story used to invoke for reach).
+  const longestChainIsLinear = singleCarrierTailHops >= 3;
+
+  // Terminal-unopened check for the deepest token (only meaningful when
+  // we're going to describe it as a persistence chain).
+  let longestChainTerminalUnopened = false;
+  if (longestChainIsLinear && deepestToken) {
+    try {
+      const { count } = await supabase.from("url_events")
+        .select("id", { count: "exact", head: true })
+        .eq("token", deepestToken)
+        .eq("event_type", "view")
+        .eq("is_simulated", isSimulated)
+        .is("deleted_at", null);
+      longestChainTerminalUnopened = (count || 0) === 0;
+    } catch (_e) {
+      // Non-fatal — leave flag false rather than claim unopened.
     }
   }
 
