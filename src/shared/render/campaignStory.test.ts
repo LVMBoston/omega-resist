@@ -46,7 +46,7 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
   it("carries the DEPTH fact (chain shares + hops) distinct from breadth", () => {
     const out = formatCampaignStory(baseInput());
     expect(out).toContain("🔗 That broadcast produced 8 downstream shares");
-    expect(out).toContain("chain depth of 2 levels");
+    expect(out).toContain("walking 2 hops from a seed at its furthest");
   });
 
   it("carries the LANDING fact (any-hop conversion) distinct from depth", () => {
@@ -90,7 +90,7 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
     };
     const out = formatCampaignStory(input);
     expect(out).toContain(
-      "Fastest share: From the first open shared to the first Level 2 share took 1 day; Boston, MA to Austin, TX.",
+      "Fastest share: From the first open shared to the first depth-2 share took 1 day; Boston, MA to Austin, TX.",
     );
   });
 

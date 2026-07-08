@@ -37,12 +37,22 @@ export interface CampaignStoryInput {
   /** Maximum chain depth (0 = no shares yet). */
   maxDepth: number;
 
-  /** Sorted by minted_at ascending. One entry per level. */
+  /**
+   * Sorted by minted_at ascending. `level` is true_depth (from
+   * token_lineage), NOT the clamped tokens.level column.
+   */
   propagationSpeed: { level: number; firstMintAt: string }[];
   shareMediums: { medium: string; count: number }[];
   lastShareAt: string | null;
   speedOriginCity: string | null;
   speedDestCity: string | null;
+
+  /** True if the deepest chain has a >= 3-hop single-carrier tail. */
+  longestChainIsLinear?: boolean;
+  /** Length of that single-carrier tail. Used instead of maxDepth when framing the depth paragraph as persistence. */
+  singleCarrierTailHops?: number;
+  /** True if the deepest token in a linear chain has no view event. */
+  longestChainTerminalUnopened?: boolean;
 
   /** ── Two-lane depth-corrected metrics (from token_lineage). ──── */
   broadcastOpens: number;
@@ -100,6 +110,9 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     anyHopCompletionRate,
     anyHopCompletionNumerator,
     anyHopCompletionDenominator,
+    longestChainIsLinear = false,
+    singleCarrierTailHops = 0,
+    longestChainTerminalUnopened = false,
     includeTitle = true,
   } = input;
 
@@ -136,7 +149,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
       const d = Math.round(diffHours / 24);
       timePart = `${d} day${d > 1 ? "s" : ""}`;
     }
-    speedNarrative = `Fastest share: From the first open shared to the first Level ${last.level} share took ${timePart}.`;
+    speedNarrative = `Fastest share: From the first open shared to the first depth-${last.level} share took ${timePart}.`;
     if (speedOriginCity && speedDestCity) {
       speedNarrative = speedNarrative.slice(0, -1) +
         `; ${speedOriginCity} to ${speedDestCity}.`;
@@ -218,16 +231,30 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   // ── 2. DEPTH ──────────────────────────────────────────────────────
   // Unique fact: how far the chain walked from a seed. If chainViewers
   // is zero we skip the paragraph rather than pad it with "0 shares".
+  // When the deepest chain is single-carrier linear (branching factor 1
+  // at every hop), the paragraph reframes it as persistence — one
+  // person carrying the message — and explicitly does NOT imply viral
+  // multi-person spread.
   if (chainViewers > 0) {
-    let depthLine = `🔗 That broadcast produced ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"} (Lane B: mint_share descendants, orphans excluded)`;
-    if (maxDepth >= 1) {
-      depthLine += `, reaching a chain depth of ${maxDepth} level${maxDepth === 1 ? "" : "s"}`;
-      if (maxDepth >= 3) {
-        depthLine += ` — someone opened it, shared it, and the person they shared with shared again`;
+    if (longestChainIsLinear && singleCarrierTailHops >= 3) {
+      const tail = singleCarrierTailHops;
+      let carrierLine = `🔗 The deepest chain's tail is single-carrier persistence: one sharer carried the message across ${tail} consecutive hops with branching factor 1 at each`;
+      if (longestChainTerminalUnopened) {
+        carrierLine += `; the terminal share was never opened`;
       }
+      carrierLine += `. Not multi-person spread. (Lane B totals: ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"}, orphans excluded.)`;
+      lines.push(carrierLine);
+      lines.push(
+        `Depth here is persistence, not reach — breadth and landing paragraphs carry the reach fact.`,
+      );
+    } else {
+      let depthLine = `🔗 That broadcast produced ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"} (Lane B: mint_share descendants, orphans excluded)`;
+      if (maxDepth >= 1) {
+        depthLine += `, walking ${maxDepth} hop${maxDepth === 1 ? "" : "s"} from a seed at its furthest`;
+      }
+      depthLine += ".";
+      lines.push(depthLine);
     }
-    depthLine += ".";
-    lines.push(depthLine);
     lines.push("");
   }
 
