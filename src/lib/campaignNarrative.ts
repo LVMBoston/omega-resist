@@ -132,9 +132,17 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   lines.push(`${broadcastOpens} broadcast opens`);
   lines.push("");
 
-  // Depth
+  // Depth — reframed for single-carrier linear chains so a persistence
+  // fact is never presented as viral spread. Never lead with "N levels
+  // deep" as evidence of reach; that's what breadth and landing say.
   if (chainViewers > 0) {
-    lines.push(`${chainViewers} chain shares, ${maxLevel} levels deep`);
+    if (data.longestChainIsLinear && maxLevel >= 3) {
+      let carrier = `Deepest chain: one persistent sharer, ${maxLevel} hops`;
+      if (data.longestChainTerminalUnopened) carrier += ` (last share unopened)`;
+      lines.push(carrier);
+    } else {
+      lines.push(`${chainViewers} chain shares, longest walk ${maxLevel} hop${maxLevel === 1 ? "" : "s"}`);
+    }
     if (propagationSpeed.length >= 2) {
       const l0Time = new Date(propagationSpeed[0].first_mint);
       const lastLevel = propagationSpeed[propagationSpeed.length - 1];
@@ -147,7 +155,7 @@ export function generateHeadlineOnly(data: NarrativeData): string {
         const days = Math.round(diffHours / 24);
         timePart = `${days} day${days > 1 ? "s" : ""}`;
       }
-      let speedLine = `Fastest share: ${timePart}`;
+      let speedLine = `Fastest share to depth ${lastLevel.level}: ${timePart}`;
       if (data.speedOriginCity && data.speedDestCity) {
         speedLine += `; ${data.speedOriginCity} to ${data.speedDestCity}`;
       }
