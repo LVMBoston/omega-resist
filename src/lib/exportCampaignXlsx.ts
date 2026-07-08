@@ -159,7 +159,11 @@ export async function exportTokensXlsx(
   if (rows.length === 0) throw new Error(`No tokens found for campaign ${campaignCode}`);
 
   const headers = TOKEN_SCHEMA.map((c) => c.column);
-  const body = rows.map((r) => headers.map((h) => (r as any)[h] ?? ""));
+  const body = rows.map((r) => {
+    const cls = classifyLineageRow(r);
+    const enriched = { ...(r as any), lane: cls.lane, is_orphan: cls.is_orphan };
+    return headers.map((h) => enriched[h] ?? "");
+  });
 
   const wb = XLSX.utils.book_new();
   addOverviewSheet(
