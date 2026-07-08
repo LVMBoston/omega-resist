@@ -519,6 +519,8 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
         anyHopCompletionRate: inputs.anyHopCompletionRate,
         anyHopCompletionNumerator: inputs.anyHopCompletionNumerator,
         anyHopCompletionDenominator: inputs.anyHopCompletionDenominator,
+        longestChainIsLinear: inputs.longestChainIsLinear,
+        longestChainTerminalUnopened: inputs.longestChainTerminalUnopened,
         includeTitle: true,
       });
     } catch (e) {
