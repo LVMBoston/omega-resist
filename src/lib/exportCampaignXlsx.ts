@@ -97,12 +97,14 @@ function download(wb: XLSX.WorkBook, filename: string) {
 
 const TOKEN_SCHEMA: { column: string; description: string }[] = [
   { column: "token", description: "Unique token id. Base L00 tokens are the QR/link template (e.g. l00-<mobilize>-<utmid>); per-scan L00 instances append :xxxxxx." },
+  { column: "lane", description: "A = Lane A (broadcast surface: base L00 template + per-scan L00 instances, true_depth=0). B = Lane B (mint_share descendants, true_depth>=1). ORPHAN = parent_token IS NULL and NOT L00-shaped; excluded from both lane totals." },
+  { column: "is_orphan", description: "TRUE when parent_token IS NULL and the token id is not L00-shaped. Represents legacy hard-deleted-parent rows; counted only in the anomaly line on the Reference tab." },
   { column: "stored_level", description: "The `level` column stored on the tokens row at mint time (0-3, clamped by mint_share)." },
   { column: "true_depth", description: "Depth computed by walking parent_token back to the root. Not clamped. Can exceed 3 where stored_level was capped." },
   { column: "level_depth_mismatch", description: "TRUE when stored_level != true_depth. Every row where this is TRUE means the stored level is wrong or clamped." },
-  { column: "parent_token", description: "The token this token was minted off. NULL for base L00 rows." },
+  { column: "parent_token", description: "The token this token was minted off. NULL for base L00 rows and orphans." },
   { column: "root_token", description: "The originating token of this lineage. Equal to `token` for base L00 rows; for L00 instances, equal to the base L00 token." },
-  { column: "is_seed", description: "TRUE when parent_token IS NULL. Identifies the base L00 template rows created by mint_l00." },
+  { column: "is_seed", description: "TRUE when parent_token IS NULL. Identifies the base L00 template rows created by mint_l00 (also TRUE for orphans; combine with is_orphan to distinguish)." },
   { column: "is_simulated", description: "TRUE when the token was created by the simulator, not by a real scan/share." },
   { column: "minted_via", description: "Best-guess origin function. There is NO explicit `minted_via` column in the tokens table; this is derived from parent_token, level, and token shape (see Overview)." },
   { column: "created_at", description: "tokens.minted_at — when the token row was created." },
@@ -112,6 +114,24 @@ const TOKEN_SCHEMA: { column: string; description: string }[] = [
   { column: "deck_slug", description: "Deck the token pointed at when minted." },
   { column: "l00_instance", description: "For per-scan L00 instances, the token id of the instance (points to self). NULL on base L00 tokens and on L01+ children." },
 ];
+
+/**
+ * Classify a token_lineage row into Lane A (broadcast), Lane B (chain
+ * descendants) or ORPHAN (parentless-due-to-hard-delete). Uses the same
+ * rules that campaignStoryInputs.ts applies to Lane A/B/orphan counts,
+ * so the Tokens tab and the Reference tab always agree.
+ */
+function classifyLineageRow(row: any): { lane: "A" | "B" | "ORPHAN"; is_orphan: boolean } {
+  const token: string = row.token || "";
+  const isL00Shaped = /^l00-.+/.test(token);
+  const depth = Number(row.true_depth ?? 0);
+  if (row.parent_token == null) {
+    if (isL00Shaped) return { lane: "A", is_orphan: false }; // base L00 template
+    return { lane: "ORPHAN", is_orphan: true };
+  }
+  if (depth === 0) return { lane: "A", is_orphan: false }; // per-scan L00 instance
+  return { lane: "B", is_orphan: false };
+}
 
 const TOKEN_NARRATIVE = [
   "One row = one token in the tokens table (soft-deleted rows excluded).",
