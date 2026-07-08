@@ -90,7 +90,7 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
     };
     const out = formatCampaignStory(input);
     expect(out).toContain(
-      "Fastest share: From the first open shared to the first Level 2 share took 1 day; Boston, MA to Austin, TX.",
+      "Fastest share: From the first open shared to the first depth-2 share took 1 day; Boston, MA to Austin, TX.",
     );
   });
 
