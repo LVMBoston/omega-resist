@@ -2,11 +2,19 @@
  * Campaign story formatter — single source of truth for both the
  * in-app Deck Editor and the SSR snapshot renderer.
  *
- * See `./README.md`. Pure logic only — no Supabase, no DOM, no Deno APIs.
+ * 2026-07-08 (v2): the "sprout" concept is retired. The story now carries
+ * three distinct facts in three paragraphs, per the three-facts test:
+ *   1. BREADTH   — how far the seed reached (Lane A broadcast opens, total
+ *                  view events including repeats, and channel mix).
+ *   2. DEPTH     — how many hops the chain actually walked (Lane B chain
+ *                  tokens and longest observed depth).
+ *   3. LANDING   — whether a share reached a recipient who then opened it
+ *                  (any-hop completion rate).
+ * Deleting any of the three would drop a fact the others do not carry.
+ * Anything that would only paraphrase Lane B a second time was removed
+ * rather than reworded.
  *
- * Wording chosen on 2026-06-26 to match the editor's prior text. The
- * SSR's earlier wording variants ("🌱 X seeds planted", "first card drop
- * shared", "sometimes more than once by the same person") are retired.
+ * Pure logic only — no Supabase, no DOM, no Deno APIs.
  */
 
 export interface CampaignStoryInput {
@@ -18,7 +26,6 @@ export interface CampaignStoryInput {
   dataSource?: "real" | "simulated";
 
   seedCount: number;
-  sproutCount: number;
   /** Sprouted seeds where no child has been viewed yet (orange map border). */
   intentCount?: number;
 
@@ -37,10 +44,18 @@ export interface CampaignStoryInput {
   speedOriginCity: string | null;
   speedDestCity: string | null;
 
+  /** ── Two-lane depth-corrected metrics (from token_lineage). ──── */
+  broadcastOpens: number;
+  chainViewers: number;
+  orphanCount: number;
+  anyHopCompletionRate: number | null;
+  anyHopCompletionNumerator: number;
+  anyHopCompletionDenominator: number;
+
   /**
    * Emit the leading `__TITLE__Campaign: <title>__TITLE__` block.
-   * Default true (preserves standalone rendering). Pass false when the
-   * slide already renders a separate header hotspot to avoid duplication.
+   * Default true. Pass false when the slide already renders a separate
+   * header hotspot to avoid duplication.
    */
   includeTitle?: boolean;
 }
@@ -68,10 +83,8 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     nowMs,
     dataSource,
     seedCount,
-    sproutCount,
     intentCount,
     viewCount,
-
     zipCount,
     stateCount,
     internationalCountries,
@@ -81,6 +94,12 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     lastShareAt,
     speedOriginCity,
     speedDestCity,
+    broadcastOpens,
+    chainViewers,
+    orphanCount,
+    anyHopCompletionRate,
+    anyHopCompletionNumerator,
+    anyHopCompletionDenominator,
     includeTitle = true,
   } = input;
 
@@ -90,7 +109,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     (msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
   );
 
-  // Medium percentage line (aggregate by display label so aliases like sms + social merge)
+  // Medium mix (aggregate aliases so sms + social merge under "text").
   const totalOpens = shareMediums.reduce((s, m) => s + m.count, 0);
   const labelTotals = new Map<string, number>();
   for (const m of shareMediums) {
@@ -103,7 +122,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
         .join(", ")
     : "";
 
-  // Speed narrative
+  // Speed narrative (kept — unique fact: time-to-propagate).
   let speedNarrative = "";
   if (propagationSpeed.length >= 2) {
     const l0Time = new Date(propagationSpeed[0].firstMintAt).getTime();
@@ -124,7 +143,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     }
   }
 
-  // Geographic narrative
+  // Geographic narrative (kept — unique fact: places).
   let geoNarrative = "";
   if (zipCount > 0) {
     geoNarrative = `The content reached ${zipCount} different zip codes`;
@@ -138,16 +157,13 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     }
   }
 
-  const closingIndex = (seedCount + sproutCount) % CLOSINGS.length;
+  const closingIndex = (seedCount + chainViewers) % CLOSINGS.length;
 
   const lines: string[] = [];
 
-  // Title — wrapped in __TITLE__ markers so the split-into-two-columns
-  // logic can pin it to the left column. Suppress when the slide already
-  // renders a separate header hotspot (includeTitle: false).
   if (includeTitle) {
     lines.push(`__TITLE__Campaign: ${campaignTitle}__TITLE__`);
-    lines.push(""); // blank line: title is its own paragraph block
+    lines.push("");
   }
 
   if (dataSource === "simulated") {
@@ -180,36 +196,61 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   }
   lines.push("");
 
-  let seedLine =
-    `While ${seedCount} seeds were planted, ${sproutCount} became sprouts, beginning a viral chain.`;
-  if (seedCount > 0 && sproutCount > 0) {
-    const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    seedLine +=
-      ` That's a ${sproutRate}% sprout rate — ${sproutCount} people didn't just look; they shared.`;
+  // ── 1. BREADTH ────────────────────────────────────────────────────
+  // Unique facts: (a) broadcast opens (Lane A), (b) total view events
+  // including repeats, (c) channel mix. Nothing here restates Lane B.
+  let breadthLine = `📢 The seed was opened ${broadcastOpens} time${broadcastOpens === 1 ? "" : "s"} at the source (Lane A: base QR/link scans and per-scan instances, including repeats)`;
+  if (viewCount > 0 && viewCount !== broadcastOpens) {
+    breadthLine += `. All told, the content generated ${viewCount} view event${viewCount === 1 ? "" : "s"} across every level, including return visits`;
   }
-  lines.push(seedLine);
+  breadthLine += ".";
+  lines.push(breadthLine);
+  if (mediumLine) {
+    lines.push(`📱 Channel mix: ${mediumLine}.`);
+  }
   if (typeof intentCount === "number" && intentCount > 0) {
     lines.push(
-      `🟠 ${intentCount} of those ${intentCount === 1 ? "sprout is" : "sprouts are"} still "share intent" — the share link was generated but no recipient has opened it yet.`,
+      `🟠 ${intentCount} seed${intentCount === 1 ? " has" : "s have"} generated a share link that no recipient has opened yet — intent recorded, delivery unconfirmed.`,
     );
-  }
-
-  if (mediumLine) {
-    lines.push(`📱 Opens by medium: ${mediumLine}.`);
   }
   lines.push("");
 
-  if (maxDepth > 0) {
-    let chainLine = `🔗 Longest chain: ${maxDepth} levels deep.`;
-    if (maxDepth >= 3) {
-      chainLine +=
-        ` Someone opened it → shared it → that person shared it → and it kept going.`;
-    } else if (maxDepth === 2) {
-      chainLine += ` An open became a share, which became another share.`;
-    } else {
-      chainLine += ` Seeds turned into shares.`;
+  // ── 2. DEPTH ──────────────────────────────────────────────────────
+  // Unique fact: how far the chain walked from a seed. If chainViewers
+  // is zero we skip the paragraph rather than pad it with "0 shares".
+  if (chainViewers > 0) {
+    let depthLine = `🔗 That broadcast produced ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"} (Lane B: mint_share descendants, orphans excluded)`;
+    if (maxDepth >= 1) {
+      depthLine += `, reaching a chain depth of ${maxDepth} level${maxDepth === 1 ? "" : "s"}`;
+      if (maxDepth >= 3) {
+        depthLine += ` — someone opened it, shared it, and the person they shared with shared again`;
+      }
     }
-    lines.push(chainLine);
+    depthLine += ".";
+    lines.push(depthLine);
+    lines.push("");
+  }
+
+  // ── 3. LANDING ────────────────────────────────────────────────────
+  // Unique fact: did the shares actually land — did a recipient open
+  // the shared link and produce a further child. Skip when there is
+  // no chain to measure against.
+  if (
+    anyHopCompletionRate !== null &&
+    anyHopCompletionDenominator > 0
+  ) {
+    const pct = Math.round(anyHopCompletionRate * 100);
+    lines.push(
+      `✅ Of those ${anyHopCompletionDenominator} chain share${anyHopCompletionDenominator === 1 ? "" : "s"}, ${anyHopCompletionNumerator} (${pct}%) reached a recipient who opened it and passed it along again.`,
+    );
+    lines.push("");
+  }
+
+  // Data anomalies — surfaced only when present. Terse; not padded.
+  if (orphanCount > 0) {
+    lines.push(
+      `⚠️ Data anomalies: ${orphanCount} orphan token${orphanCount === 1 ? "" : "s"} (parentless, non-L00-shaped) excluded from both lanes. Flagged, not resolved.`,
+    );
     lines.push("");
   }
 
@@ -217,10 +258,6 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     lines.push(`⚡ ${speedNarrative}`);
     lines.push("");
   }
-
-  lines.push(
-    `👀 The content was viewed ${viewCount} times — including return visits from people who held onto the message.`,
-  );
 
   if (geoNarrative) {
     lines.push(`📍 ${geoNarrative}`);

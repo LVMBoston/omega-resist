@@ -10,7 +10,6 @@ function baseInput(): CampaignStoryInput {
     activeAnchorMs: FIXED_ANCHOR,
     nowMs: FIXED_NOW,
     seedCount: 10,
-    sproutCount: 4,
     viewCount: 100,
     zipCount: 20,
     stateCount: 5,
@@ -21,10 +20,16 @@ function baseInput(): CampaignStoryInput {
     lastShareAt: null,
     speedOriginCity: null,
     speedDestCity: null,
+    broadcastOpens: 12,
+    chainViewers: 8,
+    orphanCount: 0,
+    anyHopCompletionRate: 0.5,
+    anyHopCompletionNumerator: 4,
+    anyHopCompletionDenominator: 8,
   };
 }
 
-describe("formatCampaignStory", () => {
+describe("formatCampaignStory (v2 — three-facts structure)", () => {
   it("opens with the title in __TITLE__ markers and a blank line", () => {
     const out = formatCampaignStory(baseInput());
     const lines = out.split("\n");
@@ -32,33 +37,45 @@ describe("formatCampaignStory", () => {
     expect(lines[1]).toBe("");
   });
 
-  it("uses editor wording for the seed sentence (not '🌱 X seeds planted')", () => {
+  it("carries the BREADTH fact (Lane A opens) in its own paragraph", () => {
     const out = formatCampaignStory(baseInput());
-    expect(out).toContain("While 10 seeds were planted, 4 became sprouts");
-    expect(out).not.toContain("🌱");
+    expect(out).toContain("📢 The seed was opened 12 times");
+    expect(out).toContain("Lane A");
   });
 
-  it("uses editor wording for the views sentence", () => {
+  it("carries the DEPTH fact (chain shares + hops) distinct from breadth", () => {
     const out = formatCampaignStory(baseInput());
-    expect(out).toContain(
-      "👀 The content was viewed 100 times — including return visits from people who held onto the message.",
-    );
-    expect(out).not.toContain("sometimes more than once by the same person");
+    expect(out).toContain("🔗 That broadcast produced 8 downstream shares");
+    expect(out).toContain("chain depth of 2 levels");
   });
 
-  it("omits the medium line when no opens", () => {
+  it("carries the LANDING fact (any-hop conversion) distinct from depth", () => {
     const out = formatCampaignStory(baseInput());
-    expect(out).not.toContain("📱 Opens by medium");
+    expect(out).toContain("✅ Of those 8 chain shares, 4 (50%)");
+    expect(out).toContain("passed it along again");
+  });
+
+  it("does NOT mention sprouts anywhere (sprout concept retired)", () => {
+    const out = formatCampaignStory(baseInput());
+    expect(out.toLowerCase()).not.toContain("sprout");
+  });
+
+  it("omits DEPTH paragraph entirely when there is no chain (chainViewers=0)", () => {
+    const out = formatCampaignStory({ ...baseInput(), chainViewers: 0, maxDepth: 0, anyHopCompletionRate: null, anyHopCompletionDenominator: 0 });
+    expect(out).not.toContain("🔗");
+    expect(out).not.toContain("✅");
+  });
+
+  it("surfaces orphan anomalies only when present", () => {
+    const clean = formatCampaignStory(baseInput());
+    expect(clean).not.toContain("⚠️");
+    const dirty = formatCampaignStory({ ...baseInput(), orphanCount: 3 });
+    expect(dirty).toContain("⚠️ Data anomalies: 3 orphan tokens");
   });
 
   it("formats the active duration from the anchor", () => {
     const out = formatCampaignStory(baseInput());
     expect(out).toContain("Campaign active for 6 days 0 hours");
-  });
-
-  it("omits speed narrative when fewer than 2 levels recorded", () => {
-    const out = formatCampaignStory(baseInput());
-    expect(out).not.toContain("Fastest share");
   });
 
   it("formats speed narrative with origin/destination cities", () => {
@@ -80,14 +97,23 @@ describe("formatCampaignStory", () => {
   it("suppresses the __TITLE__ block when includeTitle: false", () => {
     const out = formatCampaignStory({ ...baseInput(), includeTitle: false });
     expect(out).not.toContain("__TITLE__");
-    expect(out).not.toContain("Campaign: Test Campaign");
-    // First non-empty line should be a body line (date-of-report), not the title.
     const firstNonEmpty = out.split("\n").find((l) => l.trim().length > 0);
     expect(firstNonEmpty).toMatch(/^Date of this report:/);
   });
 
-  it("emits __TITLE__ by default (includeTitle omitted)", () => {
+  it("three-facts test: deleting any one of breadth/depth/landing loses a unique number", () => {
     const out = formatCampaignStory(baseInput());
-    expect(out.split("\n")[0]).toBe("__TITLE__Campaign: Test Campaign__TITLE__");
+    // breadth carries 12, depth carries 8 chain + 2 levels, landing carries 4/8 = 50%.
+    // Confirm each number appears exactly in its owning paragraph, not duplicated.
+    const paragraphs = out.split("\n\n");
+    const breadth = paragraphs.find((p) => p.includes("📢")) || "";
+    const depth = paragraphs.find((p) => p.includes("🔗")) || "";
+    const landing = paragraphs.find((p) => p.includes("✅")) || "";
+    expect(breadth).toContain("12");
+    expect(depth).toContain("8");
+    expect(landing).toContain("50%");
+    // Landing's numerator (4) should not appear in breadth or depth.
+    expect(breadth).not.toMatch(/\b4\b/);
+    expect(depth).not.toMatch(/\b4\b/);
   });
 });

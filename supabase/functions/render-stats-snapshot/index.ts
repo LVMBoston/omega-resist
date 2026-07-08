@@ -501,7 +501,6 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
         activeAnchorMs,
         nowMs: Date.now(),
         seedCount: inputs.seedCount,
-        sproutCount: inputs.sproutCount,
         intentCount: inputs.intentCount,
 
         viewCount: inputs.viewCount,
@@ -514,6 +513,12 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
         lastShareAt: inputs.lastShareAt,
         speedOriginCity: inputs.speedOriginCity,
         speedDestCity: inputs.speedDestCity,
+        broadcastOpens: inputs.broadcastOpens,
+        chainViewers: inputs.chainViewers,
+        orphanCount: inputs.orphanCount,
+        anyHopCompletionRate: inputs.anyHopCompletionRate,
+        anyHopCompletionNumerator: inputs.anyHopCompletionNumerator,
+        anyHopCompletionDenominator: inputs.anyHopCompletionDenominator,
         includeTitle: true,
       });
     } catch (e) {
