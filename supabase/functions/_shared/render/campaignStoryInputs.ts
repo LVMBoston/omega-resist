@@ -46,6 +46,26 @@ export interface CampaignStoryInputResult {
   internationalCountries: string[];
   maxDepth: number;
 
+  /** ── Two-lane honest metrics (2026-07-08). ─────────────────────────
+   * Lane A — Broadcast opens: tokens at true_depth = 0 (base L00
+   *   templates + per-scan L00 instances). Inflated by design; label as
+   *   "opens", never "viewers".
+   * Lane B — Chain activity: tokens at true_depth >= 1 (mint_share
+   *   descendants), orphans excluded. Approximate unique viewers.
+   * Orphans: parent_token IS NULL and NOT an L00-shaped token (legacy
+   *   detached L1s). Excluded from both lanes; surfaced separately.
+   */
+  broadcastOpens: number;
+  chainViewers: number;
+  orphanCount: number;
+  /** Depth histogram keyed by true_depth (post-fix view). */
+  depthHistogram: { depth: number; count: number }[];
+  /** Per-hop conversion table: d → d+1, starting at 1→2 (skip 0→1). */
+  perHopConversion: { from: number; to: number; fromCount: number; toCount: number; rate: number }[];
+  /** Blended any-hop completion rate = chain tokens that produced any child / chain tokens. */
+  anyHopCompletionRate: number | null;
+  anyHopCompletionNumerator: number;
+  anyHopCompletionDenominator: number;
 
   propagationSpeed: { level: number; firstMintAt: string }[];
   shareMediums: { medium: string; count: number }[];
@@ -53,6 +73,7 @@ export interface CampaignStoryInputResult {
   speedOriginCity: string | null;
   speedDestCity: string | null;
 }
+
 
 export interface CampaignStoryInputArgs {
   campaignCode: string;
