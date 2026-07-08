@@ -302,3 +302,181 @@ function addOmittedColumnsSheet(wb: XLSX.WorkBook) {
   ws["!cols"] = [{ wch: 28 }, { wch: 110 }];
   XLSX.utils.book_append_sheet(wb, ws, "What we left out");
 }
+
+/* ------------------------------------------------------------------ *
+ * CONSOLIDATED export — one workbook, three tabs (Reference, Events,
+ * Tokens). Reference is the two-lane honest metric summary; Events and
+ * Tokens are the same content as the legacy per-kind exports.
+ * ------------------------------------------------------------------ */
+
+async function fetchCampaignId(campaignCode: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("campaigns")
+    .select("id")
+    .eq("code", campaignCode)
+    .maybeSingle();
+  return (data as any)?.id ?? null;
+}
+
+function buildReferenceAoa(
+  campaignCode: string,
+  dataSource: DataSource,
+  inputs: any,
+  tokenRowCount: number,
+  eventRowCount: number,
+): any[][] {
+  const aoa: any[][] = [];
+  aoa.push(["Campaign reference summary"]);
+  aoa.push([`Campaign: ${campaignCode}`]);
+  aoa.push([`Data source: ${dataSource}`]);
+  aoa.push([`Generated: ${new Date().toISOString()}`]);
+  aoa.push([`Rows in Tokens tab: ${tokenRowCount}`]);
+  aoa.push([`Rows in Events tab: ${eventRowCount}`]);
+  aoa.push([]);
+
+  aoa.push(["Two-lane metrics (depth-corrected via public.token_lineage)"]);
+  aoa.push(["Metric", "Value", "Notes"]);
+  aoa.push([
+    "Lane A — broadcast opens",
+    inputs.broadcastOpens,
+    "Tokens at true_depth = 0 (base L00 templates + per-scan L00 instances). Inflated by design; label as opens, not viewers.",
+  ]);
+  aoa.push([
+    "Lane B — approximate unique viewers (chain)",
+    inputs.chainViewers,
+    "Tokens at true_depth ≥ 1 (mint_share descendants). Orphans excluded.",
+  ]);
+  aoa.push([
+    "Data anomalies — orphan L1 tokens excluded",
+    inputs.orphanCount,
+    "Parent_token IS NULL and NOT L00-shaped. Legacy detached tokens; flagged only, not resolved here.",
+  ]);
+  aoa.push([
+    "Max observed depth",
+    inputs.maxDepth,
+    "From token_lineage.true_depth (post-fix).",
+  ]);
+  aoa.push([
+    "Any-hop completion rate",
+    inputs.anyHopCompletionRate == null
+      ? "n/a (no chain tokens)"
+      : `${(inputs.anyHopCompletionRate * 100).toFixed(1)}% (${inputs.anyHopCompletionNumerator}/${inputs.anyHopCompletionDenominator})`,
+    "Blend across all hops: fraction of chain tokens that produced any child.",
+  ]);
+  aoa.push([]);
+
+  aoa.push(["Depth histogram (true_depth, non-orphan)"]);
+  aoa.push(["Depth", "Token count"]);
+  const hist = inputs.depthHistogram || [];
+  if (hist.length === 0) aoa.push(["(none)", 0]);
+  for (const h of hist) aoa.push([h.depth, h.count]);
+  aoa.push([]);
+
+  aoa.push(["Per-hop conversion (starts at 1→2 by design; 0→1 is broadcast, reported above)"]);
+  aoa.push(["From depth", "To depth", "From count", "To count", "Rate"]);
+  const hops = inputs.perHopConversion || [];
+  if (hops.length === 0) aoa.push(["(none)", "", 0, 0, 0]);
+  for (const h of hops) {
+    aoa.push([h.from, h.to, h.fromCount, h.toCount, `${(h.rate * 100).toFixed(1)}%`]);
+  }
+  aoa.push([]);
+
+  aoa.push(["Coupling / provenance"]);
+  aoa.push([
+    "Depth semantics depend on the token-naming invariant across generate_token, mint_share, instantiate_l00_token, and maybe_reinstantiate_l00. Per-scan L00 instances (child matches ^l00-.+:.+$) contribute 0 to true_depth; every other edge contributes 1. See docs/decisions/campaign-story/2026-07-08_campaign-story-v2_feature-doc_lovable.md.",
+  ]);
+  return aoa;
+}
+
+export async function exportCampaignXlsx(
+  campaignCode: string,
+  dataSource: DataSource,
+): Promise<{ tokens: number; events: number }> {
+  const campaignId = await fetchCampaignId(campaignCode);
+  if (!campaignId) throw new Error(`Campaign not found for code ${campaignCode}`);
+
+  // Compute the metric layer for the Reference tab. `simulated` and `real`
+  // map cleanly; `all` renders the real-data view (metric layer is
+  // per-source and the honest label is "real" without simulator noise).
+  const metricSource: "real" | "simulated" =
+    dataSource === "simulated" ? "simulated" : "real";
+  const inputs = await computeCampaignStoryInputs(supabase, {
+    campaignCode,
+    campaignId,
+    dataSource: metricSource,
+  });
+
+  // ── Tokens
+  const tokenRows = await fetchAll<any>((from, to) =>
+    simFilter(
+      supabase
+        .from("token_lineage" as any)
+        .select("*")
+        .eq("utm_campaign", campaignCode)
+        .order("created_at", { ascending: true })
+        .range(from, to),
+      dataSource,
+    ),
+  );
+
+  // ── Events (joined with lineage)
+  const lineageByToken = new Map(tokenRows.map((l) => [l.token, l]));
+  const tokenList = tokenRows.map((l) => l.token);
+  const events: any[] = [];
+  const chunk = 500;
+  for (let i = 0; i < tokenList.length; i += chunk) {
+    const slice = tokenList.slice(i, i + chunk);
+    if (slice.length === 0) break;
+    const rows = await fetchAll<any>((from, to) =>
+      simFilter(
+        supabase
+          .from("url_events")
+          .select("id, token, event_type, occurred_at, location_source, zip_code, is_simulated")
+          .in("token", slice)
+          .is("deleted_at", null)
+          .order("occurred_at", { ascending: true })
+          .range(from, to),
+        dataSource,
+      ),
+    );
+    events.push(...rows);
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // Reference tab
+  const refAoa = buildReferenceAoa(
+    campaignCode, dataSource, inputs, tokenRows.length, events.length,
+  );
+  const refWs = XLSX.utils.aoa_to_sheet(refAoa);
+  refWs["!cols"] = [{ wch: 44 }, { wch: 20 }, { wch: 90 }, { wch: 12 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, refWs, "Reference");
+
+  // Events tab
+  const eventHeaders = EVENT_SCHEMA.map((c) => c.column);
+  const eventBody = events.map((e) => {
+    const l = lineageByToken.get(e.token) || {};
+    return [
+      e.id, e.token,
+      (l as any).true_depth ?? "",
+      (l as any).stored_level ?? "",
+      (l as any).root_token ?? "",
+      e.event_type, e.occurred_at,
+      e.location_source ?? "", e.zip_code ?? "",
+      e.is_simulated,
+    ];
+  });
+  addTableSheet(wb, "Events", eventHeaders, eventBody);
+
+  // Tokens tab
+  const tokHeaders = TOKEN_SCHEMA.map((c) => c.column);
+  const tokBody = tokenRows.map((r) => tokHeaders.map((h) => (r as any)[h] ?? ""));
+  addTableSheet(wb, "Tokens", tokHeaders, tokBody);
+
+  download(
+    wb,
+    `${campaignCode}-campaign-${format(new Date(), "yyyy-MM-dd-HHmm")}.xlsx`,
+  );
+  return { tokens: tokenRows.length, events: events.length };
+}
+
