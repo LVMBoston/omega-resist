@@ -39,7 +39,7 @@ import { EventStoryDialog } from "@/components/EventStoryDialog";
 import { CampaignSnapshotSettings } from "@/components/CampaignSnapshotSettings";
 import { CampaignNarrativeButton } from "@/components/CampaignNarrativeDialog";
 import { useOfficialStart, applyOfficialStartFilter, splitEvents, formatOfficialStart } from "@/lib/officialStart";
-import { exportTokensXlsx, exportEventsXlsx } from "@/lib/exportCampaignXlsx";
+import { exportCampaignXlsx } from "@/lib/exportCampaignXlsx";
 interface UrlEvent {
   id: string;
   token: string;
