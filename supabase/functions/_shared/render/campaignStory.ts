@@ -47,8 +47,10 @@ export interface CampaignStoryInput {
   speedOriginCity: string | null;
   speedDestCity: string | null;
 
-  /** True if every depth 1..maxDepth has exactly one token. */
+  /** True if the deepest chain has a >= 3-hop single-carrier tail. */
   longestChainIsLinear?: boolean;
+  /** Length of that single-carrier tail. Used instead of maxDepth when framing the depth paragraph as persistence. */
+  singleCarrierTailHops?: number;
   /** True if the deepest token in a linear chain has no view event. */
   longestChainTerminalUnopened?: boolean;
 
