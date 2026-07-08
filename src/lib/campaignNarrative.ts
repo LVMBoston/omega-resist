@@ -7,7 +7,6 @@ export interface NarrativeData {
   campaignCreatedAt: string;
   dataSource: NarrativeDataSource;
   levelCounts: { level: number; count: number }[];
-  sproutCount: number;
   intentCount: number;
 
   viewCount: number;
@@ -20,6 +19,14 @@ export interface NarrativeData {
   lastShareAt: string | null;
   speedOriginCity: string | null;
   speedDestCity: string | null;
+
+  // Two-lane depth-corrected metrics.
+  broadcastOpens: number;
+  chainViewers: number;
+  orphanCount: number;
+  anyHopCompletionRate: number | null;
+  anyHopCompletionNumerator: number;
+  anyHopCompletionDenominator: number;
 }
 
 export type NarrativeDataSource = "real" | "simulated";
@@ -54,9 +61,6 @@ export async function fetchNarrativeAvailability(campaignCode: string): Promise<
 }
 
 export async function fetchNarrativeData(campaignCode: string, campaignId: string, dataSource: NarrativeDataSource = "real"): Promise<NarrativeData> {
-  // Single source of truth — computeCampaignStoryInputs is also called by
-  // the SSR snapshot renderer, so editor and SSR can never disagree on
-  // seeds / sprouts / views / zips / states / mediums / speed.
   const inputs = await computeCampaignStoryInputs(supabase, {
     campaignCode,
     campaignId,
@@ -68,7 +72,6 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     campaignCreatedAt: inputs.campaignActiveAnchor,
     dataSource,
     levelCounts: inputs.levelCounts,
-    sproutCount: inputs.sproutCount,
     intentCount: inputs.intentCount,
 
     viewCount: inputs.viewCount,
@@ -84,6 +87,13 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     lastShareAt: inputs.lastShareAt,
     speedOriginCity: inputs.speedOriginCity,
     speedDestCity: inputs.speedDestCity,
+
+    broadcastOpens: inputs.broadcastOpens,
+    chainViewers: inputs.chainViewers,
+    orphanCount: inputs.orphanCount,
+    anyHopCompletionRate: inputs.anyHopCompletionRate,
+    anyHopCompletionNumerator: inputs.anyHopCompletionNumerator,
+    anyHopCompletionDenominator: inputs.anyHopCompletionDenominator,
   };
 }
 
@@ -94,8 +104,9 @@ export function generateHeadlineOnly(data: NarrativeData): string {
     campaignTitle,
     campaignCreatedAt,
     dataSource,
-    levelCounts,
-    sproutCount,
+    broadcastOpens,
+    chainViewers,
+    anyHopCompletionRate,
     viewCount,
     zipCount,
     usStates,
@@ -103,40 +114,32 @@ export function generateHeadlineOnly(data: NarrativeData): string {
     maxLevel,
   } = data;
 
-  const seedCount = levelCounts.find(l => l.level === 0)?.count || 0;
   const msActive = Date.now() - new Date(campaignCreatedAt).getTime();
   const daysActive = Math.max(0, Math.floor(msActive / (1000 * 60 * 60 * 24)));
   const hoursRemainder = Math.floor((msActive % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   const lines: string[] = [];
-
   lines.push(campaignTitle);
   lines.push(dataSource === "simulated" ? "Simulation report" : "Real data report");
   lines.push(`${daysActive} days ${hoursRemainder} hours active`);
   lines.push("");
 
-  lines.push(`${seedCount} first opens`);
-  if (seedCount > 0 && sproutCount > 0) {
-    const sproutRate = Math.round((sproutCount / seedCount) * 100);
-    lines.push(`${sproutCount} sprouted (${sproutRate}%)`);
-  }
+  // Breadth
+  lines.push(`${broadcastOpens} broadcast opens`);
   lines.push("");
 
-  if (maxLevel > 0) {
-    lines.push(`Longest chain: ${maxLevel} levels`);
-
-    // Speed line
+  // Depth
+  if (chainViewers > 0) {
+    lines.push(`${chainViewers} chain shares, ${maxLevel} levels deep`);
     if (propagationSpeed.length >= 2) {
       const l0Time = new Date(propagationSpeed[0].first_mint);
       const lastLevel = propagationSpeed[propagationSpeed.length - 1];
       const lastTime = new Date(lastLevel.first_mint);
       const diffHours = Math.round((lastTime.getTime() - l0Time.getTime()) / (1000 * 60 * 60));
       let timePart: string;
-      if (diffHours < 1) {
-        timePart = "< 1 hour";
-      } else if (diffHours < 24) {
-        timePart = `${diffHours} hours`;
-      } else {
+      if (diffHours < 1) timePart = "< 1 hour";
+      else if (diffHours < 24) timePart = `${diffHours} hours`;
+      else {
         const days = Math.round(diffHours / 24);
         timePart = `${days} day${days > 1 ? "s" : ""}`;
       }
@@ -146,6 +149,13 @@ export function generateHeadlineOnly(data: NarrativeData): string {
       }
       lines.push(speedLine);
     }
+    lines.push("");
+  }
+
+  // Landing
+  if (anyHopCompletionRate !== null && data.anyHopCompletionDenominator > 0) {
+    const pct = Math.round(anyHopCompletionRate * 100);
+    lines.push(`${pct}% of shares reached another opener (${data.anyHopCompletionNumerator}/${data.anyHopCompletionDenominator})`);
     lines.push("");
   }
 
@@ -172,7 +182,6 @@ function generateFullStory(data: NarrativeData): string {
     nowMs: Date.now(),
     dataSource: data.dataSource,
     seedCount,
-    sproutCount: data.sproutCount,
     intentCount: data.intentCount,
 
     viewCount: data.viewCount,
@@ -188,6 +197,13 @@ function generateFullStory(data: NarrativeData): string {
     lastShareAt: data.lastShareAt,
     speedOriginCity: data.speedOriginCity,
     speedDestCity: data.speedDestCity,
+
+    broadcastOpens: data.broadcastOpens,
+    chainViewers: data.chainViewers,
+    orphanCount: data.orphanCount,
+    anyHopCompletionRate: data.anyHopCompletionRate,
+    anyHopCompletionNumerator: data.anyHopCompletionNumerator,
+    anyHopCompletionDenominator: data.anyHopCompletionDenominator,
   });
 }
 
