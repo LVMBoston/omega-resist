@@ -39,7 +39,7 @@ import { EventStoryDialog } from "@/components/EventStoryDialog";
 import { CampaignSnapshotSettings } from "@/components/CampaignSnapshotSettings";
 import { CampaignNarrativeButton } from "@/components/CampaignNarrativeDialog";
 import { useOfficialStart, applyOfficialStartFilter, splitEvents, formatOfficialStart } from "@/lib/officialStart";
-import { exportTokensXlsx, exportEventsXlsx } from "@/lib/exportCampaignXlsx";
+import { exportCampaignXlsx } from "@/lib/exportCampaignXlsx";
 interface UrlEvent {
   id: string;
   token: string;
@@ -575,31 +575,25 @@ export default function CampaignDashboard({
     }
   };
 
-  // Export EventsV2 to XLSX. Two workbooks: one keyed by token, one by event.
-  // Both honor the real/simulated data-source selector; other UI filters are ignored on purpose
-  // so the export always covers the full campaign.
-  const [isExportingTokens, setIsExportingTokens] = useState(false);
-  const [isExportingEvents, setIsExportingEvents] = useState(false);
+  // Consolidated XLSX export — one workbook with Reference, Events, Tokens tabs.
+  // Honors the real/simulated data-source selector; other UI filters are ignored on
+  // purpose so the export always covers the full campaign.
+  const [isExporting, setIsExporting] = useState(false);
 
-  const runExport = async (
-    kind: "tokens" | "events",
-  ) => {
+  const runExport = async () => {
     if (!selectedCampaign) {
       toast({ variant: "destructive", title: "No campaign selected" });
       return;
     }
-    const setBusy = kind === "tokens" ? setIsExportingTokens : setIsExportingEvents;
-    setBusy(true);
+    setIsExporting(true);
     try {
       const source = (dataSourceFilter === "simulated" ? "simulated"
         : dataSourceFilter === "real" ? "real"
         : "all") as "real" | "simulated" | "all";
-      const count = kind === "tokens"
-        ? await exportTokensXlsx(selectedCampaign, source)
-        : await exportEventsXlsx(selectedCampaign, source);
+      const { tokens, events } = await exportCampaignXlsx(selectedCampaign, source);
       toast({
         title: "Export complete",
-        description: `Exported ${count} ${kind === "tokens" ? "tokens" : "events"} (${source}).`,
+        description: `Exported ${tokens} tokens and ${events} events (${source}).`,
       });
     } catch (err) {
       console.error(err);
@@ -609,9 +603,10 @@ export default function CampaignDashboard({
         description: err instanceof Error ? err.message : "Unknown error",
       });
     } finally {
-      setBusy(false);
+      setIsExporting(false);
     }
   };
+
 
 
   const handleClearSimulationData = async (scope: "current" | "all") => {
@@ -1020,14 +1015,11 @@ export default function CampaignDashboard({
                           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                           Refresh
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => runExport("tokens")} disabled={isExportingTokens}>
+                        <Button variant="outline" size="sm" onClick={runExport} disabled={isExporting}>
                           <Download className="h-4 w-4 mr-2" />
-                          {isExportingTokens ? "Exporting…" : "Export Token XLSX"}
+                          {isExporting ? "Exporting…" : "Export XLSX"}
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => runExport("events")} disabled={isExportingEvents}>
-                          <Download className="h-4 w-4 mr-2" />
-                          {isExportingEvents ? "Exporting…" : "Export Event XLSX"}
-                        </Button>
+
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm">
