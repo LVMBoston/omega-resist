@@ -511,7 +511,7 @@ export async function computeCampaignStoryInputs(
     since,
     levelCounts,
     seedCount,
-    sproutCount,
+    
     intentCount,
 
     viewCount: (viewsRes as any).count || 0,
