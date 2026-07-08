@@ -219,14 +219,15 @@ export async function computeCampaignStoryInputs(
     : 0;
   const seedCount = levelTotals.get(0) || 0;
 
-  // Sprouts = DISTINCT L00 parents with children (matches editor definition).
+  // Distinct L00 parents with children (used below to compute intentCount).
+  // The historical "sproutCount" derived from this set was retired on
+  // 2026-07-08 in favor of Lane B (chainViewers).
   const sproutChildren = (sproutsRes.data || []) as any[];
   const parentTokens = new Set(
     sproutChildren
       .map((t) => t.parent_token)
       .filter(Boolean),
   );
-  const sproutCount = parentTokens.size;
 
   // Intent count = sprouted parents where NO child has been viewed yet
   // (matches the orange/amber map-marker border state in SamizdatMap).
