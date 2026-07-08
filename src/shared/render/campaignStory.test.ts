@@ -46,7 +46,7 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
   it("carries the DEPTH fact (chain shares + hops) distinct from breadth", () => {
     const out = formatCampaignStory(baseInput());
     expect(out).toContain("🔗 That broadcast produced 8 downstream shares");
-    expect(out).toContain("chain depth of 2 levels");
+    expect(out).toContain("walking 2 hops from a seed at its furthest");
   });
 
   it("carries the LANDING fact (any-hop conversion) distinct from depth", () => {
