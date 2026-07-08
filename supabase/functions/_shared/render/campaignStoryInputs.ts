@@ -531,6 +531,7 @@ export async function computeCampaignStoryInputs(
 
     propagationSpeed,
     longestChainIsLinear,
+    singleCarrierTailHops,
     longestChainTerminalUnopened,
     shareMediums,
     lastShareAt,
