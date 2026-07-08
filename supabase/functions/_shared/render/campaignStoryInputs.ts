@@ -67,7 +67,20 @@ export interface CampaignStoryInputResult {
   anyHopCompletionNumerator: number;
   anyHopCompletionDenominator: number;
 
+  /**
+   * Propagation speed keyed by true_depth (from token_lineage), NOT the
+   * clamped tokens.level column. `level` field name kept for backwards
+   * compatibility with consumers; value is true_depth.
+   */
   propagationSpeed: { level: number; firstMintAt: string }[];
+  /**
+   * True when the deepest chain is a single-carrier linear walk
+   * (branching factor 1 at every depth 1..max). Prevents the story
+   * from framing a persistence chain as viral multi-person spread.
+   */
+  longestChainIsLinear: boolean;
+  /** True when the deepest token in a linear chain has no view event. */
+  longestChainTerminalUnopened: boolean;
   shareMediums: { medium: string; count: number }[];
   lastShareAt: string | null;
   speedOriginCity: string | null;
