@@ -32,7 +32,7 @@ export interface CampaignStoryInputResult {
 
   levelCounts: { level: number; count: number }[];
   seedCount: number;
-  sproutCount: number;
+  
   /**
    * Seeds with "share intent" — L00 parents that have generated at least
    * one child share link but no child has been viewed yet. Matches the
