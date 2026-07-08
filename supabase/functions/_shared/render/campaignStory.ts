@@ -146,7 +146,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
       const d = Math.round(diffHours / 24);
       timePart = `${d} day${d > 1 ? "s" : ""}`;
     }
-    speedNarrative = `Fastest share: From the first open shared to the first Level ${last.level} share took ${timePart}.`;
+    speedNarrative = `Fastest share: From the first open shared to the first depth-${last.level} share took ${timePart}.`;
     if (speedOriginCity && speedDestCity) {
       speedNarrative = speedNarrative.slice(0, -1) +
         `; ${speedOriginCity} to ${speedDestCity}.`;
