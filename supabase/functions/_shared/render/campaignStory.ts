@@ -228,16 +228,29 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   // ── 2. DEPTH ──────────────────────────────────────────────────────
   // Unique fact: how far the chain walked from a seed. If chainViewers
   // is zero we skip the paragraph rather than pad it with "0 shares".
+  // When the deepest chain is single-carrier linear (branching factor 1
+  // at every hop), the paragraph reframes it as persistence — one
+  // person carrying the message — and explicitly does NOT imply viral
+  // multi-person spread.
   if (chainViewers > 0) {
-    let depthLine = `🔗 That broadcast produced ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"} (Lane B: mint_share descendants, orphans excluded)`;
-    if (maxDepth >= 1) {
-      depthLine += `, reaching a chain depth of ${maxDepth} level${maxDepth === 1 ? "" : "s"}`;
-      if (maxDepth >= 3) {
-        depthLine += ` — someone opened it, shared it, and the person they shared with shared again`;
+    if (longestChainIsLinear && maxDepth >= 3) {
+      let carrierLine = `🔗 The deepest chain was carried by a single persistent sharer across ${maxDepth} hops — branching factor 1 at every depth, not multi-person spread`;
+      if (longestChainTerminalUnopened) {
+        carrierLine += `; the last share was never opened`;
       }
+      carrierLine += `. (Lane B totals: ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"}, orphans excluded.)`;
+      lines.push(carrierLine);
+      lines.push(
+        `Depth is persistence here, not reach — see the breadth and landing paragraphs for the reach fact.`,
+      );
+    } else {
+      let depthLine = `🔗 That broadcast produced ${chainViewers} downstream share${chainViewers === 1 ? "" : "s"} (Lane B: mint_share descendants, orphans excluded)`;
+      if (maxDepth >= 1) {
+        depthLine += `, walking ${maxDepth} hop${maxDepth === 1 ? "" : "s"} from a seed at its furthest`;
+      }
+      depthLine += ".";
+      lines.push(depthLine);
     }
-    depthLine += ".";
-    lines.push(depthLine);
     lines.push("");
   }
 
