@@ -23,6 +23,7 @@ import { mintL00 } from "@/lib/virality/mint";
 import { deriveUtmMedium } from "@/lib/virality/deriveUtmMedium";
 import { shortenUrlsBatch } from "@/lib/virality/shortener";
 import { TokenDisplay } from "@/components/TokenDisplay";
+import PayloadReferencePanel from "@/components/PayloadReferencePanel";
 import { QrDefaultsDialog } from "@/components/QrDefaultsDialog";
 import { RecomputeUtmMediumDialog } from "@/components/RecomputeUtmMediumDialog";
 import {
