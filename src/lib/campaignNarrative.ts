@@ -138,8 +138,8 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   // fact is never presented as viral spread. Never lead with "N levels
   // deep" as evidence of reach; that's what breadth and landing say.
   if (chainViewers > 0) {
-    if (data.longestChainIsLinear && maxLevel >= 3) {
-      let carrier = `Deepest chain: one persistent sharer, ${maxLevel} hops`;
+    if (data.longestChainIsLinear && data.singleCarrierTailHops >= 3) {
+      let carrier = `Deepest chain tail: one sharer, ${data.singleCarrierTailHops} single-carrier hops`;
       if (data.longestChainTerminalUnopened) carrier += ` (last share unopened)`;
       lines.push(carrier);
     } else {
