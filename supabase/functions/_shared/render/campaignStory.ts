@@ -37,12 +37,20 @@ export interface CampaignStoryInput {
   /** Maximum chain depth (0 = no shares yet). */
   maxDepth: number;
 
-  /** Sorted by minted_at ascending. One entry per level. */
+  /**
+   * Sorted by minted_at ascending. `level` is true_depth (from
+   * token_lineage), NOT the clamped tokens.level column.
+   */
   propagationSpeed: { level: number; firstMintAt: string }[];
   shareMediums: { medium: string; count: number }[];
   lastShareAt: string | null;
   speedOriginCity: string | null;
   speedDestCity: string | null;
+
+  /** True if every depth 1..maxDepth has exactly one token. */
+  longestChainIsLinear?: boolean;
+  /** True if the deepest token in a linear chain has no view event. */
+  longestChainTerminalUnopened?: boolean;
 
   /** ── Two-lane depth-corrected metrics (from token_lineage). ──── */
   broadcastOpens: number;
