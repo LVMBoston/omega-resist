@@ -28,6 +28,7 @@ export interface NarrativeData {
   anyHopCompletionNumerator: number;
   anyHopCompletionDenominator: number;
   longestChainIsLinear: boolean;
+  singleCarrierTailHops: number;
   longestChainTerminalUnopened: boolean;
 }
 
