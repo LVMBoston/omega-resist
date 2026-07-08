@@ -219,6 +219,7 @@ function generateFullStory(data: NarrativeData): string {
     anyHopCompletionNumerator: data.anyHopCompletionNumerator,
     anyHopCompletionDenominator: data.anyHopCompletionDenominator,
     longestChainIsLinear: data.longestChainIsLinear,
+    singleCarrierTailHops: data.singleCarrierTailHops,
     longestChainTerminalUnopened: data.longestChainTerminalUnopened,
   });
 }
