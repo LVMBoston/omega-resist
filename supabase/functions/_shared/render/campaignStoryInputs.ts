@@ -366,7 +366,7 @@ export async function computeCampaignStoryInputs(
     while (true) {
       const q = supabase
         .from("token_lineage")
-        .select("token, parent_token, true_depth, is_seed")
+        .select("token, parent_token, true_depth, is_seed, created_at, l00_instance")
         .eq("utm_campaign", campaignCode)
         .eq("is_simulated", isSimulated)
         .range(from, from + pageSize - 1);
