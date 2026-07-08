@@ -488,14 +488,23 @@ export async function exportCampaignXlsx(
     events.push(...rows);
   }
 
+  // Classify every token_lineage row once, then reuse the classification
+  // for both the Tokens tab and the reconciliation block.
+  const classified = tokenRows.map((r) => ({ row: r, cls: classifyLineageRow(r) }));
+  const reconciliation = {
+    laneA: classified.filter((x) => x.cls.lane === "A").length,
+    laneB: classified.filter((x) => x.cls.lane === "B").length,
+    orphan: classified.filter((x) => x.cls.lane === "ORPHAN").length,
+  };
+
   const wb = XLSX.utils.book_new();
 
   // Reference tab
   const refAoa = buildReferenceAoa(
-    campaignCode, dataSource, inputs, tokenRows.length, events.length,
+    campaignCode, dataSource, inputs, tokenRows.length, events.length, reconciliation,
   );
   const refWs = XLSX.utils.aoa_to_sheet(refAoa);
-  refWs["!cols"] = [{ wch: 44 }, { wch: 20 }, { wch: 90 }, { wch: 12 }, { wch: 12 }];
+  refWs["!cols"] = [{ wch: 44 }, { wch: 22 }, { wch: 32 }, { wch: 14 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, refWs, "Reference");
 
   // Events tab
@@ -514,9 +523,12 @@ export async function exportCampaignXlsx(
   });
   addTableSheet(wb, "Events", eventHeaders, eventBody);
 
-  // Tokens tab
+  // Tokens tab (with lane + is_orphan columns)
   const tokHeaders = TOKEN_SCHEMA.map((c) => c.column);
-  const tokBody = tokenRows.map((r) => tokHeaders.map((h) => (r as any)[h] ?? ""));
+  const tokBody = classified.map(({ row, cls }) => {
+    const enriched = { ...(row as any), lane: cls.lane, is_orphan: cls.is_orphan };
+    return tokHeaders.map((h) => enriched[h] ?? "");
+  });
   addTableSheet(wb, "Tokens", tokHeaders, tokBody);
 
   download(
