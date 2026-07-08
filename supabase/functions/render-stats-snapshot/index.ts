@@ -520,6 +520,7 @@ async function calculateMetrics(supabase: any, campaignCode: string): Promise<Re
         anyHopCompletionNumerator: inputs.anyHopCompletionNumerator,
         anyHopCompletionDenominator: inputs.anyHopCompletionDenominator,
         longestChainIsLinear: inputs.longestChainIsLinear,
+        singleCarrierTailHops: inputs.singleCarrierTailHops,
         longestChainTerminalUnopened: inputs.longestChainTerminalUnopened,
         includeTitle: true,
       });
