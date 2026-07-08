@@ -373,6 +373,107 @@ export async function computeCampaignStoryInputs(
     ? Math.max(maxDepth, maxObservedDepth)
     : maxDepth;
 
+  // ── Propagation speed from true_depth (NOT tokens.level). ──────────
+  // First-mint per depth from non-orphan lineage rows, sorted by
+  // created_at (= tokens.minted_at) ascending. This is the last consumer
+  // that used to read the clamped stored_level column; the story's speed
+  // narrative now names true depth.
+  const firstByDepth = new Map<number, any>();
+  const sortedNonOrphan = [...nonOrphan].sort((a, b) => {
+    const ta = new Date(a.created_at || 0).getTime();
+    const tb = new Date(b.created_at || 0).getTime();
+    return ta - tb;
+  });
+  for (const r of sortedNonOrphan) {
+    const d = Number(r.true_depth ?? 0);
+    if (!firstByDepth.has(d)) firstByDepth.set(d, r);
+  }
+  const propagationSpeed = Array.from(firstByDepth.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([depth, r]) => ({ level: depth, firstMintAt: r.created_at }));
+
+  // Linear-chain detection: every depth 1..max has exactly one token.
+  // Guards the story from framing single-carrier persistence as spread.
+  let longestChainIsLinear = false;
+  if (maxObservedDepth >= 1) {
+    longestChainIsLinear = true;
+    for (let d = 1; d <= maxObservedDepth; d++) {
+      if ((depthMap.get(d) || 0) !== 1) { longestChainIsLinear = false; break; }
+    }
+  }
+
+  // Terminal-unopened check for a linear chain (only relevant when linear
+  // and depth >= 1). Small extra query; skipped otherwise.
+  let longestChainTerminalUnopened = false;
+  let deepestToken: string | null = null;
+  if (longestChainIsLinear && maxObservedDepth >= 1) {
+    const deepestRow = nonOrphan.find(
+      (r) => Number(r.true_depth ?? 0) === maxObservedDepth,
+    );
+    if (deepestRow?.token) {
+      deepestToken = deepestRow.token;
+      try {
+        const { count } = await supabase.from("url_events")
+          .select("id", { count: "exact", head: true })
+          .eq("token", deepestRow.token)
+          .eq("event_type", "view")
+          .eq("is_simulated", isSimulated)
+          .is("deleted_at", null);
+        longestChainTerminalUnopened = (count || 0) === 0;
+      } catch (_e) {
+        // Non-fatal — leave flag false rather than claim unopened.
+      }
+    }
+  }
+
+  // ── Speed origin/destination cities (from lineage; true_depth). ────
+  let speedOriginCity: string | null = null;
+  let speedDestCity: string | null = null;
+  if (effectiveMaxDepth >= 1 && propagationSpeed.length >= 2) {
+    try {
+      const firstD1 = firstByDepth.get(1);
+      const lastEntry = propagationSpeed[propagationSpeed.length - 1];
+      if (firstD1?.token) {
+        const originRes = await supabase.from("url_events")
+          .select("city, region")
+          .eq("token", firstD1.token)
+          .eq("is_simulated", isSimulated)
+          .is("deleted_at", null)
+          .not("city", "is", null)
+          .order("occurred_at", { ascending: true })
+          .limit(1);
+        const oe = (originRes.data as any)?.[0];
+        if (oe?.city) {
+          speedOriginCity = oe.region ? `${oe.city}, ${oe.region}` : oe.city;
+        }
+        // Destination: token at max true_depth (deepestToken if we have
+        // it, else the firstByDepth entry for the last depth). Direct
+        // lookup — no l00_instance clamp — since lineage already scopes
+        // us to one campaign.
+        const destTokenId = deepestToken
+          || (firstByDepth.get(lastEntry.level) as any)?.token;
+        if (destTokenId && lastEntry.level > 1) {
+          const destEvtRes = await supabase.from("url_events")
+            .select("city, region")
+            .eq("token", destTokenId)
+            .eq("is_simulated", isSimulated)
+            .is("deleted_at", null)
+            .not("city", "is", null)
+            .order("occurred_at", { ascending: true })
+            .limit(1);
+          const de = (destEvtRes.data as any)?.[0];
+          if (de?.city) {
+            speedDestCity = de.region ? `${de.city}, ${de.region}` : de.city;
+          }
+        }
+      }
+    } catch (e) {
+      // Non-fatal; speed narrative just omits the city clause.
+      // eslint-disable-next-line no-console
+      console.warn("[campaignStoryInputs] speed geo lookup failed:", e);
+    }
+  }
+
   return {
     campaignTitle: (campaignBase as any)?.title || campaignCode,
     campaignActiveAnchor:
@@ -402,6 +503,8 @@ export async function computeCampaignStoryInputs(
     anyHopCompletionDenominator: anyHopDen,
 
     propagationSpeed,
+    longestChainIsLinear,
+    longestChainTerminalUnopened,
     shareMediums,
     lastShareAt,
     speedOriginCity,
