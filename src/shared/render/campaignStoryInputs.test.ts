@@ -4,12 +4,12 @@ import { computeCampaignStoryInputs } from "./campaignStoryInputs";
 /**
  * Regression tests for the campaign-story metric layer.
  *
- * - Sprout count = distinct L00 parent tokens with children (not total shares).
  * - Two-lane metrics (2026-07-08): orphans excluded from both lanes;
  *   perHopConversion starts at 1→2 (never 0→1).
+ * - The historical "sproutCount" field was retired 2026-07-08.
  */
-describe("computeCampaignStoryInputs — sprout definition", () => {
-  it("counts sprouts as DISTINCT parent tokens, not total L01+ shares", async () => {
+describe("computeCampaignStoryInputs — intent + seed accounting", () => {
+  it("computes seedCount from level buckets (sproutCount is retired)", async () => {
     const sproutRows = [
       { token: "a1", parent_token: "A" },
       { token: "a2", parent_token: "A" },
@@ -34,7 +34,7 @@ describe("computeCampaignStoryInputs — sprout definition", () => {
     });
 
     expect(result.seedCount).toBe(3);
-    expect(result.sproutCount).toBe(2);
+    expect("sproutCount" in result).toBe(false);
   });
 });
 
