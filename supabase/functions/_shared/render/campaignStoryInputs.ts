@@ -342,6 +342,86 @@ export async function computeCampaignStoryInputs(
     }
   }
 
+  // ── Two-lane metrics from token_lineage view (depth-corrected). ────
+  // Pull the whole campaign lineage in pages of 1000 to bypass the
+  // Supabase default row cap; every downstream derivation depends on it.
+  const lineageRows: any[] = [];
+  {
+    const pageSize = 1000;
+    let from = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const q = supabase
+        .from("token_lineage")
+        .select("token, parent_token, true_depth, is_seed")
+        .eq("utm_campaign", campaignCode)
+        .eq("is_simulated", isSimulated)
+        .range(from, from + pageSize - 1);
+      const { data, error } = await (since ? q.gte("created_at", since) : q);
+      if (error) break;
+      const chunk = (data || []) as any[];
+      lineageRows.push(...chunk);
+      if (chunk.length < pageSize) break;
+      from += pageSize;
+    }
+  }
+
+  // Orphan = parent_token IS NULL AND token is not an L00-shaped id.
+  // (Base L00 templates are also parentless but always start with 'l00-'.)
+  const isOrphan = (r: any) =>
+    r.parent_token == null && !(typeof r.token === "string" && r.token.startsWith("l00-"));
+  const orphanCount = lineageRows.filter(isOrphan).length;
+  const nonOrphan = lineageRows.filter((r) => !isOrphan(r));
+
+  const depthMap = new Map<number, number>();
+  let broadcastOpens = 0;
+  let chainViewers = 0;
+  for (const r of nonOrphan) {
+    const d = Number(r.true_depth ?? 0);
+    depthMap.set(d, (depthMap.get(d) || 0) + 1);
+    if (d === 0) broadcastOpens += 1;
+    else if (d >= 1) chainViewers += 1;
+  }
+  const depthHistogram = Array.from(depthMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([depth, count]) => ({ depth, count }));
+
+  // Per-hop conversion, starting at 1→2 (skip 0→1 by design — the plan
+  // treats the L00-to-L01 transition as broadcast conversion, reported
+  // elsewhere, not as a chain hop).
+  const perHopConversion: {
+    from: number; to: number; fromCount: number; toCount: number; rate: number;
+  }[] = [];
+  const maxObservedDepth = depthHistogram.length > 0
+    ? depthHistogram[depthHistogram.length - 1].depth : 0;
+  for (let d = 1; d < maxObservedDepth; d++) {
+    const fromCount = depthMap.get(d) || 0;
+    const toCount = depthMap.get(d + 1) || 0;
+    if (fromCount === 0) continue;
+    perHopConversion.push({
+      from: d, to: d + 1, fromCount, toCount,
+      rate: toCount / fromCount,
+    });
+  }
+
+  // Any-hop completion: fraction of chain tokens (depth >= 1, non-orphan)
+  // that produced at least one child. Denominator excludes the deepest
+  // observed depth per chain (they have no chance to produce a child yet
+  // in-window); simplest honest form: parents-set ∩ chain set.
+  const chainTokens = new Set(nonOrphan.filter((r) => Number(r.true_depth ?? 0) >= 1).map((r) => r.token));
+  const parentsSet = new Set(
+    nonOrphan.map((r) => r.parent_token).filter(Boolean),
+  );
+  let anyHopNum = 0;
+  chainTokens.forEach((t) => { if (parentsSet.has(t)) anyHopNum += 1; });
+  const anyHopDen = chainTokens.size;
+  const anyHopCompletionRate = anyHopDen > 0 ? anyHopNum / anyHopDen : null;
+
+  // Prefer true_depth for maxDepth when lineage is available.
+  const effectiveMaxDepth = depthHistogram.length > 0
+    ? Math.max(maxDepth, maxObservedDepth)
+    : maxDepth;
+
   return {
     campaignTitle: (campaignBase as any)?.title || campaignCode,
     campaignActiveAnchor:
@@ -359,7 +439,17 @@ export async function computeCampaignStoryInputs(
     stateCount: usStates.length,
     usStates,
     internationalCountries,
-    maxDepth,
+    maxDepth: effectiveMaxDepth,
+
+    broadcastOpens,
+    chainViewers,
+    orphanCount,
+    depthHistogram,
+    perHopConversion,
+    anyHopCompletionRate,
+    anyHopCompletionNumerator: anyHopNum,
+    anyHopCompletionDenominator: anyHopDen,
+
     propagationSpeed,
     shareMediums,
     lastShareAt,
@@ -367,3 +457,4 @@ export async function computeCampaignStoryInputs(
     speedDestCity,
   };
 }
+
