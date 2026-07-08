@@ -98,6 +98,7 @@ export async function fetchNarrativeData(campaignCode: string, campaignId: strin
     anyHopCompletionNumerator: inputs.anyHopCompletionNumerator,
     anyHopCompletionDenominator: inputs.anyHopCompletionDenominator,
     longestChainIsLinear: inputs.longestChainIsLinear,
+    singleCarrierTailHops: inputs.singleCarrierTailHops,
     longestChainTerminalUnopened: inputs.longestChainTerminalUnopened,
   };
 }
