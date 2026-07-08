@@ -348,6 +348,7 @@ function buildReferenceAoa(
   inputs: any,
   tokenRowCount: number,
   eventRowCount: number,
+  reconciliation: { laneA: number; laneB: number; orphan: number },
 ): any[][] {
   const aoa: any[][] = [];
   aoa.push(["Campaign reference summary"]);
@@ -362,23 +363,23 @@ function buildReferenceAoa(
   aoa.push(["Metric", "Value", "Notes"]);
   aoa.push([
     "Lane A — broadcast opens",
-    inputs.broadcastOpens,
+    inputs.broadcastOpens ?? 0,
     "Tokens at true_depth = 0 (base L00 templates + per-scan L00 instances). Inflated by design; label as opens, not viewers.",
   ]);
   aoa.push([
     "Lane B — approximate unique viewers (chain)",
-    inputs.chainViewers,
+    inputs.chainViewers ?? 0,
     "Tokens at true_depth ≥ 1 (mint_share descendants). Orphans excluded.",
   ]);
   aoa.push([
-    "Data anomalies — orphan L1 tokens excluded",
-    inputs.orphanCount,
-    "Parent_token IS NULL and NOT L00-shaped. Legacy detached tokens; flagged only, not resolved here.",
+    "Data anomalies — orphan tokens excluded",
+    inputs.orphanCount ?? 0,
+    "parent_token IS NULL and NOT L00-shaped (legacy hard-deleted parents). Excluded from both lane totals; visible on the Tokens tab with lane=ORPHAN / is_orphan=TRUE.",
   ]);
   aoa.push([
     "Max observed depth",
-    inputs.maxDepth,
-    "From token_lineage.true_depth (post-fix).",
+    inputs.maxDepth ?? 0,
+    "From token_lineage.true_depth (un-clamped).",
   ]);
   aoa.push([
     "Any-hop completion rate",
@@ -386,6 +387,27 @@ function buildReferenceAoa(
       ? "n/a (no chain tokens)"
       : `${(inputs.anyHopCompletionRate * 100).toFixed(1)}% (${inputs.anyHopCompletionNumerator}/${inputs.anyHopCompletionDenominator})`,
     "Blend across all hops: fraction of chain tokens that produced any child.",
+  ]);
+  aoa.push([]);
+
+  // ── Reconciliation: recompute Lane A/B/orphan from the raw Tokens tab
+  // in this same workbook and diff against the metric-layer numbers.
+  const laneAOk = reconciliation.laneA === (inputs.broadcastOpens ?? 0);
+  const laneBOk = reconciliation.laneB === (inputs.chainViewers ?? 0);
+  const orphanOk = reconciliation.orphan === (inputs.orphanCount ?? 0);
+  const allOk = laneAOk && laneBOk && orphanOk;
+  aoa.push(["Reconciliation — do the totals above recompute from the raw Tokens tab?"]);
+  aoa.push(["Metric", "Reference value", "Recomputed from Tokens tab", "Match?"]);
+  aoa.push(["Lane A", inputs.broadcastOpens ?? 0, reconciliation.laneA, laneAOk ? "OK" : "MISMATCH"]);
+  aoa.push(["Lane B", inputs.chainViewers ?? 0, reconciliation.laneB, laneBOk ? "OK" : "MISMATCH"]);
+  aoa.push(["Orphans", inputs.orphanCount ?? 0, reconciliation.orphan, orphanOk ? "OK" : "MISMATCH"]);
+  aoa.push([
+    "Overall",
+    "",
+    "",
+    allOk
+      ? "OK — every summary number recomputes from raw"
+      : "MISMATCH — see rows above; metric layer and raw disagree",
   ]);
   aoa.push([]);
 
