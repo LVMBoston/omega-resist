@@ -216,6 +216,8 @@ function generateFullStory(data: NarrativeData): string {
     anyHopCompletionRate: data.anyHopCompletionRate,
     anyHopCompletionNumerator: data.anyHopCompletionNumerator,
     anyHopCompletionDenominator: data.anyHopCompletionDenominator,
+    longestChainIsLinear: data.longestChainIsLinear,
+    longestChainTerminalUnopened: data.longestChainTerminalUnopened,
   });
 }
 
