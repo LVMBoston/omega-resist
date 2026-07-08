@@ -97,12 +97,14 @@ function download(wb: XLSX.WorkBook, filename: string) {
 
 const TOKEN_SCHEMA: { column: string; description: string }[] = [
   { column: "token", description: "Unique token id. Base L00 tokens are the QR/link template (e.g. l00-<mobilize>-<utmid>); per-scan L00 instances append :xxxxxx." },
+  { column: "lane", description: "A = Lane A (broadcast surface: base L00 template + per-scan L00 instances, true_depth=0). B = Lane B (mint_share descendants, true_depth>=1). ORPHAN = parent_token IS NULL and NOT L00-shaped; excluded from both lane totals." },
+  { column: "is_orphan", description: "TRUE when parent_token IS NULL and the token id is not L00-shaped. Represents legacy hard-deleted-parent rows; counted only in the anomaly line on the Reference tab." },
   { column: "stored_level", description: "The `level` column stored on the tokens row at mint time (0-3, clamped by mint_share)." },
   { column: "true_depth", description: "Depth computed by walking parent_token back to the root. Not clamped. Can exceed 3 where stored_level was capped." },
   { column: "level_depth_mismatch", description: "TRUE when stored_level != true_depth. Every row where this is TRUE means the stored level is wrong or clamped." },
-  { column: "parent_token", description: "The token this token was minted off. NULL for base L00 rows." },
+  { column: "parent_token", description: "The token this token was minted off. NULL for base L00 rows and orphans." },
   { column: "root_token", description: "The originating token of this lineage. Equal to `token` for base L00 rows; for L00 instances, equal to the base L00 token." },
-  { column: "is_seed", description: "TRUE when parent_token IS NULL. Identifies the base L00 template rows created by mint_l00." },
+  { column: "is_seed", description: "TRUE when parent_token IS NULL. Identifies the base L00 template rows created by mint_l00 (also TRUE for orphans; combine with is_orphan to distinguish)." },
   { column: "is_simulated", description: "TRUE when the token was created by the simulator, not by a real scan/share." },
   { column: "minted_via", description: "Best-guess origin function. There is NO explicit `minted_via` column in the tokens table; this is derived from parent_token, level, and token shape (see Overview)." },
   { column: "created_at", description: "tokens.minted_at — when the token row was created." },
@@ -112,6 +114,24 @@ const TOKEN_SCHEMA: { column: string; description: string }[] = [
   { column: "deck_slug", description: "Deck the token pointed at when minted." },
   { column: "l00_instance", description: "For per-scan L00 instances, the token id of the instance (points to self). NULL on base L00 tokens and on L01+ children." },
 ];
+
+/**
+ * Classify a token_lineage row into Lane A (broadcast), Lane B (chain
+ * descendants) or ORPHAN (parentless-due-to-hard-delete). Uses the same
+ * rules that campaignStoryInputs.ts applies to Lane A/B/orphan counts,
+ * so the Tokens tab and the Reference tab always agree.
+ */
+function classifyLineageRow(row: any): { lane: "A" | "B" | "ORPHAN"; is_orphan: boolean } {
+  const token: string = row.token || "";
+  const isL00Shaped = /^l00-.+/.test(token);
+  const depth = Number(row.true_depth ?? 0);
+  if (row.parent_token == null) {
+    if (isL00Shaped) return { lane: "A", is_orphan: false }; // base L00 template
+    return { lane: "ORPHAN", is_orphan: true };
+  }
+  if (depth === 0) return { lane: "A", is_orphan: false }; // per-scan L00 instance
+  return { lane: "B", is_orphan: false };
+}
 
 const TOKEN_NARRATIVE = [
   "One row = one token in the tokens table (soft-deleted rows excluded).",
@@ -139,7 +159,11 @@ export async function exportTokensXlsx(
   if (rows.length === 0) throw new Error(`No tokens found for campaign ${campaignCode}`);
 
   const headers = TOKEN_SCHEMA.map((c) => c.column);
-  const body = rows.map((r) => headers.map((h) => (r as any)[h] ?? ""));
+  const body = rows.map((r) => {
+    const cls = classifyLineageRow(r);
+    const enriched = { ...(r as any), lane: cls.lane, is_orphan: cls.is_orphan };
+    return headers.map((h) => enriched[h] ?? "");
+  });
 
   const wb = XLSX.utils.book_new();
   addOverviewSheet(
@@ -324,6 +348,7 @@ function buildReferenceAoa(
   inputs: any,
   tokenRowCount: number,
   eventRowCount: number,
+  reconciliation: { laneA: number; laneB: number; orphan: number },
 ): any[][] {
   const aoa: any[][] = [];
   aoa.push(["Campaign reference summary"]);
@@ -338,23 +363,23 @@ function buildReferenceAoa(
   aoa.push(["Metric", "Value", "Notes"]);
   aoa.push([
     "Lane A — broadcast opens",
-    inputs.broadcastOpens,
+    inputs.broadcastOpens ?? 0,
     "Tokens at true_depth = 0 (base L00 templates + per-scan L00 instances). Inflated by design; label as opens, not viewers.",
   ]);
   aoa.push([
     "Lane B — approximate unique viewers (chain)",
-    inputs.chainViewers,
+    inputs.chainViewers ?? 0,
     "Tokens at true_depth ≥ 1 (mint_share descendants). Orphans excluded.",
   ]);
   aoa.push([
-    "Data anomalies — orphan L1 tokens excluded",
-    inputs.orphanCount,
-    "Parent_token IS NULL and NOT L00-shaped. Legacy detached tokens; flagged only, not resolved here.",
+    "Data anomalies — orphan tokens excluded",
+    inputs.orphanCount ?? 0,
+    "parent_token IS NULL and NOT L00-shaped (legacy hard-deleted parents). Excluded from both lane totals; visible on the Tokens tab with lane=ORPHAN / is_orphan=TRUE.",
   ]);
   aoa.push([
     "Max observed depth",
-    inputs.maxDepth,
-    "From token_lineage.true_depth (post-fix).",
+    inputs.maxDepth ?? 0,
+    "From token_lineage.true_depth (un-clamped).",
   ]);
   aoa.push([
     "Any-hop completion rate",
@@ -362,6 +387,27 @@ function buildReferenceAoa(
       ? "n/a (no chain tokens)"
       : `${(inputs.anyHopCompletionRate * 100).toFixed(1)}% (${inputs.anyHopCompletionNumerator}/${inputs.anyHopCompletionDenominator})`,
     "Blend across all hops: fraction of chain tokens that produced any child.",
+  ]);
+  aoa.push([]);
+
+  // ── Reconciliation: recompute Lane A/B/orphan from the raw Tokens tab
+  // in this same workbook and diff against the metric-layer numbers.
+  const laneAOk = reconciliation.laneA === (inputs.broadcastOpens ?? 0);
+  const laneBOk = reconciliation.laneB === (inputs.chainViewers ?? 0);
+  const orphanOk = reconciliation.orphan === (inputs.orphanCount ?? 0);
+  const allOk = laneAOk && laneBOk && orphanOk;
+  aoa.push(["Reconciliation — do the totals above recompute from the raw Tokens tab?"]);
+  aoa.push(["Metric", "Reference value", "Recomputed from Tokens tab", "Match?"]);
+  aoa.push(["Lane A", inputs.broadcastOpens ?? 0, reconciliation.laneA, laneAOk ? "OK" : "MISMATCH"]);
+  aoa.push(["Lane B", inputs.chainViewers ?? 0, reconciliation.laneB, laneBOk ? "OK" : "MISMATCH"]);
+  aoa.push(["Orphans", inputs.orphanCount ?? 0, reconciliation.orphan, orphanOk ? "OK" : "MISMATCH"]);
+  aoa.push([
+    "Overall",
+    "",
+    "",
+    allOk
+      ? "OK — every summary number recomputes from raw"
+      : "MISMATCH — see rows above; metric layer and raw disagree",
   ]);
   aoa.push([]);
 
@@ -442,14 +488,23 @@ export async function exportCampaignXlsx(
     events.push(...rows);
   }
 
+  // Classify every token_lineage row once, then reuse the classification
+  // for both the Tokens tab and the reconciliation block.
+  const classified = tokenRows.map((r) => ({ row: r, cls: classifyLineageRow(r) }));
+  const reconciliation = {
+    laneA: classified.filter((x) => x.cls.lane === "A").length,
+    laneB: classified.filter((x) => x.cls.lane === "B").length,
+    orphan: classified.filter((x) => x.cls.lane === "ORPHAN").length,
+  };
+
   const wb = XLSX.utils.book_new();
 
   // Reference tab
   const refAoa = buildReferenceAoa(
-    campaignCode, dataSource, inputs, tokenRows.length, events.length,
+    campaignCode, dataSource, inputs, tokenRows.length, events.length, reconciliation,
   );
   const refWs = XLSX.utils.aoa_to_sheet(refAoa);
-  refWs["!cols"] = [{ wch: 44 }, { wch: 20 }, { wch: 90 }, { wch: 12 }, { wch: 12 }];
+  refWs["!cols"] = [{ wch: 44 }, { wch: 22 }, { wch: 32 }, { wch: 14 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, refWs, "Reference");
 
   // Events tab
@@ -468,9 +523,12 @@ export async function exportCampaignXlsx(
   });
   addTableSheet(wb, "Events", eventHeaders, eventBody);
 
-  // Tokens tab
+  // Tokens tab (with lane + is_orphan columns)
   const tokHeaders = TOKEN_SCHEMA.map((c) => c.column);
-  const tokBody = tokenRows.map((r) => tokHeaders.map((h) => (r as any)[h] ?? ""));
+  const tokBody = classified.map(({ row, cls }) => {
+    const enriched = { ...(row as any), lane: cls.lane, is_orphan: cls.is_orphan };
+    return tokHeaders.map((h) => enriched[h] ?? "");
+  });
   addTableSheet(wb, "Tokens", tokHeaders, tokBody);
 
   download(
