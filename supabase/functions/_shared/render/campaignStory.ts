@@ -111,6 +111,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     anyHopCompletionNumerator,
     anyHopCompletionDenominator,
     longestChainIsLinear = false,
+    singleCarrierTailHops = 0,
     longestChainTerminalUnopened = false,
     includeTitle = true,
   } = input;
