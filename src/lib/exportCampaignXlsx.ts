@@ -131,6 +131,7 @@ interface ReferenceContext {
     broadcastViewEventsFromEvents: number;
     chainShares: number;
     chainViewersFromEvents: number;
+    chainSharesOpened: number;
     completedShares: number;
     views: number;
     zipCount: number;
