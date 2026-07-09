@@ -128,7 +128,7 @@ interface ReferenceContext {
   eventRowCount: number;
   recomputed: {
     seeds: number;
-    broadcastOpensFromEvents: number;
+    broadcastViewEventsFromEvents: number;
     chainShares: number;
     chainViewersFromEvents: number;
     completedShares: number;
