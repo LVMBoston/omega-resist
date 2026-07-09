@@ -92,7 +92,7 @@ const EVENT_COLUMNS: { column: string; description: string }[] = [
   { column: "region",          description: "url_events.region — reverse-geocoded region/state. Required for the US-states summary to be recomputable." },
   { column: "country",         description: "url_events.country — reverse-geocoded country. Required for the international-countries summary to be recomputable." },
   { column: "is_simulated",    description: "TRUE when the event was created by the simulator." },
-  { column: "lane",            description: "broadcast | chain | orphan — derived from the joined token via the shared classifier (orphan-first). Lane A / B counts on the Reference tab are recomputable from this column alone." },
+  { column: "lane",            description: "broadcast | chain | orphan — derived from the joined token via the shared classifier (orphan-first). Lane A recomputes as distinct tokens with true_depth = 0; Lane A view-event count is a separate diagnostic, not the headline. Lane B shares recomputes as distinct tokens with true_depth >= 1; Lane B viewers is a smaller number (distinct chain tokens with at least one view event) — surfaced separately in the completion-gap block." },
 ];
 
 const TOKEN_COLUMNS: { column: string; description: string }[] = [
