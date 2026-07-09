@@ -580,9 +580,17 @@ export async function exportCampaignXlsx(
     eventRowCount: events.length,
     recomputed: {
       seeds,
-      broadcastOpensFromEvents,
+      broadcastViewEventsFromEvents,
       chainShares,
       chainViewersFromEvents,
+      chainSharesOpened: (() => {
+        let n = 0;
+        for (const t of chainTokensWithView) {
+          const row = lineageByToken.get(t);
+          if (row && !isOrphanRow(row) && Number(row.true_depth ?? 0) >= 1) n += 1;
+        }
+        return n;
+      })(),
       completedShares,
       views,
       zipCount: zipSet.size,
