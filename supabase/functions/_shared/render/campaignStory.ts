@@ -4,7 +4,7 @@
  *
  * 2026-07-08 (v2): the "sprout" concept is retired. The story now carries
  * three distinct facts in three paragraphs, per the three-facts test:
- *   1. BREADTH   — how far the seed reached (Lane A broadcast opens, total
+ *   1. BREADTH   — how far the seed reached (Lane A distinct broadcast instances, total
  *                  view events including repeats, and channel mix).
  *   2. DEPTH     — how many hops the chain actually walked (Lane B chain
  *                  tokens and longest observed depth).
