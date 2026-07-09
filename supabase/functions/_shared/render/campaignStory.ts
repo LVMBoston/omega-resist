@@ -135,26 +135,12 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
         .join(", ")
     : "";
 
-  // Speed narrative (kept — unique fact: time-to-propagate).
-  let speedNarrative = "";
-  if (propagationSpeed.length >= 2) {
-    const l0Time = new Date(propagationSpeed[0].firstMintAt).getTime();
-    const last = propagationSpeed[propagationSpeed.length - 1];
-    const lastTime = new Date(last.firstMintAt).getTime();
-    const diffHours = Math.round((lastTime - l0Time) / (1000 * 60 * 60));
-    let timePart: string;
-    if (diffHours < 1) timePart = "under an hour";
-    else if (diffHours < 24) timePart = `just ${diffHours} hours`;
-    else {
-      const d = Math.round(diffHours / 24);
-      timePart = `${d} day${d > 1 ? "s" : ""}`;
-    }
-    speedNarrative = `Fastest share: From the first open shared to the first depth-${last.level} share took ${timePart}.`;
-    if (speedOriginCity && speedDestCity) {
-      speedNarrative = speedNarrative.slice(0, -1) +
-        `; ${speedOriginCity} to ${speedDestCity}.`;
-    }
-  }
+  // Speed narrative removed 2026-07-08: the deepest chain is typically
+  // single-carrier persistence, so timing its endpoints framed one
+  // person's solo thread as viral spread. Input fields
+  // (propagationSpeed, speedOriginCity, speedDestCity) left in the
+  // type for a follow-up cleanup.
+  void propagationSpeed; void speedOriginCity; void speedDestCity;
 
   // Geographic narrative (kept — unique fact: places).
   let geoNarrative = "";
@@ -214,7 +200,7 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   // including repeats, (c) channel mix. Nothing here restates Lane B.
   let breadthLine = `📢 The seed was opened ${broadcastOpens} time${broadcastOpens === 1 ? "" : "s"} at the source (Lane A: base QR/link scans and per-scan instances, including repeats)`;
   if (viewCount > 0 && viewCount !== broadcastOpens) {
-    breadthLine += `. All told, the content generated ${viewCount} view event${viewCount === 1 ? "" : "s"} across every level, including return visits`;
+    breadthLine += `. All told, the content generated ${viewCount} view event${viewCount === 1 ? "" : "s"} across every level`;
   }
   breadthLine += ".";
   lines.push(breadthLine);
@@ -281,10 +267,6 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     lines.push("");
   }
 
-  if (speedNarrative) {
-    lines.push(`⚡ ${speedNarrative}`);
-    lines.push("");
-  }
 
   if (geoNarrative) {
     lines.push(`📍 ${geoNarrative}`);
