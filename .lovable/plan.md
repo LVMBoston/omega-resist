@@ -1,51 +1,45 @@
-# Plan: Honest Campaign Story text + rendered diffs for review
+## Status
+Proposed — archives both brainstormed plans as future-feature docs. Neither will be built as part of this approval; approval only creates the two markdown files.
 
-## 1. Text fixes in `supabase/functions/_shared/render/campaignStory.ts`
+## What gets saved
 
-a. **Remove "including return visits."** In the breadth paragraph, the clause after `viewCount !== broadcastOpens` becomes: `All told, the content generated N view events across every level.` No substitute wording — view-event person-ness is unknowable, so no distinct fact replaces it.
+Two files under `docs/decisions/campaign-xlsx-export/`, both marked **Status: Proposed — Not Yet Implemented** with today's date (2026-07-09) in the header and filename. This deviates slightly from the decision-log rule's default "Approved & Implemented" wording because these are backlog captures, not implemented work — the rule's structure (dated filename, topic folder, preserved content) is followed.
 
-b. **Remove the "Fastest share" paragraph entirely.** Delete the `speedNarrative` construction block (lines ~139–156) and the `⚡ ${speedNarrative}` emit block (lines ~284–287). Rationale: the deepest chain is single-carrier persistence, so timing it advertises one person's solo thread as spread and contradicts the persistence paragraph above.
+### 1. `docs/decisions/campaign-xlsx-export/2026-07-09_data-shape-first_feature-doc_lovable.md`
 
-c. Leave `propagationSpeed`, `speedOriginCity`, `speedDestCity` in the `CampaignStoryInput` type unused for now. Ripping them out of the input layer is a separate cleanup.
+Captures the earlier plan:
 
-## 2. Test updates in `src/shared/render/campaignStory.test.ts`
+- 1a. Enrich derived columns on Events (`iso_week`, `days_since_campaign_start`, `days_since_parent_event`, `hour_of_day`, `day_of_week`) and Tokens (`descendant_count`, `subtree_depth`, `path_to_root`, `first_event_at`, `last_event_at`, `days_active`)
+- 1b. Convert Events and Tokens to Excel Tables (`tblEvents`, `tblTokens`) via `openpyxl.worksheet.table.Table`
+- 1c. Small LAMBDA library (Excel 2021+/365): `WALK_TO_ROOT`, `DESCENDANTS_OF`, `WOW_CHANGE`, `COHORT_COUNT`
+- 1d. "Stories" tab with 2–3 worked examples (week-over-week pivot, lane decay, cohort table)
+- 1e. Reference tab polish (bold headings, preamble)
+- 1f. Out of scope: VBA/.xlsm, new backend queries, curated-narrative changes
+- 1g. Suggested sequencing 1→5
 
-a. Drop the `"formats speed narrative with origin/destination cities"` test.
-b. Adjust the breadth-line expectation to no longer assert the removed `return visits` clause.
-c. Add a universal negative assertion on the default fixture: no rendered story contains the substring `return visit` (case-insensitive).
-d. Add a universal negative assertion on the default fixture: no rendered story contains `Fastest share`.
+### 2. `docs/decisions/campaign-xlsx-export/2026-07-09_eoa-analysis-layer_feature-doc_lovable.md`
 
-## 3. Render-dump script for eyeball review
+Captures the EoA plan just drafted:
 
-Add `scripts/dump-campaign-stories.ts`, runnable with `bunx tsx scripts/dump-campaign-stories.ts`. It:
+- 2a. Why EoA context belongs in the export
+- 2b. New EoA fetch step + `eoaById` map
+- 2c. New "EoAs" tab with per-EoA aggregates (seed_count, instance_count, chain_share_count, view_count, broadcast_opens, chain_viewers, unique_zip/state/international counts, max_depth, first/last_event_at, completed_share_count)
+- 2d. Enriched Events + Tokens tabs with `eoa_title`, `eoa_type`, `eoa_mobilize_code`, `eoa_site_name`, `eoa_city`, `eoa_state`
+- 2e. Reference tab "Top EoAs by chain activity" section + expanded cross-check
+- 2f. Composability note — Stories tab from plan #1 gains EoA as a native pivot dimension
+- 2g. Risks / open questions (cardinality cap, simulator scoping, title collisions)
+- 2h. Technical details for the implementer
 
-a. Uses the service-role key (already in `SUPABASE_SERVICE_ROLE_KEY` sandbox env) to bypass RLS and get real geo, matching what an admin sees in-app.
-b. Runs for the two campaign codes `nk3-invitation` and `rs-good-1`.
-c. Writes rendered output to `/mnt/documents/campaign-stories/<code>.md` so both files show up as downloadable artifacts.
-d. Prints the full text to stdout so the build-mode reply can paste it inline.
+### 3. Cross-link
 
-## 4. Verification (build mode)
+Each doc gets a one-line "See also" pointing at the other, so a future revisit picks up both at once.
 
-a. `bunx vitest run src/shared/render/campaignStory.test.ts` — must pass, including the two new negative assertions.
-b. Run the dump script; paste the full rendered text of both campaigns into the reply so you can read it directly. Visual check: no `return visit`, no `Fastest share`.
-c. `rg -n "return visit|Fastest share" supabase/functions/_shared/render` — expect no hits.
+## What does not change
 
-## 5. Where you can see the renders after this ships
+- No code changes to `src/lib/exportCampaignXlsx.ts` or anywhere else
+- No changes to existing decision docs
+- No new folder outside `docs/decisions/campaign-xlsx-export/`
 
-a. Editor: any campaign detail page rendering the Campaign Story hotspot.
-b. `/parity-harness` — renders `formatCampaignStory` for all campaigns side-by-side.
-c. Deck slides using `StatsPageSlide` / `HybridSlide` pick up the change after the next snapshot re-bake (SSR path uses the same formatter).
-d. `/mnt/documents/campaign-stories/*.md` — the dump-script output attached to the build-mode reply.
-e. `/fs/:token` public path — will also carry the fixed text if/when you use fridge sheets.
+## Confirmation
 
-## What does NOT change this turn
-
-- **Anon geo hole on `/fs/:token`.** Confirmed via grep: `FridgeStory.tsx` is the only anon-facing live caller of `computeCampaignStoryInputs`. All other renderers are admin/manager sessions or run under `service_role` (snapshot renderer). Since you are not currently using the fridge capability, no anonymous visitor is silently seeing zero geo today. The RPC-backed fix stays a follow-up until fridge sheets go live.
-- `url_events` RLS — unchanged, admin/manager-only.
-- Snapshot re-render trigger — public path is live via the editor; deck-slide snapshots refresh on the normal cron.
-- `sproutCount` — already stripped in a previous turn.
-- `speedOriginCity` / `speedDestCity` / `propagationSpeed` input plumbing — left in place, unused, for a follow-up cleanup.
-
-## Decision-log archive
-
-New plan → `docs/decisions/campaign-story/2026-07-08_honest-story-text_feature-doc_lovable.md` with `Status: Approved & Implemented` header. This is a **new plan**, not an update to an existing one (the closest prior is `2026-07-08_campaign-story-v2.1_feature-doc_lovable.md`, which established v2 structure; today's plan tightens two lines within that structure but is scoped narrowly enough to stand alone).
+This is a **new** pair of plan documents, not an update to an existing one. Nothing in `docs/decisions/campaign-xlsx-export/` (or elsewhere) is being modified.
