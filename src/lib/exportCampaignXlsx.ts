@@ -2,10 +2,26 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { computeCampaignStoryInputs } from "@/shared/render/campaignStoryInputs";
-
+import { formatCampaignStory } from "@/shared/render/campaignStory";
+import { classifyLane, isOrphanRow, type LineageLane } from "@/shared/render/lineageClassify";
 
 /* ------------------------------------------------------------------ *
- * Shared helpers
+ * Consolidated Campaign XLSX export
+ *
+ * Single workbook, three tabs:
+ *   1. Reference — human-readable guide + Campaign Story summary +
+ *      rendered narrative + data-anomalies line.
+ *   2. Events    — pure data (row 1 = headers, row 2+ = data).
+ *   3. Tokens    — pure data (row 1 = headers, row 2+ = data).
+ *
+ * Every summary number on the Reference tab must be recomputable using
+ * only the Events and Tokens tabs. Do not add a summary without adding
+ * a raw column that supports its recomputation.
+ *
+ * Depth semantics come from `public.token_lineage.true_depth`
+ * (un-clamped). Lane/orphan classification comes from
+ * `@/shared/render/lineageClassify` — the same predicate the metric
+ * layer uses; do NOT open-code a second copy here.
  * ------------------------------------------------------------------ */
 
 type DataSource = "real" | "simulated" | "all";
@@ -16,7 +32,6 @@ function simFilter(builder: any, dataSource: DataSource) {
   return builder;
 }
 
-/** Fetch every row in batches so we bypass Supabase's 1000-row default. */
 async function fetchAll<T = any>(build: (from: number, to: number) => any): Promise<T[]> {
   const pageSize = 1000;
   let from = 0;
@@ -55,395 +70,306 @@ function addTableSheet(
   const aoa = [headers, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = autoWidth(aoa);
-  ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+  (ws as any)["!freeze"] = { xSplit: 0, ySplit: 1 };
   XLSX.utils.book_append_sheet(wb, ws, name);
 }
 
-function addOverviewSheet(
-  wb: XLSX.WorkBook,
-  title: string,
-  narrative: string[],
-  schema: { column: string; description: string }[],
-  campaignCode: string,
-  dataSource: DataSource,
-  rowCount: number,
-) {
-  const aoa: any[][] = [];
-  aoa.push([title]);
-  aoa.push([`Campaign: ${campaignCode}`]);
-  aoa.push([`Data source: ${dataSource}`]);
-  aoa.push([`Rows in "Data" tab: ${rowCount}`]);
-  aoa.push([`Generated: ${new Date().toISOString()}`]);
-  aoa.push([]);
-  aoa.push(["What one row represents"]);
-  for (const line of narrative) aoa.push([line]);
-  aoa.push([]);
-  aoa.push(["Column dictionary"]);
-  aoa.push(["Column", "Description"]);
-  for (const row of schema) aoa.push([row.column, row.description]);
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [{ wch: 28 }, { wch: 110 }];
-  XLSX.utils.book_append_sheet(wb, ws, "Overview");
-}
-
-function download(wb: XLSX.WorkBook, filename: string) {
-  XLSX.writeFile(wb, filename, { bookType: "xlsx" });
-}
-
 /* ------------------------------------------------------------------ *
- * TOKEN export
+ * Column dictionaries (used both to build the Reference guide and to
+ * emit the raw-tab header rows). Names here are the single source of
+ * truth for column order.
  * ------------------------------------------------------------------ */
 
-const TOKEN_SCHEMA: { column: string; description: string }[] = [
-  { column: "token", description: "Unique token id. Base L00 tokens are the QR/link template (e.g. l00-<mobilize>-<utmid>); per-scan L00 instances append :xxxxxx." },
-  { column: "lane", description: "A = Lane A (broadcast surface: base L00 template + per-scan L00 instances, true_depth=0). B = Lane B (mint_share descendants, true_depth>=1). ORPHAN = parent_token IS NULL and NOT L00-shaped; excluded from both lane totals." },
-  { column: "is_orphan", description: "TRUE when parent_token IS NULL and the token id is not L00-shaped. Represents legacy hard-deleted-parent rows; counted only in the anomaly line on the Reference tab." },
-  { column: "stored_level", description: "The `level` column stored on the tokens row at mint time (0-3, clamped by mint_share)." },
-  { column: "true_depth", description: "Depth computed by walking parent_token back to the root. Not clamped. Can exceed 3 where stored_level was capped." },
-  { column: "level_depth_mismatch", description: "TRUE when stored_level != true_depth. Every row where this is TRUE means the stored level is wrong or clamped." },
-  { column: "parent_token", description: "The token this token was minted off. NULL for base L00 rows and orphans." },
-  { column: "root_token", description: "The originating token of this lineage. Equal to `token` for base L00 rows; for L00 instances, equal to the base L00 token." },
-  { column: "is_seed", description: "TRUE when parent_token IS NULL. Identifies the base L00 template rows created by mint_l00 (also TRUE for orphans; combine with is_orphan to distinguish)." },
-  { column: "is_simulated", description: "TRUE when the token was created by the simulator, not by a real scan/share." },
-  { column: "minted_via", description: "Best-guess origin function. There is NO explicit `minted_via` column in the tokens table; this is derived from parent_token, level, and token shape (see Overview)." },
-  { column: "created_at", description: "tokens.minted_at — when the token row was created." },
-  { column: "eoa_id", description: "Event/Action id this token was minted for." },
-  { column: "utm_medium", description: "Channel recorded on the token row (qr/em/sms/social/etc.)." },
-  { column: "utm_campaign", description: "Campaign code this token belongs to." },
-  { column: "deck_slug", description: "Deck the token pointed at when minted." },
-  { column: "l00_instance", description: "For per-scan L00 instances, the token id of the instance (points to self). NULL on base L00 tokens and on L01+ children." },
-];
-
-/**
- * Classify a token_lineage row into Lane A (broadcast), Lane B (chain
- * descendants) or ORPHAN (parentless-due-to-hard-delete). Uses the same
- * rules that campaignStoryInputs.ts applies to Lane A/B/orphan counts,
- * so the Tokens tab and the Reference tab always agree.
- */
-function classifyLineageRow(row: any): { lane: "A" | "B" | "ORPHAN"; is_orphan: boolean } {
-  const token: string = row.token || "";
-  const isL00Shaped = /^l00-.+/.test(token);
-  const depth = Number(row.true_depth ?? 0);
-  if (row.parent_token == null) {
-    if (isL00Shaped) return { lane: "A", is_orphan: false }; // base L00 template
-    return { lane: "ORPHAN", is_orphan: true };
-  }
-  if (depth === 0) return { lane: "A", is_orphan: false }; // per-scan L00 instance
-  return { lane: "B", is_orphan: false };
-}
-
-const TOKEN_NARRATIVE = [
-  "One row = one token in the tokens table (soft-deleted rows excluded).",
-  "This sheet is a direct dump of the public.token_lineage database view, which walks parent_token -> root to compute true_depth and compares it against stored_level.",
-  "Base L00 template tokens (created by mint_l00) and per-scan L00 instances (created by instantiate_l00_token / maybe_reinstantiate_l00) are both included. Distinguish them via is_seed and minted_via.",
-  "No URL parsing was needed to build this file; every column comes from structured fields on tokens.",
-];
-
-export async function exportTokensXlsx(
-  campaignCode: string,
-  dataSource: DataSource,
-) {
-  const rows = await fetchAll<any>((from, to) =>
-    simFilter(
-      supabase
-        .from("token_lineage" as any)
-        .select("*")
-        .eq("utm_campaign", campaignCode)
-        .order("created_at", { ascending: true })
-        .range(from, to),
-      dataSource,
-    ),
-  );
-
-  if (rows.length === 0) throw new Error(`No tokens found for campaign ${campaignCode}`);
-
-  const headers = TOKEN_SCHEMA.map((c) => c.column);
-  const body = rows.map((r) => {
-    const cls = classifyLineageRow(r);
-    const enriched = { ...(r as any), lane: cls.lane, is_orphan: cls.is_orphan };
-    return headers.map((h) => enriched[h] ?? "");
-  });
-
-  const wb = XLSX.utils.book_new();
-  addOverviewSheet(
-    wb,
-    "Token export",
-    TOKEN_NARRATIVE,
-    TOKEN_SCHEMA,
-    campaignCode,
-    dataSource,
-    rows.length,
-  );
-  addTableSheet(wb, "Tokens", headers, body);
-
-  download(
-    wb,
-    `${campaignCode}-tokens-${format(new Date(), "yyyy-MM-dd-HHmm")}.xlsx`,
-  );
-  return rows.length;
-}
-
-/* ------------------------------------------------------------------ *
- * EVENT export
- * ------------------------------------------------------------------ */
-
-const EVENT_SCHEMA: { column: string; description: string }[] = [
-  { column: "event_id", description: "url_events.id — unique id for this open/interaction." },
-  { column: "token", description: "The token that was opened, from url_events.token." },
-  { column: "true_depth", description: "Joined from public.token_lineage — the walked depth of this token, not the stored level." },
-  { column: "stored_level", description: "Joined from public.token_lineage — the level column stored on the token row." },
-  { column: "root_token", description: "Joined from public.token_lineage — the root of this lineage." },
-  { column: "event_type", description: "url_events.event_type: scan | view | share | refrig_generated | refrig_scanned." },
-  { column: "occurred_at", description: "url_events.occurred_at — when the event was recorded (UTC)." },
+const EVENT_COLUMNS: { column: string; description: string }[] = [
+  { column: "event_id",        description: "url_events.id — unique id for this interaction." },
+  { column: "token",           description: "The token that was interacted with (url_events.token)." },
+  { column: "true_depth",      description: "Joined from public.token_lineage — un-clamped edge-walked depth of this token." },
+  { column: "root_token",      description: "Joined from public.token_lineage — the originating token of the lineage." },
+  { column: "event_type",      description: "url_events.event_type: scan | view | share | refrig_generated | refrig_scanned." },
+  { column: "occurred_at",     description: "url_events.occurred_at — when the event was recorded (UTC)." },
   { column: "location_source", description: "url_events.location_source: gps | ip | unknown." },
-  { column: "zip_code", description: "url_events.zip_code — resolved postal code (may be null)." },
-  { column: "is_simulated", description: "TRUE when the event was created by the simulator." },
+  { column: "zip_code",        description: "url_events.zip_code — resolved postal code (may be null)." },
+  { column: "region",          description: "url_events.region — reverse-geocoded region/state. Required for the US-states summary to be recomputable." },
+  { column: "country",         description: "url_events.country — reverse-geocoded country. Required for the international-countries summary to be recomputable." },
+  { column: "is_simulated",    description: "TRUE when the event was created by the simulator." },
+  { column: "lane",            description: "broadcast | chain | orphan — derived from the joined token via the shared classifier (orphan-first). Lane A / B counts on the Reference tab are recomputable from this column alone." },
 ];
 
-const EVENT_NARRATIVE = [
-  "One row = one recorded interaction (url_events.event_type) against one token at one moment. It is NOT deduplicated per person or per device.",
-  "There is no session id, device id, or hashed IP that identifies repeat opens by the same person. url_events.ip_address exists but is cleared as soon as the zip code is resolved (see clear_ip_when_zip_populated trigger), so it cannot be used as a stable identity. If we need repeat-visitor analysis we must add a new field; today the schema does not support it.",
-  "All columns come from structured fields; no full_url decoding was performed.",
+const TOKEN_COLUMNS: { column: string; description: string }[] = [
+  { column: "token",                description: "Unique token id. Base L00 tokens are the QR/link template (e.g. l00-<mobilize>-<utmid>); per-scan L00 instances append :xxxxxx." },
+  { column: "stored_level",         description: "`tokens.level` at mint time (0–3, clamped by mint_share)." },
+  { column: "true_depth",           description: "Edge-walked depth from token_lineage. Un-clamped; per-scan L00 instance edges contribute 0, every other edge contributes 1." },
+  { column: "level_depth_mismatch", description: "TRUE when stored_level != true_depth (a stored level was clamped or is otherwise stale)." },
+  { column: "parent_token",         description: "The token this token was minted from. NULL for base L00 rows and orphans." },
+  { column: "root_token",           description: "The originating token of this lineage." },
+  { column: "is_seed",              description: "TRUE when parent_token IS NULL. Also TRUE for orphans — combine with is_orphan to distinguish base L00 templates from severed lineages." },
+  { column: "is_orphan",            description: "Parent token was hard-deleted; lineage severed; excluded from both lane counts. Same predicate the metric layer uses." },
+  { column: "is_simulated",         description: "TRUE when created by the simulator." },
+  { column: "minted_via",           description: "Derived origin: mint_l00 (base template / seed) | instantiate_l00_token / maybe_reinstantiate_l00 (per-scan L00 instance) | mint_share." },
+  { column: "created_at",           description: "tokens.minted_at — when the token row was created." },
+  { column: "eoa_id",               description: "Event/Action id this token was minted for." },
+  { column: "utm_medium",           description: "Channel recorded on the token row (qr/em/sms/social/…)." },
+  { column: "utm_content",          description: "Snapshot of mobilize_code + utm_id at mint. Useful for isolating test-tagged rows (utm_content containing 'test')." },
+  { column: "utm_campaign",         description: "Campaign code this token belongs to." },
+  { column: "engagement_state",     description: "Mirrors the campaign map marker border: none / intent (orange) / completed (cyan). intent = has any child; completed = a child has a view event; else none." },
 ];
-
-export async function exportEventsXlsx(
-  campaignCode: string,
-  dataSource: DataSource,
-) {
-  // 1. token_lineage for this campaign
-  const lineage = await fetchAll<any>((from, to) =>
-    simFilter(
-      supabase
-        .from("token_lineage" as any)
-        .select("token, stored_level, true_depth, root_token")
-        .eq("utm_campaign", campaignCode)
-        .range(from, to),
-      dataSource,
-    ),
-  );
-  if (lineage.length === 0) throw new Error(`No tokens found for campaign ${campaignCode}`);
-
-  const lineageByToken = new Map(lineage.map((l) => [l.token, l]));
-  const tokenList = lineage.map((l) => l.token);
-
-  // 2. events for those tokens, batched by token chunk of 500 to keep .in() sane
-  const events: any[] = [];
-  const chunk = 500;
-  for (let i = 0; i < tokenList.length; i += chunk) {
-    const slice = tokenList.slice(i, i + chunk);
-    const rows = await fetchAll<any>((from, to) =>
-      simFilter(
-        supabase
-          .from("url_events")
-          .select("id, token, event_type, occurred_at, location_source, zip_code, is_simulated")
-          .in("token", slice)
-          .is("deleted_at", null)
-          .order("occurred_at", { ascending: true })
-          .range(from, to),
-        dataSource,
-      ),
-    );
-    events.push(...rows);
-  }
-
-  if (events.length === 0) throw new Error(`No events found for campaign ${campaignCode}`);
-
-  const body = events.map((e) => {
-    const l = lineageByToken.get(e.token) || {};
-    return [
-      e.id,
-      e.token,
-      (l as any).true_depth ?? "",
-      (l as any).stored_level ?? "",
-      (l as any).root_token ?? "",
-      e.event_type,
-      e.occurred_at,
-      e.location_source ?? "",
-      e.zip_code ?? "",
-      e.is_simulated,
-    ];
-  });
-
-  const wb = XLSX.utils.book_new();
-  addOverviewSheet(
-    wb,
-    "Event export",
-    EVENT_NARRATIVE,
-    EVENT_SCHEMA,
-    campaignCode,
-    dataSource,
-    events.length,
-  );
-  addTableSheet(wb, "Events", EVENT_SCHEMA.map((c) => c.column), body);
-  addOmittedColumnsSheet(wb);
-
-  download(
-    wb,
-    `${campaignCode}-events-${format(new Date(), "yyyy-MM-dd-HHmm")}.xlsx`,
-  );
-  return events.length;
-}
 
 /* ------------------------------------------------------------------ *
- * "What we left out" sheet — appended to the event export so it's
- * easy to see what other data is available.
+ * Reference-tab construction
  * ------------------------------------------------------------------ */
 
-const OMITTED_TOKEN_COLS = [
-  ["id", "Internal UUID primary key of the tokens row (token text is the business key)."],
-  ["utm_id", "Placement id from Mobilize; part of the L00 template's identity."],
-  ["utm_content", "Concatenated mobilize_code + utm_id snapshot at mint."],
-  ["utm_source", "L00/L01/L02/L03 label string set at mint time."],
-  ["full_url", "The complete deep-link URL. Not included because every field it encodes is already a structured column."],
-  ["created_by", "auth.users.id that minted this token (null for public/scanner mints)."],
-  ["deleted_at", "Soft-delete timestamp. Excluded rows are already filtered."],
-  ["deck_version_at_mint", "Deck version string captured when the token was minted."],
-];
-
-const OMITTED_EVENT_COLS = [
-  ["utm_snapshot", "JSONB copy of the utm params at the moment of the event; redundant with the token's stored utm_* columns but useful for auditing tampering."],
-  ["ip_address", "Client IP. Auto-cleared once zip_code is resolved (trigger clear_ip_when_zip_populated). Not a stable identifier."],
-  ["user_agent", "Raw UA string. Not a person identifier; can help distinguish iOS vs Android vs desktop share behavior."],
-  ["latitude / longitude", "Precise coordinates when location_source='gps'. Excluded from event export for size; available in the URL export in exportCampaignData.ts."],
-  ["city / region / country / country_code", "Reverse-geocoded location fields."],
-  ["deleted_at", "Soft-delete timestamp. Excluded rows are already filtered out."],
-];
-
-function addOmittedColumnsSheet(wb: XLSX.WorkBook) {
-  const aoa: any[][] = [];
-  aoa.push(["Columns in tokens/url_events NOT in these exports"]);
-  aoa.push([]);
-  aoa.push(["tokens columns not exported"]);
-  aoa.push(["Column", "Description"]);
-  for (const [c, d] of OMITTED_TOKEN_COLS) aoa.push([c, d]);
-  aoa.push([]);
-  aoa.push(["url_events columns not exported"]);
-  aoa.push(["Column", "Description"]);
-  for (const [c, d] of OMITTED_EVENT_COLS) aoa.push([c, d]);
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [{ wch: 28 }, { wch: 110 }];
-  XLSX.utils.book_append_sheet(wb, ws, "What we left out");
+interface ReferenceContext {
+  campaignId: string;
+  campaignCode: string;
+  dataSource: DataSource;
+  inputs: any;
+  narrative: string;
+  tokenRowCount: number;
+  eventRowCount: number;
+  recomputed: {
+    seeds: number;
+    broadcastOpensFromEvents: number;
+    chainShares: number;
+    chainViewersFromEvents: number;
+    completedShares: number;
+    views: number;
+    zipCount: number;
+    stateCount: number;
+    internationalCountryCount: number;
+    maxDepth: number;
+    orphanCount: number;
+    lastShareAt: string | null;
+  };
 }
 
-/* ------------------------------------------------------------------ *
- * CONSOLIDATED export — one workbook, three tabs (Reference, Events,
- * Tokens). Reference is the two-lane honest metric summary; Events and
- * Tokens are the same content as the legacy per-kind exports.
- * ------------------------------------------------------------------ */
-
-async function fetchCampaignId(campaignCode: string): Promise<string | null> {
-  const { data } = await supabase
-    .from("campaigns")
-    .select("id")
-    .eq("code", campaignCode)
-    .maybeSingle();
-  return (data as any)?.id ?? null;
+function fmtPct(n: number | null, num?: number, den?: number): string {
+  if (n == null) return "n/a (no chain shares)";
+  const pct = `${(n * 100).toFixed(1)}%`;
+  if (num != null && den != null) return `${pct} (${num}/${den})`;
+  return pct;
 }
 
-function buildReferenceAoa(
-  campaignCode: string,
-  dataSource: DataSource,
-  inputs: any,
-  tokenRowCount: number,
-  eventRowCount: number,
-  reconciliation: { laneA: number; laneB: number; orphan: number },
-): any[][] {
+function buildReferenceAoa(ctx: ReferenceContext): any[][] {
+  const { campaignCode, dataSource, inputs, narrative, tokenRowCount, eventRowCount, recomputed } = ctx;
   const aoa: any[][] = [];
-  aoa.push(["Campaign reference summary"]);
-  aoa.push([`Campaign: ${campaignCode}`]);
+
+  // ── Header block
+  aoa.push(["Campaign XLSX export"]);
+  aoa.push([`Campaign code: ${campaignCode}`]);
   aoa.push([`Data source: ${dataSource}`]);
   aoa.push([`Generated: ${new Date().toISOString()}`]);
-  aoa.push([`Rows in Tokens tab: ${tokenRowCount}`]);
-  aoa.push([`Rows in Events tab: ${eventRowCount}`]);
+  aoa.push([`Rows on Tokens tab: ${tokenRowCount}`]);
+  aoa.push([`Rows on Events tab: ${eventRowCount}`]);
   aoa.push([]);
 
-  aoa.push(["Two-lane metrics (depth-corrected via public.token_lineage)"]);
-  aoa.push(["Metric", "Value", "Notes"]);
+  // ── Block A — Events guide
+  aoa.push(["Block A — Events guide"]);
+  aoa.push(['One row = one recorded interaction against one token at one moment. Not deduplicated. Not per person.']);
+  aoa.push([]);
+  aoa.push(["Column", "Description"]);
+  for (const c of EVENT_COLUMNS) aoa.push([c.column, c.description]);
+  aoa.push([]);
+
+  // ── Block B — Tokens guide
+  aoa.push(["Block B — Tokens guide"]);
+  aoa.push(["One row = one token."]);
+  aoa.push([]);
+  aoa.push(["Column", "Description"]);
+  for (const c of TOKEN_COLUMNS) aoa.push([c.column, c.description]);
+  aoa.push([]);
+
+  // ── Block C — Campaign Story summary
+  aoa.push(["Block C — Campaign Story summary"]);
+  aoa.push(["Every metric is shown even when zero. Recompute from the Events and Tokens tabs using the recipe in the last column."]);
+  aoa.push([]);
+  aoa.push(["Metric", "Value", "Source", "How to recompute from raw tabs"]);
+
+  const seedsMetric = recomputed.seeds;
+  const broadcastOpens = inputs.broadcastOpens ?? 0;
+  const chainShares = recomputed.chainShares;
+  const chainViewers = recomputed.chainViewersFromEvents;
+  const completedShares = recomputed.completedShares;
+  const conversionRate = chainShares > 0 ? completedShares / chainShares : null;
+
   aoa.push([
-    "Lane A — broadcast opens",
+    "Seeds",
+    seedsMetric,
+    "Tokens tab",
+    "Count Tokens where true_depth = 0 and is_orphan = FALSE and parent_token IS NULL (base L00 templates).",
+  ]);
+  aoa.push([
+    "Broadcast opens (Lane A) — opens, not people",
     inputs.broadcastOpens ?? 0,
-    "Tokens at true_depth = 0 (base L00 templates + per-scan L00 instances). Inflated by design; label as opens, not viewers.",
+    "Events tab",
+    "Count Events where lane = 'broadcast' and event_type = 'view'.",
   ]);
   aoa.push([
-    "Lane B — approximate unique viewers (chain)",
-    inputs.chainViewers ?? 0,
-    "Tokens at true_depth ≥ 1 (mint_share descendants). Orphans excluded.",
+    "Chain shares (Lane B)",
+    chainShares,
+    "Tokens tab",
+    "Count Tokens where true_depth >= 1 and is_orphan = FALSE.",
   ]);
   aoa.push([
-    "Data anomalies — orphan tokens excluded",
-    inputs.orphanCount ?? 0,
-    "parent_token IS NULL and NOT L00-shaped (legacy hard-deleted parents). Excluded from both lane totals; visible on the Tokens tab with lane=ORPHAN / is_orphan=TRUE.",
+    "Chain viewers (Lane B) — approximate unique viewers",
+    chainViewers,
+    "Events tab",
+    "Count Events where lane = 'chain' and event_type = 'view'.",
   ]);
   aoa.push([
-    "Max observed depth",
-    inputs.maxDepth ?? 0,
-    "From token_lineage.true_depth (un-clamped).",
+    "Completed shares",
+    completedShares,
+    "Tokens tab",
+    "Count chain-share Tokens (true_depth >= 1, not orphan) whose engagement_state = 'completed'.",
   ]);
   aoa.push([
-    "Any-hop completion rate",
-    inputs.anyHopCompletionRate == null
-      ? "n/a (no chain tokens)"
-      : `${(inputs.anyHopCompletionRate * 100).toFixed(1)}% (${inputs.anyHopCompletionNumerator}/${inputs.anyHopCompletionDenominator})`,
-    "Blend across all hops: fraction of chain tokens that produced any child.",
+    "Conversion rate (completed / chain shares)",
+    fmtPct(conversionRate, completedShares, chainShares),
+    "Tokens tab",
+    "Divide completed shares by chain shares. Denominator includes abandoned shares — a minted share link is indistinguishable from an unsent one.",
+  ]);
+  aoa.push([
+    "Any-hop completion rate (blended)",
+    fmtPct(
+      inputs.anyHopCompletionRate ?? null,
+      inputs.anyHopCompletionNumerator,
+      inputs.anyHopCompletionDenominator,
+    ),
+    "Tokens tab",
+    "Fraction of chain-share tokens that produced any child (parent_token IN chain-share tokens).",
+  ]);
+  aoa.push([
+    "Views (all lanes)",
+    recomputed.views,
+    "Events tab",
+    "Count Events where event_type = 'view'.",
+  ]);
+  aoa.push([
+    "Zip codes opened in",
+    recomputed.zipCount,
+    "Events tab",
+    "Distinct non-empty zip_code in Events. Label as 'opened in,' not 'distributed to.'",
+  ]);
+  aoa.push([
+    "US states opened in",
+    recomputed.stateCount,
+    "Events tab",
+    "Distinct non-empty region in Events where country = 'United States'.",
+  ]);
+  aoa.push([
+    "International countries",
+    recomputed.internationalCountryCount,
+    "Events tab",
+    "Distinct non-empty country in Events where country != 'United States'.",
+  ]);
+  aoa.push([
+    "Max chain depth",
+    recomputed.maxDepth,
+    "Tokens tab",
+    "MAX(true_depth) over Tokens (all rows; orphans are 0/absent).",
+  ]);
+  aoa.push([
+    "Orphan count (anomaly, excluded from lanes)",
+    recomputed.orphanCount,
+    "Tokens tab",
+    "Count Tokens where is_orphan = TRUE.",
+  ]);
+  aoa.push([
+    "Last share",
+    recomputed.lastShareAt ?? "(none)",
+    "Tokens tab",
+    "MAX(created_at) over Tokens where true_depth >= 1 and is_orphan = FALSE.",
   ]);
   aoa.push([]);
 
-  // ── Reconciliation: recompute Lane A/B/orphan from the raw Tokens tab
-  // in this same workbook and diff against the metric-layer numbers.
-  const laneAOk = reconciliation.laneA === (inputs.broadcastOpens ?? 0);
-  const laneBOk = reconciliation.laneB === (inputs.chainViewers ?? 0);
-  const orphanOk = reconciliation.orphan === (inputs.orphanCount ?? 0);
-  const allOk = laneAOk && laneBOk && orphanOk;
-  aoa.push(["Reconciliation — do the totals above recompute from the raw Tokens tab?"]);
-  aoa.push(["Metric", "Reference value", "Recomputed from Tokens tab", "Match?"]);
-  aoa.push(["Lane A", inputs.broadcastOpens ?? 0, reconciliation.laneA, laneAOk ? "OK" : "MISMATCH"]);
-  aoa.push(["Lane B", inputs.chainViewers ?? 0, reconciliation.laneB, laneBOk ? "OK" : "MISMATCH"]);
-  aoa.push(["Orphans", inputs.orphanCount ?? 0, reconciliation.orphan, orphanOk ? "OK" : "MISMATCH"]);
-  aoa.push([
-    "Overall",
-    "",
-    "",
-    allOk
-      ? "OK — every summary number recomputes from raw"
-      : "MISMATCH — see rows above; metric layer and raw disagree",
-  ]);
-  aoa.push([]);
-
-  aoa.push(["Depth histogram (true_depth, non-orphan)"]);
-  aoa.push(["Depth", "Token count"]);
-  const hist = inputs.depthHistogram || [];
-  if (hist.length === 0) aoa.push(["(none)", 0]);
-  for (const h of hist) aoa.push([h.depth, h.count]);
-  aoa.push([]);
-
-  aoa.push(["Per-hop conversion (starts at 1→2 by design; 0→1 is broadcast, reported above)"]);
+  // ── Per-hop conversion breakdown (also recomputable from Tokens tab).
+  aoa.push(["Per-hop conversion (starts at 1→2 by design; 0→1 is broadcast conversion, reported above)"]);
   aoa.push(["From depth", "To depth", "From count", "To count", "Rate"]);
-  const hops = inputs.perHopConversion || [];
-  if (hops.length === 0) aoa.push(["(none)", "", 0, 0, 0]);
+  const hops = (inputs.perHopConversion || []) as any[];
+  if (hops.length === 0) aoa.push(["(none)", "", 0, 0, "0.0%"]);
   for (const h of hops) {
     aoa.push([h.from, h.to, h.fromCount, h.toCount, `${(h.rate * 100).toFixed(1)}%`]);
   }
   aoa.push([]);
 
-  aoa.push(["Coupling / provenance"]);
+  // ── Depth histogram
+  aoa.push(["Depth histogram (true_depth, non-orphan)"]);
+  aoa.push(["Depth", "Token count"]);
+  const hist = (inputs.depthHistogram || []) as any[];
+  if (hist.length === 0) aoa.push(["(none)", 0]);
+  for (const h of hist) aoa.push([h.depth, h.count]);
+  aoa.push([]);
+
+  // ── Data anomalies line — always present
+  aoa.push(["Data anomalies"]);
   aoa.push([
-    "Depth semantics depend on the token-naming invariant across generate_token, mint_share, instantiate_l00_token, and maybe_reinstantiate_l00. Per-scan L00 instances (child matches ^l00-.+:.+$) contribute 0 to true_depth; every other edge contributes 1. See docs/decisions/campaign-story/2026-07-08_campaign-story-v2_feature-doc_lovable.md.",
+    `${recomputed.orphanCount} orphan L1+ tokens with no parent — legacy, excluded from lane counts.`,
   ]);
+  aoa.push([]);
+
+  // ── Recompute cross-check
+  const broadcastMatch = recomputed.broadcastOpensFromEvents === (inputs.broadcastOpens ?? 0);
+  const chainViewersMatch = recomputed.chainViewersFromEvents === (inputs.chainViewers ?? 0);
+  const orphanMatch = recomputed.orphanCount === (inputs.orphanCount ?? 0);
+  aoa.push(["Metric-layer vs recomputed-from-raw cross-check"]);
+  aoa.push(["Metric", "Metric layer", "Recomputed from raw tabs", "Match?"]);
+  aoa.push(["Broadcast opens (Lane A views)", inputs.broadcastOpens ?? 0, recomputed.broadcastOpensFromEvents, broadcastMatch ? "OK" : "MISMATCH"]);
+  aoa.push(["Chain viewers (Lane B views)",   inputs.chainViewers ?? 0,   recomputed.chainViewersFromEvents,   chainViewersMatch ? "OK" : "MISMATCH"]);
+  aoa.push(["Orphan tokens",                   inputs.orphanCount ?? 0,    recomputed.orphanCount,              orphanMatch ? "OK" : "MISMATCH"]);
+  aoa.push([]);
+
+  // ── Rendered narrative paragraph
+  aoa.push(["Campaign Story (rendered narrative)"]);
+  const paragraphs = narrative.split("\n");
+  for (const p of paragraphs) aoa.push([p]);
+
   return aoa;
 }
 
+/* ------------------------------------------------------------------ *
+ * Engagement-state computation (mirrors SamizdatMap border rules).
+ * ------------------------------------------------------------------ */
+
+type EngagementState = "none" | "intent" | "completed";
+
+function computeEngagementStates(
+  lineageRows: any[],
+  viewedTokens: Set<string>,
+): Map<string, EngagementState> {
+  const childrenByParent = new Map<string, any[]>();
+  for (const r of lineageRows) {
+    if (!r.parent_token) continue;
+    const arr = childrenByParent.get(r.parent_token) ?? [];
+    arr.push(r);
+    childrenByParent.set(r.parent_token, arr);
+  }
+  const state = new Map<string, EngagementState>();
+  for (const r of lineageRows) {
+    const children = childrenByParent.get(r.token) ?? [];
+    if (children.length === 0) {
+      state.set(r.token, "none");
+      continue;
+    }
+    const anyViewed = children.some((c) => viewedTokens.has(c.token));
+    state.set(r.token, anyViewed ? "completed" : "intent");
+  }
+  return state;
+}
+
+/* ------------------------------------------------------------------ *
+ * Public API
+ * ------------------------------------------------------------------ */
+
 export async function exportCampaignXlsx(
+  campaignId: string,
   campaignCode: string,
   dataSource: DataSource,
-): Promise<{ tokens: number; events: number }> {
-  const campaignId = await fetchCampaignId(campaignCode);
-  if (!campaignId) throw new Error(`Campaign not found for code ${campaignCode}`);
+): Promise<{ tokens: number; events: number; filename: string }> {
+  if (!campaignId) throw new Error("exportCampaignXlsx: campaignId is required");
+  if (!campaignCode) throw new Error("exportCampaignXlsx: campaignCode is required");
 
-  // Compute the metric layer for the Reference tab. `simulated` and `real`
-  // map cleanly; `all` renders the real-data view (metric layer is
-  // per-source and the honest label is "real" without simulator noise).
+  // ── Metric layer (Reference tab summary). Real vs simulated: the
+  // metric layer is per-source; when the dashboard selector is set to
+  // 'all', the honest label is 'real' — simulator noise stays isolated.
   const metricSource: "real" | "simulated" =
     dataSource === "simulated" ? "simulated" : "real";
   const inputs = await computeCampaignStoryInputs(supabase, {
@@ -452,8 +378,8 @@ export async function exportCampaignXlsx(
     dataSource: metricSource,
   });
 
-  // ── Tokens
-  const tokenRows = await fetchAll<any>((from, to) =>
+  // ── Token lineage (paged; batched range() covers >1000 rows).
+  const lineageRows = await fetchAll<any>((from, to) =>
     simFilter(
       supabase
         .from("token_lineage" as any)
@@ -465,76 +391,213 @@ export async function exportCampaignXlsx(
     ),
   );
 
-  // ── Events (joined with lineage)
-  const lineageByToken = new Map(tokenRows.map((l) => [l.token, l]));
-  const tokenList = tokenRows.map((l) => l.token);
-  const events: any[] = [];
-  const chunk = 500;
-  for (let i = 0; i < tokenList.length; i += chunk) {
-    const slice = tokenList.slice(i, i + chunk);
-    if (slice.length === 0) break;
-    const rows = await fetchAll<any>((from, to) =>
-      simFilter(
-        supabase
-          .from("url_events")
-          .select("id, token, event_type, occurred_at, location_source, zip_code, is_simulated")
-          .in("token", slice)
-          .is("deleted_at", null)
-          .order("occurred_at", { ascending: true })
-          .range(from, to),
-        dataSource,
-      ),
-    );
-    events.push(...rows);
+  // ── utm_content is on tokens (not on the token_lineage view). Fetch
+  // it separately and join by token id so a reviewer can filter test
+  // rows (utm_content containing 'test') without leaving the raw tab.
+  const utmContentByToken = new Map<string, string | null>();
+  const tokenList = lineageRows.map((r) => r.token);
+  {
+    const chunk = 500;
+    for (let i = 0; i < tokenList.length; i += chunk) {
+      const slice = tokenList.slice(i, i + chunk);
+      if (slice.length === 0) break;
+      const { data, error } = await supabase
+        .from("tokens")
+        .select("token, utm_content")
+        .in("token", slice);
+      if (error) throw error;
+      for (const row of (data || []) as any[]) {
+        utmContentByToken.set(row.token, row.utm_content ?? null);
+      }
+    }
   }
 
-  // Classify every token_lineage row once, then reuse the classification
-  // for both the Tokens tab and the reconciliation block.
-  const classified = tokenRows.map((r) => ({ row: r, cls: classifyLineageRow(r) }));
-  const reconciliation = {
-    laneA: classified.filter((x) => x.cls.lane === "A").length,
-    laneB: classified.filter((x) => x.cls.lane === "B").length,
-    orphan: classified.filter((x) => x.cls.lane === "ORPHAN").length,
-  };
+  // ── url_events for those tokens, batched. Region + country are
+  // required so the states / international-countries summaries are
+  // reproducible from Tab 2 alone.
+  const events: any[] = [];
+  {
+    const chunk = 500;
+    for (let i = 0; i < tokenList.length; i += chunk) {
+      const slice = tokenList.slice(i, i + chunk);
+      if (slice.length === 0) break;
+      const rows = await fetchAll<any>((from, to) =>
+        simFilter(
+          supabase
+            .from("url_events")
+            .select("id, token, event_type, occurred_at, location_source, zip_code, region, country, is_simulated")
+            .in("token", slice)
+            .is("deleted_at", null)
+            .order("occurred_at", { ascending: true })
+            .range(from, to),
+          dataSource,
+        ),
+      );
+      events.push(...rows);
+    }
+  }
 
+  // ── Classify and enrich.
+  const lineageByToken = new Map(lineageRows.map((r) => [r.token, r]));
+  const viewedTokens = new Set(
+    events.filter((e) => e.event_type === "view").map((e) => e.token),
+  );
+  const engagement = computeEngagementStates(lineageRows, viewedTokens);
+  const laneByToken = new Map<string, LineageLane>(
+    lineageRows.map((r) => [r.token, classifyLane(r)]),
+  );
+
+  // ── Recomputed-from-raw metrics (drive the Reference cross-check
+  // and the summary values that come from the Events tab).
+  let broadcastOpensFromEvents = 0;
+  let chainViewersFromEvents = 0;
+  let views = 0;
+  const zipSet = new Set<string>();
+  const stateSet = new Set<string>();
+  const intlCountrySet = new Set<string>();
+  for (const e of events) {
+    if (e.event_type === "view") views += 1;
+    const lane = laneByToken.get(e.token) ?? "orphan";
+    if (e.event_type === "view") {
+      if (lane === "broadcast") broadcastOpensFromEvents += 1;
+      else if (lane === "chain") chainViewersFromEvents += 1;
+    }
+    if (e.zip_code) zipSet.add(String(e.zip_code));
+    if (e.country === "United States" && e.region) stateSet.add(String(e.region));
+    if (e.country && e.country !== "United States") intlCountrySet.add(String(e.country));
+  }
+
+  // Tokens-tab recomputes.
+  let seeds = 0;
+  let chainShares = 0;
+  let orphanCount = 0;
+  let maxDepth = 0;
+  let lastShareMs = -Infinity;
+  let lastShareAt: string | null = null;
+  let completedShares = 0;
+  for (const r of lineageRows) {
+    const depth = Number(r.true_depth ?? 0);
+    if (depth > maxDepth) maxDepth = depth;
+    if (isOrphanRow(r)) { orphanCount += 1; continue; }
+    if (depth === 0 && r.parent_token == null) seeds += 1;
+    if (depth >= 1) {
+      chainShares += 1;
+      if (engagement.get(r.token) === "completed") completedShares += 1;
+      const t = new Date(r.created_at || 0).getTime();
+      if (t > lastShareMs) { lastShareMs = t; lastShareAt = r.created_at ?? null; }
+    }
+  }
+
+  // ── Rendered narrative paragraph (identical to the Campaign Story
+  // hotspot text; a reviewer can eyeball narrative-vs-numbers here).
+  const seedCountForStory = seeds;
+  const narrative = formatCampaignStory({
+    campaignTitle: inputs.campaignTitle,
+    activeAnchorMs: new Date(inputs.campaignActiveAnchor).getTime(),
+    nowMs: Date.now(),
+    dataSource: metricSource,
+    seedCount: seedCountForStory,
+    intentCount: inputs.intentCount,
+    viewCount: inputs.viewCount,
+    zipCount: inputs.zipCount,
+    stateCount: inputs.stateCount,
+    internationalCountries: inputs.internationalCountries,
+    maxDepth: inputs.maxDepth,
+    propagationSpeed: inputs.propagationSpeed,
+    shareMediums: inputs.shareMediums,
+    lastShareAt: inputs.lastShareAt,
+    speedOriginCity: inputs.speedOriginCity,
+    speedDestCity: inputs.speedDestCity,
+    broadcastOpens: inputs.broadcastOpens,
+    chainViewers: inputs.chainViewers,
+    orphanCount: inputs.orphanCount,
+    anyHopCompletionRate: inputs.anyHopCompletionRate,
+    anyHopCompletionNumerator: inputs.anyHopCompletionNumerator,
+    anyHopCompletionDenominator: inputs.anyHopCompletionDenominator,
+    longestChainIsLinear: inputs.longestChainIsLinear,
+    singleCarrierTailHops: inputs.singleCarrierTailHops,
+    longestChainTerminalUnopened: inputs.longestChainTerminalUnopened,
+  } as any);
+
+  // ── Build workbook.
   const wb = XLSX.utils.book_new();
 
-  // Reference tab
-  const refAoa = buildReferenceAoa(
-    campaignCode, dataSource, inputs, tokenRows.length, events.length, reconciliation,
-  );
+  const refAoa = buildReferenceAoa({
+    campaignId,
+    campaignCode,
+    dataSource,
+    inputs,
+    narrative,
+    tokenRowCount: lineageRows.length,
+    eventRowCount: events.length,
+    recomputed: {
+      seeds,
+      broadcastOpensFromEvents,
+      chainShares,
+      chainViewersFromEvents,
+      completedShares,
+      views,
+      zipCount: zipSet.size,
+      stateCount: stateSet.size,
+      internationalCountryCount: intlCountrySet.size,
+      maxDepth,
+      orphanCount,
+      lastShareAt,
+    },
+  });
   const refWs = XLSX.utils.aoa_to_sheet(refAoa);
-  refWs["!cols"] = [{ wch: 44 }, { wch: 22 }, { wch: 32 }, { wch: 14 }, { wch: 12 }];
+  refWs["!cols"] = [{ wch: 44 }, { wch: 22 }, { wch: 20 }, { wch: 90 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, refWs, "Reference");
 
-  // Events tab
-  const eventHeaders = EVENT_SCHEMA.map((c) => c.column);
+  // ── Events tab (row 1 = headers).
+  const eventHeaders = EVENT_COLUMNS.map((c) => c.column);
   const eventBody = events.map((e) => {
     const l = lineageByToken.get(e.token) || {};
+    const lane = laneByToken.get(e.token) ?? "orphan";
     return [
-      e.id, e.token,
+      e.id,
+      e.token,
       (l as any).true_depth ?? "",
-      (l as any).stored_level ?? "",
       (l as any).root_token ?? "",
-      e.event_type, e.occurred_at,
-      e.location_source ?? "", e.zip_code ?? "",
+      e.event_type,
+      e.occurred_at,
+      e.location_source ?? "",
+      e.zip_code ?? "",
+      e.region ?? "",
+      e.country ?? "",
       e.is_simulated,
+      lane,
     ];
   });
   addTableSheet(wb, "Events", eventHeaders, eventBody);
 
-  // Tokens tab (with lane + is_orphan columns)
-  const tokHeaders = TOKEN_SCHEMA.map((c) => c.column);
-  const tokBody = classified.map(({ row, cls }) => {
-    const enriched = { ...(row as any), lane: cls.lane, is_orphan: cls.is_orphan };
-    return tokHeaders.map((h) => enriched[h] ?? "");
+  // ── Tokens tab (row 1 = headers).
+  const tokenHeaders = TOKEN_COLUMNS.map((c) => c.column);
+  const tokenBody = lineageRows.map((r) => {
+    const lane = laneByToken.get(r.token) ?? "orphan";
+    const enriched: Record<string, any> = {
+      token: r.token,
+      stored_level: r.stored_level ?? "",
+      true_depth: r.true_depth ?? "",
+      level_depth_mismatch: r.level_depth_mismatch ?? "",
+      parent_token: r.parent_token ?? "",
+      root_token: r.root_token ?? "",
+      is_seed: r.is_seed ?? "",
+      is_orphan: lane === "orphan",
+      is_simulated: r.is_simulated,
+      minted_via: r.minted_via ?? "",
+      created_at: r.created_at ?? "",
+      eoa_id: r.eoa_id ?? "",
+      utm_medium: r.utm_medium ?? "",
+      utm_content: utmContentByToken.get(r.token) ?? "",
+      utm_campaign: r.utm_campaign ?? "",
+      engagement_state: engagement.get(r.token) ?? "none",
+    };
+    return tokenHeaders.map((h) => enriched[h] ?? "");
   });
-  addTableSheet(wb, "Tokens", tokHeaders, tokBody);
+  addTableSheet(wb, "Tokens", tokenHeaders, tokenBody);
 
-  download(
-    wb,
-    `${campaignCode}-campaign-${format(new Date(), "yyyy-MM-dd-HHmm")}.xlsx`,
-  );
-  return { tokens: tokenRows.length, events: events.length };
+  const filename = `${campaignCode}-${format(new Date(), "yyyy-MM-dd-HHmm")}.xlsx`;
+  XLSX.writeFile(wb, filename, { bookType: "xlsx" });
+  return { tokens: lineageRows.length, events: events.length, filename };
 }
-
