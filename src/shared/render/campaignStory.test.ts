@@ -78,8 +78,8 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
     expect(out).toContain("Campaign active for 6 days 0 hours");
   });
 
-  it("formats speed narrative with origin/destination cities", () => {
-    const input: CampaignStoryInput = {
+  it("never emits the retired 'return visits' or 'Fastest share' phrasing", () => {
+    const withSpeed: CampaignStoryInput = {
       ...baseInput(),
       propagationSpeed: [
         { level: 0, firstMintAt: "2026-06-20T15:00:00Z" },
@@ -88,10 +88,12 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
       speedOriginCity: "Boston, MA",
       speedDestCity: "Austin, TX",
     };
-    const out = formatCampaignStory(input);
-    expect(out).toContain(
-      "Fastest share: From the first open shared to the first depth-2 share took 1 day; Boston, MA to Austin, TX.",
-    );
+    for (const input of [baseInput(), withSpeed]) {
+      const out = formatCampaignStory(input);
+      expect(out.toLowerCase()).not.toContain("return visit");
+      expect(out).not.toContain("Fastest share");
+      expect(out).not.toContain("⚡");
+    }
   });
 
   it("suppresses the __TITLE__ block when includeTitle: false", () => {
