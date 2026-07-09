@@ -491,18 +491,24 @@ export async function exportCampaignXlsx(
 
   // ── Recomputed-from-raw metrics (drive the Reference cross-check
   // and the summary values that come from the Events tab).
-  let broadcastOpensFromEvents = 0;
+  // NOTE: broadcastViewEventsFromEvents is a DIAGNOSTIC (repeat opens
+  // included), NOT the Lane A headline — headline is the token count.
+  let broadcastViewEventsFromEvents = 0;
   let chainViewersFromEvents = 0;
   let views = 0;
   const zipSet = new Set<string>();
   const stateSet = new Set<string>();
   const intlCountrySet = new Set<string>();
+  const chainTokensWithView = new Set<string>();
   for (const e of events) {
     if (e.event_type === "view") views += 1;
     const lane = laneByToken.get(e.token) ?? "orphan";
     if (e.event_type === "view") {
-      if (lane === "broadcast") broadcastOpensFromEvents += 1;
-      else if (lane === "chain") chainViewersFromEvents += 1;
+      if (lane === "broadcast") broadcastViewEventsFromEvents += 1;
+      else if (lane === "chain") {
+        chainViewersFromEvents += 1;
+        chainTokensWithView.add(e.token);
+      }
     }
     if (e.zip_code) zipSet.add(String(e.zip_code));
     if (e.country === "United States" && e.region) stateSet.add(String(e.region));
