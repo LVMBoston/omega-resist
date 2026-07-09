@@ -590,7 +590,12 @@ export default function CampaignDashboard({
       const source = (dataSourceFilter === "simulated" ? "simulated"
         : dataSourceFilter === "real" ? "real"
         : "all") as "real" | "simulated" | "all";
-      const { tokens, events } = await exportCampaignXlsx(selectedCampaign, source);
+      if (!selectedCampaignId) {
+        toast({ variant: "destructive", title: "Campaign id unavailable — refresh and try again." });
+        setIsExporting(false);
+        return;
+      }
+      const { tokens, events } = await exportCampaignXlsx(selectedCampaignId, selectedCampaign, source);
       toast({
         title: "Export complete",
         description: `Exported ${tokens} tokens and ${events} events (${source}).`,
