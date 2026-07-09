@@ -322,10 +322,9 @@ export async function computeCampaignStoryInputs(
 
   // Orphan = parent_token IS NULL AND token is not an L00-shaped id.
   // (Base L00 templates are also parentless but always start with 'l00-'.)
-  const isOrphan = (r: any) =>
-    r.parent_token == null && !(typeof r.token === "string" && r.token.startsWith("l00-"));
-  const orphanCount = lineageRows.filter(isOrphan).length;
-  const nonOrphan = lineageRows.filter((r) => !isOrphan(r));
+  // Predicate is shared with the XLSX exporter — see lineageClassify.ts.
+  const orphanCount = lineageRows.filter(isOrphanRow).length;
+  const nonOrphan = lineageRows.filter((r) => !isOrphanRow(r));
 
   const depthMap = new Map<number, number>();
   let broadcastOpens = 0;
