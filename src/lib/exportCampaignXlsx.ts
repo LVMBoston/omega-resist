@@ -198,22 +198,16 @@ function buildReferenceAoa(ctx: ReferenceContext): any[][] {
     "Count Tokens where true_depth = 0 and is_orphan = FALSE and parent_token IS NULL (base L00 templates).",
   ]);
   aoa.push([
-    "Broadcast opens (Lane A) — opens, not people",
+    "Broadcast instances (Lane A) — distinct L00 instances, not opens and not people",
     inputs.broadcastOpens ?? 0,
-    "Events tab",
-    "Count Events where lane = 'broadcast' and event_type = 'view'.",
+    "Tokens tab",
+    "Count Tokens where true_depth = 0 and is_orphan = FALSE. Distinct instance count, not an event count — repeat opens of the same instance do NOT add to this number. Repeat-open counts (Lane A view events) live in the internal diagnostic below and are not the headline.",
   ]);
   aoa.push([
-    "Chain shares (Lane B)",
+    "Chain shares (Lane B) — minted L01+ tokens, whether opened by recipient or not",
     chainShares,
     "Tokens tab",
-    "Count Tokens where true_depth >= 1 and is_orphan = FALSE.",
-  ]);
-  aoa.push([
-    "Chain viewers (Lane B) — approximate unique viewers",
-    chainViewers,
-    "Events tab",
-    "Count Events where lane = 'chain' and event_type = 'view'.",
+    "Count Tokens where true_depth >= 1 and is_orphan = FALSE. Structural count of shares that were minted. A smaller 'chain viewers' number (shares actually opened by a recipient) is surfaced separately in the completion-gap block.",
   ]);
   aoa.push([
     "Completed shares",
