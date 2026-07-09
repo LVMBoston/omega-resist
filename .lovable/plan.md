@@ -1,74 +1,51 @@
+# Plan: Honest Campaign Story text + rendered diffs for review
 
-# Dynamic URL Payload Reference
+## 1. Text fixes in `supabase/functions/_shared/render/campaignStory.ts`
 
-## 1. Background
+a. **Remove "including return visits."** In the breadth paragraph, the clause after `viewCount !== broadcastOpens` becomes: `All told, the content generated N view events across every level.` No substitute wording — view-event person-ness is unknowable, so no distinct fact replaces it.
 
-Today the payload structure is documented as a static image. It's already drifted from reality in six places (`L00` casing, `utm_medium` derivation, `utm_content` format on L00 vs L01+, `t=` includes `utm_id`, `p=` points at the L00 instance, no `m=` parameter). Any future change to `mint_l00` / `mint_share` will silently re-open the same gap.
+b. **Remove the "Fastest share" paragraph entirely.** Delete the `speedNarrative` construction block (lines ~139–156) and the `⚡ ${speedNarrative}` emit block (lines ~284–287). Rationale: the deepest chain is single-carrier persistence, so timing it advertises one person's solo thread as spread and contradicts the persistence paragraph above.
 
-A dynamic reference reads the same templates the minters use, so the diagram cannot drift.
+c. Leave `propagationSpeed`, `speedOriginCity`, `speedDestCity` in the `CampaignStoryInput` type unused for now. Ripping them out of the input layer is a separate cleanup.
 
-Scope is a **read-only reference display**. It does not read a specific token from the DB — it renders the *template* for each level using literal placeholders for the parts generated at mint time (`{mobilize_code}`, `{utm_id}`, `{suffix}`, `{token}`, `{parent}`). This matches how the static graphic worked, just generated from code.
+## 2. Test updates in `src/shared/render/campaignStory.test.ts`
 
-## 2. Where it lives
+a. Drop the `"formats speed narrative with origin/destination cities"` test.
+b. Adjust the breadth-line expectation to no longer assert the removed `return visits` clause.
+c. Add a universal negative assertion on the default fixture: no rendered story contains the substring `return visit` (case-insensitive).
+d. Add a universal negative assertion on the default fixture: no rendered story contains `Fastest share`.
 
-Add a new **"Visualize Generic Payload"** button in the Campaign EoA Manager toolbar (`src/pages/CampaignEoaManager.tsx`), placed to the right of the existing **Fix channels**, **Columns**, and **QR Code Defaults** buttons, matching their icon + label style.
+## 3. Render-dump script for eyeball review
 
-Clicking it toggles a collapsible **URL Payload Reference** panel rendered directly beneath that toolbar row and above the EoA table. No dialog, no new route, no nav change. The panel remembers its open/closed state per session via component state only.
+Add `scripts/dump-campaign-stories.ts`, runnable with `bunx tsx scripts/dump-campaign-stories.ts`. It:
 
-The panel is campaign-agnostic — it shows the generic template, not values from any specific EoA in the table.
+a. Uses the service-role key (already in `SUPABASE_SERVICE_ROLE_KEY` sandbox env) to bypass RLS and get real geo, matching what an admin sees in-app.
+b. Runs for the two campaign codes `nk3-invitation` and `rs-good-1`.
+c. Writes rendered output to `/mnt/documents/campaign-stories/<code>.md` so both files show up as downloadable artifacts.
+d. Prints the full text to stdout so the build-mode reply can paste it inline.
 
-## 3. What the panel renders
+## 4. Verification (build mode)
 
-Five rows stacked vertically:
+a. `bunx vitest run src/shared/render/campaignStory.test.ts` — must pass, including the two new negative assertions.
+b. Run the dump script; paste the full rendered text of both campaigns into the reply so you can read it directly. Visual check: no `return visit`, no `Fastest share`.
+c. `rg -n "return visit|Fastest share" supabase/functions/_shared/render` — expect no hits.
 
-a. **L00 base** — pre-open, freshly minted seed
-b. **L00 instance** — post-first-open, ZIP-scoped identity
-c. **L01** — first viral share
-d. **L02** — share of a share
-e. **L03** — terminal share level
+## 5. Where you can see the renders after this ships
 
-Each row shows the fully assembled URL with every query-string segment on its own line, monospaced, in a bordered card. Above each row: the level name and a one-line plain-English description.
+a. Editor: any campaign detail page rendering the Campaign Story hotspot.
+b. `/parity-harness` — renders `formatCampaignStory` for all campaigns side-by-side.
+c. Deck slides using `StatsPageSlide` / `HybridSlide` pick up the change after the next snapshot re-bake (SSR path uses the same formatter).
+d. `/mnt/documents/campaign-stories/*.md` — the dump-script output attached to the build-mode reply.
+e. `/fs/:token` public path — will also carry the fixed text if/when you use fridge sheets.
 
-## 4. Color-coded lineage
+## What does NOT change this turn
 
-Each URL segment is wrapped in a `<span>` with a semantic class. Segments that carry the same value across levels share a color; segments that change get a new color where they change.
+- **Anon geo hole on `/fs/:token`.** Confirmed via grep: `FridgeStory.tsx` is the only anon-facing live caller of `computeCampaignStoryInputs`. All other renderers are admin/manager sessions or run under `service_role` (snapshot renderer). Since you are not currently using the fridge capability, no anonymous visitor is silently seeing zero geo today. The RPC-backed fix stays a follow-up until fridge sheets go live.
+- `url_events` RLS — unchanged, admin/manager-only.
+- Snapshot re-render trigger — public path is live via the editor; deck-slide snapshots refresh on the normal cron.
+- `sproutCount` — already stripped in a previous turn.
+- `speedOriginCity` / `speedDestCity` / `propagationSpeed` input plumbing — left in place, unused, for a follow-up cleanup.
 
-| Segment                | Behavior across levels                                | Color role      |
-|------------------------|-------------------------------------------------------|-----------------|
-| `utm_campaign`         | Same on all 5 rows                                    | `campaign`      |
-| `utm_id`               | Same on all 5 rows                                    | `eoa`           |
-| `utm_source=L00..L03`  | Changes every level                                   | `level`         |
-| `utm_medium`           | Derived from `utm_id` on L00; chosen by sharer L01+   | `medium`        |
-| `utm_content`          | Present on L00 only, dropped on L01+                  | `content`       |
-| `t=` (self token)      | New value every level                                 | `self-token`    |
-| `p=` (parent token)    | Absent on L00; = L00 instance on L01; = prior on L2/3 | `parent-token`  |
-| `v_lvl`                | Changes every level                                   | `level`         |
+## Decision-log archive
 
-Colors declared as HSL tokens in `src/index.css` per project rules — no hardcoded hex in components. A small legend row above the stack maps color to meaning.
-
-## 5. Data source
-
-Pure client-side render. No DB calls, no RPC. Templates are hand-mirrored from `mint_l00` and `mint_share` in a new module `src/lib/virality/payloadTemplates.ts`, exporting one function per level returning `{ segments: Array<{ key, value, colorRole }> }`. The panel component imports these and renders.
-
-## 6. Keeping it honest
-
-Add `src/lib/virality/payloadTemplates.test.ts` asserting each level's segments against a golden snapshot. A comment at the top of `payloadTemplates.ts` points at `mint_l00` and `mint_share` and asks the editor to update both together.
-
-## 7. Files
-
-- new: `src/lib/virality/payloadTemplates.ts`
-- new: `src/lib/virality/payloadTemplates.test.ts`
-- new: `src/components/PayloadReferencePanel.tsx`
-- edit: `src/pages/CampaignEoaManager.tsx` — add **Visualize Generic Payload** toolbar button + mount the collapsible panel below the toolbar
-- edit: `src/index.css` — add 7 HSL tokens for the color roles
-
-## 8. What does not change
-
-- No changes to `mint_l00`, `mint_share`, `tokens`, or any RPC.
-- No changes to how URLs are actually generated at mint time.
-- No token lookup, no live data, no per-row payload on EoA rows.
-- The QR & Token Tools page (`QrDebugTool.tsx`) is untouched.
-
-## 9. Decision log
-
-On approval + implementation, archive this plan to `docs/decisions/virality/2026-07-08_dynamic-payload-reference_feature-doc_lovable.md` as a new plan (not an update to an existing one).
+New plan → `docs/decisions/campaign-story/2026-07-08_honest-story-text_feature-doc_lovable.md` with `Status: Approved & Implemented` header. This is a **new plan**, not an update to an existing one (the closest prior is `2026-07-08_campaign-story-v2.1_feature-doc_lovable.md`, which established v2 structure; today's plan tightens two lines within that structure but is scoped narrowly enough to stand alone).
