@@ -4,7 +4,7 @@
  *
  * 2026-07-08 (v2): the "sprout" concept is retired. The story now carries
  * three distinct facts in three paragraphs, per the three-facts test:
- *   1. BREADTH   — how far the seed reached (Lane A broadcast opens, total
+ *   1. BREADTH   — how far the seed reached (Lane A distinct broadcast instances, total
  *                  view events including repeats, and channel mix).
  *   2. DEPTH     — how many hops the chain actually walked (Lane B chain
  *                  tokens and longest observed depth).
@@ -187,9 +187,9 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   lines.push("");
 
   // ── 1. BREADTH ────────────────────────────────────────────────────
-  // Unique facts: (a) broadcast opens (Lane A), (b) total view events
+  // Unique facts: (a) distinct broadcast instances (Lane A), (b) total view events
   // including repeats, (c) channel mix. Nothing here restates Lane B.
-  let breadthLine = `📢 The seed was opened ${broadcastOpens} time${broadcastOpens === 1 ? "" : "s"} at the source (Lane A: base QR/link scans and per-scan instances, including repeats)`;
+  let breadthLine = `📢 The seed reached ${broadcastOpens} distinct instance${broadcastOpens === 1 ? "" : "s"} at the source (Lane A: base QR/link scans and per-scan L00 instances — a conservative reach count that does not double-count repeat opens by the same device)`;
   if (viewCount > 0 && viewCount !== broadcastOpens) {
     breadthLine += `. All told, the content generated ${viewCount} view event${viewCount === 1 ? "" : "s"} across every level`;
   }

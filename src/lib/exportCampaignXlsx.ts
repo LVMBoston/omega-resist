@@ -92,7 +92,7 @@ const EVENT_COLUMNS: { column: string; description: string }[] = [
   { column: "region",          description: "url_events.region — reverse-geocoded region/state. Required for the US-states summary to be recomputable." },
   { column: "country",         description: "url_events.country — reverse-geocoded country. Required for the international-countries summary to be recomputable." },
   { column: "is_simulated",    description: "TRUE when the event was created by the simulator." },
-  { column: "lane",            description: "broadcast | chain | orphan — derived from the joined token via the shared classifier (orphan-first). Lane A / B counts on the Reference tab are recomputable from this column alone." },
+  { column: "lane",            description: "broadcast | chain | orphan — derived from the joined token via the shared classifier (orphan-first). Lane A recomputes as distinct tokens with true_depth = 0; Lane A view-event count is a separate diagnostic, not the headline. Lane B shares recomputes as distinct tokens with true_depth >= 1; Lane B viewers is a smaller number (distinct chain tokens with at least one view event) — surfaced separately in the completion-gap block." },
 ];
 
 const TOKEN_COLUMNS: { column: string; description: string }[] = [
@@ -128,9 +128,10 @@ interface ReferenceContext {
   eventRowCount: number;
   recomputed: {
     seeds: number;
-    broadcastOpensFromEvents: number;
+    broadcastViewEventsFromEvents: number;
     chainShares: number;
     chainViewersFromEvents: number;
+    chainSharesOpened: number;
     completedShares: number;
     views: number;
     zipCount: number;
@@ -198,22 +199,16 @@ function buildReferenceAoa(ctx: ReferenceContext): any[][] {
     "Count Tokens where true_depth = 0 and is_orphan = FALSE and parent_token IS NULL (base L00 templates).",
   ]);
   aoa.push([
-    "Broadcast opens (Lane A) — opens, not people",
+    "Broadcast instances (Lane A) — distinct L00 instances, not opens and not people",
     inputs.broadcastOpens ?? 0,
-    "Events tab",
-    "Count Events where lane = 'broadcast' and event_type = 'view'.",
+    "Tokens tab",
+    "Count Tokens where true_depth = 0 and is_orphan = FALSE. Distinct instance count, not an event count — repeat opens of the same instance do NOT add to this number. Repeat-open counts (Lane A view events) live in the internal diagnostic below and are not the headline.",
   ]);
   aoa.push([
-    "Chain shares (Lane B)",
+    "Chain shares (Lane B) — minted L01+ tokens, whether opened by recipient or not",
     chainShares,
     "Tokens tab",
-    "Count Tokens where true_depth >= 1 and is_orphan = FALSE.",
-  ]);
-  aoa.push([
-    "Chain viewers (Lane B) — approximate unique viewers",
-    chainViewers,
-    "Events tab",
-    "Count Events where lane = 'chain' and event_type = 'view'.",
+    "Count Tokens where true_depth >= 1 and is_orphan = FALSE. Structural count of shares that were minted. A smaller 'chain viewers' number (shares actually opened by a recipient) is surfaced separately in the completion-gap block.",
   ]);
   aoa.push([
     "Completed shares",
@@ -306,16 +301,63 @@ function buildReferenceAoa(ctx: ReferenceContext): any[][] {
   ]);
   aoa.push([]);
 
-  // ── Recompute cross-check
-  const broadcastMatch = recomputed.broadcastOpensFromEvents === (inputs.broadcastOpens ?? 0);
-  const chainViewersMatch = recomputed.chainViewersFromEvents === (inputs.chainViewers ?? 0);
-  const orphanMatch = recomputed.orphanCount === (inputs.orphanCount ?? 0);
-  aoa.push(["Metric-layer vs recomputed-from-raw cross-check"]);
+  // ── Recompute cross-check — same unit on both sides of every row.
+  // A MISMATCH here indicates a real bug (orphan filter drift, lane
+  // classifier drift, pagination gap). Expected divergences (like the
+  // shares-minted-vs-shares-opened gap) live in the informational
+  // completion-gap block below, NOT in this block.
+  const broadcastTokens = recomputed.seeds; // seeds are exactly the true_depth=0 non-orphan tokens.
+  const broadcastMatch  = broadcastTokens === (inputs.broadcastOpens ?? 0);
+  const chainSharesMatch = recomputed.chainShares === (inputs.chainViewers ?? 0);
+  const orphanMatch      = recomputed.orphanCount === (inputs.orphanCount ?? 0);
+  aoa.push(["Metric-layer vs recomputed-from-raw cross-check (same-unit comparisons only)"]);
   aoa.push(["Metric", "Metric layer", "Recomputed from raw tabs", "Match?"]);
-  aoa.push(["Broadcast opens (Lane A views)", inputs.broadcastOpens ?? 0, recomputed.broadcastOpensFromEvents, broadcastMatch ? "OK" : "MISMATCH"]);
-  aoa.push(["Chain viewers (Lane B views)",   inputs.chainViewers ?? 0,   recomputed.chainViewersFromEvents,   chainViewersMatch ? "OK" : "MISMATCH"]);
-  aoa.push(["Orphan tokens",                   inputs.orphanCount ?? 0,    recomputed.orphanCount,              orphanMatch ? "OK" : "MISMATCH"]);
+  aoa.push(["Broadcast instances (Lane A tokens)", inputs.broadcastOpens ?? 0, broadcastTokens,          broadcastMatch   ? "OK" : "MISMATCH"]);
+  aoa.push(["Chain shares (Lane B tokens)",         inputs.chainViewers ?? 0,   recomputed.chainShares,   chainSharesMatch ? "OK" : "MISMATCH"]);
+  aoa.push(["Orphans",                              inputs.orphanCount ?? 0,    recomputed.orphanCount,   orphanMatch      ? "OK" : "MISMATCH"]);
   aoa.push([]);
+
+  // ── Completion-gap block — informational, NOT a cross-check.
+  // Home for the honest "chain viewers" number (22 in the reference
+  // sample): distinct chain tokens with at least one view event.
+  // The gap between shares minted and shares opened is expected and
+  // is the same signal the story's any-hop completion rate surfaces.
+  const chainSharesOpened = recomputed.chainSharesOpened;
+  const chainSharesUnopened = recomputed.chainShares - chainSharesOpened;
+  aoa.push(["Chain completion gap (informational, not a cross-check)"]);
+  aoa.push(["Metric", "Value", "Source", "Note"]);
+  aoa.push([
+    "Chain shares minted (Lane B tokens)",
+    recomputed.chainShares,
+    "Tokens tab",
+    "Structural share count — same value as the Lane B cross-check row above.",
+  ]);
+  aoa.push([
+    "Chain shares opened by recipient (chain tokens with >=1 view event)",
+    chainSharesOpened,
+    "Tokens + Events tabs",
+    "This is what a strict 'chain viewers' number would be. Distinct chain tokens with any view event.",
+  ]);
+  aoa.push([
+    "Shares minted but not yet opened",
+    chainSharesUnopened,
+    "Derived",
+    "Expected gap — same signal the story's any-hop completion rate surfaces. Not a data anomaly.",
+  ]);
+  aoa.push([]);
+
+  // ── Internal diagnostic — Lane A view events (repeat opens live here,
+  // not in the headline). Kept for reviewers; NOT part of the cross-check.
+  aoa.push(["Internal diagnostic — Lane A view events (repeat opens included)"]);
+  aoa.push([
+    "Broadcast view events (Lane A)",
+    recomputed.broadcastViewEventsFromEvents,
+    "Events tab",
+    "Count Events where lane = 'broadcast' and event_type = 'view'. If greater than the Broadcast instances headline, the difference is repeat opens of the same instance — real engagement, not additional reach.",
+  ]);
+  aoa.push([]);
+
+
 
   // ── Rendered narrative paragraph
   aoa.push(["Campaign Story (rendered narrative)"]);
@@ -449,18 +491,24 @@ export async function exportCampaignXlsx(
 
   // ── Recomputed-from-raw metrics (drive the Reference cross-check
   // and the summary values that come from the Events tab).
-  let broadcastOpensFromEvents = 0;
+  // NOTE: broadcastViewEventsFromEvents is a DIAGNOSTIC (repeat opens
+  // included), NOT the Lane A headline — headline is the token count.
+  let broadcastViewEventsFromEvents = 0;
   let chainViewersFromEvents = 0;
   let views = 0;
   const zipSet = new Set<string>();
   const stateSet = new Set<string>();
   const intlCountrySet = new Set<string>();
+  const chainTokensWithView = new Set<string>();
   for (const e of events) {
     if (e.event_type === "view") views += 1;
     const lane = laneByToken.get(e.token) ?? "orphan";
     if (e.event_type === "view") {
-      if (lane === "broadcast") broadcastOpensFromEvents += 1;
-      else if (lane === "chain") chainViewersFromEvents += 1;
+      if (lane === "broadcast") broadcastViewEventsFromEvents += 1;
+      else if (lane === "chain") {
+        chainViewersFromEvents += 1;
+        chainTokensWithView.add(e.token);
+      }
     }
     if (e.zip_code) zipSet.add(String(e.zip_code));
     if (e.country === "United States" && e.region) stateSet.add(String(e.region));
@@ -532,9 +580,17 @@ export async function exportCampaignXlsx(
     eventRowCount: events.length,
     recomputed: {
       seeds,
-      broadcastOpensFromEvents,
+      broadcastViewEventsFromEvents,
       chainShares,
       chainViewersFromEvents,
+      chainSharesOpened: (() => {
+        let n = 0;
+        for (const t of chainTokensWithView) {
+          const row = lineageByToken.get(t);
+          if (row && !isOrphanRow(row) && Number(row.true_depth ?? 0) >= 1) n += 1;
+        }
+        return n;
+      })(),
       completedShares,
       views,
       zipCount: zipSet.size,

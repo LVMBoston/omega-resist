@@ -37,9 +37,9 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
     expect(lines[1]).toBe("");
   });
 
-  it("carries the BREADTH fact (Lane A opens) in its own paragraph", () => {
+  it("carries the BREADTH fact (Lane A distinct instances) in its own paragraph", () => {
     const out = formatCampaignStory(baseInput());
-    expect(out).toContain("📢 The seed was opened 12 times");
+    expect(out).toContain("📢 The seed reached 12 distinct instances");
     expect(out).toContain("Lane A");
   });
 

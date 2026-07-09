@@ -96,3 +96,25 @@ Shared modules reused:
 - 7a. Column-order dictionaries (`EVENT_COLUMNS`, `TOKEN_COLUMNS`) are the **single source of truth** for header order. Body-builder loops rely on this — add columns in both places or the row shape drifts.
 - 7b. The Reference tab's "How to recompute" column is the contract with the reviewer. Every new metric added there must be reproducible from the raw tabs alone.
 - 7c. Lane / orphan classification must never be re-implemented in this file — always call the shared classifier.
+
+## Update — 2026-07-09
+
+Status: Approved & Implemented
+
+Applied the "Lane A = instances, Lane B = shares" honesty pass:
+
+- **Lane A relabeled to "instances" (81), not "opens"** — everywhere it surfaces (story sentence, export summary, cross-check row, campaignNarrative, code comments). The number and computation are unchanged; only the label. The word "opened" no longer sits above the Lane A structural count.
+- **Lane B relabeled to "chain shares" (26), not "chain viewers"** — same principle. 26 is the count of minted L01+ tokens; only 22 of those were actually opened by a recipient. The old "chain viewers = 26" line put a viewer word above a share count.
+- **Cross-check rewritten to compare like units on both sides.** Three rows: `Broadcast instances (Lane A tokens)`, `Chain shares (Lane B tokens)`, `Orphans` — each compares the metric-layer value to the raw token count of the same quantity. MISMATCH is now reserved for genuine same-unit disagreements (orphan filter drift, lane classifier drift, pagination gap).
+- **New completion-gap block** (informational, not a cross-check): "Chain shares minted / opened by recipient / not yet opened". This is the honest home for the number 22 — labeled as "what a strict 'chain viewers' number would be" — and for the 4-share gap. Not flagged as a data anomaly.
+- **New internal-diagnostic block** surfacing `Broadcast view events (Lane A)` — the raw view-event count including repeats. Called out as diagnostic, not headline.
+- **Internal identifier renamed** `broadcastOpensFromEvents` → `broadcastViewEventsFromEvents` so future readers can't conflate the diagnostic with the headline.
+- **§6 deferred** — surfacing "N instances opened M times total" in the story would require wiring a Lane-A view-event count through `computeCampaignStoryInputs` (which currently has only a bulk `viewCount`, no lane join for view events). Not a one-line change; deferred rather than half-shipped so the story and the export never disagree on whether the number appears.
+
+Files touched:
+- `supabase/functions/_shared/render/campaignStory.ts` — wording + comments
+- `src/lib/exportCampaignXlsx.ts` — labels, cross-check, completion-gap block, diagnostic block, internal rename
+- `src/lib/campaignNarrative.ts` — one wording line
+- `src/shared/render/campaignStory.test.ts` — string assertion updated
+
+Verification: `bunx vitest run src/shared/render/campaignStory.test.ts src/shared/render/campaignStoryInputs.test.ts` → 14/14 passing. Xlsx re-export against `nk3-invitation` still pending user-side confirmation of the visible layout in Excel.
