@@ -131,7 +131,7 @@ export function generateHeadlineOnly(data: NarrativeData): string {
   lines.push("");
 
   // Breadth
-  lines.push(`${broadcastOpens} broadcast opens`);
+  lines.push(`${broadcastOpens} broadcast instances`);
   lines.push("");
 
   // Depth — reframed for single-carrier linear chains so a persistence
