@@ -17,13 +17,19 @@ const CODES = ["nk3-invitation", "rs-good-1"];
 const OUT_DIR = "/mnt/documents/campaign-stories";
 
 async function main() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const accessToken = process.env.LOVABLE_BROWSER_SUPABASE_ACCESS_TOKEN;
+  const key = serviceKey || anonKey;
   if (!url || !key) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required");
+    throw new Error("SUPABASE_URL and (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_PUBLISHABLE_KEY) required");
   }
   const supabase = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: accessToken && !serviceKey
+      ? { headers: { Authorization: `Bearer ${accessToken}` } }
+      : undefined,
   });
 
   await mkdir(OUT_DIR, { recursive: true });
