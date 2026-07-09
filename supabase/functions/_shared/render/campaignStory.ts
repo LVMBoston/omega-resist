@@ -79,13 +79,6 @@ const MEDIUM_LABELS: Record<string, string> = {
   fb: "Facebook",
 };
 
-const CLOSINGS = [
-  "No ad budget. No algorithm. Every view came because one person decided another person needed to see it.",
-  "No ads. No tricks. Just people passing something along because it mattered to them.",
-  "No promotion. No platform boost. This spread the old-fashioned way — person to person, because it resonated.",
-  "Zero dollars spent. Every single view was a conscious act of solidarity — someone choosing to share.",
-];
-
 export function formatCampaignStory(input: CampaignStoryInput): string {
   const {
     campaignTitle,
@@ -155,8 +148,6 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
         ` It even crossed borders, reaching ${internationalCountries.join(", ")}.`;
     }
   }
-
-  const closingIndex = (seedCount + chainViewers) % CLOSINGS.length;
 
   const lines: string[] = [];
 
@@ -272,9 +263,6 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
     lines.push(`📍 ${geoNarrative}`);
     lines.push("");
   }
-
-  lines.push(CLOSINGS[closingIndex]);
-  lines.push("");
 
   return lines.join("\n");
 }
