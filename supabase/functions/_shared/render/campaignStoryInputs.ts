@@ -47,12 +47,17 @@ export interface CampaignStoryInputResult {
   internationalCountries: string[];
   maxDepth: number;
 
-  /** ── Two-lane honest metrics (2026-07-08). ─────────────────────────
-   * Lane A — Broadcast opens: tokens at true_depth = 0 (base L00
-   *   templates + per-scan L00 instances). Inflated by design; label as
-   *   "opens", never "viewers".
-   * Lane B — Chain activity: tokens at true_depth >= 1 (mint_share
-   *   descendants), orphans excluded. Approximate unique viewers.
+  /** ── Two-lane honest metrics (2026-07-08, relabeled 2026-07-09). ──
+   * Lane A — Broadcast instances: tokens at true_depth = 0 (base L00
+   *   templates + per-scan L00 instances). A conservative distinct-
+   *   instance count at the source; label as "instances", NEVER "opens"
+   *   or "viewers" (both retired — repeat opens by the same device
+   *   would inflate a viewer count).
+   * Lane B — Chain shares: tokens at true_depth >= 1 (mint_share
+   *   descendants), orphans excluded. A structural share count; label
+   *   as "chain shares", NEVER "viewers" (retired — minting a share
+   *   link is not the same as a recipient opening it; landing rate is
+   *   reported separately).
    * Orphans: parent_token IS NULL and NOT an L00-shaped token (legacy
    *   detached L1s). Excluded from both lanes; surfaced separately.
    */
