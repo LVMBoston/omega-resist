@@ -118,4 +118,80 @@ describe("formatCampaignStory (v2 — three-facts structure)", () => {
     expect(breadth).not.toMatch(/\b4\b/);
     expect(depth).not.toMatch(/\b4\b/);
   });
+
+  it("renders 0% landing when chain exists but no share landed (guards against null vs 0 confusion)", () => {
+    const out = formatCampaignStory({
+      ...baseInput(),
+      chainViewers: 5,
+      maxDepth: 1,
+      anyHopCompletionRate: 0,
+      anyHopCompletionNumerator: 0,
+      anyHopCompletionDenominator: 5,
+    });
+    expect(out).toContain("✅ Of those 5 chain shares, 0 (0%)");
+  });
+
+  it("suppresses the single-carrier persistence framing below the 3-hop threshold", () => {
+    // Pin the defensive `>= 3` guard: even if a decoupled caller sets
+    // longestChainIsLinear: true with hops === 1, no persistence line renders.
+    const out = formatCampaignStory({
+      ...baseInput(),
+      longestChainIsLinear: true,
+      singleCarrierTailHops: 1,
+    });
+    expect(out).not.toContain("single-carrier persistence");
+    expect(out).toContain("🔗 That broadcast produced");
+  });
+
+  it("triggers persistence framing at the exact 3-hop boundary with correct pluralization", () => {
+    const out = formatCampaignStory({
+      ...baseInput(),
+      longestChainIsLinear: true,
+      singleCarrierTailHops: 3,
+    });
+    expect(out).toContain("across 3 consecutive hops");
+  });
+
+  it("emits the simulation banner as the first non-empty line when includeTitle: false and dataSource: simulated", () => {
+    const out = formatCampaignStory({
+      ...baseInput(),
+      includeTitle: false,
+      dataSource: "simulated",
+    });
+    const firstNonEmpty = out.split("\n").find((l) => l.trim().length > 0);
+    expect(firstNonEmpty).toBe("Simulation report — not real field activity.");
+  });
+
+  it("preserves block ordering with includeTitle: false, orphans present, and geography present", () => {
+    const out = formatCampaignStory({
+      ...baseInput(),
+      includeTitle: false,
+      orphanCount: 2,
+      zipCount: 15,
+      stateCount: 3,
+    });
+    const breadthIdx = out.indexOf("📢");
+    const depthIdx = out.indexOf("🔗");
+    const landingIdx = out.indexOf("✅");
+    const orphanIdx = out.indexOf("⚠️");
+    const geoIdx = out.indexOf("📍");
+    expect(breadthIdx).toBeGreaterThan(-1);
+    expect(breadthIdx).toBeLessThan(depthIdx);
+    expect(depthIdx).toBeLessThan(landingIdx);
+    expect(landingIdx).toBeLessThan(orphanIdx);
+    expect(orphanIdx).toBeLessThan(geoIdx);
+  });
+
+  it("aliases sms + social into a single 'text' channel-mix bucket that sums correctly", () => {
+    const out = formatCampaignStory({
+      ...baseInput(),
+      shareMediums: [
+        { medium: "sms", count: 3 },
+        { medium: "social", count: 1 },
+        { medium: "em", count: 4 },
+      ],
+    });
+    // sms (3) + social (1) = 4 of 8 total → 50% text; em (4) → 50% email.
+    expect(out).toContain("📱 Channel mix: 50% text, 50% email.");
+  });
 });
