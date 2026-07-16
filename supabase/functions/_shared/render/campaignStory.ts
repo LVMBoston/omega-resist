@@ -26,7 +26,7 @@ export interface CampaignStoryInput {
   dataSource?: "real" | "simulated";
 
   seedCount: number;
-  /** Sprouted seeds where no child has been viewed yet (orange map border). */
+  /** Seeds that produced a share link no recipient has opened yet (orange map border). */
   intentCount?: number;
 
   viewCount: number;
@@ -215,7 +215,8 @@ export function formatCampaignStory(input: CampaignStoryInput): string {
   if (chainViewers > 0) {
     if (longestChainIsLinear && singleCarrierTailHops >= 3) {
       const tail = singleCarrierTailHops;
-      let carrierLine = `🔗 The deepest chain's tail is single-carrier persistence: one sharer carried the message across ${tail} consecutive hops with branching factor 1 at each`;
+      const hopWord = tail === 1 ? "hop" : "hops";
+      let carrierLine = `🔗 The deepest chain's tail is single-carrier persistence: one sharer carried the message across ${tail} consecutive ${hopWord} with branching factor 1 at each`;
       if (longestChainTerminalUnopened) {
         carrierLine += `; the terminal share was never opened`;
       }
