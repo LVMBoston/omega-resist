@@ -112,3 +112,17 @@ export const formatElapsedTime = (ms: number): string => {
   if (hours > 0) return `${hours}h`;
   return `${minutes}m`;
 };
+
+/**
+ * Human-readable duration for an arbitrary minute count.
+ * Shared by the Server-Side Rendering settings panel and the campaign
+ * config page so both spell intervals identically.
+ * Examples: 1 -> "1 minute", 60 -> "1 hour", 1440 -> "1 day", 10080 -> "1 week"
+ */
+export const formatMinutes = (mins: number): string => {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (mins % 10080 === 0) return plural(mins / 10080, "week");
+  if (mins % 1440 === 0) return plural(mins / 1440, "day");
+  if (mins % 60 === 0) return plural(mins / 60, "hour");
+  return plural(mins, "minute");
+};
