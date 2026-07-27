@@ -37,13 +37,22 @@ interface TemplateContext {
 
 const INTERVAL_OPTIONS = [
   { value: "1", label: "1 minute" },
-  { value: "2", label: "2 minutes" },
   { value: "5", label: "5 minutes" },
-  { value: "10", label: "10 minutes" },
-  { value: "15", label: "15 minutes" },
-  { value: "30", label: "30 minutes" },
   { value: "60", label: "1 hour" },
+  { value: "720", label: "12 hours" },
+  { value: "1440", label: "1 day" },
+  { value: "10080", label: "1 week" },
 ];
+
+/** Human-readable duration for an arbitrary minute count (used for legacy values). */
+function formatMinutes(mins: number): string {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (mins % 10080 === 0) return plural(mins / 10080, "week");
+  if (mins % 1440 === 0) return plural(mins / 1440, "day");
+  if (mins % 60 === 0) return plural(mins / 60, "hour");
+  return plural(mins, "minute");
+}
+
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -406,6 +415,15 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
   const snapshotEnabled = campaign?.snapshot_enabled ?? false;
   const intervalMinutes = campaign?.snapshot_interval_minutes ?? 2;
 
+  // If the stored interval is no longer one of the offered options, surface it as a
+  // labelled "(legacy)" entry so the trigger never renders blank. Nothing is written
+  // to the database until the user actively picks a new value.
+  const isLegacyInterval = !INTERVAL_OPTIONS.some(o => o.value === String(intervalMinutes));
+  const intervalOptions = isLegacyInterval
+    ? [{ value: String(intervalMinutes), label: `${formatMinutes(intervalMinutes)} (legacy)` }, ...INTERVAL_OPTIONS]
+    : INTERVAL_OPTIONS;
+
+
   // Only show templates actually linked to this campaign's decks, ordered by deck position
   const campaignTemplates = templateContexts
     ? templates
@@ -451,7 +469,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {INTERVAL_OPTIONS.map((opt) => (
+              {intervalOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </SelectItem>
