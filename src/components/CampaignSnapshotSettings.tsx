@@ -44,14 +44,7 @@ const INTERVAL_OPTIONS = [
   { value: "10080", label: "1 week" },
 ];
 
-/** Human-readable duration for an arbitrary minute count (used for legacy values). */
-function formatMinutes(mins: number): string {
-  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
-  if (mins % 10080 === 0) return plural(mins / 10080, "week");
-  if (mins % 1440 === 0) return plural(mins / 1440, "day");
-  if (mins % 60 === 0) return plural(mins / 60, "hour");
-  return plural(mins, "minute");
-}
+
 
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
