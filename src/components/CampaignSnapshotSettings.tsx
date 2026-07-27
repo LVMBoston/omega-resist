@@ -469,7 +469,7 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {INTERVAL_OPTIONS.map((opt) => (
+              {intervalOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </SelectItem>
