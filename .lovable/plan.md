@@ -1,54 +1,37 @@
 ## Goal
 
-On `/campaign-config`, show at a glance which campaigns have Server-Side Rendering turned on, and how often those snapshots refresh.
+Make the Campaign Visibility page header match the Event Manager pattern: show which campaign you're looking at, and drop the confusing campaign dropdown in the top-right.
 
-## 1. Where the data comes from
+## 1. Header changes (`src/pages/CampaignDashboard.tsx`, lines ~825–867)
 
-a. `CampaignManager.tsx` already loads campaigns with `.from("campaigns").select("*")`, so `snapshot_enabled` and `snapshot_interval_minutes` are **already in the fetched rows** — no extra query, no extra round trip.
+a. Add a breadcrumb above the heading: **Campaign Orchestration** (link to `/campaign-config`) > **{campaign title}**, using the same `Breadcrumb` components as the Event Manager page (`CampaignDetail.tsx`).
 
-b. The local `Campaign` interface (line 27) currently lists only `id`, `code`, `title`, `description`, `created_at`. Add `snapshot_enabled: boolean | null` and `snapshot_interval_minutes: number | null` so the fields are typed.
+b. Under the "Campaign Visibility" heading and its "Real-time viral tracking and analytics" subtitle, add the campaign identity line: campaign title (bold, prominent) with `utm_campaign: {code}` beneath it — same shape as the Event Manager header.
 
-## 2. The indicator
+c. Remove the campaign `Select` dropdown and its loading spinner from the top-right of the header. The campaign is then determined purely by the URL (`?campaign=…&campaignId=…`), as set when you navigate in from Campaign Orchestration.
 
-a. In the campaign card header (`SortableCard`, next to the title / `utm_campaign` line), render a small badge **only when `snapshot_enabled` is true**:
+d. Keep the existing "Official start" and "Pre-launch / test excluded" badges exactly where they are.
 
-```text
-[⟳ SSR · 1 day]
-```
+## 2. Behavior after removing the dropdown
 
-b. Contents: a refresh icon, the label `SSR`, and the interval formatted as a readable duration (1 minute / 5 minutes / 1 hour / 12 hours / 1 day / 1 week, and any legacy value rendered honestly, e.g. `2 minutes`).
+a. The page already reads the campaign from the URL and falls back to the last-used campaign in local storage, then the first campaign. That fallback stays, so landing on `/campaign-dashboard` with no parameters still resolves to a campaign rather than a blank page.
 
-c. Campaigns with SSR off show **no badge at all** — absence is the signal, keeping the grid uncluttered. (Alternative if you'd prefer explicit: a muted "SSR off" badge on every card. Say the word and I'll do that instead.)
+b. Switching campaigns is done by going back to Campaign Orchestration and entering the campaign from there — which the new breadcrumb makes a one-click trip.
 
-d. Styling uses existing semantic tokens (`Badge` with `variant="secondary"` plus muted foreground), consistent with the amber badge already used elsewhere on this page.
+c. While the campaign list is still loading, the title area shows the campaign code (or a neutral placeholder) rather than flashing empty.
 
-e. A `title` tooltip on the badge reads: "Server-side rendering enabled — snapshots refresh every {interval}."
+## 3. Technical notes
 
-## 3. Shared duration formatter
+- Only `src/pages/CampaignDashboard.tsx` changes. No data-fetch, filter, tab, or metric logic is touched; the `campaigns` query is still needed to resolve the title from the code.
+- Unused imports (`Select` pieces, `Loader2`) are removed only if nothing else on the page uses them.
+- Verification: browser check on `/campaign-dashboard?campaign=sv-paris-postcards&…` confirming the breadcrumb, title, and `utm_campaign` line render and the dropdown is gone.
 
-a. The `formatMinutes` helper written last turn currently lives inside `src/components/CampaignSnapshotSettings.tsx`. Move it to `src/lib/dateUtils.ts` (exported) and import it in both places, so the config page and the settings panel can never disagree about how "10080" is spelled.
+## 4. Decision log
 
-b. No behaviour change to the settings panel — same function, new home.
+This is a new decision document: `docs/decisions/campaigns/2026-07-27_campaign-visibility-header-context_feature-doc_lovable.md`, marked `Status: Approved & Implemented`. It does not update an existing plan.
 
-## 4. Files touched
+## What does not change
 
-| File | Change |
-|------|--------|
-| `src/lib/dateUtils.ts` | Export shared `formatMinutes` helper |
-| `src/components/CampaignSnapshotSettings.tsx` | Import the helper instead of defining it locally |
-| `src/pages/CampaignManager.tsx` | Extend `Campaign` interface; render the SSR badge in `SortableCard` |
-
-## 5. Not changed
-
-- No new database queries, columns, or migrations.
-- No change to the cron pipeline, `refresh-all-snapshots`, or `render-stats-snapshot`.
-- Toggling SSR stays where it is today (the campaign dashboard's Server-Side Rendering panel). This badge is read-only.
-
-## 6. Verification
-
-a. Browser check on `/campaign-config`: screenshot the campaign grid showing the badge present on SSR-enabled campaigns and absent on the rest.
-b. Cross-check the badge's interval text against the value shown in the campaign's Server-Side Rendering panel for at least one campaign.
-
-## 7. Decision log
-
-This is a new plan. On completion it will be appended as an `## Update — 2026-07-27` section to `docs/decisions/snapshots/2026-07-27_snapshot-refresh-interval-options_feature-doc_lovable.md`, since it extends that same refresh-interval work.
+- Tabs (Scheduler, Real-time Map, Events Listing, Simulator)
+- Filters bar, simulation controls, level checkboxes
+- Any metric, export, or map behavior
