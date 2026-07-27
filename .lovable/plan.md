@@ -1,50 +1,54 @@
 ## Goal
 
-Change the Server-Side Rendering "Refresh Interval" choices to: 1 minute, 5 minutes, 1 hour, 12 hours, 1 day, 1 week — and show a clearly-labelled "(legacy)" entry for any campaign whose saved value isn't in the new list.
+On `/campaign-config`, show at a glance which campaigns have Server-Side Rendering turned on, and how often those snapshots refresh.
 
-This is safe. The cron heartbeat runs every minute regardless; `refresh-all-snapshots` only compares the snapshot file's age against `snapshot_interval_minutes`. Larger values simply mean "skip more often". The column is a plain integer, so 720 / 1440 / 10080 store fine.
+## 1. Where the data comes from
 
-## 1. Interval options
+a. `CampaignManager.tsx` already loads campaigns with `.from("campaigns").select("*")`, so `snapshot_enabled` and `snapshot_interval_minutes` are **already in the fetched rows** — no extra query, no extra round trip.
 
-a. In `src/components/CampaignSnapshotSettings.tsx`, replace `INTERVAL_OPTIONS` (currently 1 / 2 / 5 / 10 / 15 / 30 / 60) with:
+b. The local `Campaign` interface (line 27) currently lists only `id`, `code`, `title`, `description`, `created_at`. Add `snapshot_enabled: boolean | null` and `snapshot_interval_minutes: number | null` so the fields are typed.
+
+## 2. The indicator
+
+a. In the campaign card header (`SortableCard`, next to the title / `utm_campaign` line), render a small badge **only when `snapshot_enabled` is true**:
 
 ```text
-1      1 minute
-5      5 minutes
-60     1 hour
-720    12 hours
-1440   1 day
-10080  1 week
+[⟳ SSR · 1 day]
 ```
 
-## 2. Legacy entry (chosen approach)
+b. Contents: a refresh icon, the label `SSR`, and the interval formatted as a readable duration (1 minute / 5 minutes / 1 hour / 12 hours / 1 day / 1 week, and any legacy value rendered honestly, e.g. `2 minutes`).
 
-a. Compute the options list at render time: if the campaign's stored `snapshot_interval_minutes` is not one of the six values above, prepend a single extra option for that value.
+c. Campaigns with SSR off show **no badge at all** — absence is the signal, keeping the grid uncluttered. (Alternative if you'd prefer explicit: a muted "SSR off" badge on every card. Say the word and I'll do that instead.)
 
-b. Label it with a human-readable duration plus a marker — e.g. `2 minutes (legacy)`, `30 minutes (legacy)`, `10 minutes (legacy)`. A small helper formats any minute count into minutes / hours / days / weeks so the label is always readable.
+d. Styling uses existing semantic tokens (`Badge` with `variant="secondary"` plus muted foreground), consistent with the amber badge already used elsewhere on this page.
 
-c. Nothing is written to the database on load. The stored value stays untouched until the user actively picks a new option; once they do, the legacy entry disappears on the next render.
+e. A `title` tooltip on the badge reads: "Server-side rendering enabled — snapshots refresh every {interval}."
 
-d. Result: the dropdown trigger never renders blank, and the user can see exactly what their campaign is currently set to.
+## 3. Shared duration formatter
 
-## 3. Status badge
+a. The `formatMinutes` helper written last turn currently lives inside `src/components/CampaignSnapshotSettings.tsx`. Move it to `src/lib/dateUtils.ts` (exported) and import it in both places, so the config page and the settings panel can never disagree about how "10080" is spelled.
 
-a. `SnapshotStatusBadge` uses `intervalMinutes` only for the fresh / stale / very-stale colour thresholds, and prints relative time via `formatDistanceToNow`, which already reads well in hours, days, and months. No change needed to the text.
+b. No behaviour change to the settings panel — same function, new home.
 
-b. The thresholds scale automatically: with a 1-week interval, "fresh" means under 7 days, "stale" under ~17 days. That is the intended meaning, so this stays as is.
+## 4. Files touched
 
-## 4. Not changed
+| File | Change |
+|------|--------|
+| `src/lib/dateUtils.ts` | Export shared `formatMinutes` helper |
+| `src/components/CampaignSnapshotSettings.tsx` | Import the helper instead of defining it locally |
+| `src/pages/CampaignManager.tsx` | Extend `Campaign` interface; render the SSR badge in `SortableCard` |
 
-- The cron schedule (`* * * * *`) — it is just a heartbeat.
-- `refresh-all-snapshots`, the storage-age staleness check, `render-stats-snapshot`.
-- The database default (`2`) and the `?? 2` fallback in the component. A campaign still on the default will now display as `2 minutes (legacy)`, which is accurate and self-explanatory.
+## 5. Not changed
 
-## 5. Verification
+- No new database queries, columns, or migrations.
+- No change to the cron pipeline, `refresh-all-snapshots`, or `render-stats-snapshot`.
+- Toggling SSR stays where it is today (the campaign dashboard's Server-Side Rendering panel). This badge is read-only.
 
-a. Open `/campaign-dashboard` for nk3-invitation, screenshot the dropdown open showing the six new options.
-b. Confirm a campaign with a legacy value (e.g. 2) shows `2 minutes (legacy)` in the trigger rather than a blank.
-c. Select "1 day", reload, confirm the trigger reads "1 day" and the legacy entry is gone.
+## 6. Verification
 
-## 6. Decision log
+a. Browser check on `/campaign-config`: screenshot the campaign grid showing the badge present on SSR-enabled campaigns and absent on the rest.
+b. Cross-check the badge's interval text against the value shown in the campaign's Server-Side Rendering panel for at least one campaign.
 
-This is a new plan (not an update to an existing one). On completion it will be archived at `docs/decisions/snapshots/2026-07-27_snapshot-refresh-interval-options_feature-doc_lovable.md`.
+## 7. Decision log
+
+This is a new plan. On completion it will be appended as an `## Update — 2026-07-27` section to `docs/decisions/snapshots/2026-07-27_snapshot-refresh-interval-options_feature-doc_lovable.md`, since it extends that same refresh-interval work.
