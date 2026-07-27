@@ -1,56 +1,50 @@
-# Low-Hanging Fruit from Claude's Analysis
+## Goal
 
-Analysis-only review of Claude's 7 refactor proposals. "Low-hanging" = small diff, no behavior change to correct output, no cross-runtime rename cascade.
+Change the Server-Side Rendering "Refresh Interval" choices to: 1 minute, 5 minutes, 1 hour, 12 hours, 1 day, 1 week — and show a clearly-labelled "(legacy)" entry for any campaign whose saved value isn't in the new list.
 
-## 1. What qualifies as low-hanging (recommended)
+This is safe. The cron heartbeat runs every minute regardless; `refresh-all-snapshots` only compares the snapshot file's age against `snapshot_interval_minutes`. Larger values simply mean "skip more often". The column is a plain integer, so 720 / 1440 / 10080 store fine.
 
-a. **Fix stale doc comment in `campaignStoryInputs.ts`** (Claude's §6.3)
-   - Change: one comment block currently says "label as 'opens'… Approximate unique viewers" — the exact vocabulary we retired on 2026-07-09.
-   - Diff size: ~4 lines, comment only.
-   - Risk: **None.** No runtime effect. Prevents future contributor from reintroducing retired wording.
+## 1. Interval options
 
-b. **Remove retired "Sprouted seeds" phrasing from `intentCount` JSDoc** (Claude's §2 residual finding, line 29 of `campaignStory.ts`)
-   - Change: rewrite one JSDoc line to drop "Sprouted."
-   - Diff size: 1 line.
-   - Risk: **None.** Comment-only.
+a. In `src/components/CampaignSnapshotSettings.tsx`, replace `INTERVAL_OPTIONS` (currently 1 / 2 / 5 / 10 / 15 / 30 / 60) with:
 
-c. **Add pluralization guard for `singleCarrierTailHops === 1`** (Claude's §6.4)
-   - Change: add `hops === 1 ? "hop" : "hops"` in the single-carrier branch. Keep the redundant `>= 3` guard (defense-in-depth against decoupled callers).
-   - Diff size: ~2 lines inside one template literal.
-   - Risk: **Very low.** Unreachable today given the producer's invariant; strictly a correctness improvement if that invariant is ever broken. Add one unit test pinning the boundary.
+```text
+1      1 minute
+5      5 minutes
+60     1 hour
+720    12 hours
+1440   1 day
+10080  1 week
+```
 
-d. **Add the missed test cases** (Claude's §5.1, §5.3, §5.4, §5.5, §5.6)
-   - Cases: 0% landing rate, single-carrier `hops===1`, `includeTitle:false` + simulated, `includeTitle:false` + orphans + geography, medium-mix aliasing sum.
-   - Diff size: test file only.
-   - Risk: **None.** Pins current behavior; no source change. Skip the golden-snapshot test (§5.7) for now — higher maintenance cost, easy to add later.
+## 2. Legacy entry (chosen approach)
 
-## 2. Where I disagree with Claude's "low-hanging" framing
+a. Compute the options list at render time: if the campaign's stored `snapshot_interval_minutes` is not one of the six values above, prepend a single extra option for that value.
 
-e. **International-only geography suppression** (Claude's §6.2) — Claude ranks this "medium-low risk." I'd move it **out** of low-hanging.
-   - Reason: it changes rendered output on real campaigns (per the v2.1 decision doc, real production data currently hits `zipCount === 0`). That means enabling this fix will make the "crossed borders" clause appear on campaigns where it currently doesn't — a visible narrative change users will notice on the deck slide, report page, fridge QR, and xlsx export simultaneously.
-   - Recommend: keep as a separate, deliberate change with its own approval, not bundled into a hygiene pass. Add Claude's §5.2 test first (pinning current wrong behavior), then do the fix as its own decision doc.
+b. Label it with a human-readable duration plus a marker — e.g. `2 minutes (legacy)`, `30 minutes (legacy)`, `10 minutes (legacy)`. A small helper formats any minute count into minutes / hours / days / weeks so the label is always readable.
 
-f. **Remove dead `propagationSpeed` / `speedOriginCity` / `speedDestCity` fields** (Claude's §6.1) — Claude calls this "low risk." I agree the deletion itself is safe, but I'd **not** call it low-hanging.
-   - Reason: it touches 4+ caller files (`campaignNarrative.ts`, `render-stats-snapshot/index.ts`, `exportCampaignXlsx.ts`, test fixtures) and the real payoff (dropping the two extra `url_events` queries per render) requires a coordinated change in `campaignStoryInputs.ts` that's explicitly out of scope. Doing only the type deletion is a half-move — it removes code without capturing the perf win.
-   - Recommend: bundle both halves into a single follow-up plan when we're ready to touch the metric layer.
+c. Nothing is written to the database on load. The stored value stays untouched until the user actively picks a new option; once they do, the legacy entry disappears on the next render.
 
-g. **Rename `broadcastOpens` → `broadcastInstances` / `chainViewers` → `chainShares`** (Claude's §6.5) — Claude correctly ranks this lowest. Agree: not low-hanging. Skip.
+d. Result: the dropdown trigger never renders blank, and the user can see exactly what their campaign is currently set to.
 
-h. **Refresh `docs/CAMPAIGN_STORY_COMPUTATION.md`** (Claude's §6.7) — Genuinely small, but this is doc drift from prior decisions, not something surfaced by the current refactor request. Worth a separate follow-up ticket rather than bundling here.
+## 3. Status badge
 
-## 3. Proposed scope for this pass
+a. `SnapshotStatusBadge` uses `intervalMinutes` only for the fresh / stale / very-stale colour thresholds, and prints relative time via `formatDistanceToNow`, which already reads well in hours, days, and months. No change needed to the text.
 
-Do items **1a, 1b, 1c, 1d only.** Everything else is either a real behavior change (1e), a partial move (1f), or wider than the refactor request (1g, 1h).
+b. The thresholds scale automatically: with a 1-week interval, "fresh" means under 7 days, "stale" under ~17 days. That is the intended meaning, so this stays as is.
 
-## 4. Risk summary table
+## 4. Not changed
 
-| Item | Diff scope | Runtime change | Cross-file blast | Risk |
-| ---- | ---------- | -------------- | ---------------- | ---- |
-| 1a | 1 comment block, `campaignStoryInputs.ts` | None | None | None |
-| 1b | 1 line, `campaignStory.ts` | None | None | None |
-| 1c | ~2 lines, `campaignStory.ts` | Only if invariant broken | None | Very low |
-| 1d | `campaignStory.test.ts` only | None | None | None |
+- The cron schedule (`* * * * *`) — it is just a heartbeat.
+- `refresh-all-snapshots`, the storage-age staleness check, `render-stats-snapshot`.
+- The database default (`2`) and the `?? 2` fallback in the component. A campaign still on the default will now display as `2 minutes (legacy)`, which is accurate and self-explanatory.
 
-## 5. What I need from you
+## 5. Verification
 
-Confirm the scope in §3, or tell me which of 1a–1d to drop or which of 1e–1h to pull back in.
+a. Open `/campaign-dashboard` for nk3-invitation, screenshot the dropdown open showing the six new options.
+b. Confirm a campaign with a legacy value (e.g. 2) shows `2 minutes (legacy)` in the trigger rather than a blank.
+c. Select "1 day", reload, confirm the trigger reads "1 day" and the legacy entry is gone.
+
+## 6. Decision log
+
+This is a new plan (not an update to an existing one). On completion it will be archived at `docs/decisions/snapshots/2026-07-27_snapshot-refresh-interval-options_feature-doc_lovable.md`.
