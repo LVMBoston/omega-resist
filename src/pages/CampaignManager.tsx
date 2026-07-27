@@ -20,6 +20,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { formatMinutes } from "@/lib/dateUtils";
+
 import CampaignWizard from "@/components/CampaignWizard";
 import { getDeckDeploymentStatus, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
 import { mintL00 } from "@/lib/virality/mint";
