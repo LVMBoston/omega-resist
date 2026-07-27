@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Image, RefreshCw, Clock, CheckCircle, AlertCircle, ExternalLink, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { formatMinutes } from "@/lib/dateUtils";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CampaignSnapshotSettingsProps {
