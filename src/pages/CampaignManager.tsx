@@ -30,6 +30,8 @@ interface Campaign {
   title: string;
   description: string | null;
   created_at: string;
+  snapshot_enabled?: boolean | null;
+  snapshot_interval_minutes?: number | null;
 }
 interface EventAction {
   id: string;
