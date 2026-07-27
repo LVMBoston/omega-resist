@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -824,47 +825,47 @@ export default function CampaignDashboard({
 
   return (
     <div className="p-6 space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/campaign-config">Campaign Orchestration</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{campaignTitle || "Campaign"}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Campaign Visibility</h1>
           <p className="text-muted-foreground">Real-time viral tracking and analytics</p>
-          {officialStartLabel && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="outline" className="border-primary/40 text-primary">
-                Official start: {officialStartLabel}
+        </div>
+        <div>
+          <p className="text-xl font-semibold tracking-tight">{campaignTitle || "Campaign"}</p>
+          {selectedCampaign && (
+            <p className="text-sm text-muted-foreground">utm_campaign: {selectedCampaign}</p>
+          )}
+        </div>
+        {officialStartLabel && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline" className="border-primary/40 text-primary">
+              Official start: {officialStartLabel}
+            </Badge>
+            {preLaunchCount > 0 && (
+              <Badge variant="outline" className="border-muted text-muted-foreground">
+                Pre-launch / test: {preLaunchCount} excluded
               </Badge>
-              {preLaunchCount > 0 && (
-                <Badge variant="outline" className="border-muted text-muted-foreground">
-                  Pre-launch / test: {preLaunchCount} excluded
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {campaignsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-            <Select value={selectedCampaign} onValueChange={(val) => {
-              const campaign = campaigns?.find(c => c.code === val);
-              if (campaign) {
-                const params = new URLSearchParams(searchParams);
-                params.set("campaign", campaign.code);
-                params.set("campaignId", campaign.id);
-                setSearchParams(params);
-              }
-            }}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Select campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns?.map(c => (
-                  <SelectItem key={c.id} value={c.code}>{c.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
+
 
       <Tabs defaultValue="settings">
         <TabsList className="grid w-full grid-cols-4">
