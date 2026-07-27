@@ -950,7 +950,7 @@ export default function CampaignManager() {
                 {campaign.snapshot_enabled && (
                   <Badge
                     variant="secondary"
-                    className="mt-1.5 gap-1 font-normal"
+                    className="mt-1.5 gap-1 font-normal bg-warning text-warning-foreground hover:bg-warning/90"
                     title={`Server-side rendering enabled — snapshots refresh every ${formatMinutes(campaign.snapshot_interval_minutes ?? 2)}.`}
                   >
                     <RefreshCw className="h-3 w-3" />
