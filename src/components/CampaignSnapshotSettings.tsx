@@ -415,6 +415,15 @@ export function CampaignSnapshotSettings({ campaignId, campaignCode, campaignTit
   const snapshotEnabled = campaign?.snapshot_enabled ?? false;
   const intervalMinutes = campaign?.snapshot_interval_minutes ?? 2;
 
+  // If the stored interval is no longer one of the offered options, surface it as a
+  // labelled "(legacy)" entry so the trigger never renders blank. Nothing is written
+  // to the database until the user actively picks a new value.
+  const isLegacyInterval = !INTERVAL_OPTIONS.some(o => o.value === String(intervalMinutes));
+  const intervalOptions = isLegacyInterval
+    ? [{ value: String(intervalMinutes), label: `${formatMinutes(intervalMinutes)} (legacy)` }, ...INTERVAL_OPTIONS]
+    : INTERVAL_OPTIONS;
+
+
   // Only show templates actually linked to this campaign's decks, ordered by deck position
   const campaignTemplates = templateContexts
     ? templates
