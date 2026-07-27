@@ -945,6 +945,17 @@ export default function CampaignManager() {
               <div className="flex-1">
                 <CardTitle>{campaign.title}</CardTitle>
                 <CardDescription>utm_campaign: {campaign.code}</CardDescription>
+                {campaign.snapshot_enabled && (
+                  <Badge
+                    variant="secondary"
+                    className="mt-1.5 gap-1 font-normal"
+                    title={`Server-side rendering enabled — snapshots refresh every ${formatMinutes(campaign.snapshot_interval_minutes ?? 2)}.`}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    SSR · {formatMinutes(campaign.snapshot_interval_minutes ?? 2)}
+                  </Badge>
+                )}
+
               </div>
               <div className="flex gap-0.5 items-center flex-wrap shrink-0 justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {
