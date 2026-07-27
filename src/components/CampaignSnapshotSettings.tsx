@@ -37,13 +37,22 @@ interface TemplateContext {
 
 const INTERVAL_OPTIONS = [
   { value: "1", label: "1 minute" },
-  { value: "2", label: "2 minutes" },
   { value: "5", label: "5 minutes" },
-  { value: "10", label: "10 minutes" },
-  { value: "15", label: "15 minutes" },
-  { value: "30", label: "30 minutes" },
   { value: "60", label: "1 hour" },
+  { value: "720", label: "12 hours" },
+  { value: "1440", label: "1 day" },
+  { value: "10080", label: "1 week" },
 ];
+
+/** Human-readable duration for an arbitrary minute count (used for legacy values). */
+function formatMinutes(mins: number): string {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (mins % 10080 === 0) return plural(mins / 10080, "week");
+  if (mins % 1440 === 0) return plural(mins / 1440, "day");
+  if (mins % 60 === 0) return plural(mins / 60, "hour");
+  return plural(mins, "minute");
+}
+
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
