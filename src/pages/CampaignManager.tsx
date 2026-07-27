@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye, Copy, BookOpen } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Pencil, GripVertical, Eye, Copy, BookOpen, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -20,6 +20,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { formatMinutes } from "@/lib/dateUtils";
+
 import CampaignWizard from "@/components/CampaignWizard";
 import { getDeckDeploymentStatus, statusLabel, formatDeployedTimestamp, type DeckDeploymentStatus } from "@/lib/deckStatus";
 import { mintL00 } from "@/lib/virality/mint";
@@ -30,6 +32,8 @@ interface Campaign {
   title: string;
   description: string | null;
   created_at: string;
+  snapshot_enabled?: boolean | null;
+  snapshot_interval_minutes?: number | null;
 }
 interface EventAction {
   id: string;
@@ -943,6 +947,17 @@ export default function CampaignManager() {
               <div className="flex-1">
                 <CardTitle>{campaign.title}</CardTitle>
                 <CardDescription>utm_campaign: {campaign.code}</CardDescription>
+                {campaign.snapshot_enabled && (
+                  <Badge
+                    variant="secondary"
+                    className="mt-1.5 gap-1 font-normal"
+                    title={`Server-side rendering enabled — snapshots refresh every ${formatMinutes(campaign.snapshot_interval_minutes ?? 2)}.`}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    SSR · {formatMinutes(campaign.snapshot_interval_minutes ?? 2)}
+                  </Badge>
+                )}
+
               </div>
               <div className="flex gap-0.5 items-center flex-wrap shrink-0 justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => {

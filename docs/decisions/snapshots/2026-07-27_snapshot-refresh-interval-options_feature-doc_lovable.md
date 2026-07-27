@@ -57,3 +57,44 @@ Browser check on `/campaign-dashboard?campaign=nk3-invitation`:
 ## Decision log note
 
 This is a new plan, not an update to an existing one.
+
+## Update — 2026-07-27
+
+### SSR indicator on /campaign-config
+
+Campaign cards on the Campaign Orchestration page now show a read-only badge when
+server-side rendering is active for that campaign:
+
+```text
+[⟳ SSR · 1 day]
+```
+
+- Rendered only when `campaigns.snapshot_enabled` is true. Campaigns with SSR off
+  show no badge — absence is the signal.
+- The interval text uses the shared `formatMinutes` helper, so the badge and the
+  Server-Side Rendering settings panel can never disagree.
+- Hover title: "Server-side rendering enabled — snapshots refresh every {interval}."
+- No new queries: `CampaignManager` already fetches campaigns with `select("*")`,
+  so `snapshot_enabled` and `snapshot_interval_minutes` were already present.
+
+### Shared helper relocation
+
+`formatMinutes` moved from `src/components/CampaignSnapshotSettings.tsx` to
+`src/lib/dateUtils.ts` and is now imported by both consumers. No behaviour change.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/lib/dateUtils.ts` | Exported shared `formatMinutes` |
+| `src/components/CampaignSnapshotSettings.tsx` | Imports the helper instead of defining it |
+| `src/pages/CampaignManager.tsx` | `Campaign` interface extended; SSR badge in `SortableCard` |
+
+### Verification
+
+Browser screenshot of `/campaign-config`:
+
+- `Conservative Fracture` → `SSR · 15 minutes`
+- `No Kings #3` → `SSR · 2 minutes` (matches the value shown in its SSR settings panel)
+- `Stoddard's European Postcards`, `BUGTEST` → `SSR · 2 minutes`
+- `ICE OUT FOR GOOD`, `ICE OUT FOR GOOD V2`, `ResisterSistersV2`, and others → no badge
