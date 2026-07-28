@@ -52,6 +52,15 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
+  // Remember the campaign being worked in so campaign-scoped pages follow it.
+  useEffect(() => {
+    if (campaign?.id && campaign?.code) {
+      setActiveCampaign({ id: campaign.id, code: campaign.code, title: campaign.title });
+    }
+  }, [campaign?.id, campaign?.code, campaign?.title]);
+
+
+
   const { data: eoaCount } = useQuery({
     queryKey: ["campaign-eoa-count", campaignId],
     queryFn: async () => {
