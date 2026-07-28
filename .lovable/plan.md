@@ -1,37 +1,40 @@
 ## Goal
 
-Make the Campaign Visibility page header match the Event Manager pattern: show which campaign you're looking at, and drop the confusing campaign dropdown in the top-right.
+Campaign Visibility should (1) lead with the campaign's name the way Event Manager does, and (2) show the campaign you were just working in, never a stale leftover like `BUGTEST-V2xy`.
 
-## 1. Header changes (`src/pages/CampaignDashboard.tsx`, lines ~825–867)
+## 1. Header, Event Manager style (`src/pages/CampaignDashboard.tsx`)
 
-a. Add a breadcrumb above the heading: **Campaign Orchestration** (link to `/campaign-config`) > **{campaign title}**, using the same `Breadcrumb` components as the Event Manager page (`CampaignDetail.tsx`).
+a. Breadcrumb stays: **Campaign Orchestration** > **{campaign title}**.
 
-b. Under the "Campaign Visibility" heading and its "Real-time viral tracking and analytics" subtitle, add the campaign identity line: campaign title (bold, prominent) with `utm_campaign: {code}` beneath it — same shape as the Event Manager header.
+b. Big heading becomes the campaign title (`text-3xl font-bold`), e.g. "Stoddard's European Postcards", with `utm_campaign: sv-paris-postcards` directly beneath it in muted small text.
 
-c. Remove the campaign `Select` dropdown and its loading spinner from the top-right of the header. The campaign is then determined purely by the URL (`?campaign=…&campaignId=…`), as set when you navigate in from Campaign Orchestration.
+c. "Campaign Visibility" becomes a small uppercase muted label above the title (page-name eyebrow), and the "Real-time viral tracking and analytics" subtitle moves under it — or is dropped if it crowds the block.
 
-d. Keep the existing "Official start" and "Pre-launch / test excluded" badges exactly where they are.
+d. Official start / pre-launch badges stay, below the identity block.
 
-## 2. Behavior after removing the dropdown
+e. While campaigns are loading, show the campaign code (from the URL) rather than a blank or placeholder title.
 
-a. The page already reads the campaign from the URL and falls back to the last-used campaign in local storage, then the first campaign. That fallback stays, so landing on `/campaign-dashboard` with no parameters still resolves to a campaign rather than a blank page.
+## 2. Follow the campaign you came from
 
-b. Switching campaigns is done by going back to Campaign Orchestration and entering the campaign from there — which the new breadcrumb makes a one-click trip.
+a. Introduce one "active campaign" record (id + code) written whenever you open a campaign context: entering Event Manager (`/campaign/:campaignId`) and entering Campaign Visibility with an explicit campaign in the URL.
 
-c. While the campaign list is still loading, the title area shows the campaign code (or a neutral placeholder) rather than flashing empty.
+b. The sidebar's **Campaign Visibility** link resolves to that active campaign, so clicking it from Stoddard's Event Manager lands on Stoddard's visibility page.
+
+c. Ordering of resolution on `/campaign-dashboard` with no URL campaign: active campaign → previously saved dashboard filters → first campaign. Explicit URL parameters always win.
+
+d. The existing `campaign-dashboard-filters` localStorage entry keeps doing its job for filter state; campaign identity moves to the new active-campaign record so a stale filter blob can no longer override the campaign you just opened.
 
 ## 3. Technical notes
 
-- Only `src/pages/CampaignDashboard.tsx` changes. No data-fetch, filter, tab, or metric logic is touched; the `campaigns` query is still needed to resolve the title from the code.
-- Unused imports (`Select` pieces, `Loader2`) are removed only if nothing else on the page uses them.
-- Verification: browser check on `/campaign-dashboard?campaign=sv-paris-postcards&…` confirming the breadcrumb, title, and `utm_campaign` line render and the dropdown is gone.
+- Files: `src/pages/CampaignDashboard.tsx` (header + resolution order), `src/pages/CampaignDetail.tsx` (record active campaign), `src/components/AppSidebar.tsx` (link carries the active campaign), plus a tiny shared helper for reading/writing the active campaign.
+- No data-fetch, tab, filter, metric, map, or export logic changes.
+- Verification: browser check — open Campaign Orchestration → Stoddard's European Postcards → click Campaign Visibility in the sidebar; screenshot must show "Stoddard's European Postcards" as the heading with `utm_campaign: sv-paris-postcards` beneath and the correct breadcrumb.
 
 ## 4. Decision log
 
-This is a new decision document: `docs/decisions/campaigns/2026-07-27_campaign-visibility-header-context_feature-doc_lovable.md`, marked `Status: Approved & Implemented`. It does not update an existing plan.
+Appends an `## Update — 2026-07-27` section to the existing `docs/decisions/campaigns/2026-07-27_campaign-visibility-header-context_feature-doc_lovable.md`. This updates that plan rather than creating a new one.
 
 ## What does not change
 
-- Tabs (Scheduler, Real-time Map, Events Listing, Simulator)
-- Filters bar, simulation controls, level checkboxes
+- Tabs, filters bar, simulation controls, level checkboxes
 - Any metric, export, or map behavior
