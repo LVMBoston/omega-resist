@@ -16,7 +16,8 @@ import CampaignDashboard from "./CampaignDashboard";
 import CampaignChapters from "@/components/CampaignChapters";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setActiveCampaign } from "@/lib/activeCampaign";
 import { Loader2 } from "lucide-react";
 import CampaignOfficialStartControl from "@/components/CampaignOfficialStartControl";
 
