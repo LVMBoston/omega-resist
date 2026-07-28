@@ -5,6 +5,7 @@
  */
 
 const KEY = "active-campaign";
+export const ACTIVE_CAMPAIGN_CHANGE_EVENT = "active-campaign-change";
 
 export interface ActiveCampaign {
   id: string;
@@ -15,6 +16,7 @@ export interface ActiveCampaign {
 export function setActiveCampaign(campaign: ActiveCampaign) {
   try {
     localStorage.setItem(KEY, JSON.stringify(campaign));
+    window.dispatchEvent(new CustomEvent(ACTIVE_CAMPAIGN_CHANGE_EVENT));
   } catch {
     /* storage unavailable — non-fatal */
   }
