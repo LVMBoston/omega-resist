@@ -21,6 +21,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { campaignDashboardUrl } from "@/lib/activeCampaign"
 import {
   Sidebar,
   SidebarContent,
@@ -110,6 +111,9 @@ export function AppSidebar() {
                 {section.items.map((item: any) => {
                   const isActive = location.pathname === item.url || 
                     (item.url === "/deck" && location.pathname.startsWith("/deck/"))
+                  const target = item.url === "/campaign-dashboard"
+                    ? campaignDashboardUrl()
+                    : item.url
                   
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -120,7 +124,7 @@ export function AppSidebar() {
                             <span>{item.title}</span>
                           </a>
                         ) : (
-                          <NavLink to={item.url}>
+                          <NavLink to={target}>
                             <item.icon />
                             <span>{item.title}</span>
                           </NavLink>
