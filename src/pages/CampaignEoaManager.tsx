@@ -1252,7 +1252,9 @@ export default function CampaignEoaManager() {
     state: {
       sorting,
       rowSelection,
-      columnVisibility,
+      // The row-selection and actions columns are never hideable; force them
+      // visible so a stale saved preference can't remove the checkboxes.
+      columnVisibility: { ...columnVisibility, select: true, actions: true },
     },
     enableRowSelection: true,
     onSortingChange: setSorting,
