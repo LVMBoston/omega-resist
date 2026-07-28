@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getActiveCampaign, setActiveCampaign } from "@/lib/activeCampaign";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -300,7 +301,7 @@ export default function CampaignDashboard({
     }
   });
 
-  // Set initial campaign from URL, localStorage, or default to first campaign
+  // Set initial campaign from URL, the active campaign, saved filters, or the first campaign
   useEffect(() => {
     if (propCampaignId && campaigns && campaigns.length > 0) {
       // If campaignId prop is provided, find and set the campaign code
@@ -317,8 +318,20 @@ export default function CampaignDashboard({
       }
     } else if (!selectedCampaign && campaigns && campaigns.length > 0 && !propCampaignId) {
       const params = new URLSearchParams(searchParams);
-      
-      // Try to restore from localStorage first
+
+      // 1. The campaign the user was last working in wins over stale filter state
+      const active = getActiveCampaign();
+      const activeCampaign = active ? campaigns.find(c => c.id === active.id) : null;
+      if (activeCampaign) {
+        params.set("campaign", activeCampaign.code);
+        params.set("campaignId", activeCampaign.id);
+        if (!params.has("eventType")) params.set("eventType", "all");
+        if (!params.has("dataSource")) params.set("dataSource", "real");
+        setSearchParams(params, { replace: true });
+        return;
+      }
+
+      // 2. Fall back to the last dashboard selection
       const savedFilters = localStorage.getItem("campaign-dashboard-filters");
       if (savedFilters) {
         try {
@@ -340,7 +353,7 @@ export default function CampaignDashboard({
         }
       }
       
-      // Fall back to first campaign if no valid saved selection
+      // 3. Fall back to first campaign if no valid saved selection
       params.set("campaign", campaigns[0].code);
       params.set("campaignId", campaigns[0].id);
       if (!params.has("eventType")) params.set("eventType", "all");
@@ -350,6 +363,16 @@ export default function CampaignDashboard({
       });
     }
   }, [campaigns, selectedCampaign, searchParams, setSearchParams, propCampaignId]);
+
+  // Keep the active campaign in sync when viewing a campaign directly
+  useEffect(() => {
+    if (propCampaignId) return;
+    const match = campaigns?.find(c => c.id === selectedCampaignId || c.code === selectedCampaign);
+    if (match) {
+      setActiveCampaign({ id: match.id, code: match.code, title: match.title });
+    }
+  }, [campaigns, selectedCampaign, selectedCampaignId, propCampaignId]);
+
 
   // Clear chain filter when campaign changes to prevent stale filters from other campaigns
   useEffect(() => {
@@ -825,46 +848,54 @@ export default function CampaignDashboard({
 
   return (
     <div className="p-6 space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/campaign-config">Campaign Orchestration</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{campaignTitle || "Campaign"}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {!propCampaignId && (
+        <>
+          {/* Breadcrumb */}
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/campaign-config">Campaign Orchestration</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{campaignTitle || selectedCampaign || "Campaign"}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
 
-      {/* Header */}
-      <div className="space-y-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Campaign Visibility</h1>
-          <p className="text-muted-foreground">Real-time viral tracking and analytics</p>
-        </div>
-        <div>
-          <p className="text-xl font-semibold tracking-tight">{campaignTitle || "Campaign"}</p>
-          {selectedCampaign && (
-            <p className="text-sm text-muted-foreground">utm_campaign: {selectedCampaign}</p>
-          )}
-        </div>
-        {officialStartLabel && (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge variant="outline" className="border-primary/40 text-primary">
-              Official start: {officialStartLabel}
-            </Badge>
-            {preLaunchCount > 0 && (
-              <Badge variant="outline" className="border-muted text-muted-foreground">
-                Pre-launch / test: {preLaunchCount} excluded
-              </Badge>
+          {/* Header */}
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Campaign Visibility
+              </p>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {campaignTitle || selectedCampaign || "Campaign"}
+              </h1>
+              {selectedCampaign && (
+                <p className="text-sm text-muted-foreground">utm_campaign: {selectedCampaign}</p>
+              )}
+            </div>
+
+            {officialStartLabel && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge variant="outline" className="border-primary/40 text-primary">
+                  Official start: {officialStartLabel}
+                </Badge>
+                {preLaunchCount > 0 && (
+                  <Badge variant="outline" className="border-muted text-muted-foreground">
+                    Pre-launch / test: {preLaunchCount} excluded
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+
 
 
       <Tabs defaultValue="settings">

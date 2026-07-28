@@ -16,7 +16,8 @@ import CampaignDashboard from "./CampaignDashboard";
 import CampaignChapters from "@/components/CampaignChapters";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setActiveCampaign } from "@/lib/activeCampaign";
 import { Loader2 } from "lucide-react";
 import CampaignOfficialStartControl from "@/components/CampaignOfficialStartControl";
 
@@ -50,6 +51,15 @@ export default function CampaignDetail() {
     },
     enabled: !!campaignId,
   });
+
+  // Remember the campaign being worked in so campaign-scoped pages follow it.
+  useEffect(() => {
+    if (campaign?.id && campaign?.code) {
+      setActiveCampaign({ id: campaign.id, code: campaign.code, title: campaign.title });
+    }
+  }, [campaign?.id, campaign?.code, campaign?.title]);
+
+
 
   const { data: eoaCount } = useQuery({
     queryKey: ["campaign-eoa-count", campaignId],
