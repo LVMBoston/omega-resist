@@ -879,19 +879,23 @@ export default function CampaignDashboard({
               )}
             </div>
 
-        {officialStartLabel && (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge variant="outline" className="border-primary/40 text-primary">
-              Official start: {officialStartLabel}
-            </Badge>
-            {preLaunchCount > 0 && (
-              <Badge variant="outline" className="border-muted text-muted-foreground">
-                Pre-launch / test: {preLaunchCount} excluded
-              </Badge>
+            {officialStartLabel && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge variant="outline" className="border-primary/40 text-primary">
+                  Official start: {officialStartLabel}
+                </Badge>
+                {preLaunchCount > 0 && (
+                  <Badge variant="outline" className="border-muted text-muted-foreground">
+                    Pre-launch / test: {preLaunchCount} excluded
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+
 
 
       <Tabs defaultValue="settings">
