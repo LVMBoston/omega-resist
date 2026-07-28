@@ -1,3 +1,4 @@
+import { useEffect, useState, type MouseEvent } from "react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { LayoutDashboard } from "lucide-react"
 import {
@@ -21,7 +22,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { campaignDashboardUrl } from "@/lib/activeCampaign"
+import { ACTIVE_CAMPAIGN_CHANGE_EVENT, campaignDashboardUrl } from "@/lib/activeCampaign"
 import {
   Sidebar,
   SidebarContent,
@@ -81,8 +82,21 @@ export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const isCollapsed = state === "collapsed"
+  const [dashboardUrl, setDashboardUrl] = useState(() => campaignDashboardUrl())
+
+  useEffect(() => {
+    const refreshDashboardUrl = () => setDashboardUrl(campaignDashboardUrl())
+
+    window.addEventListener(ACTIVE_CAMPAIGN_CHANGE_EVENT, refreshDashboardUrl)
+    window.addEventListener("storage", refreshDashboardUrl)
+
+    return () => {
+      window.removeEventListener(ACTIVE_CAMPAIGN_CHANGE_EVENT, refreshDashboardUrl)
+      window.removeEventListener("storage", refreshDashboardUrl)
+    }
+  }, [])
   
-  const handleInfoOnlyClick = (e: React.MouseEvent, url: string) => {
+  const handleInfoOnlyClick = (e: MouseEvent, url: string) => {
     e.preventDefault()
     toast({
       title: "Select an active campaign first",
@@ -112,7 +126,7 @@ export function AppSidebar() {
                   const isActive = location.pathname === item.url || 
                     (item.url === "/deck" && location.pathname.startsWith("/deck/"))
                   const target = item.url === "/campaign-dashboard"
-                    ? campaignDashboardUrl()
+                    ? dashboardUrl
                     : item.url
                   
                   return (
