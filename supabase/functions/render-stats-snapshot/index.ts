@@ -1,6 +1,61 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { formatCampaignStory } from "../_shared/render/campaignStory.ts";
 import { computeCampaignStoryInputs } from "../_shared/render/campaignStoryInputs.ts";
+import { computeChartSeries, type ChartEventRow, type ChartTokenRow } from "../_shared/render/chartData.ts";
+import { renderChartSvg } from "../_shared/render/chartSvg.ts";
+
+// ---- Chart data fetch helpers (paginated: Supabase caps at 1000 rows) ----
+async function fetchChartTokens(supabase: any, campaignCode: string): Promise<ChartTokenRow[]> {
+  const out: ChartTokenRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; from < 50000; from += pageSize) {
+    const { data, error } = await supabase
+      .from("tokens")
+      .select("token, level, minted_at, parent_token")
+      .eq("utm_campaign", campaignCode)
+      .is("deleted_at", null)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    out.push(...(data as ChartTokenRow[]));
+    if (data.length < pageSize) break;
+  }
+  return out;
+}
+
+async function fetchChartEvents(supabase: any, tokenIds: string[]): Promise<ChartEventRow[]> {
+  const out: ChartEventRow[] = [];
+  const chunkSize = 500;
+  for (let i = 0; i < tokenIds.length; i += chunkSize) {
+    const chunk = tokenIds.slice(i, i + chunkSize);
+    const pageSize = 1000;
+    for (let from = 0; from < 50000; from += pageSize) {
+      const { data, error } = await supabase
+        .from("url_events")
+        .select("token, occurred_at")
+        .in("token", chunk)
+        .eq("event_type", "view")
+        .is("deleted_at", null)
+        .order("occurred_at", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      out.push(...(data as ChartEventRow[]));
+      if (data.length < pageSize) break;
+    }
+  }
+  return out;
+}
+
+async function fetchOfficialStart(supabase: any, campaignCode: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("campaigns")
+    .select("official_start_at")
+    .eq("code", campaignCode)
+    .maybeSingle();
+  return (data as any)?.official_start_at ?? null;
+}
+
 
 
 
@@ -652,7 +707,59 @@ Deno.serve(async (req) => {
     const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && h.type !== "image" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
     const imageHotspots = hotspots.filter((h: any) => h.type === "image");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots at ${width}x${height}`);
+    const chartHotspots = hotspots.filter((h: any) => h.type === "chart");
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots, ${chartHotspots.length} chart hotspots at ${width}x${height}`);
+
+    // Chart hotspots — bake stacked-bar charts as native SVG so the snapshot
+    // shows the same series the editor renders with Recharts.
+    const chartSvgElements: { z: number; svg: string }[] = [];
+    if (chartHotspots.length > 0) {
+      try {
+        const chartTokens = await fetchChartTokens(supabase, campaign_code);
+        const needsEvents = chartHotspots.some((h: any) => {
+          const ds = h.chartConfig?.dataSource || "cumulative_opens_by_level";
+          return ds !== "new_l00_seeds_per_period" && ds !== "shares_per_period";
+        });
+        const chartEvents = needsEvents ? await fetchChartEvents(supabase, chartTokens.map((t) => t.token)) : [];
+        const officialStart = await fetchOfficialStart(supabase, campaign_code);
+
+        for (const ch of chartHotspots) {
+          const cfg = ch.chartConfig || {};
+          const series = computeChartSeries({
+            tokens: chartTokens,
+            events: chartEvents,
+            dataSource: cfg.dataSource || "cumulative_opens_by_level",
+            timeBucket: cfg.timeBucket || "week",
+            officialStart,
+          });
+          const cx = (ch.x / 100) * width;
+          const cy = (ch.y / 100) * height;
+          const cw = ((ch.width || 30) / 100) * width;
+          const chh = ((ch.height || 20) / 100) * height;
+          const z = typeof ch.zIndex === "number" ? ch.zIndex : 1;
+          const svg = renderChartSvg({
+            points: series.points,
+            seriesKeys: series.seriesKeys,
+            seriesLabels: series.seriesLabels,
+            x: cx,
+            y: cy,
+            width: cw,
+            height: chh,
+            showXAxis: cfg.showXAxis !== false,
+            showYAxis: cfg.showYAxis !== false,
+            yScale: cfg.yScale || "linear",
+            yFormat: cfg.yFormat || "integer",
+          });
+          if (svg) {
+            chartSvgElements.push({ z, svg });
+          } else {
+            console.warn(`[render-stats-snapshot] Chart hotspot ${ch.id}: no data to render`);
+          }
+        }
+      } catch (e) {
+        console.error("[render-stats-snapshot] Chart rendering failed:", e);
+      }
+    }
 
     // Render static map images for map hotspots. Each entry is tagged with its
     // zIndex so we can sort all hotspot SVG fragments together before joining.
@@ -993,7 +1100,7 @@ Deno.serve(async (req) => {
     // Merge all hotspot SVG fragments (maps, images, text) and sort by zIndex
     // ascending so higher Z paints last/on top. JS sort is stable, so hotspots
     // sharing the same Z keep their original order (map → image → text).
-    const allHotspotSvg = [...mapSvgElements, ...imageSvgElements, ...hotspotSvgEntries]
+    const allHotspotSvg = [...mapSvgElements, ...chartSvgElements, ...imageSvgElements, ...hotspotSvgEntries]
       .sort((a, b) => a.z - b.z)
       .map((e) => e.svg)
       .join("\n  ");
