@@ -113,7 +113,7 @@ export function renderChartSvg(opts: ChartRenderOptions): string {
   if (hasTitle) {
     const cxTitle = x + width / 2;
     if (titleLine1) {
-      out += `<text x="${cxTitle}" y="${y + titleFs1 * 1.15}" font-family="Inter, sans-serif" font-size="${titleFs1}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(titleLine1)}</text>`;
+      out += `<text x="${cxTitle}" y="${y + titleFs1 * 1.15}" font-family="Inter, sans-serif" font-size="${titleFs1}" font-weight="700" fill="#1e293b" text-anchor="middle">${esc(titleLine1)}</text>`;
     }
     if (titleLine2) {
       out += `<text x="${cxTitle}" y="${y + titleFs1 * 1.35 + titleFs2 * 1.1}" font-family="Inter, sans-serif" font-size="${titleFs2}" fill="#64748b" text-anchor="middle">${esc(titleLine2)}</text>`;
