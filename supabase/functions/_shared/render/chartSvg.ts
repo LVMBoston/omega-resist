@@ -74,8 +74,8 @@ export function renderChartSvg(opts: ChartRenderOptions): string {
 
   // Font sizes scale with the chart box so small hotspots stay legible.
   const fs = Math.max(9, Math.min(20, Math.round(height * 0.045)));
-  const titleFs1 = Math.max(11, Math.min(24, Math.round(height * 0.055)));
-  const titleFs2 = Math.max(9, Math.min(19, Math.round(height * 0.045)));
+  const titleFs1 = 30;
+  const titleFs2 = 25;
   const hasTitle = Boolean(titleLine1 || titleLine2);
   const titleH = hasTitle ? titleFs1 * 1.35 + titleFs2 * 1.4 : 0;
 
