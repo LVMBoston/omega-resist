@@ -1,6 +1,61 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { formatCampaignStory } from "../_shared/render/campaignStory.ts";
 import { computeCampaignStoryInputs } from "../_shared/render/campaignStoryInputs.ts";
+import { computeChartSeries, type ChartEventRow, type ChartTokenRow } from "../_shared/render/chartData.ts";
+import { renderChartSvg } from "../_shared/render/chartSvg.ts";
+
+// ---- Chart data fetch helpers (paginated: Supabase caps at 1000 rows) ----
+async function fetchChartTokens(supabase: any, campaignCode: string): Promise<ChartTokenRow[]> {
+  const out: ChartTokenRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; from < 50000; from += pageSize) {
+    const { data, error } = await supabase
+      .from("tokens")
+      .select("token, level, minted_at, parent_token")
+      .eq("utm_campaign", campaignCode)
+      .is("deleted_at", null)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    out.push(...(data as ChartTokenRow[]));
+    if (data.length < pageSize) break;
+  }
+  return out;
+}
+
+async function fetchChartEvents(supabase: any, tokenIds: string[]): Promise<ChartEventRow[]> {
+  const out: ChartEventRow[] = [];
+  const chunkSize = 500;
+  for (let i = 0; i < tokenIds.length; i += chunkSize) {
+    const chunk = tokenIds.slice(i, i + chunkSize);
+    const pageSize = 1000;
+    for (let from = 0; from < 50000; from += pageSize) {
+      const { data, error } = await supabase
+        .from("url_events")
+        .select("token, occurred_at")
+        .in("token", chunk)
+        .eq("event_type", "view")
+        .is("deleted_at", null)
+        .order("occurred_at", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      out.push(...(data as ChartEventRow[]));
+      if (data.length < pageSize) break;
+    }
+  }
+  return out;
+}
+
+async function fetchOfficialStart(supabase: any, campaignCode: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("campaigns")
+    .select("official_start_at")
+    .eq("code", campaignCode)
+    .maybeSingle();
+  return (data as any)?.official_start_at ?? null;
+}
+
 
 
 
