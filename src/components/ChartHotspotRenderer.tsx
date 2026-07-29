@@ -63,10 +63,10 @@ export function ChartHotspotRenderer({
 
   const titleBlock = (
     <div className="w-full text-center leading-tight px-1">
-      <div className="font-semibold text-foreground truncate" style={{ fontSize: Math.max(10, Math.min(18, height * 0.055)) }}>
+      <div className="font-bold text-foreground truncate" style={{ fontSize: 30 }}>
         {campaignName || campaignCode}
       </div>
-      <div className="text-muted-foreground truncate" style={{ fontSize: Math.max(9, Math.min(15, height * 0.045)) }}>
+      <div className="text-muted-foreground truncate" style={{ fontSize: 25 }}>
         {seriesTitle}
       </div>
     </div>
