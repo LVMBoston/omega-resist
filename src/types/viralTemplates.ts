@@ -101,6 +101,7 @@ export interface ChartConfig {
   yFormat?: ChartYFormat;          // default 'integer'
   showXAxis?: boolean;             // default true
   showYAxis?: boolean;             // default false
+  backgroundColor?: string;        // default '#ffffff'
 }
 
 // Map configuration for map hotspots

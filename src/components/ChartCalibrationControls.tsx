@@ -45,6 +45,7 @@ export function ChartCalibrationControls({
   const timeBucket = config.timeBucket || "week";
   const yScale = config.yScale || "linear";
   const yFormat = config.yFormat || "integer";
+  const backgroundColor = config.backgroundColor || "#ffffff";
 
   return (
     <div className="space-y-3">
@@ -156,6 +157,27 @@ export function ChartCalibrationControls({
             checked={config.showYAxis === true}
             onCheckedChange={(checked) => updateConfig({ showYAxis: checked })}
           />
+        </div>
+      </div>
+
+      {/* Row 5: Background color */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2">
+          <Label className="text-xs">Background</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              className="h-6 w-8 cursor-pointer rounded border border-input bg-background p-0"
+              value={backgroundColor}
+              onChange={(e) => updateConfig({ backgroundColor: e.target.value })}
+            />
+            <input
+              type="text"
+              className="h-6 w-20 rounded border border-input bg-background px-1 text-xs"
+              value={backgroundColor}
+              onChange={(e) => updateConfig({ backgroundColor: e.target.value })}
+            />
+          </div>
         </div>
       </div>
 

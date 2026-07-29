@@ -35,6 +35,7 @@ export function ChartHotspotRenderer({
   const yScale = config.yScale || "linear";
   const yFormat = config.yFormat || "integer";
   const seriesTitle = chartSeriesTitle(dataSource, timeBucket);
+  const backgroundColor = config.backgroundColor || "#ffffff";
 
   useEffect(() => {
     if (campaignCode) {
@@ -75,7 +76,7 @@ export function ChartHotspotRenderer({
 
   if (loading) {
     return (
-      <div className="flex flex-col w-full h-full">
+      <div className="flex flex-col w-full h-full" style={{ backgroundColor }}>
         {titleBlock}
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -86,7 +87,7 @@ export function ChartHotspotRenderer({
 
   if (error || data.length === 0) {
     return (
-      <div className="flex flex-col w-full h-full">
+      <div className="flex flex-col w-full h-full" style={{ backgroundColor }}>
         {titleBlock}
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">
           {error || "No data"}
@@ -105,7 +106,7 @@ export function ChartHotspotRenderer({
     yFormat === "compact" ? formatCompact(v) : String(v);
 
   return (
-    <div className="flex flex-col w-full h-full">
+    <div className="flex flex-col w-full h-full" style={{ backgroundColor }}>
       {titleBlock}
       <div className="flex-1 min-h-0">
     <ResponsiveContainer width="100%" height="100%">
