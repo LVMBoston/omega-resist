@@ -652,7 +652,59 @@ Deno.serve(async (req) => {
     const textHotspots = hotspots.filter((h: any) => h.type !== "chart" && h.type !== "map" && h.type !== "image" && !ACTION_TYPES.has(h.type));
     const mapHotspots = hotspots.filter((h: any) => h.type === "map");
     const imageHotspots = hotspots.filter((h: any) => h.type === "image");
-    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots at ${width}x${height}`);
+    const chartHotspots = hotspots.filter((h: any) => h.type === "chart");
+    console.log(`[render-stats-snapshot] Processing ${textHotspots.length} text hotspots, ${mapHotspots.length} map hotspots, ${imageHotspots.length} image hotspots, ${chartHotspots.length} chart hotspots at ${width}x${height}`);
+
+    // Chart hotspots — bake stacked-bar charts as native SVG so the snapshot
+    // shows the same series the editor renders with Recharts.
+    const chartSvgElements: { z: number; svg: string }[] = [];
+    if (chartHotspots.length > 0) {
+      try {
+        const chartTokens = await fetchChartTokens(supabase, campaign_code);
+        const needsEvents = chartHotspots.some((h: any) => {
+          const ds = h.chartConfig?.dataSource || "cumulative_opens_by_level";
+          return ds !== "new_l00_seeds_per_period" && ds !== "shares_per_period";
+        });
+        const chartEvents = needsEvents ? await fetchChartEvents(supabase, chartTokens.map((t) => t.token)) : [];
+        const officialStart = await fetchOfficialStart(supabase, campaign_code);
+
+        for (const ch of chartHotspots) {
+          const cfg = ch.chartConfig || {};
+          const series = computeChartSeries({
+            tokens: chartTokens,
+            events: chartEvents,
+            dataSource: cfg.dataSource || "cumulative_opens_by_level",
+            timeBucket: cfg.timeBucket || "week",
+            officialStart,
+          });
+          const cx = (ch.x / 100) * width;
+          const cy = (ch.y / 100) * height;
+          const cw = ((ch.width || 30) / 100) * width;
+          const chh = ((ch.height || 20) / 100) * height;
+          const z = typeof ch.zIndex === "number" ? ch.zIndex : 1;
+          const svg = renderChartSvg({
+            points: series.points,
+            seriesKeys: series.seriesKeys,
+            seriesLabels: series.seriesLabels,
+            x: cx,
+            y: cy,
+            width: cw,
+            height: chh,
+            showXAxis: cfg.showXAxis !== false,
+            showYAxis: cfg.showYAxis !== false,
+            yScale: cfg.yScale || "linear",
+            yFormat: cfg.yFormat || "integer",
+          });
+          if (svg) {
+            chartSvgElements.push({ z, svg });
+          } else {
+            console.warn(`[render-stats-snapshot] Chart hotspot ${ch.id}: no data to render`);
+          }
+        }
+      } catch (e) {
+        console.error("[render-stats-snapshot] Chart rendering failed:", e);
+      }
+    }
 
     // Render static map images for map hotspots. Each entry is tagged with its
     // zIndex so we can sort all hotspot SVG fragments together before joining.
