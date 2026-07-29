@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useChartData, LEVEL_COLORS } from "@/hooks/useChartData";
 import { ChartConfig } from "@/types/viralTemplates";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { chartSeriesTitle } from "@/lib/chartTitles";
 
 interface ChartHotspotRendererProps {
   campaignCode: string;
@@ -24,6 +26,7 @@ export function ChartHotspotRenderer({
   height,
 }: ChartHotspotRendererProps) {
   const { data, seriesKeys, seriesLabels, loading, error, fetchChartData } = useChartData();
+  const [campaignName, setCampaignName] = useState<string>("");
 
   const showXAxis = config.showXAxis !== false;
   const showYAxis = config.showYAxis === true;
@@ -31,6 +34,7 @@ export function ChartHotspotRenderer({
   const timeBucket = config.timeBucket || "week";
   const yScale = config.yScale || "linear";
   const yFormat = config.yFormat || "integer";
+  const seriesTitle = chartSeriesTitle(dataSource, timeBucket);
 
   useEffect(() => {
     if (campaignCode) {
@@ -38,18 +42,55 @@ export function ChartHotspotRenderer({
     }
   }, [campaignCode, dataSource, timeBucket, fetchChartData]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!campaignCode) {
+      setCampaignName("");
+      return;
+    }
+    supabase
+      .from("campaigns")
+      .select("title")
+      .eq("code", campaignCode)
+      .maybeSingle()
+      .then(({ data: row }) => {
+        if (!cancelled) setCampaignName(row?.title || campaignCode);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignCode]);
+
+  const titleBlock = (
+    <div className="w-full text-center leading-tight px-1">
+      <div className="font-semibold text-foreground truncate" style={{ fontSize: Math.max(10, Math.min(18, height * 0.055)) }}>
+        {campaignName || campaignCode}
+      </div>
+      <div className="text-muted-foreground truncate" style={{ fontSize: Math.max(9, Math.min(15, height * 0.045)) }}>
+        {seriesTitle}
+      </div>
+    </div>
+  );
+
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center w-full h-full">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="flex flex-col w-full h-full">
+        {titleBlock}
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
   }
 
   if (error || data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full h-full text-muted-foreground text-xs">
-        {error || "No data"}
+      <div className="flex flex-col w-full h-full">
+        {titleBlock}
+        <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">
+          {error || "No data"}
+        </div>
       </div>
     );
   }
@@ -64,8 +105,12 @@ export function ChartHotspotRenderer({
     yFormat === "compact" ? formatCompact(v) : String(v);
 
   return (
+    <div className="flex flex-col w-full h-full">
+      {titleBlock}
+      <div className="flex-1 min-h-0">
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: showXAxis ? 20 : 4 }}>
+
         {showXAxis && (
           <XAxis
             dataKey="bucket"
@@ -111,5 +156,8 @@ export function ChartHotspotRenderer({
         ))}
       </BarChart>
     </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
+

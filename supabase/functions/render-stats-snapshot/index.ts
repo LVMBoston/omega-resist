@@ -3,6 +3,7 @@ import { formatCampaignStory } from "../_shared/render/campaignStory.ts";
 import { computeCampaignStoryInputs } from "../_shared/render/campaignStoryInputs.ts";
 import { computeChartSeries, type ChartEventRow, type ChartTokenRow } from "../_shared/render/chartData.ts";
 import { renderChartSvg } from "../_shared/render/chartSvg.ts";
+import { chartSeriesTitle } from "../_shared/render/chartData.ts";
 
 // ---- Chart data fetch helpers (paginated: Supabase caps at 1000 rows) ----
 async function fetchChartTokens(supabase: any, campaignCode: string): Promise<ChartTokenRow[]> {
@@ -749,6 +750,8 @@ Deno.serve(async (req) => {
             showYAxis: cfg.showYAxis !== false,
             yScale: cfg.yScale || "linear",
             yFormat: cfg.yFormat || "integer",
+            titleLine1: String(metrics.campaign_name || campaign_code),
+            titleLine2: chartSeriesTitle(cfg.dataSource, cfg.timeBucket),
           });
           if (svg) {
             chartSvgElements.push({ z, svg });
