@@ -1100,7 +1100,7 @@ Deno.serve(async (req) => {
     // Merge all hotspot SVG fragments (maps, images, text) and sort by zIndex
     // ascending so higher Z paints last/on top. JS sort is stable, so hotspots
     // sharing the same Z keep their original order (map → image → text).
-    const allHotspotSvg = [...mapSvgElements, ...imageSvgElements, ...hotspotSvgEntries]
+    const allHotspotSvg = [...mapSvgElements, ...chartSvgElements, ...imageSvgElements, ...hotspotSvgEntries]
       .sort((a, b) => a.z - b.z)
       .map((e) => e.svg)
       .join("\n  ");
