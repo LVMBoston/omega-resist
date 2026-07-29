@@ -13,7 +13,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { computeCampaignStoryInputs } from "@/shared/render/campaignStoryInputs";
 import { formatCampaignStory } from "@/shared/render/campaignStory";
 
-const CODES = ["nk3-invitation", "rs-good-1"];
+const CODES = (process.env.CAMPAIGN_CODES || "nk3-invitation,rs-good-1").split(",");
 const OUT_DIR = "/mnt/documents/campaign-stories";
 
 async function main() {
