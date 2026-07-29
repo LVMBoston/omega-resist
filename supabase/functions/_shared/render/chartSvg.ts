@@ -16,6 +16,10 @@ export interface ChartRenderOptions {
   showYAxis?: boolean;
   yScale?: "linear" | "log";
   yFormat?: "integer" | "compact";
+  /** Line 1 of the chart title (campaign name) */
+  titleLine1?: string;
+  /** Line 2 of the chart title (data series) */
+  titleLine2?: string;
 }
 
 function esc(s: string): string {
@@ -62,13 +66,20 @@ export function renderChartSvg(opts: ChartRenderOptions): string {
     showYAxis = false,
     yScale = "linear",
     yFormat = "integer",
+    titleLine1 = "",
+    titleLine2 = "",
   } = opts;
 
   if (!points.length || !seriesKeys.length) return "";
 
   // Font sizes scale with the chart box so small hotspots stay legible.
   const fs = Math.max(9, Math.min(20, Math.round(height * 0.045)));
-  const padTop = Math.round(height * 0.06);
+  const titleFs1 = Math.max(11, Math.min(24, Math.round(height * 0.055)));
+  const titleFs2 = Math.max(9, Math.min(19, Math.round(height * 0.045)));
+  const hasTitle = Boolean(titleLine1 || titleLine2);
+  const titleH = hasTitle ? titleFs1 * 1.35 + titleFs2 * 1.4 : 0;
+
+  const padTop = Math.round(height * 0.06) + titleH;
   const padBottom = (showXAxis ? fs * 2 : fs * 0.5) + fs * 2.2; // x labels + legend
   const padLeft = showYAxis ? fs * 3 : fs * 0.5;
   const padRight = fs;
@@ -97,6 +108,18 @@ export function renderChartSvg(opts: ChartRenderOptions): string {
   const barW = Math.max(2, slot * 0.65);
 
   let out = "";
+
+  // Two-line title: campaign name, then data series
+  if (hasTitle) {
+    const cxTitle = x + width / 2;
+    if (titleLine1) {
+      out += `<text x="${cxTitle}" y="${y + titleFs1 * 1.15}" font-family="Inter, sans-serif" font-size="${titleFs1}" font-weight="600" fill="#1e293b" text-anchor="middle">${esc(titleLine1)}</text>`;
+    }
+    if (titleLine2) {
+      out += `<text x="${cxTitle}" y="${y + titleFs1 * 1.35 + titleFs2 * 1.1}" font-family="Inter, sans-serif" font-size="${titleFs2}" fill="#64748b" text-anchor="middle">${esc(titleLine2)}</text>`;
+    }
+  }
+
 
   // Y axis ticks + gridlines
   if (showYAxis) {
