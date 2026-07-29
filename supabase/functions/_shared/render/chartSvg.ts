@@ -20,6 +20,8 @@ export interface ChartRenderOptions {
   titleLine1?: string;
   /** Line 2 of the chart title (data series) */
   titleLine2?: string;
+  /** Background fill behind the chart box. Defaults to white. */
+  backgroundColor?: string;
 }
 
 function esc(s: string): string {
@@ -68,6 +70,7 @@ export function renderChartSvg(opts: ChartRenderOptions): string {
     yFormat = "integer",
     titleLine1 = "",
     titleLine2 = "",
+    backgroundColor = "#ffffff",
   } = opts;
 
   if (!points.length || !seriesKeys.length) return "";
@@ -108,6 +111,11 @@ export function renderChartSvg(opts: ChartRenderOptions): string {
   const barW = Math.max(2, slot * 0.65);
 
   let out = "";
+
+  // Background panel behind the whole chart box
+  if (backgroundColor && backgroundColor !== "none" && backgroundColor !== "transparent") {
+    out += `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${esc(backgroundColor)}"/>`;
+  }
 
   // Two-line title: campaign name, then data series
   if (hasTitle) {

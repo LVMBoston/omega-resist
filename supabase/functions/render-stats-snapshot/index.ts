@@ -752,6 +752,7 @@ Deno.serve(async (req) => {
             yFormat: cfg.yFormat || "integer",
             titleLine1: String(metrics.campaign_name || campaign_code),
             titleLine2: chartSeriesTitle(cfg.dataSource, cfg.timeBucket),
+            backgroundColor: cfg.backgroundColor || "#ffffff",
           });
           if (svg) {
             chartSvgElements.push({ z, svg });
