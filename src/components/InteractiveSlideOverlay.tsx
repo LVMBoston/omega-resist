@@ -18,6 +18,8 @@ import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
 import { composeRefrigSheetPng, triggerPngDownload } from "@/lib/refrigSheet";
+import { openComposer } from "@/lib/openComposer";
+import { ToastAction } from "@/components/ui/toast";
 
 /** Renders a custom icon with an onError fallback to a Lucide SVG icon.
  *  Tries the real asset on all platforms; only swaps to the Lucide fallback
@@ -312,16 +314,18 @@ const InteractiveSlideOverlay = ({
 
 
       const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
-      const link = document.createElement('a');
-      link.href = smsUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+      const opened = openComposer(smsUrl);
+
       toast({
-        title: "Opening SMS",
-        description: "Share this deck via text message",
+        title: opened ? "Opening SMS" : "Couldn't open your messages app",
+        description: opened
+          ? "Share this deck via text message"
+          : "Tap the link below to open it manually.",
+        action: (
+          <ToastAction altText="Open messages" asChild>
+            <a href={smsUrl}>Open</a>
+          </ToastAction>
+        ),
       });
     } catch (error) {
       console.error("❌ SMS share error (full):", error);
@@ -393,16 +397,18 @@ const InteractiveSlideOverlay = ({
 
 
       const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      const link = document.createElement('a');
-      link.href = mailUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+      const opened = openComposer(mailUrl);
+
       toast({
-        title: "Opening Email",
-        description: "Share this deck via email",
+        title: opened ? "Opening Email" : "Couldn't open your email app",
+        description: opened
+          ? "Share this deck via email"
+          : "Tap the link below to open it manually.",
+        action: (
+          <ToastAction altText="Open email" asChild>
+            <a href={mailUrl}>Open</a>
+          </ToastAction>
+        ),
       });
     } catch (error) {
       console.error("❌ Email share error (full):", error);
@@ -942,7 +948,7 @@ const InteractiveSlideOverlay = ({
     });
     const body = lines.join('\n');
     const subject = hotspot.emailLinksSubject || 'Here are the links you requested…';
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    openComposer(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     setTimeout(() => {
       toast({ title: "Don't forget to share this with people you trust!", duration: 6000 });
     }, 500);
@@ -979,7 +985,7 @@ const InteractiveSlideOverlay = ({
             return;
           }
           const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
-          window.location.href = `mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`;
+          openComposer(`mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`);
         };
       case "refrig":
         return handleRefrig;
