@@ -1019,10 +1019,25 @@ const InteractiveSlideOverlay = ({
     });
     const body = lines.join('\n');
     const subject = hotspot.emailLinksSubject || 'Here are the links you requested…';
-    openComposer(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    const linksMailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const linksOpened = openComposer(linksMailUrl);
+    if (!linksOpened) {
+      toast({
+        title: "Couldn't open your email app",
+        description: "Tap the link below to open it manually.",
+        duration: Infinity,
+        action: (
+          <ToastAction altText="Open email" asChild>
+            <a href={linksMailUrl}>Open</a>
+          </ToastAction>
+        ),
+      });
+      return;
+    }
     setTimeout(() => {
       toast({ title: "Don't forget to share this with people you trust!", duration: 6000 });
     }, 500);
+
   };
 
   const getHotspotAction = (type: string, hotspot?: Hotspot) => {
