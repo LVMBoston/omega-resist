@@ -1119,18 +1119,41 @@ Deno.serve(async (req) => {
     console.log(`[render-stats-snapshot] SVG constructed: ${svgContent.length} chars, ${textHotspots.length} hotspots, ${svgBytes.length} bytes`);
 
     // Upload SVG directly (avoids CPU-heavy resvg-wasm PNG rasterization)
+    // Storage occasionally throws transient http2 stream errors on large payloads,
+    // so retry with backoff before failing the whole render.
     const storagePath = `${template_id}/snapshot-${campaign_code}.svg`;
-    const { error: uploadError } = await supabase.storage
-      .from("slide-snapshots")
-      .upload(storagePath, svgBytes, {
-        cacheControl: "300",
-        upsert: true,
-        contentType: "image/svg+xml",
-      });
+    const uploadAttempts = 4;
+    let lastUploadError: string | null = null;
 
-    if (uploadError) {
-      console.error("[render-stats-snapshot] Upload error:", uploadError);
-      throw new Error(`Failed to upload snapshot: ${uploadError.message}`);
+    for (let attempt = 1; attempt <= uploadAttempts; attempt++) {
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from("slide-snapshots")
+          .upload(storagePath, svgBytes, {
+            cacheControl: "300",
+            upsert: true,
+            contentType: "image/svg+xml",
+          });
+
+        if (!uploadError) {
+          lastUploadError = null;
+          console.log(`[render-stats-snapshot] Upload succeeded on attempt ${attempt}`);
+          break;
+        }
+        lastUploadError = uploadError.message;
+      } catch (e) {
+        lastUploadError = e instanceof Error ? e.message : String(e);
+      }
+
+      console.warn(`[render-stats-snapshot] Upload attempt ${attempt} failed: ${lastUploadError}`);
+      if (attempt < uploadAttempts) {
+        await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+      }
+    }
+
+    if (lastUploadError) {
+      console.error("[render-stats-snapshot] Upload error after retries:", lastUploadError);
+      throw new Error(`Failed to upload snapshot: ${lastUploadError}`);
     }
 
     const { data: { publicUrl } } = supabase.storage

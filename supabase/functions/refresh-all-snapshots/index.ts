@@ -48,7 +48,15 @@ Deno.serve(async (req) => {
     const skipped: RenderResult[] = [];
     const errors: RenderResult[] = [];
 
+    // The cron heartbeat runs every minute, so bail out before the gateway times
+    // out (504) and let the next tick pick up whatever is still stale.
+    const startedAt = Date.now();
+    const TIME_BUDGET_MS = 100_000;
+    const RENDER_TIMEOUT_MS = 45_000;
+    let budgetExhausted = false;
+
     for (const campaign of campaigns) {
+      if (budgetExhausted) break;
       const intervalMinutes = campaign.snapshot_interval_minutes ?? 2;
 
       // Step 2: Find deck slugs for this campaign via events_actions
@@ -82,7 +90,17 @@ Deno.serve(async (req) => {
 
       // Step 4: Check staleness per (template, campaign) by checking actual storage file age
       for (const templateId of templateIds) {
-        const snapshotPath = `${templateId}/snapshot-${campaign.code}.svg`;
+        if (Date.now() - startedAt > TIME_BUDGET_MS) {
+          budgetExhausted = true;
+          skipped.push({
+            template_id: templateId,
+            campaign_code: campaign.code,
+            status: "skipped",
+            reason: "Time budget reached; deferred to next run",
+          });
+          break;
+        }
+
 
         // Check if the snapshot file exists and its age via storage API
         const { data: files, error: listError } = await supabase.storage
@@ -123,8 +141,10 @@ Deno.serve(async (req) => {
                 template_id: templateId,
                 campaign_code: campaign.code,
               }),
+              signal: AbortSignal.timeout(RENDER_TIMEOUT_MS),
             }
           );
+
 
           if (!renderResponse.ok) {
             const errorText = await renderResponse.text();
