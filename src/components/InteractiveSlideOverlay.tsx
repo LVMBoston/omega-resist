@@ -154,9 +154,66 @@ const InteractiveSlideOverlay = ({
         if (emailData) setEmailTemplate(emailData.value as any);
         if (smsData) setSmsTemplate(smsData.value as any);
       }
+      setTemplatesReady(true);
     };
     fetchTemplates();
   }, [viralToken]);
+
+  /**
+   * Pre-mint the share child token(s) for this slide's SMS / Email hotspots so the
+   * composer URL exists *before* the tap. A tap then navigates a real <a href>,
+   * which is the only handoff iOS Safari reliably honors. One token per medium
+   * per slide visit — unused ones are share *intent*, not completed shares.
+   */
+  useEffect(() => {
+    if (!viralToken || !templatesReady) return;
+    const needSms = hotspots.some(h => h.type === 'sms');
+    const needEmail = hotspots.some(h => h.type === 'email');
+    if (!needSms && !needEmail) return;
+
+    let cancelled = false;
+    const subGeo = (text: string) => text
+      .replace(/\{\{city\}\}/g, eoaContext?.city || "")
+      .replace(/\{\{state\}\}/g, eoaContext?.state || "")
+      .replace(/\{\{site_name\}\}/g, eoaContext?.site_name || "");
+
+    (async () => {
+      if (needSms && !premintedRef.current.sms) {
+        premintedRef.current.sms = true;
+        try {
+          const r = await mintShare({ parentToken: viralToken, utmMedium: "sms" });
+          const message = smsTemplate?.body
+            ? subGeo(smsTemplate.body.replace("{{link}}", r.full_url))
+            : `Check out this deck: ${r.full_url}`;
+          if (!cancelled) setComposerHrefs(prev => ({ ...prev, sms: buildSmsComposerUrl(message) }));
+        } catch (e) {
+          premintedRef.current.sms = false;
+          console.error("Pre-mint (sms) failed, falling back to on-tap mint:", e);
+        }
+      }
+      if (needEmail && !premintedRef.current.email) {
+        premintedRef.current.email = true;
+        try {
+          const r = await mintShare({ parentToken: viralToken, utmMedium: "em" });
+          const subject = emailTemplate?.subject ? subGeo(emailTemplate.subject) : "Check out this presentation";
+          const body = emailTemplate?.body
+            ? subGeo(emailTemplate.body.replace("{{link}}", r.full_url))
+            : `I thought you might be interested in this: ${r.full_url}`;
+          if (!cancelled) setComposerHrefs(prev => ({
+            ...prev,
+            email: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+          }));
+        } catch (e) {
+          premintedRef.current.email = false;
+          console.error("Pre-mint (email) failed, falling back to on-tap mint:", e);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [viralToken, templatesReady, hotspots, smsTemplate, emailTemplate, eoaContext]);
+
+
 
   useEffect(() => {
     console.log("🔧 InteractiveSlideOverlay effect running, imageRef:", !!imageRef.current);
