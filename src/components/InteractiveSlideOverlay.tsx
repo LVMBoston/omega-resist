@@ -948,7 +948,7 @@ const InteractiveSlideOverlay = ({
     });
     const body = lines.join('\n');
     const subject = hotspot.emailLinksSubject || 'Here are the links you requested…';
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    openComposer(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     setTimeout(() => {
       toast({ title: "Don't forget to share this with people you trust!", duration: 6000 });
     }, 500);
