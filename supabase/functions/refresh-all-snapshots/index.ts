@@ -48,7 +48,15 @@ Deno.serve(async (req) => {
     const skipped: RenderResult[] = [];
     const errors: RenderResult[] = [];
 
+    // The cron heartbeat runs every minute, so bail out before the gateway times
+    // out (504) and let the next tick pick up whatever is still stale.
+    const startedAt = Date.now();
+    const TIME_BUDGET_MS = 100_000;
+    const RENDER_TIMEOUT_MS = 45_000;
+    let budgetExhausted = false;
+
     for (const campaign of campaigns) {
+      if (budgetExhausted) break;
       const intervalMinutes = campaign.snapshot_interval_minutes ?? 2;
 
       // Step 2: Find deck slugs for this campaign via events_actions
