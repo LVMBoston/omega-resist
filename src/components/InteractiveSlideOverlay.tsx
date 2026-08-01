@@ -1372,8 +1372,31 @@ const InteractiveSlideOverlay = ({
             </a>
           );
         }
-        
+
+        // SMS / Email: when the composer URL was pre-minted, render a real link so
+        // the tap itself performs the handoff (no async gap for the browser to reject).
+        if (hotspot.type === 'sms' || hotspot.type === 'email') {
+          const preHref = hotspot.type === 'sms' ? composerHrefs.sms : composerHrefs.email;
+          if (preHref) {
+            return (
+              <a
+                key={hotspot.id}
+                href={preHref}
+                className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+                style={{ ...transparentStyle, textDecoration: 'none' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log(`📱 Pre-minted ${hotspot.type} composer link tapped`);
+                }}
+              >
+                {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+              </a>
+            );
+          }
+        }
+
         // Use button for other hotspot types
+
         // Guard against double-fire from touchStart + click on mobile
         let touchFired = false;
         const handleTouchStart = (e: React.TouchEvent) => {
