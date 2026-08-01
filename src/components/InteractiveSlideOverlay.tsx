@@ -397,16 +397,18 @@ const InteractiveSlideOverlay = ({
 
 
       const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      const link = document.createElement('a');
-      link.href = mailUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+      const opened = openComposer(mailUrl);
+
       toast({
-        title: "Opening Email",
-        description: "Share this deck via email",
+        title: opened ? "Opening Email" : "Couldn't open your email app",
+        description: opened
+          ? "Share this deck via email"
+          : "Tap the link below to open it manually.",
+        action: (
+          <ToastAction altText="Open email" asChild>
+            <a href={mailUrl}>Open</a>
+          </ToastAction>
+        ),
       });
     } catch (error) {
       console.error("❌ Email share error (full):", error);
