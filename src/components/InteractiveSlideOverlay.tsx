@@ -312,16 +312,18 @@ const InteractiveSlideOverlay = ({
 
 
       const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
-      const link = document.createElement('a');
-      link.href = smsUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+      const opened = openComposer(smsUrl);
+
       toast({
-        title: "Opening SMS",
-        description: "Share this deck via text message",
+        title: opened ? "Opening SMS" : "Couldn't open your messages app",
+        description: opened
+          ? "Share this deck via text message"
+          : "Tap the link below to open it manually.",
+        action: (
+          <ToastAction altText="Open messages" asChild>
+            <a href={smsUrl}>Open</a>
+          </ToastAction>
+        ),
       });
     } catch (error) {
       console.error("❌ SMS share error (full):", error);
