@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { openComposer } from "@/lib/openComposer";
 
 /**
  * Auto-share redirector hit from the fridge-sheet Text/Email QRs.
@@ -125,7 +126,7 @@ export default function FridgeShareRedirect() {
         setComposerUrl(composer);
         setStatus("opened");
         // Trigger the composer.
-        window.location.href = composer;
+        openComposer(composer);
       } catch (e) {
         console.error("[FridgeShareRedirect] failed:", e);
         if (!cancelled) {
