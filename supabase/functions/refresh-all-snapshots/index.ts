@@ -90,7 +90,17 @@ Deno.serve(async (req) => {
 
       // Step 4: Check staleness per (template, campaign) by checking actual storage file age
       for (const templateId of templateIds) {
-        const snapshotPath = `${templateId}/snapshot-${campaign.code}.svg`;
+        if (Date.now() - startedAt > TIME_BUDGET_MS) {
+          budgetExhausted = true;
+          skipped.push({
+            template_id: templateId,
+            campaign_code: campaign.code,
+            status: "skipped",
+            reason: "Time budget reached; deferred to next run",
+          });
+          break;
+        }
+
 
         // Check if the snapshot file exists and its age via storage API
         const { data: files, error: listError } = await supabase.storage
