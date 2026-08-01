@@ -18,6 +18,8 @@ import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
 import { composeRefrigSheetPng, triggerPngDownload } from "@/lib/refrigSheet";
+import { openComposer } from "@/lib/openComposer";
+import { ToastAction } from "@/components/ui/toast";
 
 /** Renders a custom icon with an onError fallback to a Lucide SVG icon.
  *  Tries the real asset on all platforms; only swaps to the Lucide fallback
