@@ -141,8 +141,10 @@ Deno.serve(async (req) => {
                 template_id: templateId,
                 campaign_code: campaign.code,
               }),
+              signal: AbortSignal.timeout(RENDER_TIMEOUT_MS),
             }
           );
+
 
           if (!renderResponse.ok) {
             const errorText = await renderResponse.text();
