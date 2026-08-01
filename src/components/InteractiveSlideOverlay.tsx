@@ -65,6 +65,10 @@ const InteractiveSlideOverlay = ({
   });
   const [emailTemplate, setEmailTemplate] = useState<{subject: string; body: string} | null>(null);
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
+  const [templatesReady, setTemplatesReady] = useState(false);
+  /** Pre-minted composer URLs so a tap can hand off synchronously (iOS/Safari safe). */
+  const [composerHrefs, setComposerHrefs] = useState<{ sms?: string; email?: string }>({});
+  const premintedRef = useRef<{ sms?: boolean; email?: boolean }>({});
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoProvider, setVideoProvider] = useState<"vimeo" | "youtube" | null>(null);
