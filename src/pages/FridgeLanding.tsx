@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, Mail, MessageSquare, Loader2 } from "lucide-react";
+import { buildSmsComposerUrl } from "@/lib/openComposer";
 
 interface TokenInfo {
   deckSlug: string;
@@ -117,7 +118,7 @@ export default function FridgeLanding() {
   const smsBody = `Thought you'd want to see this: ${info.shareUrl}`;
 
   const mailHref = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  const smsHref = `sms:?&body=${encodeURIComponent(smsBody)}`;
+  const smsHref = buildSmsComposerUrl(smsBody);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-background to-muted">

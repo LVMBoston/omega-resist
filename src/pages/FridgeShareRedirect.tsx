@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { openComposer } from "@/lib/openComposer";
+import { buildSmsComposerUrl, openComposer } from "@/lib/openComposer";
 
 /**
  * Auto-share redirector hit from the fridge-sheet Text/Email QRs.
@@ -111,7 +111,7 @@ export default function FridgeShareRedirect() {
           const body = template?.body
             ? subGeo(template.body.replace("{{link}}", shareUrl))
             : `Thought you'd want to see this: ${shareUrl}`;
-          composer = `sms:?body=${encodeURIComponent(body)}`;
+          composer = buildSmsComposerUrl(body);
         } else {
           const subject = template?.subject
             ? subGeo(template.subject)
@@ -156,17 +156,18 @@ export default function FridgeShareRedirect() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-center">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-      <p className="text-lg font-medium">
-        Opening your {action === "sms" ? "text message" : "email"}…
-      </p>
-      {composerUrl && (
-        <p className="text-sm text-muted-foreground mt-3">
-          If nothing happens,{" "}
-          <a href={composerUrl} className="text-primary underline">
-            tap here
-          </a>
-          .
+        <p className="text-lg font-medium">
+          {composerUrl
+            ? `Open your ${action === "sms" ? "text message" : "email"}`
+            : `Preparing your ${action === "sms" ? "text message" : "email"}…`}
         </p>
+      {composerUrl && (
+        <a
+          href={composerUrl}
+          className="mt-5 inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-6 font-medium text-primary-foreground"
+        >
+          Tap to open
+        </a>
       )}
     </div>
   );

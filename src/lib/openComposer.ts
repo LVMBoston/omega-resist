@@ -1,17 +1,57 @@
+export interface PreparedComposerLaunch {
+  open: (url: string) => boolean;
+  cancel: () => void;
+}
+
+function isIOSDevice(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/** iOS Messages uses `&body=` when no recipient is supplied. */
+export function buildSmsComposerUrl(body: string): string {
+  const separator = isIOSDevice() ? "&" : "?";
+  return `sms:${separator}body=${encodeURIComponent(body)}`;
+}
+
 /**
- * Opens a `mailto:` / `sms:` (or any external-scheme) URL reliably.
- *
- * Why this exists: when the deck runs inside an iframe (Lovable preview,
- * embeds, in-app browsers), assigning `window.location.href` or clicking a
- * synthetic <a> can be silently blocked by the frame sandbox, so the mail /
- * message composer never appears. We try, in order:
- *   1. navigate the top-level window (escapes the iframe),
- *   2. `window.open(url, "_top")` / `_blank`,
- *   3. plain same-frame navigation.
- *
- * Returns `false` when every attempt threw, so callers can surface a
- * tappable fallback link to the user.
+ * Reserve an iOS browsing context while the original tap is still active.
+ * The share token can then be minted asynchronously without Safari rejecting
+ * the eventual mailto:/sms: handoff as an unsolicited navigation.
  */
+export function prepareComposerLaunch(): PreparedComposerLaunch {
+  let reservedWindow: Window | null = null;
+
+  if (isIOSDevice()) {
+    try {
+      reservedWindow = window.open("about:blank", "_blank");
+    } catch {
+      reservedWindow = null;
+    }
+  }
+
+  return {
+    open: (url: string) => {
+      if (reservedWindow && !reservedWindow.closed) {
+        try {
+          reservedWindow.location.href = url;
+          reservedWindow = null;
+          return true;
+        } catch {
+          reservedWindow.close();
+          reservedWindow = null;
+        }
+      }
+      return openComposer(url);
+    },
+    cancel: () => {
+      if (reservedWindow && !reservedWindow.closed) reservedWindow.close();
+      reservedWindow = null;
+    },
+  };
+}
+
+/** Opens an external-scheme URL immediately from a user interaction. */
 export function openComposer(url: string): boolean {
   const inIframe = (() => {
     try {

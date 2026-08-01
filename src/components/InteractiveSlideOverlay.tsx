@@ -18,7 +18,7 @@ import playButton from "@/assets/play-button.png";
 import { MapLegend } from "@/components/MapLegend";
 import { Hotspot } from "@/types/viralTemplates";
 import { composeRefrigSheetPng, triggerPngDownload } from "@/lib/refrigSheet";
-import { openComposer } from "@/lib/openComposer";
+import { buildSmsComposerUrl, openComposer, prepareComposerLaunch } from "@/lib/openComposer";
 import { ToastAction } from "@/components/ui/toast";
 
 /** Renders a custom icon with an onError fallback to a Lucide SVG icon.
@@ -258,6 +258,7 @@ const InteractiveSlideOverlay = ({
   }, [imageRef]);
 
   const handleSMS = async () => {
+    const composerLaunch = prepareComposerLaunch();
     try {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("📱 SMS SHARE INITIATED");
@@ -266,6 +267,7 @@ const InteractiveSlideOverlay = ({
       console.log("2️⃣ SMS Template:", JSON.stringify(smsTemplate, null, 2));
       
       if (!viralToken) {
+        composerLaunch.cancel();
         console.error("❌ ERROR: No viral token found in URL");
         console.log("Current URL:", window.location.href);
         toast({
@@ -306,15 +308,15 @@ const InteractiveSlideOverlay = ({
         level: level,
         fullUrl: full_url,
         message: message,
-        encodedSmsUrl: `sms:?body=${encodeURIComponent(message)}`
+        encodedSmsUrl: buildSmsComposerUrl(message)
       };
       
       console.log("5️⃣ Final SMS Payload:", JSON.stringify(finalPayload, null, 2));
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
 
-      const smsUrl = `sms:?body=${encodeURIComponent(message)}`;
-      const opened = openComposer(smsUrl);
+      const smsUrl = buildSmsComposerUrl(message);
+      const opened = composerLaunch.open(smsUrl);
 
       toast({
         title: opened ? "Opening SMS" : "Couldn't open your messages app",
@@ -328,6 +330,7 @@ const InteractiveSlideOverlay = ({
         ),
       });
     } catch (error) {
+      composerLaunch.cancel();
       console.error("❌ SMS share error (full):", error);
       console.error("❌ Error details:", JSON.stringify(error, null, 2));
       toast({
@@ -339,6 +342,7 @@ const InteractiveSlideOverlay = ({
   };
 
   const handleEmail = async () => {
+    const composerLaunch = prepareComposerLaunch();
     try {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("📧 EMAIL SHARE INITIATED");
@@ -347,6 +351,7 @@ const InteractiveSlideOverlay = ({
       console.log("2️⃣ Email Template:", JSON.stringify(emailTemplate, null, 2));
       
       if (!viralToken) {
+        composerLaunch.cancel();
         console.error("❌ ERROR: No viral token found in URL");
         console.log("Current URL:", window.location.href);
         toast({
@@ -397,7 +402,7 @@ const InteractiveSlideOverlay = ({
 
 
       const mailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      const opened = openComposer(mailUrl);
+      const opened = composerLaunch.open(mailUrl);
 
       toast({
         title: opened ? "Opening Email" : "Couldn't open your email app",
@@ -411,6 +416,7 @@ const InteractiveSlideOverlay = ({
         ),
       });
     } catch (error) {
+      composerLaunch.cancel();
       console.error("❌ Email share error (full):", error);
       console.error("❌ Error details:", JSON.stringify(error, null, 2));
       toast({
