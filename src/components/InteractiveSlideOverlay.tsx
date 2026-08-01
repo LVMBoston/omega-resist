@@ -985,7 +985,7 @@ const InteractiveSlideOverlay = ({
             return;
           }
           const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
-          window.location.href = `mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`;
+          openComposer(`mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`);
         };
       case "refrig":
         return handleRefrig;
