@@ -65,6 +65,10 @@ const InteractiveSlideOverlay = ({
   });
   const [emailTemplate, setEmailTemplate] = useState<{subject: string; body: string} | null>(null);
   const [smsTemplate, setSmsTemplate] = useState<{body: string} | null>(null);
+  const [templatesReady, setTemplatesReady] = useState(false);
+  /** Pre-minted composer URLs so a tap can hand off synchronously (iOS/Safari safe). */
+  const [composerHrefs, setComposerHrefs] = useState<{ sms?: string; email?: string }>({});
+  const premintedRef = useRef<{ sms?: boolean; email?: boolean }>({});
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoProvider, setVideoProvider] = useState<"vimeo" | "youtube" | null>(null);
@@ -150,9 +154,66 @@ const InteractiveSlideOverlay = ({
         if (emailData) setEmailTemplate(emailData.value as any);
         if (smsData) setSmsTemplate(smsData.value as any);
       }
+      setTemplatesReady(true);
     };
     fetchTemplates();
   }, [viralToken]);
+
+  /**
+   * Pre-mint the share child token(s) for this slide's SMS / Email hotspots so the
+   * composer URL exists *before* the tap. A tap then navigates a real <a href>,
+   * which is the only handoff iOS Safari reliably honors. One token per medium
+   * per slide visit — unused ones are share *intent*, not completed shares.
+   */
+  useEffect(() => {
+    if (!viralToken || !templatesReady) return;
+    const needSms = hotspots.some(h => h.type === 'sms');
+    const needEmail = hotspots.some(h => h.type === 'email');
+    if (!needSms && !needEmail) return;
+
+    let cancelled = false;
+    const subGeo = (text: string) => text
+      .replace(/\{\{city\}\}/g, eoaContext?.city || "")
+      .replace(/\{\{state\}\}/g, eoaContext?.state || "")
+      .replace(/\{\{site_name\}\}/g, eoaContext?.site_name || "");
+
+    (async () => {
+      if (needSms && !premintedRef.current.sms) {
+        premintedRef.current.sms = true;
+        try {
+          const r = await mintShare({ parentToken: viralToken, utmMedium: "sms" });
+          const message = smsTemplate?.body
+            ? subGeo(smsTemplate.body.replace("{{link}}", r.full_url))
+            : `Check out this deck: ${r.full_url}`;
+          if (!cancelled) setComposerHrefs(prev => ({ ...prev, sms: buildSmsComposerUrl(message) }));
+        } catch (e) {
+          premintedRef.current.sms = false;
+          console.error("Pre-mint (sms) failed, falling back to on-tap mint:", e);
+        }
+      }
+      if (needEmail && !premintedRef.current.email) {
+        premintedRef.current.email = true;
+        try {
+          const r = await mintShare({ parentToken: viralToken, utmMedium: "em" });
+          const subject = emailTemplate?.subject ? subGeo(emailTemplate.subject) : "Check out this presentation";
+          const body = emailTemplate?.body
+            ? subGeo(emailTemplate.body.replace("{{link}}", r.full_url))
+            : `I thought you might be interested in this: ${r.full_url}`;
+          if (!cancelled) setComposerHrefs(prev => ({
+            ...prev,
+            email: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+          }));
+        } catch (e) {
+          premintedRef.current.email = false;
+          console.error("Pre-mint (email) failed, falling back to on-tap mint:", e);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [viralToken, templatesReady, hotspots, smsTemplate, emailTemplate, eoaContext]);
+
+
 
   useEffect(() => {
     console.log("🔧 InteractiveSlideOverlay effect running, imageRef:", !!imageRef.current);
@@ -323,12 +384,14 @@ const InteractiveSlideOverlay = ({
         description: opened
           ? "Share this deck via text message"
           : "Tap the link below to open it manually.",
+        duration: opened ? 4000 : Infinity,
         action: (
           <ToastAction altText="Open messages" asChild>
             <a href={smsUrl}>Open</a>
           </ToastAction>
         ),
       });
+
     } catch (error) {
       composerLaunch.cancel();
       console.error("❌ SMS share error (full):", error);
@@ -409,12 +472,14 @@ const InteractiveSlideOverlay = ({
         description: opened
           ? "Share this deck via email"
           : "Tap the link below to open it manually.",
+        duration: opened ? 4000 : Infinity,
         action: (
           <ToastAction altText="Open email" asChild>
             <a href={mailUrl}>Open</a>
           </ToastAction>
         ),
       });
+
     } catch (error) {
       composerLaunch.cancel();
       console.error("❌ Email share error (full):", error);
@@ -954,10 +1019,25 @@ const InteractiveSlideOverlay = ({
     });
     const body = lines.join('\n');
     const subject = hotspot.emailLinksSubject || 'Here are the links you requested…';
-    openComposer(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    const linksMailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const linksOpened = openComposer(linksMailUrl);
+    if (!linksOpened) {
+      toast({
+        title: "Couldn't open your email app",
+        description: "Tap the link below to open it manually.",
+        duration: Infinity,
+        action: (
+          <ToastAction altText="Open email" asChild>
+            <a href={linksMailUrl}>Open</a>
+          </ToastAction>
+        ),
+      });
+      return;
+    }
     setTimeout(() => {
       toast({ title: "Don't forget to share this with people you trust!", duration: 6000 });
     }, 500);
+
   };
 
   const getHotspotAction = (type: string, hotspot?: Hotspot) => {
@@ -991,7 +1071,19 @@ const InteractiveSlideOverlay = ({
             return;
           }
           const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
-          openComposer(`mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`);
+          const supportUrl = `mailto:${addr}?subject=${encodeURIComponent(subject)}`;
+          if (!openComposer(supportUrl)) {
+            toast({
+              title: "Couldn't open your email app",
+              description: "Tap the link below to open it manually.",
+              duration: Infinity,
+              action: (
+                <ToastAction altText="Open email" asChild>
+                  <a href={supportUrl}>Open</a>
+                </ToastAction>
+              ),
+            });
+          }
         };
       case "refrig":
         return handleRefrig;
@@ -1311,8 +1403,31 @@ const InteractiveSlideOverlay = ({
             </a>
           );
         }
-        
+
+        // SMS / Email: when the composer URL was pre-minted, render a real link so
+        // the tap itself performs the handoff (no async gap for the browser to reject).
+        if (hotspot.type === 'sms' || hotspot.type === 'email') {
+          const preHref = hotspot.type === 'sms' ? composerHrefs.sms : composerHrefs.email;
+          if (preHref) {
+            return (
+              <a
+                key={hotspot.id}
+                href={preHref}
+                className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
+                style={{ ...transparentStyle, textDecoration: 'none' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log(`📱 Pre-minted ${hotspot.type} composer link tapped`);
+                }}
+              >
+                {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
+              </a>
+            );
+          }
+        }
+
         // Use button for other hotspot types
+
         // Guard against double-fire from touchStart + click on mobile
         let touchFired = false;
         const handleTouchStart = (e: React.TouchEvent) => {

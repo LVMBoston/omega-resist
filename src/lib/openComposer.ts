@@ -51,7 +51,14 @@ export function prepareComposerLaunch(): PreparedComposerLaunch {
   };
 }
 
-/** Opens an external-scheme URL immediately from a user interaction. */
+/**
+ * Opens an external-scheme URL immediately from a user interaction.
+ *
+ * Returns `true` only when we have positive evidence the handoff was accepted.
+ * Inside a cross-origin iframe we cannot observe whether a `location.href`
+ * assignment was honored, so we report `false` and let the caller offer a
+ * manual link rather than claiming success we can't verify.
+ */
 export function openComposer(url: string): boolean {
   const inIframe = (() => {
     try {
@@ -84,6 +91,14 @@ export function openComposer(url: string): boolean {
     } catch {
       /* ignore */
     }
+    // Last resort inside a sandboxed/cross-origin frame: attempt it, but do
+    // not claim success — the browser may drop it silently.
+    try {
+      window.location.href = url;
+    } catch {
+      /* ignore */
+    }
+    return false;
   }
 
   try {
@@ -93,3 +108,4 @@ export function openComposer(url: string): boolean {
     return false;
   }
 }
+
