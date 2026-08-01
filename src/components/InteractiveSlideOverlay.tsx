@@ -384,12 +384,14 @@ const InteractiveSlideOverlay = ({
         description: opened
           ? "Share this deck via text message"
           : "Tap the link below to open it manually.",
+        duration: opened ? 4000 : Infinity,
         action: (
           <ToastAction altText="Open messages" asChild>
             <a href={smsUrl}>Open</a>
           </ToastAction>
         ),
       });
+
     } catch (error) {
       composerLaunch.cancel();
       console.error("❌ SMS share error (full):", error);
