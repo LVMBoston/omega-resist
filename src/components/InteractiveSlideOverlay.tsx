@@ -472,12 +472,14 @@ const InteractiveSlideOverlay = ({
         description: opened
           ? "Share this deck via email"
           : "Tap the link below to open it manually.",
+        duration: opened ? 4000 : Infinity,
         action: (
           <ToastAction altText="Open email" asChild>
             <a href={mailUrl}>Open</a>
           </ToastAction>
         ),
       });
+
     } catch (error) {
       composerLaunch.cancel();
       console.error("❌ Email share error (full):", error);
