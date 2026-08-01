@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, Mail, MessageSquare, Loader2 } from "lucide-react";
+import { buildSmsComposerUrl } from "@/lib/openComposer";
 
 interface TokenInfo {
   deckSlug: string;
