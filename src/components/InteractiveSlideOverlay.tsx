@@ -1071,7 +1071,19 @@ const InteractiveSlideOverlay = ({
             return;
           }
           const subject = (hotspot?.supportSubject || hotspot?.label || "Support request").trim();
-          openComposer(`mailto:${encodeURIComponent(addr)}?subject=${encodeURIComponent(subject)}`);
+          const supportUrl = `mailto:${addr}?subject=${encodeURIComponent(subject)}`;
+          if (!openComposer(supportUrl)) {
+            toast({
+              title: "Couldn't open your email app",
+              description: "Tap the link below to open it manually.",
+              duration: Infinity,
+              action: (
+                <ToastAction altText="Open email" asChild>
+                  <a href={supportUrl}>Open</a>
+                </ToastAction>
+              ),
+            });
+          }
         };
       case "refrig":
         return handleRefrig;
