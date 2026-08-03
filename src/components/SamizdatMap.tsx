@@ -289,6 +289,28 @@ const SamizdatMap = ({
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
   const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(!showNoSpawns);
+  // Animation date-range overrides (yyyy-mm-dd from <input type="date">, UI-only)
+  const [rangeStart, setRangeStart] = useState<string>("");
+  const [rangeEnd, setRangeEnd] = useState<string>("");
+
+  const rangeStartMs = useMemo(() => {
+    if (!rangeStart) return null;
+    const [y, m, d] = rangeStart.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+  }, [rangeStart]);
+
+  const rangeEndMs = useMemo(() => {
+    if (!rangeEnd) return null;
+    const [y, m, d] = rangeEnd.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d, 23, 59, 59, 999).getTime();
+  }, [rangeEnd]);
+
+  // Invalid when start is after end — fall back to auto until corrected
+  const rangeInvalid = rangeStartMs !== null && rangeEndMs !== null && rangeStartMs > rangeEndMs;
+  const effStartOverride = rangeInvalid ? null : rangeStartMs;
+  const effEndOverride = rangeInvalid ? null : rangeEndMs;
 
   useEffect(() => {
     setShowNoSpawnsLocal(!showNoSpawns);
