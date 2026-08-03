@@ -1,43 +1,34 @@
-## What you see, and what the code does
+# Animation date range control for the Real-time map
 
-When you tap Email or SMS on a slide, the app first calls the server to mint a fresh share token, and only *afterwards* tries to send the browser to `mailto:`/`sms:`. By then the browser no longer treats it as "the user clicked something", so the jump is silently refused. Worse, `openComposer` returns `true` even when the navigation was refused, so the toast says "Opening Email" while nothing happens.
+Add an explicit start/end date range to the map's timeline playback, so a recording can cover exactly the days you choose instead of always spanning first-event to latest-event.
 
-Inside the Lovable preview (and any embed) there is a second blocker: the page runs in a cross-origin iframe, so `window.top.location`, `window.open(..., "_top")` and popups can all be blocked, leaving no path out.
+## 1. What you'll see
 
-Unverified until I can drive the live page: which of the two blockers is hitting you on this device. Step 1 below confirms it before any behavior change.
+a. In the playback box (bottom right of the map), a new compact row: `From [mm/dd/yyyy] To [mm/dd/yyyy]` plus a small `Auto` reset button.
+b. Empty fields = today's behavior (range derived from go-live to latest event). Filling either one overrides that side.
+c. Start date is anchored at 12:00 AM of that day; end date is anchored at 12:00 PM of that day, exactly as specified. (Note: 12:00 PM is noon, so events later that afternoon/evening are excluded. Say the word if you meant end-of-day and I'll use 11:59 PM instead.)
+d. The date readout box, slider, elapsed-time label, and the "Events: x / y" counter all follow the chosen range.
+e. Play/Pause/Reset/speed behave the same; a full 1x playthrough still takes ~30 seconds across whatever range is set.
 
-## 1. Confirm the failure in the browser
+## 2. Behavior rules
 
-a. Drive the deck viewer with a real share token via Playwright, click Email and SMS, and capture console output plus whether any navigation to a `mailto:`/`sms:` URL is attempted.
-b. Record the same for the preview iframe context vs. a direct page load, so we know whether the iframe alone explains it.
+a. If the chosen range excludes all events, the map shows no markers and the counter reads `0 / total` — no fabricated data.
+b. If start is after end, the control shows the fields in an error state and falls back to auto until corrected.
+c. In chain mode the range still applies; it simply narrows the chain's own window.
+d. The range is UI-only state (not persisted, not saved to the database).
 
-## 2. Make the handoff happen on the tap, not after it
+## 3. Technical detail
 
-a. Pre-mint the share child token when the slide with share hotspots mounts (one per medium: sms, email), so the composer URL already exists before any tap.
-b. Render the Email/SMS hotspots as real `<a href="mailto:...">` / `<a href="sms:...">` elements when the URL is ready — a genuine link tap is the one thing every browser and iOS Safari honors.
-c. Keep the current async mint path only as a fallback for when pre-minting failed, and keep the reserved-window trick there for iOS.
+Single file: `src/components/SamizdatMap.tsx`.
 
-## 3. Stop reporting success when nothing opened
+a. New state: `rangeStart: string | null`, `rangeEnd: string | null` (raw `yyyy-mm-dd` from `<input type="date">`, rendered as mm/dd/yyyy by the browser locale; a plain text input with mm/dd/yyyy placeholder is used if the native picker is undesirable).
+b. Derive `effectiveStartMs` / `effectiveEndMs` in the existing `goLiveTime / latestEventTime / totalDurationMs` memo: use the override when valid, otherwise the current computed values. Start parses to local midnight, end parses to local 12:00.
+c. The two places that recompute the cutoff independently — the `filteredEventPoints` memo and the `timeFilteredEvents` memo — must both read the same derived start/end so markers and viewport stats stay in sync.
+d. Also clamp the lower bound: events before `effectiveStartMs` are filtered out (currently only an upper cutoff exists).
+e. Changing either date pauses playback and resets `timelinePosition` to 0.
+f. Existing helpers `parseNaiveDate` / `formatElapsedTime` in `src/lib/dateUtils.ts` are reused; no new date library.
 
-a. `openComposer` should return `false` when it only managed a blocked assignment, instead of always `true`.
-b. When the composer cannot be opened, show a persistent dialog with the full link plus a "Copy" button and a tappable `mailto:`/`sms:` link, instead of a toast that disappears.
+## 4. Documentation
 
-## 4. Keep tracking honest
-
-a. Pre-minting means a token is created even if the person never sends the message. Log those as *intent*, not a completed share, so the Campaign Story and export lanes are unaffected.
-b. If a pre-minted token goes unused on that slide visit, no second token is minted for the same medium on the same visit.
-
-## 5. Verify before calling it done
-
-a. Re-run the browser test: click Email and SMS, assert a `mailto:`/`sms:` navigation is actually attempted, and screenshot the result.
-b. Repeat with an iOS user-agent to confirm the `sms:&body=` form and the link-tap path.
-c. Confirm on your own device.
-
-## 6. Decision log
-
-This is a new decision document: `docs/decisions/messaging/2026-08-01_share-composer-launch-on-tap_bug-fix_lovable.md`.
-
-## Technical notes
-
-- Files: `src/lib/openComposer.ts`, `src/components/InteractiveSlideOverlay.tsx`, and the share mint path in `src/lib/virality/mint.ts`.
-- No database schema change. Pre-minting uses the existing `mint_share` call with the existing parent-token lineage, so parentage is unchanged.
+a. New decision doc at `docs/decisions/campaigns/2026-08-03_map-animation-date-range_feature-doc_lovable.md` with `Status: Approved & Implemented`.
+b. This is a new plan, not an update to an existing decision document; the closest prior record, `docs/investigations/hotspot/2026-02-15_timeline-playback-samizdat.md`, will get a pointer line to the new doc.
