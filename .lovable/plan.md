@@ -22,7 +22,7 @@ d. The range is UI-only state (not persisted, not saved to the database).
 Single file: `src/components/SamizdatMap.tsx`.
 
 a. New state: `rangeStart: string | null`, `rangeEnd: string | null` (raw `yyyy-mm-dd` from `<input type="date">`, rendered as mm/dd/yyyy by the browser locale; a plain text input with mm/dd/yyyy placeholder is used if the native picker is undesirable).
-b. Derive `effectiveStartMs` / `effectiveEndMs` in the existing `goLiveTime / latestEventTime / totalDurationMs` memo: use the override when valid, otherwise the current computed values. Start parses to local midnight, end parses to local 12:00.
+b. Derive `effectiveStartMs` / `effectiveEndMs` in the existing `goLiveTime / latestEventTime / totalDurationMs` memo: use the override when valid, otherwise the current computed values. Start parses to local midnight, end parses to local 23:59:59.999.
 c. The two places that recompute the cutoff independently — the `filteredEventPoints` memo and the `timeFilteredEvents` memo — must both read the same derived start/end so markers and viewport stats stay in sync.
 d. Also clamp the lower bound: events before `effectiveStartMs` are filtered out (currently only an upper cutoff exists).
 e. Changing either date pauses playback and resets `timelinePosition` to 0.
