@@ -29,7 +29,7 @@ b. `filteredEventPoints` applies a hard lower and upper bound from the overrides
    playback cutoff, and uses the overrides when computing `goLive` / `latest`.
 c. The `goLiveTime / latestEventTime / totalDurationMs` memo applies the same overrides, keeping
    the marker pipeline and the viewport-stats pipeline in sync.
-d. Changing either date pauses playback and resets `timelinePosition` to 0.
+d. Changing either date pauses playback and sets `timelinePosition` to 1 (whole selected window visible); the reset button still rewinds to 0.
 
 ## 4. Plan lineage
 
