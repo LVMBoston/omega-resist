@@ -160,58 +160,47 @@ const InteractiveSlideOverlay = ({
   }, [viralToken]);
 
   /**
-   * Pre-mint the share child token(s) for this slide's SMS / Email hotspots so the
-   * composer URL exists *before* the tap. A tap then navigates a real <a href>,
-   * which is the only handoff iOS Safari reliably honors. One token per medium
-   * per slide visit — unused ones are share *intent*, not completed shares.
+   * Mint the share child token for a medium on the *first intent gesture*
+   * (pointer-down / hover on the share hotspot), never on mount. Minting on
+   * mount inflated chain-share metrics with tokens nobody ever sent.
+   * Once minted, the hotspot renders as a real <a href>, which is the only
+   * handoff iOS Safari reliably honors. If the tap lands before the mint
+   * resolves, the existing on-tap async path handles it.
    */
-  useEffect(() => {
+  const premintComposer = useCallback(async (medium: 'sms' | 'email') => {
     if (!viralToken || !templatesReady) return;
-    const needSms = hotspots.some(h => h.type === 'sms');
-    const needEmail = hotspots.some(h => h.type === 'email');
-    if (!needSms && !needEmail) return;
+    if (premintedRef.current[medium]) return;
+    premintedRef.current[medium] = true;
 
-    let cancelled = false;
     const subGeo = (text: string) => text
       .replace(/\{\{city\}\}/g, eoaContext?.city || "")
       .replace(/\{\{state\}\}/g, eoaContext?.state || "")
       .replace(/\{\{site_name\}\}/g, eoaContext?.site_name || "");
 
-    (async () => {
-      if (needSms && !premintedRef.current.sms) {
-        premintedRef.current.sms = true;
-        try {
-          const r = await mintShare({ parentToken: viralToken, utmMedium: "sms" });
-          const message = smsTemplate?.body
-            ? subGeo(smsTemplate.body.replace("{{link}}", r.full_url))
-            : `Check out this deck: ${r.full_url}`;
-          if (!cancelled) setComposerHrefs(prev => ({ ...prev, sms: buildSmsComposerUrl(message) }));
-        } catch (e) {
-          premintedRef.current.sms = false;
-          console.error("Pre-mint (sms) failed, falling back to on-tap mint:", e);
-        }
+    try {
+      if (medium === 'sms') {
+        const r = await mintShare({ parentToken: viralToken, utmMedium: "sms" });
+        const message = smsTemplate?.body
+          ? subGeo(smsTemplate.body.replace("{{link}}", r.full_url))
+          : `Check out this deck: ${r.full_url}`;
+        setComposerHrefs(prev => ({ ...prev, sms: buildSmsComposerUrl(message) }));
+      } else {
+        const r = await mintShare({ parentToken: viralToken, utmMedium: "em" });
+        const subject = emailTemplate?.subject ? subGeo(emailTemplate.subject) : "Check out this presentation";
+        const body = emailTemplate?.body
+          ? subGeo(emailTemplate.body.replace("{{link}}", r.full_url))
+          : `I thought you might be interested in this: ${r.full_url}`;
+        setComposerHrefs(prev => ({
+          ...prev,
+          email: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+        }));
       }
-      if (needEmail && !premintedRef.current.email) {
-        premintedRef.current.email = true;
-        try {
-          const r = await mintShare({ parentToken: viralToken, utmMedium: "em" });
-          const subject = emailTemplate?.subject ? subGeo(emailTemplate.subject) : "Check out this presentation";
-          const body = emailTemplate?.body
-            ? subGeo(emailTemplate.body.replace("{{link}}", r.full_url))
-            : `I thought you might be interested in this: ${r.full_url}`;
-          if (!cancelled) setComposerHrefs(prev => ({
-            ...prev,
-            email: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
-          }));
-        } catch (e) {
-          premintedRef.current.email = false;
-          console.error("Pre-mint (email) failed, falling back to on-tap mint:", e);
-        }
-      }
-    })();
+    } catch (e) {
+      premintedRef.current[medium] = false;
+      console.error(`Pre-mint (${medium}) failed, falling back to on-tap mint:`, e);
+    }
+  }, [viralToken, templatesReady, smsTemplate, emailTemplate, eoaContext]);
 
-    return () => { cancelled = true; };
-  }, [viralToken, templatesReady, hotspots, smsTemplate, emailTemplate, eoaContext]);
 
 
 
@@ -1447,14 +1436,24 @@ const InteractiveSlideOverlay = ({
           getHotspotAction(hotspot.type, hotspot)();
         };
         
+        const isShareMedium = hotspot.type === 'sms' || hotspot.type === 'email';
+        const intentProps = isShareMedium
+          ? {
+              onPointerEnter: () => premintComposer(hotspot.type as 'sms' | 'email'),
+              onPointerDown: () => premintComposer(hotspot.type as 'sms' | 'email'),
+            }
+          : {};
+
         return (
           <button
             key={hotspot.id}
             onClick={handleClick}
             onTouchStart={handleTouchStart}
+            {...intentProps}
             className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
             style={transparentStyle}
           >
+
             {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
             {!hotspot.isTransparent && hotspot.label && hotspot.label.trim().length > 0 && (
               (hotspot.type === 'email_support' ||
