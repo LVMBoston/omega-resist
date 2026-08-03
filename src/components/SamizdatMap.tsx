@@ -522,18 +522,22 @@ const SamizdatMap = ({
 
   // Timeline-derived computed values — scoped to chain events when in chain mode
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
+    let goLive: number;
+    let latest: number;
     if (viewMode === "chain" && displayEvents.length > 0) {
       // Use the chain's own first/last event times
       const times = displayEvents.map(e => new Date(e.occurredAt).getTime());
-      const goLive = Math.min(...times);
-      const latest = Math.max(...times);
-      return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
+      goLive = Math.min(...times);
+      latest = Math.max(...times);
+    } else {
+      const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
+      goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
+      latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
     }
-    const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
-    const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-    const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+    if (effStartOverride !== null) goLive = effStartOverride;
+    if (effEndOverride !== null) latest = effEndOverride;
     return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
-  }, [eoaStartDates, eventPoints, viewMode, displayEvents]);
+  }, [eoaStartDates, eventPoints, viewMode, displayEvents, effStartOverride, effEndOverride]);
 
   // Playback animation loop
   useEffect(() => {
