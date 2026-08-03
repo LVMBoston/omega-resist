@@ -1800,6 +1800,37 @@ const SamizdatMap = ({
           {/* Timeline playback controls - bottom right of map */}
           <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border" style={{ maxWidth: '320px', minWidth: '260px' }}>
             <div className="space-y-2">
+              {/* Animation date range */}
+              <div className="flex items-center gap-1 text-[10px]">
+                <span className="text-muted-foreground shrink-0">From</span>
+                <input
+                  type="date"
+                  value={rangeStart}
+                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(0); setRangeStart(e.target.value); }}
+                  className={`h-6 flex-1 min-w-0 rounded border bg-background px-1 text-[10px] tabular-nums ${rangeInvalid ? "border-destructive" : "border-border"}`}
+                  title="Start date (12:00 AM)"
+                />
+                <span className="text-muted-foreground shrink-0">To</span>
+                <input
+                  type="date"
+                  value={rangeEnd}
+                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(0); setRangeEnd(e.target.value); }}
+                  className={`h-6 flex-1 min-w-0 rounded border bg-background px-1 text-[10px] tabular-nums ${rangeInvalid ? "border-destructive" : "border-border"}`}
+                  title="End date (11:59 PM)"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-[10px] shrink-0"
+                  onClick={() => { setIsPlaying(false); setTimelinePosition(0); setRangeStart(""); setRangeEnd(""); }}
+                  title="Reset to full range"
+                >
+                  Auto
+                </Button>
+              </div>
+              {rangeInvalid && (
+                <div className="text-[10px] text-destructive">Start date is after end date — using full range.</div>
+              )}
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   variant="outline"
