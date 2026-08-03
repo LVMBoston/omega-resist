@@ -57,3 +57,7 @@ Replaced the bucket buttons with a continuous timeline slider and animation play
 - `timeWindow` state variable
 - Discrete button group UI in the "Time since go-live" accordion
 - Duplicated naive date parsing logic (replaced with shared `parseNaiveDate`)
+
+## Update — 2026-08-03
+
+An explicit animation date range (From/To) was added to the playback panel. See `docs/decisions/campaigns/2026-08-03_map-animation-date-range_feature-doc_lovable.md`.
