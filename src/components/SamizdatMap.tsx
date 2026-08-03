@@ -398,6 +398,14 @@ const SamizdatMap = ({
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
+    // Hard lower/upper bounds from the explicit date range (independent of playback)
+    if (effStartOverride !== null) {
+      filtered = filtered.filter(e => new Date(e.occurredAt).getTime() >= effStartOverride);
+    }
+    if (effEndOverride !== null) {
+      filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= effEndOverride);
+    }
+
     // Compute timeline cutoff — scoped to chain events when in chain mode
     let timelineCutoff: number | null = null;
     if (timelinePosition < 1.0) {
@@ -415,6 +423,9 @@ const SamizdatMap = ({
         goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
         latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
       }
+
+      if (effStartOverride !== null) goLive = effStartOverride;
+      if (effEndOverride !== null) latest = effEndOverride;
 
       const totalDuration = latest - goLive;
       if (totalDuration > 0 && goLive > 0) {
@@ -438,7 +449,8 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, selectedL00Instance, stalenessTick]);
+  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, selectedL00Instance, stalenessTick, effStartOverride, effEndOverride]);
+
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
