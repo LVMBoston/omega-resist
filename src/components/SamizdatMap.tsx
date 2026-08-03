@@ -1667,8 +1667,8 @@ const SamizdatMap = ({
             </div>
           )}
 
-          {/* Legend - Level colors and EoA shapes */}
-          {displayEvents.length > 0 && (
+          {/* Legend - Level colors and EoA shapes (always visible) */}
+          {true && (
             <div className="absolute bottom-3 left-3 z-[1000] flex items-end gap-2">
               <div className="backdrop-blur-sm rounded-md px-2.5 py-1.5 shadow-md border border-border" style={{ backgroundColor: "hsla(48, 96%, 83%, 0.95)" }}>
                 <div className="flex flex-col gap-1.5 divide-y divide-border">
