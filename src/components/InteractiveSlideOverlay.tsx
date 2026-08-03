@@ -1436,14 +1436,24 @@ const InteractiveSlideOverlay = ({
           getHotspotAction(hotspot.type, hotspot)();
         };
         
+        const isShareMedium = hotspot.type === 'sms' || hotspot.type === 'email';
+        const intentProps = isShareMedium
+          ? {
+              onPointerEnter: () => premintComposer(hotspot.type as 'sms' | 'email'),
+              onPointerDown: () => premintComposer(hotspot.type as 'sms' | 'email'),
+            }
+          : {};
+
         return (
           <button
             key={hotspot.id}
             onClick={handleClick}
             onTouchStart={handleTouchStart}
+            {...intentProps}
             className="absolute pointer-events-auto transition-opacity hover:opacity-80 active:opacity-60 flex items-center justify-center touch-manipulation cursor-pointer"
             style={transparentStyle}
           >
+
             {!hotspot.isTransparent && getHotspotIcon(hotspot.iconId, buttonWidth, buttonHeight)}
             {!hotspot.isTransparent && hotspot.label && hotspot.label.trim().length > 0 && (
               (hotspot.type === 'email_support' ||
