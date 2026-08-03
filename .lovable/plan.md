@@ -6,7 +6,7 @@ Add an explicit start/end date range to the map's timeline playback, so a record
 
 a. In the playback box (bottom right of the map), a new compact row: `From [mm/dd/yyyy] To [mm/dd/yyyy]` plus a small `Auto` reset button.
 b. Empty fields = today's behavior (range derived from go-live to latest event). Filling either one overrides that side.
-c. Start date is anchored at 12:00 AM of that day; end date is anchored at 12:00 PM of that day, exactly as specified. (Note: 12:00 PM is noon, so events later that afternoon/evening are excluded. Say the word if you meant end-of-day and I'll use 11:59 PM instead.)
+c. Start date is anchored at 12:00 AM of that day; end date is anchored at 11:59 PM of that day, so the full end day is included.
 d. The date readout box, slider, elapsed-time label, and the "Events: x / y" counter all follow the chosen range.
 e. Play/Pause/Reset/speed behave the same; a full 1x playthrough still takes ~30 seconds across whatever range is set.
 
