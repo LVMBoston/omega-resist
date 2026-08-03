@@ -289,6 +289,28 @@ const SamizdatMap = ({
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   // Invert parent semantics: parent checked="show all" → map unchecked="don't hide"
   const [showNoSpawnsLocal, setShowNoSpawnsLocal] = useState(!showNoSpawns);
+  // Animation date-range overrides (yyyy-mm-dd from <input type="date">, UI-only)
+  const [rangeStart, setRangeStart] = useState<string>("");
+  const [rangeEnd, setRangeEnd] = useState<string>("");
+
+  const rangeStartMs = useMemo(() => {
+    if (!rangeStart) return null;
+    const [y, m, d] = rangeStart.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+  }, [rangeStart]);
+
+  const rangeEndMs = useMemo(() => {
+    if (!rangeEnd) return null;
+    const [y, m, d] = rangeEnd.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d, 23, 59, 59, 999).getTime();
+  }, [rangeEnd]);
+
+  // Invalid when start is after end — fall back to auto until corrected
+  const rangeInvalid = rangeStartMs !== null && rangeEndMs !== null && rangeStartMs > rangeEndMs;
+  const effStartOverride = rangeInvalid ? null : rangeStartMs;
+  const effEndOverride = rangeInvalid ? null : rangeEndMs;
 
   useEffect(() => {
     setShowNoSpawnsLocal(!showNoSpawns);
@@ -376,6 +398,14 @@ const SamizdatMap = ({
       filtered = filtered.filter(event => enabledChannels.has(getShareMediumShape(event.utmMedium)));
     }
 
+    // Hard lower/upper bounds from the explicit date range (independent of playback)
+    if (effStartOverride !== null) {
+      filtered = filtered.filter(e => new Date(e.occurredAt).getTime() >= effStartOverride);
+    }
+    if (effEndOverride !== null) {
+      filtered = filtered.filter(e => new Date(e.occurredAt).getTime() <= effEndOverride);
+    }
+
     // Compute timeline cutoff — scoped to chain events when in chain mode
     let timelineCutoff: number | null = null;
     if (timelinePosition < 1.0) {
@@ -393,6 +423,9 @@ const SamizdatMap = ({
         goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
         latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
       }
+
+      if (effStartOverride !== null) goLive = effStartOverride;
+      if (effEndOverride !== null) latest = effEndOverride;
 
       const totalDuration = latest - goLive;
       if (totalDuration > 0 && goLive > 0) {
@@ -416,7 +449,8 @@ const SamizdatMap = ({
     }
 
     return filtered;
-  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, selectedL00Instance, stalenessTick]);
+  }, [eventPoints, showNoSpawnsLocal, timelinePosition, eoaStartDates, enabledChannels, viewMode, selectedL00Instance, stalenessTick, effStartOverride, effEndOverride]);
+
 
   // Escape key handler for fullscreen mode
   useEffect(() => {
@@ -488,18 +522,22 @@ const SamizdatMap = ({
 
   // Timeline-derived computed values — scoped to chain events when in chain mode
   const { goLiveTime, latestEventTime, totalDurationMs } = useMemo(() => {
+    let goLive: number;
+    let latest: number;
     if (viewMode === "chain" && displayEvents.length > 0) {
       // Use the chain's own first/last event times
       const times = displayEvents.map(e => new Date(e.occurredAt).getTime());
-      const goLive = Math.min(...times);
-      const latest = Math.max(...times);
-      return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
+      goLive = Math.min(...times);
+      latest = Math.max(...times);
+    } else {
+      const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
+      goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
+      latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
     }
-    const startDates = Object.values(eoaStartDates).map(d => new Date(d).getTime()).filter(t => t > 0);
-    const goLive = startDates.length > 0 ? Math.min(...startDates) : 0;
-    const latest = eventPoints.reduce((max, e) => Math.max(max, new Date(e.occurredAt).getTime()), 0);
+    if (effStartOverride !== null) goLive = effStartOverride;
+    if (effEndOverride !== null) latest = effEndOverride;
     return { goLiveTime: goLive, latestEventTime: latest, totalDurationMs: latest - goLive };
-  }, [eoaStartDates, eventPoints, viewMode, displayEvents]);
+  }, [eoaStartDates, eventPoints, viewMode, displayEvents, effStartOverride, effEndOverride]);
 
   // Playback animation loop
   useEffect(() => {
@@ -1762,6 +1800,37 @@ const SamizdatMap = ({
           {/* Timeline playback controls - bottom right of map */}
           <div className="bg-background/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-border" style={{ maxWidth: '320px', minWidth: '260px' }}>
             <div className="space-y-2">
+              {/* Animation date range */}
+              <div className="flex items-center gap-1 text-[10px]">
+                <span className="text-muted-foreground shrink-0">From</span>
+                <input
+                  type="date"
+                  value={rangeStart}
+                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(1); setRangeStart(e.target.value); }}
+                  className={`h-6 flex-1 min-w-0 rounded border bg-background px-1 text-[10px] tabular-nums ${rangeInvalid ? "border-destructive" : "border-border"}`}
+                  title="Start date (12:00 AM)"
+                />
+                <span className="text-muted-foreground shrink-0">To</span>
+                <input
+                  type="date"
+                  value={rangeEnd}
+                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(1); setRangeEnd(e.target.value); }}
+                  className={`h-6 flex-1 min-w-0 rounded border bg-background px-1 text-[10px] tabular-nums ${rangeInvalid ? "border-destructive" : "border-border"}`}
+                  title="End date (11:59 PM)"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-[10px] shrink-0"
+                  onClick={() => { setIsPlaying(false); setTimelinePosition(1); setRangeStart(""); setRangeEnd(""); }}
+                  title="Reset to full range"
+                >
+                  Auto
+                </Button>
+              </div>
+              {rangeInvalid && (
+                <div className="text-[10px] text-destructive">Start date is after end date — using full range.</div>
+              )}
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   variant="outline"
