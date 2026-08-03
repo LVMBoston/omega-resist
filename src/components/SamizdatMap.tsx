@@ -1806,7 +1806,7 @@ const SamizdatMap = ({
                 <input
                   type="date"
                   value={rangeStart}
-                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(0); setRangeStart(e.target.value); }}
+                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(1); setRangeStart(e.target.value); }}
                   className={`h-6 flex-1 min-w-0 rounded border bg-background px-1 text-[10px] tabular-nums ${rangeInvalid ? "border-destructive" : "border-border"}`}
                   title="Start date (12:00 AM)"
                 />
@@ -1814,7 +1814,7 @@ const SamizdatMap = ({
                 <input
                   type="date"
                   value={rangeEnd}
-                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(0); setRangeEnd(e.target.value); }}
+                  onChange={(e) => { setIsPlaying(false); setTimelinePosition(1); setRangeEnd(e.target.value); }}
                   className={`h-6 flex-1 min-w-0 rounded border bg-background px-1 text-[10px] tabular-nums ${rangeInvalid ? "border-destructive" : "border-border"}`}
                   title="End date (11:59 PM)"
                 />
@@ -1822,7 +1822,7 @@ const SamizdatMap = ({
                   variant="ghost"
                   size="sm"
                   className="h-6 px-1.5 text-[10px] shrink-0"
-                  onClick={() => { setIsPlaying(false); setTimelinePosition(0); setRangeStart(""); setRangeEnd(""); }}
+                  onClick={() => { setIsPlaying(false); setTimelinePosition(1); setRangeStart(""); setRangeEnd(""); }}
                   title="Reset to full range"
                 >
                   Auto
